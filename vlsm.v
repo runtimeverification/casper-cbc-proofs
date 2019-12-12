@@ -277,6 +277,76 @@ Qed.
 
 (* Valid VLSM transitions *)
 
+(* *** begin *** *)
+
+Definition verbose_valid_protocol_transition {message} `{VLSM message} (l : label) (s s' : state) (om om' : option proto_message) :=
+  protocol_prop (s, om) /\ 
+  valid l (s, om) /\
+  transition l (s, om) = (s', om') /\
+  protocol_prop (s', om').  
+
+(* Alternative way to define traces *)
+Record trace_element `{VLSM} : Type :=
+  { l_in : label;
+    msg_in : option proto_message;
+    s : state;
+    msg_out : option proto_message;
+  }. 
+
+Definition in_state_out {message} `{VLSM message} : Type := option proto_message * state * option proto_message.
+
+Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
+  snd (fst xyz). 
+
+Inductive finite_protocol_trace `{VLSM} :
+  list in_state_out -> Prop :=
+| finite_protocol_trace_empty : finite_protocol_trace []
+| finite_protocol_trace_singleton : forall (s : state), protocol_state_prop s -> finite_protocol_trace [(None, s, None)]
+| finite_protocol_trace_extend : forall  (hd : in_state_out) (tl : list in_state_out),
+    finite_protocol_trace (hd :: tl) ->
+    forall (hd' : in_state_out) (l : label),
+    verbose_valid_protocol_transition l (mid hd) (mid hd') (snd hd) (snd hd') ->
+    finite_protocol_trace (hd' :: hd :: tl). 
+
+CoInductive infinite_protocol_trace `{VLSM} :
+  Stream in_state_out -> Prop :=
+| infinite_protocol_trace_extend :
+    forall (hd : in_state_out) (sm : Stream in_state_out),
+      infinite_protocol_trace (Cons hd sm) -> 
+      forall (hd' : in_state_out) (l : label),
+    verbose_valid_protocol_transition l (mid hd) (mid hd') (snd hd) (snd hd') ->
+    infinite_protocol_trace (Cons hd' (Cons hd sm)).
+
+Inductive Trace_verbose `{VLSM} : Type :=
+  | Finite : list in_state_out -> Trace_verbose
+  | Infinite : Stream in_state_out -> Trace_verbose.
+
+Definition protocol_trace_prop `{VLSM} (tr : Trace_verbose) : Prop :=
+  match tr with 
+  | Finite ls => finite_protocol_trace ls
+  | Infinite sm => infinite_protocol_trace sm
+  end. 
+
+Definition protocol_trace `{VLSM} : Type :=
+  { tr : Trace_verbose | protocol_trace_prop tr}. 
+
+(* Defining equivocation on these trace definitions *)
+(* Section 6 : "A message m received by a protocol state s with a transition label l in a protocol execution trace is called "an equivocation" if it wasn't produced in that trace" *)
+
+(* Implicitly, the state itself must be in the trace, and minimally the last element of the trace *)
+(* Also implicitly, the trace leading up to the state is finite *)
+Definition d0 `{VLSM} : in_state_out := (None, proj1_sig s0, None). 
+
+Definition equivocation `{VLSM} (msg : proto_message) (s : state) (ls : list in_state_out) (about_ls : finite_protocol_trace ls) : Prop :=
+  (* Case empty for the last function *) 
+  ls = [] \/
+  (* Or the list is not empty, and (msg, s, something) is its last element *) 
+  (fst (fst (last ls d0)) = Some msg /\
+   mid (last ls d0) = s /\
+   forall (elem : in_state_out), In elem ls -> snd elem = Some msg -> False).   
+  
+(* *** end *** *)
+
 Definition labeled_valid_transition
   {message}
   `{V : VLSM message}
@@ -286,7 +356,6 @@ Definition labeled_valid_transition
   : Prop
   :=
   protocol_valid l (ps, opm) /\ fst (protocol_transition l (ps, opm)) = proj1_sig ps'.
-
 
 Definition valid_transition
   {message}
