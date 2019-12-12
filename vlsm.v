@@ -2,7 +2,7 @@ Require Import List Streams ProofIrrelevance.
 Import ListNotations.
 
 From Casper
-Require Import ListExtras.
+Require Import preamble ListExtras.
 
 (** preamble **)
 
@@ -337,14 +337,59 @@ Definition protocol_trace `{VLSM} : Type :=
 (* Also implicitly, the trace leading up to the state is finite *)
 Definition d0 `{VLSM} : in_state_out := (None, proj1_sig s0, None). 
 
-Definition equivocation `{VLSM} (msg : proto_message) (s : state) (ls : list in_state_out) (about_ls : finite_protocol_trace ls) : Prop :=
+Definition equivocation_in_trace `{VLSM} (msg : proto_message) (s : state) (ls : list in_state_out) (about_ls : finite_protocol_trace ls) : Prop :=
   (* Case empty for the last function *) 
   ls = [] \/
   (* Or the list is not empty, and (msg, s, something) is its last element *) 
   (fst (fst (last ls d0)) = Some msg /\
    mid (last ls d0) = s /\
    forall (elem : in_state_out), In elem ls -> snd elem = Some msg -> False).   
-  
+
+Definition equivocation `{VLSM} (msg : proto_message) (s : state) : Prop :=
+  forall (ls : list in_state_out) (about_ls : finite_protocol_trace ls), 
+    equivocation_in_trace msg s ls about_ls. 
+
+(* Now we can have decidable equivocations! *) 
+(* 6.2.1 Identifying equivocations *)
+Definition has_been_sent `{VLSM} (msg : proto_message) (ls : list in_state_out) : Prop :=
+  exists (elem : in_state_out),
+    In elem ls /\ fst (fst elem) = Some msg. 
+
+(* Since equality of proto_messages is decidable, this function must exist : *) 
+Definition proto_message_eqb `{VLSM} : option proto_message -> option proto_message -> bool :=
+  fun msg1 msg2 => true. 
+
+Fixpoint has_been_sentb `{VLSM} (msg : proto_message) (ls : list in_state_out) : bool :=
+  match ls with
+  | [] => false
+  | hd :: tl => if proto_message_eqb (fst (fst hd)) (Some msg) then true else has_been_sentb msg tl
+  end.
+
+Lemma has_been_sent_correct `{HV : VLSM} :
+  forall (msg : proto_message) (ls : list in_state_out),
+    has_been_sent msg ls <-> has_been_sentb msg ls = true. 
+Proof.     
+Admitted.   
+
+(* Now we can show that the above and below definitions are unnecessary *) 
+
+(* Implicitly, the trace must be a protocol trace and also end with the state *) 
+Definition finite_protocol_trace_upto `{VLSM} (s : state) : list in_state_out -> Prop :=
+  fun ls => finite_protocol_trace ls /\ ls <> [] /\ mid (last ls d0) = s. 
+
+Definition has_been_sent_minimal `{VLSM} (msg : proto_message) (ls : list in_state_out) (s : state) : Prop :=
+  finite_protocol_trace_upto s ls /\ has_been_sent msg ls. 
+
+(* 6.2.2 Equivocation-free as a composition constraint *)
+Definition composition_constraint `{VLSM} : Type :=
+  label -> state * option proto_message -> Prop. 
+
+Definition equivocation_free `{VLSM} : composition_constraint :=
+  fun l som => match (snd som) with
+            | None => True
+            | Some msg => equivocation msg (fst som) -> False
+            end.
+
 (* *** end *** *)
 
 Definition labeled_valid_transition
