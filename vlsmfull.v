@@ -1,7 +1,7 @@
 Require Import Bool List Streams Logic.Epsilon Reals ProofIrrelevance.
 Import ListNotations.
 From Casper   
-Require Import preamble ListExtras ListSetExtras RealsExtras definitions common vlsm composed_vlsm indexed_vlsm commute fullnode.
+Require Import preamble ListExtras ListSetExtras RealsExtras definitions common vlsm indexed_vlsm commute fullnode.
 
 
 (* Creating a full-node instance of VLSM *)

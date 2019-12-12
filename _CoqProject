@@ -9,12 +9,8 @@ fullnode.v
 lightnode.v
 binary.v
 vlsm.v
-plsm.v
 vlsm_run.v
-two_vlsms.v
 indexed_vlsm.v
-composed_vlsm.v
-composed_vlsm_projections.v
 indexed_vlsm_projections.v
 commute.v
 vlsmfull.v
