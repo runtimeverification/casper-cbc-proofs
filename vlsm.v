@@ -286,49 +286,50 @@ Definition verbose_valid_protocol_transition {message} `{VLSM message} (l : labe
   protocol_prop (s', om').  
 
 (* Alternative way to define traces *)
+(* 
 Record trace_element `{VLSM} : Type :=
   { l_in : label;
     msg_in : option proto_message;
     s : state;
     msg_out : option proto_message;
   }. 
-
+*)
 Definition in_state_out {message} `{VLSM message} : Type := option proto_message * state * option proto_message.
 
 Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
   snd (fst xyz). 
 
-Inductive finite_protocol_trace `{VLSM} :
+Inductive finite_ptrace `{VLSM} :
   list in_state_out -> Prop :=
-| finite_protocol_trace_empty : finite_protocol_trace []
-| finite_protocol_trace_singleton : forall (s : state), protocol_state_prop s -> finite_protocol_trace [(None, s, None)]
-| finite_protocol_trace_extend : forall  (hd : in_state_out) (tl : list in_state_out),
-    finite_protocol_trace (hd :: tl) ->
+| finite_ptrace_empty : finite_ptrace []
+| finite_ptrace_singleton : forall (s : state), protocol_state_prop s -> finite_ptrace [(None, s, None)]
+| finite_ptrace_extend : forall  (hd : in_state_out) (tl : list in_state_out),
+    finite_ptrace (hd :: tl) ->
     forall (hd' : in_state_out) (l : label),
     verbose_valid_protocol_transition l (mid hd) (mid hd') (snd hd) (snd hd') ->
-    finite_protocol_trace (hd' :: hd :: tl). 
+    finite_ptrace (hd' :: hd :: tl). 
 
-CoInductive infinite_protocol_trace `{VLSM} :
+CoInductive infinite_ptrace `{VLSM} :
   Stream in_state_out -> Prop :=
-| infinite_protocol_trace_extend :
+| infinite_ptrace_extend :
     forall (hd : in_state_out) (sm : Stream in_state_out),
-      infinite_protocol_trace (Cons hd sm) -> 
+      infinite_ptrace (Cons hd sm) -> 
       forall (hd' : in_state_out) (l : label),
     verbose_valid_protocol_transition l (mid hd) (mid hd') (snd hd) (snd hd') ->
-    infinite_protocol_trace (Cons hd' (Cons hd sm)).
+    infinite_ptrace (Cons hd' (Cons hd sm)).
 
 Inductive Trace_verbose `{VLSM} : Type :=
-  | Finite : list in_state_out -> Trace_verbose
-  | Infinite : Stream in_state_out -> Trace_verbose.
+  | Fin : list in_state_out -> Trace_verbose
+  | Inf : Stream in_state_out -> Trace_verbose.
 
-Definition protocol_trace_prop `{VLSM} (tr : Trace_verbose) : Prop :=
+Definition ptrace_prop `{VLSM} (tr : Trace_verbose) : Prop :=
   match tr with 
-  | Finite ls => finite_protocol_trace ls
-  | Infinite sm => infinite_protocol_trace sm
+  | Fin ls => finite_ptrace ls
+  | Inf sm => infinite_ptrace sm
   end. 
 
-Definition protocol_trace `{VLSM} : Type :=
-  { tr : Trace_verbose | protocol_trace_prop tr}. 
+Definition protocol_trace_type `{VLSM} : Type :=
+  { tr : Trace_verbose | ptrace_prop tr}. 
 
 (* Defining equivocation on these trace definitions *)
 (* Section 6 : "A message m received by a protocol state s with a transition label l in a protocol execution trace is called "an equivocation" if it wasn't produced in that trace" *)
@@ -337,7 +338,7 @@ Definition protocol_trace `{VLSM} : Type :=
 (* Also implicitly, the trace leading up to the state is finite *)
 Definition d0 `{VLSM} : in_state_out := (None, proj1_sig s0, None). 
 
-Definition equivocation_in_trace `{VLSM} (msg : proto_message) (s : state) (ls : list in_state_out) (about_ls : finite_protocol_trace ls) : Prop :=
+Definition equivocation_in_trace `{VLSM} (msg : proto_message) (s : state) (ls : list in_state_out) (about_ls : finite_ptrace ls) : Prop :=
   (* Case empty for the last function *) 
   ls = [] \/
   (* Or the list is not empty, and (msg, s, something) is its last element *) 
@@ -346,7 +347,7 @@ Definition equivocation_in_trace `{VLSM} (msg : proto_message) (s : state) (ls :
    forall (elem : in_state_out), In elem ls -> snd elem = Some msg -> False).   
 
 Definition equivocation `{VLSM} (msg : proto_message) (s : state) : Prop :=
-  forall (ls : list in_state_out) (about_ls : finite_protocol_trace ls), 
+  forall (ls : list in_state_out) (about_ls : finite_ptrace ls), 
     equivocation_in_trace msg s ls about_ls. 
 
 (* Now we can have decidable equivocations! *) 
@@ -357,7 +358,7 @@ Definition has_been_sent `{VLSM} (msg : proto_message) (ls : list in_state_out) 
 
 (* Since equality of proto_messages is decidable, this function must exist : *) 
 Definition proto_message_eqb `{VLSM} : option proto_message -> option proto_message -> bool :=
-  fun msg1 msg2 => true. 
+  fun msg1 msg2 => true.
 
 Fixpoint has_been_sentb `{VLSM} (msg : proto_message) (ls : list in_state_out) : bool :=
   match ls with
@@ -374,11 +375,11 @@ Admitted.
 (* Now we can show that the above and below definitions are unnecessary *) 
 
 (* Implicitly, the trace must be a protocol trace and also end with the state *) 
-Definition finite_protocol_trace_upto `{VLSM} (s : state) : list in_state_out -> Prop :=
-  fun ls => finite_protocol_trace ls /\ ls <> [] /\ mid (last ls d0) = s. 
+Definition finite_ptrace_upto `{VLSM} (s : state) : list in_state_out -> Prop :=
+  fun ls => finite_ptrace ls /\ ls <> [] /\ mid (last ls d0) = s. 
 
 Definition has_been_sent_minimal `{VLSM} (msg : proto_message) (ls : list in_state_out) (s : state) : Prop :=
-  finite_protocol_trace_upto s ls /\ has_been_sent msg ls. 
+  finite_ptrace_upto s ls /\ has_been_sent msg ls. 
 
 (* 6.2.2 Equivocation-free as a composition constraint *)
 Definition composition_constraint `{VLSM} : Type :=
