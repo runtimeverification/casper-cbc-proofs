@@ -4,6 +4,40 @@ Import ListNotations.
 
 Require Import Casper.preamble.
 
+Lemma unfold_last_hd {S} : forall (random a b : S) (l : list S),
+  last (a :: (b :: l)) random = last (b :: l) random.
+Proof.
+  intros random h1 h2 tl. 
+  unfold last. reflexivity.
+Qed.
+
+Lemma swap_head_last {S} : forall (random a b c : S) (l : list S),
+    last (a :: b :: c :: l) random = last (b :: a :: c :: l) random. 
+Proof.
+  intros random h1 h2 s tl.
+  induction tl as [| hd tl IHl].
+  - reflexivity. 
+  - simpl. reflexivity.
+Qed.
+
+Lemma remove_hd_last {X} :
+  forall (hd1 hd2 d1 d2 : X) (tl : list X),
+    last (hd1 :: hd2 :: tl) d1 = last (hd2 :: tl) d2.
+Proof. 
+  intros. induction tl.
+  simpl. reflexivity.
+  rewrite unfold_last_hd. 
+  rewrite unfold_last_hd in IHtl.
+  rewrite unfold_last_hd.
+  rewrite unfold_last_hd.
+  destruct tl. 
+  reflexivity.
+  do 2 rewrite unfold_last_hd in IHtl.
+  do 2 rewrite unfold_last_hd.
+  assumption.
+Qed.
+
+
 Lemma incl_empty : forall A (l : list A),
   incl l nil -> l = nil.
 Proof.

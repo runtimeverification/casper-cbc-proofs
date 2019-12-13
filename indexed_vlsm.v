@@ -4,7 +4,7 @@ Require Import Logic.FunctionalExtensionality.
 Require Import ClassicalDescription ClassicalChoice ChoiceFacts.
 
 From Casper
-Require Import vlsm.
+Require Import preamble vlsm.
 
 (*
 Composition of indexed VLSMs.

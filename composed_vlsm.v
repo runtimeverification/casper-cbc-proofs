@@ -2,7 +2,7 @@ Require Import List.
 Import ListNotations.
 
 From Casper
-Require Import vlsm two_vlsms indexed_vlsm.
+Require Import preamble vlsm two_vlsms indexed_vlsm.
 
 Class composed_sig_class (message : Type) `{S : LSM_sig message} :=
   { index : Set

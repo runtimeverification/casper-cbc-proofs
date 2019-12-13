@@ -1,4 +1,4 @@
-Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ChoiceFacts.
+Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ChoiceFacts ProofIrrelevance.
 Import ListNotations.
 
 Tactic Notation "spec" hyp(H) := 
@@ -16,8 +16,61 @@ Tactic Notation "spec" hyp(H) constr(a) constr(b) constr(c) constr(d) :=
 Tactic Notation "spec" hyp(H) constr(a) constr(b) constr(c) constr(d) constr(e) := 
   (generalize (H a b c d e); clear H; intro H).
 
+(** preamble **)
+
+Definition noneOrAll
+  (op : option Prop)
+  : Prop
+  :=
+  match op with
+  | None => True
+  | (Some p) => p
+  end.
+
+Lemma exist_eq
+  {X}
+  (P : X -> Prop)
+  (a b : {x : X | P x})
+  : a = b <-> proj1_sig a = proj1_sig b.
+Proof.
+  destruct a as [a Ha]; destruct b as [b Hb]; simpl.
+  split; intros Heq.
+  - inversion Heq. reflexivity.
+  - subst. apply f_equal. apply proof_irrelevance.
+Qed.
+
+Class EqDec X :=
+  eq_dec : forall x y : X, {x = y} + {x <> y}.
+
+Lemma DepEqDec
+  {X}
+  (Heqd : EqDec X)
+  (P : X -> Prop)
+  : EqDec {x : X | P x}.
+Proof.
+  intros [x Hx] [y Hy].
+  specialize (Heqd x y).
+  destruct Heqd as [Heq | Hneq].
+  - left. subst. apply f_equal. apply proof_irrelevance.
+  - right.  intros Heq. apply Hneq. inversion Heq. reflexivity.
+Qed.
+
+Lemma nat_eq_dec : EqDec nat.
+Proof.
+  unfold EqDec. induction x; destruct y.
+  - left. reflexivity.
+  - right. intros C; inversion C.
+  - right. intros C; inversion C.
+  - specialize (IHx y). destruct IHx as [Heq | Hneq].
+    + left. subst. reflexivity.
+    + right. intros Heq. inversion Heq. contradiction.
+Qed.
+
 (** Logic library **)
 Axiom choice : forall (X : Type), ConstructiveIndefiniteDescription_on X.
+
+Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
+  snd (fst xyz).
 
 Lemma or_and_distr_left : forall A B C, (A /\ B) \/ C <-> (A \/ C) /\ (B \/ C).
 Proof.
@@ -549,6 +602,7 @@ Definition triple_strictly_comparable_proj3
 
 
 (** Polymorphic list library **)
+
 Fixpoint is_member {W} `{StrictlyComparable W} (w : W) (l : list W) : bool :=
   match l with
   | [] => false

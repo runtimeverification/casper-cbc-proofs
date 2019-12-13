@@ -1,7 +1,7 @@
 (** An Approach to VLSMs using a partial transition function.
 *)
 From Casper
-Require Import vlsm.
+Require Import preamble vlsm.
 
 
 Class PLSM (message : Type) `{Sig : LSM_sig message} :=

@@ -1,5 +1,5 @@
 From Casper
-Require Import vlsm composed_vlsm.
+Require Import preamble vlsm composed_vlsm.
 
 Definition vlsm_projection_initial_state_prop
   {message : Type}

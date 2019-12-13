@@ -1,5 +1,5 @@
 From Casper
-Require Import vlsm composed_vlsm composed_vlsm_projections indexed_vlsm.
+Require Import preamble vlsm composed_vlsm composed_vlsm_projections indexed_vlsm.
 
 Definition indexed_vlsm_projection
   {message : Type}
