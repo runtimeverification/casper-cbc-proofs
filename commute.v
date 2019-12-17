@@ -23,10 +23,12 @@ Next Obligation.
 Defined.
 
 Definition Trace_nth `{VLSM} (tr : Trace)
-  : nat -> protocol_state :=
-  fun (n : nat) => match tr with
-              | Finite ls => nth n ls prot_state0
-              | Infinite st => Str_nth n st end. 
+  : nat -> option state :=
+  fun (n : nat) =>
+    match tr with
+    | Finite ls => option_map mid (nth_error ls n)
+    | Infinite st => Some (mid (Str_nth n st))
+   end. 
 
 Definition final `{VLSM_plus} : decision -> Prop :=
   fun (D : decision) => forall (tr : Trace), 

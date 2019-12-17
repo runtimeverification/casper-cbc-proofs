@@ -140,7 +140,7 @@ Definition indexed_transition
   {index : Set} {message : Type} `{Heqd : EqDec index}
   {IS : index -> LSM_sig message}
   (IM : forall i : index, @VLSM message (IS i))
-  (Hinh : index)
+  {Hinh : index}
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
   : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)).
@@ -159,7 +159,7 @@ Definition indexed_valid
   {index : Set} {message : Type} `{Heqd : EqDec index}
   {IS : index -> LSM_sig message}
   (IM : forall i : index, @VLSM message (IS i))
-  (Hinh : index)
+  {Hinh : index}
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
   : Prop.
@@ -172,28 +172,15 @@ destruct om as [[m _]|].
 - exact (valid li (s i, None)).
 Defined.
 
-(* Free VLSM composition *)
-
-Definition indexed_vlsm
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
-  : @VLSM message (indexed_sig IS Hi)
-  :=
-  {|  transition := indexed_transition IM Hi
-  ;   valid := indexed_valid IM Hi
-  |}.
-
 Definition indexed_valid_decidable
   {index : Set} {message : Type} `{Heqd : EqDec index}
   {IS : index -> LSM_sig message}
   {IM : forall i : index, @VLSM message (IS i)}
   (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-  (Hinh : index)
+  {Hinh : index}
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
-  : {@valid _ _ (indexed_vlsm IM Hinh) l som} + {~@valid _ _ (indexed_vlsm IM Hinh) l som}.
+  : {indexed_valid IM l som} + {~indexed_valid IM l som}.
 destruct som as [s om].
 destruct l as [i li]; simpl.
 destruct om as [[m _]|]; simpl.
@@ -203,30 +190,19 @@ destruct om as [[m _]|]; simpl.
 - apply valid_decidable.
 Defined.
 
-Definition indexed_vlsm_vdecidable
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  {IM : forall i : index, @VLSM message (IS i)}
-  (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-  (Hi : index)
-  : @VLSM_vdecidable _ _ (indexed_vlsm IM Hi)
-  :=
-  {|  valid_decidable := indexed_valid_decidable IDM Hi
-  |}.
+(* Constrained VLSM composition *)
 
 Definition indexed_valid_constrained
   {index : Set} {message : Type} `{Heqd : EqDec index}
   {IS : index -> LSM_sig message}
   (IM : forall i : index, @VLSM message (IS i))
-  (Hinh : index)
+  {Hinh : index}
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
   :=
-  indexed_valid IM Hinh l som /\ constraint l som.
+  indexed_valid IM l som /\ constraint l som.
 
-
-(* Constrained VLSM composition *)
 
 Definition indexed_vlsm_constrained
   {index : Set} {message : Type} `{Heqd : EqDec index}
@@ -236,8 +212,8 @@ Definition indexed_vlsm_constrained
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
   : @VLSM message (indexed_sig IS Hi)
   :=
-  {|  transition := indexed_transition IM Hi
-  ;   valid := indexed_valid_constrained IM Hi constraint
+  {|  transition := indexed_transition IM
+  ;   valid := indexed_valid_constrained IM constraint
   |}.
 
 Definition indexed_valid_constrained_decidable
@@ -245,7 +221,7 @@ Definition indexed_valid_constrained_decidable
   {IS : index -> LSM_sig message}
   {IM : forall i : index, @VLSM message (IS i)}
   (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-  (Hinh : index)
+  {Hinh : index}
   {constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop}
   (constraint_decidable : forall (l : indexed_label IS) (som : indexed_state IS * option (indexed_proto_message IS)), {constraint l som} + {~constraint l som})
   (l : @label _ (indexed_sig IS Hinh))
@@ -254,7 +230,7 @@ Definition indexed_valid_constrained_decidable
 intros.
 unfold indexed_valid_constrained.
 destruct (constraint_decidable l som) as [Hc | Hnc].
-- destruct (indexed_valid_decidable IDM Hinh l som) as [Hv | Hnv].
+- destruct (indexed_valid_decidable IDM l som) as [Hv | Hnv].
   + left. split; try assumption.
   + right. intros [Hv _]. contradiction.
 - right. intros [_ Hc]. contradiction.
@@ -270,6 +246,45 @@ Definition indexed_vlsm_constrained_vdecidable
   (constraint_decidable : forall (l : indexed_label IS) (som : indexed_state IS * option (indexed_proto_message IS)), {constraint l som} + {~constraint l som})
   : @VLSM_vdecidable _ _ (indexed_vlsm_constrained IM Hinh constraint)
   :=
-  {|  valid_decidable := indexed_valid_constrained_decidable IDM Hinh constraint_decidable
+  {|  valid_decidable := indexed_valid_constrained_decidable IDM constraint_decidable
   |}.
 
+
+(* Free VLSM composition *)
+
+Definition free_constraint 
+  {index : Set} {message : Type} `{Heqd : EqDec index}
+  {IS : index -> LSM_sig message}
+  (l : indexed_label IS)
+  (som : indexed_state IS * option (indexed_proto_message IS))
+  : Prop
+  :=
+  True.
+
+Definition free_constraint_decidable
+  {index : Set} {message : Type} `{Heqd : EqDec index}
+  {IS : index -> LSM_sig message}
+  (l : indexed_label IS)
+  (som : indexed_state IS * option (indexed_proto_message IS))
+  : {free_constraint l som} + {~free_constraint l som}
+  := left I.
+
+Definition indexed_vlsm_free
+  {index : Set} {message : Type} `{Heqd : EqDec index}
+  {IS : index -> LSM_sig message}
+  (IM : forall i : index, @VLSM message (IS i))
+  (Hi : index)
+  : @VLSM message (indexed_sig IS Hi)
+  :=
+  indexed_vlsm_constrained IM Hi free_constraint
+  .
+
+Definition indexed_vlsm_free_vdecidable
+  {index : Set} {message : Type} `{Heqd : EqDec index}
+  {IS : index -> LSM_sig message}
+  {IM : forall i : index, @VLSM message (IS i)}
+  (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
+  (Hi : index)
+  : @VLSM_vdecidable _ _ (indexed_vlsm_free IM Hi)
+  :=
+  indexed_vlsm_constrained_vdecidable IDM Hi free_constraint_decidable.

@@ -236,6 +236,18 @@ Proof.
 Qed.
   
 
+Require Import Streams.
+
+Definition stream_concat
+  {A : Type}
+  (prefix : list A)
+  (suffix : Stream A)
+  : Stream A
+  :=
+  fold_right (@Cons A) suffix prefix.
+
+
+
 (**
 
 
