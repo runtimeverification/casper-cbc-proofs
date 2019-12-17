@@ -452,17 +452,17 @@ Section Full.
 
   (* Reachability *)
   (* VLSM reachability defined in terms of protocol traces (transition and validity) *) 
-  Definition vlsm_next : protocol_state -> protocol_state -> Prop :=
+(*   Definition vlsm_next : protocol_state -> protocol_state -> Prop :=
     fun s1 s2 => protocol_trace_prop (Finite [s1; s2]).
-
   Lemma next_equiv :
     forall (s1 s2 : protocol_state),
       vlsm_next s1 s2 <->
       exists (msg : @message C V), add_in_sorted_fn msg (proj1_sig (proj1_sig s1)) = proj1_sig (proj1_sig s2).
   Proof. Admitted.
+ *)
 
   Definition vlsm_reach : protocol_state -> protocol_state -> Prop :=
-    fun s1 s2 => exists (tr : protocol_trace_from (fun s => s = s1)), in_trace s2 tr.
+    fun s1 s2 => exists (ls : list in_state_out), finite_ptrace (proj1_sig s1) ls /\ List.In (proj1_sig s2) (List.map destination ls).
 
   Lemma reach_equiv :
     forall (s1 s2 : protocol_state),
@@ -506,7 +506,7 @@ Section Full.
     red.
   Admitted. 
 
-  Theorem strong_nontriviality :
+(*   Theorem strong_nontriviality :
     forall (s1 : protocol_state),
     exists (s2 : protocol_state),
       vlsm_reach s1 s2 /\
@@ -518,6 +518,7 @@ Section Full.
   Proof. 
   Admitted. 
   
+ *)
   (* 2.5.1 Minimal full client protocol: Client2 *) 
   Definition label2 : Type := unit.    
 
