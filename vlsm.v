@@ -6,7 +6,7 @@ Require Import preamble ListExtras.
 
 (* 2.2.1 VLSM Parameters *)
 
-Class LSM_sig (message : Type) `{Eqd : EqDec message} :=
+Class LSM_sig (message : Type) :=
   { state : Type
   ; label : Type
   ; proto_message_prop : message -> Prop
@@ -301,8 +301,12 @@ Proof.
 Qed.
 
 (* Valid VLSM traces *) 
-Definition in_state_out {message} `{VLSM message} : Type :=
-  option proto_message * state * option proto_message.
+Record in_state_out {message} `{VLSM message} :=
+  {   l : label
+  ;   input : option proto_message
+  ;   destination : state
+  ;   output : option proto_message
+  }.
 
 Inductive finite_ptrace_from `{VLSM} : state -> list in_state_out -> Prop :=
 | finite_ptrace_empty : forall (s : state), protocol_state_prop s -> finite_ptrace_from s []
@@ -310,7 +314,24 @@ Inductive finite_ptrace_from `{VLSM} : state -> list in_state_out -> Prop :=
     finite_ptrace_from s tl ->  
     forall (s' : state) (iom oom : option proto_message) (l : label),
     verbose_valid_protocol_transition l s' s iom oom ->
-    finite_ptrace_from  s' ((iom, s, oom) :: tl).
+    finite_ptrace_from  s' ({| l := l; input := iom; destination := s; output := oom |} :: tl).
+
+Lemma finite_ptrace_consecutive_valid_transition `{VLSM}
+  (is : state)
+  (tr tr2 : list in_state_out)
+  (tr1 : list in_state_out)
+  (te1 te2 : in_state_out)
+  (Htr : finite_ptrace_from is tr)
+  (Heq : tr = tr1 ++ [te1; te2] ++ tr2)
+  : verbose_valid_protocol_transition (l te2) (destination te1) (destination te2) (input te2) (output te2).
+Proof.
+  generalize dependent is. generalize dependent tr.
+  induction tr1.
+  - intros tr Heq is Htr. simpl in Heq; subst. inversion Htr; subst. inversion H3; subst. assumption.
+  - specialize (IHtr1 (tr1 ++ [te1; te2] ++ tr2) eq_refl).
+    intros tr Heq is Htr; subst. inversion Htr; subst.
+    simpl in IHtr1. specialize (IHtr1 s H3). assumption.
+Qed.
 
 Definition finite_ptrace `{VLSM} (s : state) (ls : list in_state_out) : Prop :=
   finite_ptrace_from s ls /\ initial_state_prop s.
@@ -318,38 +339,28 @@ Definition finite_ptrace `{VLSM} (s : state) (ls : list in_state_out) : Prop :=
 Lemma extend_right_finite_trace_from
   {message}
   `{V : VLSM message}
-  : forall s1 ts s3 iom3 oom3 l3 (s2 := mid (List.last ts (None,s1,None))),
+  : forall s1 ts s3 iom3 oom3 l3 (s2 := List.last (List.map destination ts) s1),
   finite_ptrace_from s1 ts ->
     verbose_valid_protocol_transition l3 s2 s3 iom3 oom3 ->
-  finite_ptrace_from s1 (ts ++ [(iom3,s3,oom3)]).
+  finite_ptrace_from s1 (ts ++ [{| l := l3; destination := s3; input := iom3; output := oom3 |}]).
 Proof.
   intros s1 ts s3 iom3 oom3 l3 s2 Ht12 Hv23.
   induction Ht12.
-  - simpl. apply finite_ptrace_extend with l3.
-    + constructor. apply (protocol_transition_destination Hv23).
-    + assumption.
+  - simpl. apply finite_ptrace_extend; try assumption.
+    constructor. apply (protocol_transition_destination Hv23).
   - rewrite <- app_comm_cons.
-    apply finite_ptrace_extend with l; try assumption.
+    apply finite_ptrace_extend; try assumption.
     simpl in IHHt12. apply IHHt12.
     unfold s2 in *; clear s2.
-    assert
-      (Heq :
-        (@mid (option (@proto_message message _ Sig)) (@state message _ Sig)
-          (option (@proto_message message _ Sig))
-          (@List.last
-             (option (@proto_message message _ Sig) * @state message _ Sig *
-              option (@proto_message message _ Sig)) ((iom, s, oom) :: tl)
-             (@None (@proto_message message _ Sig), s', @None (@proto_message message _ Sig))))
-        =
-       (@mid (option (@proto_message message _ Sig)) (@state message _ Sig)
-         (option (@proto_message message _ Sig))
-         (@List.last
-            (option (@proto_message message _ Sig) * @state message _ Sig *
-             option (@proto_message message _ Sig)) tl
-            (@None (@proto_message message _ Sig), s, @None (@proto_message message _ Sig))))).
-    { destruct tl. reflexivity.
-      f_equal. eapply remove_hd_last. }
-    rewrite <- Heq. assumption.
+    replace
+      (last (List.map destination tl) s)
+      with
+      (last (List.map destination ({| l := l1; input := iom; destination := s; output := oom |} :: tl)) s')
+    ; try assumption.
+    rewrite map_cons.
+    destruct tl; try reflexivity.
+    rewrite map_cons.
+    eapply remove_hd_last.
 Qed.
 
 CoInductive infinite_ptrace_from `{VLSM} :
@@ -358,7 +369,24 @@ CoInductive infinite_ptrace_from `{VLSM} :
     infinite_ptrace_from s tl ->  
     forall (s' : state) (iom oom : option proto_message) (l : label),
     verbose_valid_protocol_transition l s' s iom oom ->
-    infinite_ptrace_from  s' (Cons (iom, s, oom)  tl).
+    infinite_ptrace_from  s' (Cons {| l := l; input := iom; destination := s; output := oom |}  tl).
+
+Lemma infinite_ptrace_consecutive_valid_transition `{VLSM}
+  (is : state)
+  (tr tr2 : Stream in_state_out)
+  (tr1 : list in_state_out)
+  (te1 te2 : in_state_out)
+  (Htr : infinite_ptrace_from is tr)
+  (Heq : tr = stream_app (tr1 ++ [te1; te2]) tr2)
+  : verbose_valid_protocol_transition (l te2) (destination te1) (destination te2) (input te2) (output te2).
+Proof.
+  generalize dependent is. generalize dependent tr.
+  induction tr1.
+  - intros tr Heq is Htr. simpl in Heq; subst. inversion Htr; subst. inversion H3; subst. assumption.
+  - specialize (IHtr1 (stream_app (tr1 ++ [te1; te2]) tr2) eq_refl).
+    intros tr Heq is Htr; subst. inversion Htr; subst.
+    specialize (IHtr1 s H3). assumption.
+Qed.
 
 Definition infinite_ptrace `{VLSM} (s : state) (st : Stream in_state_out)
   := infinite_ptrace_from s st /\ initial_state_prop s.
@@ -381,16 +409,23 @@ Inductive Trace_states `{VLSM} : Type :=
 | Finite_states : list state -> Trace_states
 | Infinite_states : Stream state -> Trace_states.
 
+Definition trace_nth `{VLSM} (tr : Trace)
+  : nat -> option state :=
+  fun (n : nat) =>
+    match tr with
+    | Finite s ls => nth_error (s::List.map destination ls) n
+    | Infinite s st => Some (Str_nth n (Cons s (Streams.map destination st)))
+   end. 
 
 Definition protocol_state_trace `{VLSM} (tr : protocol_trace) : Trace_states :=
   match proj1_sig tr with
-  | Finite s ls => Finite_states (s :: List.map mid ls)
-  | Infinite s st => Infinite_states (Cons s (map mid st)) end. 
+  | Finite s ls => Finite_states (s :: List.map destination ls)
+  | Infinite s st => Infinite_states (Cons s (map destination st)) end. 
 
 Definition trace_last `{VLSM} (tr : Trace) : option state
   :=
   match tr with
-  | Finite s ls => Some (last (List.map mid ls) s)
+  | Finite s ls => Some (last (List.map destination ls) s)
   | Infinite _ _ => None
   end.
 
@@ -407,13 +442,13 @@ Inductive Trace_messages `{VLSM} : Type :=
 
 Definition protocol_output_messages_trace `{VLSM} (tr : protocol_trace) : Trace_messages :=
   match proj1_sig tr with
-  | Finite _ ls => Finite_messages (List.map snd ls)
-  | Infinite _ st => Infinite_messages (map snd st) end.
+  | Finite _ ls => Finite_messages (List.map output ls)
+  | Infinite _ st => Infinite_messages (map output st) end.
 
 Definition protocol_input_messages_trace `{VLSM} (tr : protocol_trace) : Trace_messages :=
   match proj1_sig tr with
-  | Finite _ ls => Finite_messages (List.map fst (List.map fst ls))
-  | Infinite _ st => Infinite_messages (map fst (map fst st)) end.
+  | Finite _ ls => Finite_messages (List.map input ls)
+  | Infinite _ st => Infinite_messages (map input st) end.
 
 (* Defining equivocation on these trace definitions *)
 (* Section 6 :
@@ -430,7 +465,7 @@ Definition trace_prefix
   :=
   match tr with
   | Finite s ls => exists suffix, ls = prefix ++ (last :: suffix)
-  | Infinite s st => exists suffix, st = stream_concat prefix (Cons last suffix)
+  | Infinite s st => exists suffix, st = stream_app prefix (Cons last suffix)
   end.
 
 Lemma trace_prefix_protocol
@@ -439,22 +474,80 @@ Lemma trace_prefix_protocol
   (last : in_state_out)
   (prefix : list in_state_out)
   (Hprefix : trace_prefix (proj1_sig tr) last prefix)
-  : ptrace_prop (Finite (trace_first tr) (prefix ++ [last])).
+  : ptrace_prop (Finite (trace_first (proj1_sig tr)) (prefix ++ [last])).
 Proof.
-  destruct tr as [[|] Htr].
-  generalize dependent tr.
-  induction prefix.
-  - destruct tr as [[ | ] Htr]; unfold trace_prefix in Hprefix;   simpl in Hprefix
+  destruct tr as [tr Htr]. simpl in *.
+  generalize dependent tr. generalize dependent last.
+  apply (rev_ind (fun prefix => forall (last : in_state_out) (tr : Trace), ptrace_prop tr -> trace_prefix tr last prefix -> finite_ptrace (trace_first tr) (prefix ++ [last]))).
+  - intros last tr Htr Hprefix; destruct tr as [ | ]; unfold trace_prefix in Hprefix;   simpl in Hprefix
     ; destruct Hprefix as [suffix Heq]; subst; destruct Htr as [Htr Hinit]
     ; unfold trace_first; simpl; constructor; try assumption
     ; inversion Htr; subst; clear Htr
     ; specialize
         (finite_ptrace_extend
           s1 [] (finite_ptrace_empty _ (protocol_transition_destination H4))
-          s iom oom l); intro Hext
+          s iom oom l1); intro Hext
     ; apply Hext; assumption.
-  - rewrite <- app_comm_cons.
-
+  - intros last_p p Hind last tr Htr Hprefix.
+    specialize (Hind last_p tr Htr).
+    destruct tr as [ | ]; unfold trace_prefix in Hprefix;   simpl in Hprefix
+    ; destruct Hprefix as [suffix Heq]; subst; destruct Htr as [Htr Hinit]; simpl; simpl in Hind
+    ; split; try assumption
+    .
+    + assert
+        (Hex : exists suffix0 : list in_state_out,
+          (p ++ [last_p]) ++ last :: suffix = p ++ last_p :: suffix0
+        ) by (exists (last :: suffix); rewrite <- app_assoc; reflexivity)
+      ; specialize (Hind Hex); clear Hex
+      ; destruct Hind as [Hptr _]
+      ; destruct last
+      ; apply extend_right_finite_trace_from
+      ; try assumption
+      .
+      rewrite <- (app_cons {| l := l1; input := input0; destination := destination0; output := output0 |} suffix) in Htr.
+      rewrite app_assoc in Htr. 
+      rewrite <- (app_assoc p _ _) in Htr. simpl in Htr.
+      rewrite <- app_assoc in Htr. 
+      specialize
+        (finite_ptrace_consecutive_valid_transition
+          s
+          (p ++ [last_p; {| l := l1; input := input0; destination := destination0; output := output0 |}] ++ suffix)
+          suffix
+          p
+          last_p
+          {| l := l1; input := input0; destination := destination0; output := output0 |}
+          Htr
+          eq_refl
+        ).
+      simpl.
+      rewrite map_app. simpl. rewrite last_is_last. tauto.
+    + assert
+        (Hex : exists suffix0 : Stream in_state_out,
+          stream_app (p ++ [last_p])  (Cons last suffix) = stream_app p (Cons last_p suffix0)
+        ) by (exists (Cons last suffix); rewrite <- stream_app_assoc; reflexivity)
+      ; specialize (Hind Hex); clear Hex
+      ; destruct Hind as [Hptr _]
+      ; destruct last
+      ; apply extend_right_finite_trace_from
+      ; try assumption
+      .
+      rewrite <- stream_app_cons in Htr.
+      rewrite stream_app_assoc in Htr. 
+      rewrite <- (app_assoc p _ _) in Htr. simpl in Htr.
+      specialize
+        (infinite_ptrace_consecutive_valid_transition
+          s
+          (stream_app (p ++ [last_p; {| l := l1; input := input0; destination := destination0; output := output0 |}]) suffix)
+          suffix
+          p
+          last_p
+          {| l := l1; input := input0; destination := destination0; output := output0 |}
+          Htr
+          eq_refl
+        ).
+      simpl.
+      rewrite map_app. simpl. rewrite last_is_last. tauto.
+Qed.
 
 (* Implicitly, the state itself must be in the trace, and minimally the last element of the trace *)
 (* Also implicitly, the trace leading up to the state is finite *)
@@ -467,21 +560,26 @@ Definition equivocation_in_trace
   :=
   exists (last : in_state_out),
   exists (prefix : list in_state_out),
-      trace_prefix tr last prefix
-  /\  (fst (fst last)) = Some msg
-  /\  (~ In (Some msg) (List.map fst (List.map fst prefix)))
+      trace_prefix (proj1_sig tr) last prefix
+  /\  input last = Some msg
+  /\  ~ In (Some msg) (List.map output prefix)
   .
 
 Definition equivocation `{VLSM} (msg : proto_message) (s : state) : Prop :=
-  exists (tr : protocol_trace), trace_last tr = Some s /\ equivocation_in_trace msg tr.
+  exists (tr : protocol_trace), trace_last (proj1_sig tr) = Some s /\ equivocation_in_trace msg tr.
 
 (* Now we can have decidable equivocations! *) 
 (* 6.2.1 Identifying equivocations *)
-Definition has_been_sent `{VLSM} (msg : proto_message) (ls : list in_state_out) : Prop :=
-  List.Exists (fun (elem : in_state_out) => fst (fst elem) = Some msg) ls. 
+Definition has_been_sent `{VLSM} (msg : proto_message) (s : state) : Prop :=
+  forall (tr : protocol_trace) 
+    (last : in_state_out)
+    (prefix : list in_state_out)
+    (Hpr : trace_prefix (proj1_sig tr) last prefix)
+    (Hlast : destination last = s),
+      List.Exists (fun (elem : in_state_out) => output elem = Some msg) prefix. 
 
 (* Since equality of proto_messages is decidable, this function must exist : *) 
-Definition proto_message_eqb `{VLSM}
+Definition proto_message_eqb {message} `{S : LSM_sig message} `{@VLSM message S} `{Eqd : EqDec message}
   (om1 : option proto_message)
   (om2 : option proto_message)
   : bool
@@ -492,21 +590,22 @@ Definition proto_message_eqb `{VLSM}
   | _, _ => false
   end.
 
-Fixpoint has_been_sentb `{VLSM} (msg : proto_message) (ls : list in_state_out) : bool :=
-  existsb (fun x => proto_message_eqb (fst (fst x)) (Some msg)) ls.
-  match ls with
-  | [] => false
-  | hd :: tl => if proto_message_eqb (fst (fst hd)) (Some msg) then true else has_been_sentb msg tl
-  end.
+Fixpoint has_been_sentb
+   {message} `{S : LSM_sig message} `{@VLSM message S} `{Eqd : EqDec message}
+  (msg : proto_message) (ls : list in_state_out) : bool
+  :=
+  existsb (fun x => proto_message_eqb (output x) (Some msg)) ls.
 
 (* Now we can show that the above and below definitions are unnecessary *) 
 
 (* Implicitly, the trace must be a protocol trace and also end with the state *) 
-Definition finite_ptrace_upto `{VLSM} (s : state) : list in_state_out -> Prop :=
-  fun ls => finite_ptrace ls /\ ls <> [] /\ mid (last ls d0) = s. 
-
-Definition has_been_sent_minimal `{VLSM} (msg : proto_message) (ls : list in_state_out) (s : state) : Prop :=
-  finite_ptrace_upto s ls /\ has_been_sent msg ls. 
+Definition finite_ptrace_upto `{VLSM}
+  (s : state)
+  (tr : protocol_trace)
+  : Prop
+  :=
+  trace_last (proj1_sig tr) = Some s
+  .
 
 (* 6.2.2 Equivocation-free as a composition constraint *)
 Definition composition_constraint `{VLSM} : Type :=

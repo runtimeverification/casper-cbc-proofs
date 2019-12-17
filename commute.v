@@ -14,27 +14,21 @@ Class VLSM_plus `{VLSM} :=
 Definition decision `{VLSM_plus} : Type := protocol_state -> option C -> Prop. 
 
 (* 3.2.1 Decision finality *)
-Program Definition prot_state0 `{VLSM} : protocol_state := 
+(* Program Definition prot_state0 `{VLSM} : protocol_state := 
   exist protocol_state_prop (proj1_sig s0) _.
 Next Obligation.
   red.
   exists None. 
   constructor.
-Defined.
-
-Definition Trace_nth `{VLSM} (tr : Trace)
-  : nat -> option state :=
-  fun (n : nat) =>
-    match tr with
-    | Finite ls => option_map mid (nth_error ls n)
-    | Infinite st => Some (mid (Str_nth n st))
-   end. 
+Defined. *)
 
 Definition final `{VLSM_plus} : decision -> Prop :=
   fun (D : decision) => forall (tr : Trace), 
-      forall (n1 n2 : nat) (c1 c2 : option C),
-        (D (Trace_nth tr n1) c1 -> c1 <> None) ->
-        (D (Trace_nth tr n1) c2 -> c2 <> None) ->
+      forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
+        (Trace_nth tr n1 = Some s1) ->
+        (Trace_nth tr n2 = Some s2) ->
+        (D s1 (Some c1)) ->
+        (D s2 (Some c2)) ->
         c1 = c2.
 
 (* 3.2.2 Decision consistency *)
