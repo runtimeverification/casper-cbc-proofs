@@ -290,35 +290,6 @@ Section indexed_vlsm.
     |}.
 
 
-  Lemma indexed_partial_composition_commute
-    {index : Set} {message : Type} `{Heqd : EqDec index}
-    {IS : index -> LSM_sig message}
-    {IM : forall i : index, @VLSM message (IS i)}
-    (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-    (Hinh : index)
-    : let PM12 := DVLSM_PLSM_instance (indexed_vlsm_vdecidable IDM Hinh) in
-      let PM12' := indexed_plsm (fun (i : index) => DVLSM_PLSM_instance (IDM i)) Hinh in
-      @ptransition _ _ PM12 = @ptransition _ _ PM12'.
-  Proof.
-    intros.
-    apply functional_extensionality; intros [i li]; apply functional_extensionality; intros [s [[m Hm]|]]
-    ; unfold ptransition; simpl
-    ; unfold transition_valid_ptransition 
-    ; unfold valid_decidable; simpl
-    ; try destruct (proto_message_decidable m) as [Hpm | Hnpm]; try reflexivity
-    ; destruct (IDM i) as [valid_decidablei]; simpl
-    ; try destruct (transition li (s i, Some (exist proto_message_prop m Hpm))) as [si' om']
-    ; try destruct (transition li (s i, None)) as [si' om']
-    .
-    - destruct (valid_decidablei li (s i, Some (exist proto_message_prop m Hpm))) as [Hv | Hnv]
-      ; reflexivity
-      .
-    - destruct (valid_decidablei li (s i, None)) as [Hv | Hnv]
-      ; reflexivity
-      .
- Qed.
-
-
   Lemma indexed_constrained_partial_composition_commute
     {index : Set} {message : Type} `{Heqd : EqDec index}
     {IS : index -> LSM_sig message}
@@ -367,4 +338,18 @@ Section indexed_vlsm.
       destruct (valid_decidablei li (s i, None)); reflexivity.
   Qed.
 
+  Lemma indexed_partial_composition_commute
+    {index : Set} {message : Type} `{Heqd : EqDec index}
+    {IS : index -> LSM_sig message}
+    {IM : forall i : index, @VLSM message (IS i)}
+    (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
+    (Hinh : index)
+    : let PM12 := DVLSM_PLSM_instance (indexed_vlsm_free_vdecidable IDM Hinh) in
+      let PM12' := indexed_plsm (fun (i : index) => DVLSM_PLSM_instance (IDM i)) Hinh in
+      @ptransition _ _ PM12 = @ptransition _ _ PM12'.
+  Proof.
+    intros. unfold PM12 in *; clear PM12. unfold PM12' in *; clear PM12'.
+    specialize (indexed_constrained_partial_composition_commute IDM); intros HC.
+    specialize (HC Hinh free_constraint free_constraint_decidable). assumption.
+ Qed.
 End indexed_vlsm.

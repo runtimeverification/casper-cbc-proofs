@@ -11,33 +11,29 @@ Class VLSM_plus `{VLSM} :=
     about_C : exists (c1 c2 : C), c1 <> c2;
   }.
 
-Definition decision `{VLSM_plus} : Type := protocol_state -> option C -> Prop. 
+Definition decision `{VLSM_plus} : Type := state -> option C -> Prop. 
 
 (* 3.2.1 Decision finality *)
-Program Definition prot_state0 `{VLSM} : protocol_state := 
+(* Program Definition prot_state0 `{VLSM} : protocol_state := 
   exist protocol_state_prop (proj1_sig s0) _.
 Next Obligation.
   red.
   exists None. 
   constructor.
-Defined.
-
-Definition Trace_nth `{VLSM} (tr : Trace)
-  : nat -> protocol_state :=
-  fun (n : nat) => match tr with
-              | Finite ls => nth n ls prot_state0
-              | Infinite st => Str_nth n st end. 
+Defined. *)
 
 Definition final `{VLSM_plus} : decision -> Prop :=
-  fun (D : decision) => forall (tr : Trace), 
-      forall (n1 n2 : nat) (c1 c2 : option C),
-        (D (Trace_nth tr n1) c1 -> c1 <> None) ->
-        (D (Trace_nth tr n1) c2 -> c2 <> None) ->
+  fun (D : decision) => forall (tr : protocol_trace), 
+      forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
+        (trace_nth (proj1_sig tr) n1 = Some s1) ->
+        (trace_nth (proj1_sig tr) n2 = Some s2) ->
+        (D s1 (Some c1)) ->
+        (D s2 (Some c2)) ->
         c1 = c2.
 
 (* 3.2.2 Decision consistency *)
-Definition in_trace `{VLSM} : protocol_state -> Trace -> Prop :=
-  fun (s : protocol_state) (tr : Trace) => exists (n : nat), Trace_nth tr n = s.
+Definition in_trace `{VLSM} : state -> Trace -> Prop :=
+  fun (s : state) (tr : Trace) => exists (n : nat), trace_nth tr n = Some s.
 
 Definition consistent
   {index : Set}
@@ -49,8 +45,8 @@ Definition consistent
   : Prop
   :=
     (* Assuming we want traces of the overall protocol *)
-    forall (tr : protocol_trace) (s : protocol_state),
-      in_trace s tr ->
+    forall (tr : protocol_trace) (s : state),
+      in_trace s (proj1_sig tr) ->
       forall (n1 n2 j k : index),
       exists (c1 c2 : C),
         (ID n1) s (Some c1) -> (ID n2) s (Some c2) ->
@@ -61,37 +57,37 @@ Definition consistent
 Definition bivalent `{VLSM_plus} : decision -> Prop :=
   fun (D : decision) =>
     (* All initial states decide on None *) 
-    (forall (s0 : protocol_state),
-      initial_state_prop (proj1_sig s0) ->
+    (forall (s0 : state),
+      initial_state_prop s0 ->
       D s0 None) /\
     (* Every protocol trace (already beginning from an initial state) contains a state deciding on each consensus value *) 
     (forall (c : C) (tr : protocol_trace),
-        exists (s : protocol_state) (n : nat), 
-          (Trace_nth tr n) = s /\ D s (Some c)).
+        exists (s : state) (n : nat), 
+          (trace_nth (proj1_sig tr) n) = Some s /\ D s (Some c)).
 
 (* 3.3.2 No stuck states *) 
-Definition stuck_free `{VLSM_plus} : decision -> Prop :=
+(* Definition stuck_free `{VLSM_plus} : decision -> Prop :=
   fun (D : decision) =>
-    (exists (s : protocol_state),
-        forall (tr : protocol_trace_from (fun s => s = s)) (n : nat),
+    (exists (s : state),
+        forall (tr : trace) (n : nat),
             D (Trace_nth tr n) None) -> False. 
-
+ *)
 (* 3.3.3 Protocol definition symmetry *) 
 (* How do we formalize this property set-theoretically? *)
 Definition behavior `{VLSM_plus} : decision -> Prop := fun _ => True. 
 Definition symmetric `{VLSM_plus} :=
   forall (D : decision),
   exists (f : decision -> decision),
-    behavior D = behavior (f D). 
+    behavior D = behavior (f D).
 
 (* 3.4 Liveness *) 
 Definition live `{VLSM_plus} : (nat -> VLSM_plus) -> (nat -> decision) -> Prop :=
   fun (IS : nat -> VLSM_plus) (ID : nat -> decision) =>
     (* Here we want traces starting at the initial states *)
-    forall (tr : protocol_trace),
-      complete_trace_prop tr -> 
+    forall (tr : protocol_trace) (s : state) (n : nat),
+      trace_nth (proj1_sig tr) n = Some s ->
       exists (i n : nat) (c : C),
-        (ID i) (Trace_nth tr n) (Some c). 
+        (ID i) s (Some c). 
 
 (* Section 4 *) 
 

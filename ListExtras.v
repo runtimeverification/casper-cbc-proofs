@@ -192,6 +192,12 @@ Proof.
     intros. apply H. right. assumption.
 Qed.
 
+Definition app_cons {A}
+  (a : A)
+  (l : list A)
+  : [a] ++ l = a :: l
+  := eq_refl.
+
 Lemma append_nodup_left {A}:
   forall (l1 l2 : list A), NoDup (l1 ++ l2) -> NoDup l1.
 Proof.
@@ -235,6 +241,34 @@ Proof.
   destruct l; simpl; reflexivity.
 Qed.
   
+
+Require Import Streams.
+
+Definition stream_app
+  {A : Type}
+  (prefix : list A)
+  (suffix : Stream A)
+  : Stream A
+  :=
+  fold_right (@Cons A) suffix prefix.
+
+
+Definition stream_app_cons {A}
+  (a : A)
+  (l : Stream A)
+  : stream_app [a] l = Cons a l
+  := eq_refl.
+
+Lemma stream_app_assoc
+  {A : Type}
+  (l m : list A)
+  (n : Stream A)
+  : stream_app l (stream_app m n) = stream_app (l ++ m) n.
+Proof.
+  induction l; try reflexivity.
+  simpl. apply f_equal. assumption.
+Qed.
+
 
 (**
 
