@@ -619,6 +619,6 @@ Section Full.
   Defined.
 
   Definition VLSM_full_composed :=
-    @indexed_vlsm_free (sorted_message C V) IS_index IM_index 0. 
+    @indexed_vlsm_free (sorted_message C V) IS_index IM_index. 
 
 End Full.

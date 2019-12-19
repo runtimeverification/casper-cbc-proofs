@@ -6,9 +6,8 @@ Definition indexed_vlsm_constrained_projection_sig
   {message : Type} 
   {IS : nat -> LSM_sig message}
   (IM : forall i : nat, @VLSM message (IS i))
-  (Hi : nat)
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
-  (X := indexed_vlsm_constrained IM Hi constraint)
+  (X := indexed_vlsm_constrained IM constraint)
   (i : nat)
   : LSM_sig message
   :=
@@ -28,22 +27,20 @@ Definition indexed_vlsm_free_projection_sig
    {message : Type} 
   {IS : nat -> LSM_sig message}
   (IM : forall i : nat, @VLSM message (IS i))
-  (Hi : nat)
   (i : nat)
   : LSM_sig message
   :=
-  indexed_vlsm_constrained_projection_sig IM Hi free_constraint i.
+  indexed_vlsm_constrained_projection_sig IM free_constraint i.
 
 Definition indexed_vlsm_constrained_projection
    {message : Type} 
   {IS : nat -> LSM_sig message}
   (IM : forall i : nat, @VLSM message (IS i))
-  (Hi : nat)
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
-  (S := indexed_sig IS Hi)
-  (X := indexed_vlsm_constrained IM Hi constraint)
+  (S := indexed_sig IS)
+  (X := indexed_vlsm_constrained IM constraint)
   (i : nat)
-  : @VLSM message (indexed_vlsm_constrained_projection_sig IM Hi constraint i).
+  : @VLSM message (indexed_vlsm_constrained_projection_sig IM constraint i).
 unfold indexed_vlsm_constrained_projection_sig; simpl.
 split; simpl; unfold proto_message; simpl.
 - exact (@transition _ _ (IM i)).
@@ -61,8 +58,9 @@ Definition indexed_vlsm_free_projection
   {message : Type} 
   {IS : nat -> LSM_sig message}
   (IM : forall i : nat, @VLSM message (IS i))
-  (Hi : nat)
   (i : nat)
-  : @VLSM message (indexed_vlsm_free_projection_sig IM Hi i)
+  : @VLSM message (indexed_vlsm_free_projection_sig IM i)
   :=
-  indexed_vlsm_constrained_projection IM Hi free_constraint i.
+    indexed_vlsm_constrained_projection IM free_constraint i.
+
+
