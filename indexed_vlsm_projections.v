@@ -3,13 +3,13 @@ From Casper
 Require Import preamble vlsm indexed_vlsm.
 
 Definition indexed_vlsm_constrained_projection_sig
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  (Hi : nat)
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
   (X := indexed_vlsm_constrained IM Hi constraint)
-  (i : index)
+  (i : nat)
   : LSM_sig message
   :=
   {|  state := @state _ (IS i)
@@ -25,24 +25,24 @@ Definition indexed_vlsm_constrained_projection_sig
 
 
 Definition indexed_vlsm_free_projection_sig
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
-  (i : index)
+   {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  (Hi : nat)
+  (i : nat)
   : LSM_sig message
   :=
   indexed_vlsm_constrained_projection_sig IM Hi free_constraint i.
 
 Definition indexed_vlsm_constrained_projection
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
+   {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  (Hi : nat)
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
   (S := indexed_sig IS Hi)
   (X := indexed_vlsm_constrained IM Hi constraint)
-  (i : index)
+  (i : nat)
   : @VLSM message (indexed_vlsm_constrained_projection_sig IM Hi constraint i).
 unfold indexed_vlsm_constrained_projection_sig; simpl.
 split; simpl; unfold proto_message; simpl.
@@ -58,11 +58,11 @@ split; simpl; unfold proto_message; simpl.
 Defined.
 
 Definition indexed_vlsm_free_projection
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
-  (i : index)
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  (Hi : nat)
+  (i : nat)
   : @VLSM message (indexed_vlsm_free_projection_sig IM Hi i)
   :=
   indexed_vlsm_constrained_projection IM Hi free_constraint i.

@@ -13,29 +13,29 @@ Assumes classical logic (excluded middle) and the axiom of choice.
 *)
 
 Definition indexed_state
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   : Type
   :=
-  forall i : index, (@state _ (IS i)).
+  forall i : nat, (@state _ (IS i)).
 
 Definition indexed_label
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   : Type
   := sigT (fun i => @label _ (IS i)).
 
 Definition indexed_proto_message_prop
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   (m : message)
   : Prop
   :=
-  exists i : index, @proto_message_prop message (IS i) m.
+  exists i : nat, @proto_message_prop message (IS i) m.
 
 Lemma indexed_proto_message_decidable
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   : forall m : message, {indexed_proto_message_prop IS m} + {~indexed_proto_message_prop IS m}.
 Proof.
   intros.
@@ -43,44 +43,44 @@ Proof.
 Qed.
 
 Definition indexed_proto_message
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   := { m : message | indexed_proto_message_prop IS m }.
 
 Definition indexed_initial_state_prop
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   (s : indexed_state IS)
   : Prop
   :=
-  forall i : index, @initial_state_prop _ (IS i) (s i).
+  forall i : nat, @initial_state_prop _ (IS i) (s i).
 
 Definition indexed_initial_state
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   := { s : indexed_state IS | indexed_initial_state_prop IS s }.
 
 Definition indexed_s0
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   : indexed_initial_state IS.
-exists (fun (i : index) => proj1_sig (@s0 _ (IS i))).
+exists (fun (i : nat) => proj1_sig (@s0 _ (IS i))).
 intro i. destruct s0 as [s Hs]. assumption.
 Defined.
 
 Definition indexed_initial_message_prop
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
   (m : indexed_proto_message IS)
   : Prop
   :=
-  exists (i : index) (mi : @initial_message _ (IS i)), proj1_sig (proj1_sig mi) = proj1_sig m.
+  exists (i : nat) (mi : @initial_message _ (IS i)), proj1_sig (proj1_sig mi) = proj1_sig m.
 
 
 Definition indexed_m0
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
-  (i0 : index)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
+  (i0 : nat)
   : indexed_proto_message IS
   .
 destruct (@m0 _ (IS i0)) as [m Hpm].
@@ -88,16 +88,16 @@ exists m. exists i0. assumption.
 Defined.
 
 Definition indexed_l0
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
-  (i0 : index)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
+  (i0 : nat)
   : indexed_label IS
   := existT _ i0 (@l0 message (IS i0)) .
 
 Definition lift_proto_messageI
-  {index : Set} {message : Type}
-  (IS : index -> LSM_sig message)
-  (i : index)
+  {message : Type}
+  (IS : nat -> LSM_sig message)
+  (i : nat)
   (mi : @proto_message _ (IS i))
   : indexed_proto_message IS.
 destruct mi as [m Hm].
@@ -106,9 +106,9 @@ Defined.
 
 
 Definition indexed_sig
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  (IS : index -> LSM_sig message)
-  (i0 : index)
+  {message : Type} 
+  (IS : nat -> LSM_sig message)
+  (i0 : nat)
   : LSM_sig message
   :=
   {| state := indexed_state IS
@@ -123,24 +123,24 @@ Definition indexed_sig
   |}.
 
 Definition state_update
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  {i0 : index}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  {i0 : nat}
   (s : @state message (indexed_sig IS i0))
-  (i : index)
+  (i : nat)
   (si : @state message (IS i))
-  (j : index)
+  (j : nat)
   : @state message (IS j).
-destruct (eq_dec i j); subst.
+destruct (nat_eq_dec i j); subst.
 - exact si.
 - exact (s j).
 Defined.
 
 Definition indexed_transition
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  {Hinh : index}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  {Hinh : nat}
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
   : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)).
@@ -156,10 +156,10 @@ destruct om as [[m _]|].
 Defined.
 
 Definition indexed_valid
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  {Hinh : index}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  {Hinh : nat}
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
   : Prop.
@@ -173,11 +173,11 @@ destruct om as [[m _]|].
 Defined.
 
 Definition indexed_valid_decidable
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  {IM : forall i : index, @VLSM message (IS i)}
-  (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-  {Hinh : index}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  {IM : forall i : nat, @VLSM message (IS i)}
+  (IDM : forall i : nat, @VLSM_vdecidable _ _ (IM i))
+  {Hinh : nat}
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
   : {indexed_valid IM l som} + {~indexed_valid IM l som}.
@@ -193,10 +193,10 @@ Defined.
 (* Constrained VLSM composition *)
 
 Definition indexed_valid_constrained
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  {Hinh : index}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  {Hinh : nat}
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
   (l : @label _ (indexed_sig IS Hinh))
   (som : @state _ (indexed_sig IS Hinh) * option (@proto_message _ (indexed_sig IS Hinh)))
@@ -205,10 +205,10 @@ Definition indexed_valid_constrained
 
 
 Definition indexed_vlsm_constrained
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  (Hi : nat)
   (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
   : @VLSM message (indexed_sig IS Hi)
   :=
@@ -217,11 +217,11 @@ Definition indexed_vlsm_constrained
   |}.
 
 Definition indexed_valid_constrained_decidable
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  {IM : forall i : index, @VLSM message (IS i)}
-  (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-  {Hinh : index}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  {IM : forall i : nat, @VLSM message (IS i)}
+  (IDM : forall i : nat, @VLSM_vdecidable _ _ (IM i))
+  {Hinh : nat}
   {constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop}
   (constraint_decidable : forall (l : indexed_label IS) (som : indexed_state IS * option (indexed_proto_message IS)), {constraint l som} + {~constraint l som})
   (l : @label _ (indexed_sig IS Hinh))
@@ -237,11 +237,11 @@ destruct (constraint_decidable l som) as [Hc | Hnc].
 Defined.
 
 Definition indexed_vlsm_constrained_vdecidable
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  {IM : forall i : index, @VLSM message (IS i)}
-  (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-  (Hinh : index)
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  {IM : forall i : nat, @VLSM message (IS i)}
+  (IDM : forall i : nat, @VLSM_vdecidable _ _ (IM i))
+  (Hinh : nat)
   {constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop}
   (constraint_decidable : forall (l : indexed_label IS) (som : indexed_state IS * option (indexed_proto_message IS)), {constraint l som} + {~constraint l som})
   : @VLSM_vdecidable _ _ (indexed_vlsm_constrained IM Hinh constraint)
@@ -253,8 +253,8 @@ Definition indexed_vlsm_constrained_vdecidable
 (* Free VLSM composition *)
 
 Definition free_constraint 
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
   (l : indexed_label IS)
   (som : indexed_state IS * option (indexed_proto_message IS))
   : Prop
@@ -262,29 +262,29 @@ Definition free_constraint
   True.
 
 Definition free_constraint_decidable
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
   (l : indexed_label IS)
   (som : indexed_state IS * option (indexed_proto_message IS))
   : {free_constraint l som} + {~free_constraint l som}
   := left I.
 
 Definition indexed_vlsm_free
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  (IM : forall i : nat, @VLSM message (IS i))
+  (Hi : nat)
   : @VLSM message (indexed_sig IS Hi)
   :=
   indexed_vlsm_constrained IM Hi free_constraint
   .
 
 Definition indexed_vlsm_free_vdecidable
-  {index : Set} {message : Type} `{Heqd : EqDec index}
-  {IS : index -> LSM_sig message}
-  {IM : forall i : index, @VLSM message (IS i)}
-  (IDM : forall i : index, @VLSM_vdecidable _ _ (IM i))
-  (Hi : index)
+  {message : Type} 
+  {IS : nat -> LSM_sig message}
+  {IM : forall i : nat, @VLSM message (IS i)}
+  (IDM : forall i : nat, @VLSM_vdecidable _ _ (IM i))
+  (Hi : nat)
   : @VLSM_vdecidable _ _ (indexed_vlsm_free IM Hi)
   :=
   indexed_vlsm_constrained_vdecidable IDM Hi free_constraint_decidable.

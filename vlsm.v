@@ -606,7 +606,6 @@ Definition finite_ptrace_upto `{VLSM}
   :=
   trace_last (proj1_sig tr) = Some s
   .
->>>>>>> origin/master
 
 (* 6.2.2 Equivocation-free as a composition constraint *)
 Definition composition_constraint `{VLSM} : Type :=
