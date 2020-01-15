@@ -26,6 +26,8 @@ Class VLSM (message : Type) `{Sig : LSM_sig message } :=
   ; valid : label -> state * option proto_message -> Prop
   }.
 
+Definition sign {message} {Sig : LSM_sig message } (_ : @VLSM message Sig) := Sig.
+
 Class VLSM_vdecidable (message : Type) `{M : VLSM message} :=
   { valid_decidable : forall l som, {valid l som} + {~valid l som} 
   }.
@@ -365,6 +367,7 @@ Qed.
 
 CoInductive infinite_ptrace_from `{VLSM} :
   state -> Stream in_state_out -> Prop :=
+
 | infinite_ptrace_extend : forall  (s : state) (tl : Stream in_state_out),
     infinite_ptrace_from s tl ->  
     forall (s' : state) (iom oom : option proto_message) (l : label),
@@ -468,6 +471,7 @@ Definition trace_prefix
   | Infinite s st => exists suffix, st = stream_app prefix (Cons last suffix)
   end.
 
+Print rev_ind.
 Lemma trace_prefix_protocol
   `{VLSM}
   (tr : protocol_trace)
@@ -479,7 +483,7 @@ Proof.
   destruct tr as [tr Htr]. simpl in *.
   generalize dependent tr. generalize dependent last.
   apply (rev_ind (fun prefix => forall (last : in_state_out) (tr : Trace), ptrace_prop tr -> trace_prefix tr last prefix -> finite_ptrace (trace_first tr) (prefix ++ [last]))).
-  - intros last tr Htr Hprefix; destruct tr as [ | ]; unfold trace_prefix in Hprefix;   simpl in Hprefix
+  - intros last tr Htr Hprefix ; destruct tr as [ | ]; unfold trace_prefix in Hprefix;   simpl in Hprefix
     ; destruct Hprefix as [suffix Heq]; subst; destruct Htr as [Htr Hinit]
     ; unfold trace_first; simpl; constructor; try assumption
     ; inversion Htr; subst; clear Htr
@@ -577,6 +581,8 @@ Definition has_been_sent `{VLSM} (msg : proto_message) (s : state) : Prop :=
     (Hpr : trace_prefix (proj1_sig tr) last prefix)
     (Hlast : destination last = s),
       List.Exists (fun (elem : in_state_out) => output elem = Some msg) prefix. 
+
+Print has_been_sent.
 
 (* Since equality of proto_messages is decidable, this function must exist : *) 
 Definition proto_message_eqb {message} `{S : LSM_sig message} `{@VLSM message S} `{Eqd : EqDec message}

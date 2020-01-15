@@ -56,6 +56,8 @@ split; simpl; unfold proto_message; simpl.
     ).
 Defined.
 
+Check indexed_vlsm_constrained_projection.
+
 Definition indexed_vlsm_free_projection
   {index : Set} {message : Type} `{Heqd : EqDec index}
   {IS : index -> LSM_sig message}

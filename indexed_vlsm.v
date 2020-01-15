@@ -68,6 +68,7 @@ exists (fun (i : index) => proj1_sig (@s0 _ (IS i))).
 intro i. destruct s0 as [s Hs]. assumption.
 Defined.
 
+
 Definition indexed_initial_message_prop
   {index : Set} {message : Type}
   (IS : index -> LSM_sig message)
