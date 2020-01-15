@@ -14,10 +14,11 @@ Assumes classical logic (excluded middle) and the axiom of choice.
 Section indexing. 
 
   Context (message : Type) (lsm_sig : LSM_sig message)
-          (IS : nat -> LSM_sig message).
+          (index : Type)
+          (IS : index -> LSM_sig message).
 
   Definition indexed_state : Type :=
-    forall n : nat, (@state _ (IS n)).
+    forall n : index, (@state _ (IS n)).
 
   Definition indexed_label
     : Type
@@ -27,7 +28,7 @@ Section indexing.
              (m : message)
     : Prop
     :=
-      exists n : nat, @proto_message_prop message (IS n) m.
+      exists n : index, @proto_message_prop message (IS n) m.
 
   Lemma indexed_proto_message_decidable
     : forall m : message, {indexed_proto_message_prop m} + {~indexed_proto_message_prop m}.
@@ -43,14 +44,14 @@ Section indexing.
              (s : indexed_state)
     : Prop
     :=
-      forall n : nat, @initial_state_prop _ (IS n) (s n).
+      forall n : index, @initial_state_prop _ (IS n) (s n).
 
   Definition indexed_initial_state
     := { s : indexed_state | indexed_initial_state_prop s }.
 
   Definition indexed_s0
     : indexed_initial_state.
-    exists (fun (n : nat) => proj1_sig (@s0 _ (IS n))).
+    exists (fun (n : index) => proj1_sig (@s0 _ (IS n))).
     intro i. destruct s0 as [s Hs]. assumption.
   Defined.
 
@@ -58,7 +59,7 @@ Section indexing.
              (m : indexed_proto_message)
     : Prop
     :=
-      exists (n : nat) (mi : @initial_message _ (IS n)), proj1_sig (proj1_sig mi) = proj1_sig m.
+      exists (n : index) (mi : @initial_message _ (IS n)), proj1_sig (proj1_sig mi) = proj1_sig m.
 
   (* An explicit argument for the initial state witness is no longer required: *) 
   Definition indexed_m0
@@ -72,7 +73,7 @@ Section indexing.
     := existT _ 0 (@l0 message (IS 0)) .
   
   Definition lift_proto_messageI
-             (n : nat)
+             (n : index)
              (mi : @proto_message _ (IS n))
     : indexed_proto_message.
     destruct mi as [m Hm].
@@ -95,9 +96,9 @@ Section indexing.
 
   Definition state_update
              (s : @state message (indexed_sig))
-             (i : nat)
+             (i : index)
              (si : @state message (IS i))
-             (j : nat)
+             (j : index)
     : @state message (IS j).
     destruct (nat_eq_dec i j); subst.
     - exact si.
@@ -105,7 +106,7 @@ Section indexing.
   Defined.
 
   Definition indexed_transition
-             (IM : forall n : nat, @VLSM message (IS n))
+             (IM : forall n : index, @VLSM message (IS n))
              (l : @label _ (indexed_sig))
              (som : @state _ (indexed_sig) * option (@proto_message _ (indexed_sig)))
     : @state _ (indexed_sig) * option (@proto_message _ (indexed_sig)).
@@ -121,7 +122,7 @@ Section indexing.
   Defined.
 
   Definition indexed_valid
-             (IM : forall n : nat, @VLSM message (IS n))
+             (IM : forall n : index, @VLSM message (IS n))
              (l : @label _ (indexed_sig))
              (som : @state _ (indexed_sig) * option (@proto_message _ (indexed_sig)))
     : Prop.
@@ -135,8 +136,8 @@ Section indexing.
   Defined.
 
   Definition indexed_valid_decidable
-             {IM : forall n : nat, @VLSM message (IS n)}
-             (IDM : forall n : nat, @VLSM_vdecidable _ _ (IM n))
+             {IM : forall n : index, @VLSM message (IS n)}
+             (IDM : forall n : index, @VLSM_vdecidable _ _ (IM n))
              (l : @label _ (indexed_sig))
              (som : @state _ (indexed_sig) * option (@proto_message _ (indexed_sig)))
     : {indexed_valid IM l som} + {~indexed_valid IM l som}.
@@ -154,7 +155,7 @@ Section indexing.
   (* Constrained VLSM composition *)
 
   Definition indexed_valid_constrained
-             (IM : forall n : nat, @VLSM message (IS n))
+             (IM : forall n : index, @VLSM message (IS n))
              (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
              (l : @label _ (indexed_sig))
              (som : @state _ (indexed_sig) * option (@proto_message _ (indexed_sig)))
@@ -162,7 +163,7 @@ Section indexing.
       indexed_valid IM l som /\ constraint l som.
 
   Definition indexed_vlsm_constrained
-             (IM : forall n : nat, @VLSM message (IS n))
+             (IM : forall n : index, @VLSM message (IS n))
              (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
     : @VLSM message (indexed_sig)
     :=
@@ -171,8 +172,8 @@ Section indexing.
       |}.
 
   Definition indexed_valid_constrained_decidable
-             {IM : forall n : nat, @VLSM message (IS n)}
-             (IDM : forall n : nat, @VLSM_vdecidable _ _ (IM n))
+             {IM : forall n : index, @VLSM message (IS n)}
+             (IDM : forall n : index, @VLSM_vdecidable _ _ (IM n))
              {constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop}
              (constraint_decidable : forall (l : indexed_label) (som : indexed_state * option (indexed_proto_message)), {constraint l som} + {~constraint l som})
              (l : @label _ (indexed_sig))
@@ -188,8 +189,8 @@ Section indexing.
   Defined.
 
   Definition indexed_vlsm_constrained_vdecidable
-             {IM : forall n : nat, @VLSM message (IS n)}
-             (IDM : forall n : nat, @VLSM_vdecidable _ _ (IM n))
+             {IM : forall n : index, @VLSM message (IS n)}
+             (IDM : forall n : index, @VLSM_vdecidable _ _ (IM n))
              {constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop}
              (constraint_decidable : forall (l : indexed_label) (som : indexed_state * option (indexed_proto_message)), {constraint l som} + {~constraint l som})
     : @VLSM_vdecidable _ _ (indexed_vlsm_constrained IM constraint)
@@ -213,15 +214,15 @@ Section indexing.
     := left I.
 
   Definition indexed_vlsm_free
-             (IM : forall n : nat, @VLSM message (IS n))
+             (IM : forall n : index, @VLSM message (IS n))
     : @VLSM message (indexed_sig)
     :=
       indexed_vlsm_constrained IM free_constraint
   .
 
   Definition indexed_vlsm_free_vdecidable
-             {IM : forall n : nat, @VLSM message (IS n)}
-             (IDM : forall n : nat, @VLSM_vdecidable _ _ (IM n))
+             {IM : forall n : index, @VLSM message (IS n)}
+             (IDM : forall n : index, @VLSM_vdecidable _ _ (IM n))
     : @VLSM_vdecidable _ _ (indexed_vlsm_free IM)
     :=
       indexed_vlsm_constrained_vdecidable IDM free_constraint_decidable.
@@ -230,11 +231,11 @@ Section indexing.
   Section projections. 
 
     Definition indexed_vlsm_constrained_projection_sig
-               (IM : forall n : nat, @VLSM message (IS n))
-               (Hi : nat)
+               (IM : forall n : index, @VLSM message (IS n))
+               (Hi : index)
                (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
                (X := @indexed_vlsm_constrained IM constraint)
-               (i : nat)
+               (i : index)
     : LSM_sig message
       :=
         {|  state := @state _ (IS i)
@@ -250,20 +251,20 @@ Section indexing.
 
 
     Definition indexed_vlsm_free_projection_sig
-               (IM : forall i : nat, @VLSM message (IS i))
-               (Hi : nat)
-               (i : nat)
+               (IM : forall i : index, @VLSM message (IS i))
+               (Hi : index)
+               (i : index)
       : LSM_sig message
       :=
         indexed_vlsm_constrained_projection_sig IM Hi free_constraint i.
 
     Definition indexed_vlsm_constrained_projection
-               (IM : forall i : nat, @VLSM message (IS i))
-               (Hi : nat)
+               (IM : forall i : index, @VLSM message (IS i))
+               (Hi : index)
                (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
                (S := indexed_sig)
                (X := indexed_vlsm_constrained IM constraint)
-               (i : nat)
+               (i : index)
       : @VLSM message (indexed_vlsm_constrained_projection_sig IM Hi constraint i).
       unfold indexed_vlsm_constrained_projection_sig; simpl.
       split; simpl; unfold proto_message; simpl.
@@ -279,9 +280,9 @@ Section indexing.
     Defined.
 
     Definition indexed_vlsm_free_projection
-               (IM : forall i : nat, @VLSM message (IS i))
-               (Hi : nat)
-               (i : nat)
+               (IM : forall i : index, @VLSM message (IS i))
+               (Hi : index)
+               (i : index)
       : @VLSM message (indexed_vlsm_free_projection_sig IM Hi i)
       :=
         indexed_vlsm_constrained_projection IM Hi free_constraint i.
