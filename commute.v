@@ -16,7 +16,7 @@ Class consensus_values :=
 (** TODO: Make function **)
 
 Definition decision {message} (S : LSM_sig message) {CV : consensus_values} : Type
-  := @state _ S -> option C -> Prop. 
+  := @state _ S -> option C. 
 
 (* 3.2.1 Decision finality *)
 (* Program Definition prot_state0 `{VLSM} : protocol_state := 
@@ -33,8 +33,8 @@ Definition final {message} {S : LSM_sig message} (V : @VLSM message S) {CV : con
       forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
         (trace_nth (proj1_sig tr) n1 = Some s1) ->
         (trace_nth (proj1_sig tr) n2 = Some s2) ->
-        (D s1 (Some c1)) ->
-        (D s2 (Some c2)) ->
+        (D s1 = (Some c1)) ->
+        (D s2 = (Some c2)) ->
         c1 = c2.
 
 (* 3.2.2 Decision consistency *)
@@ -84,8 +84,8 @@ Definition consistent_mihai
     j <> k ->
     trace_nth (proj1_sig tr) n1 = (Some s1) ->
     trace_nth (proj1_sig tr) n2 = (Some s2) ->
-    (ID j) (@s1 j) (Some c1) -> 
-    (ID k) (@s2 k) (Some c2) -> 
+    (ID j) (@s1 j) = (Some c1) -> 
+    (ID k) (@s2 k) = (Some c2) -> 
     c1 = c2.
 
 (**Like consistent_mihai, but no longer requiring j <> k, which should imply finality in projections**)
@@ -108,8 +108,8 @@ Definition final_and_consistent_mihai
     forall (c1 c2 : C),
     trace_nth (proj1_sig tr) n1 = (Some s1) ->
     trace_nth (proj1_sig tr) n2 = (Some s2) ->
-    (ID j) (@s1 j) (Some c1) -> 
-    (ID k) (@s2 k) (Some c2) -> 
+    (ID j) (@s1 j) = (Some c1) -> 
+    (ID k) (@s2 k) = (Some c2) -> 
     c1 = c2.
 
 Check final_and_consistent_mihai.
@@ -162,21 +162,18 @@ Proof.
   unfold final.
   intros.
   Admitted.
-Qed.
-
-
 
 (* 3.3.1 Initial protocol state bivalence *)
-Definition bivalent `{VLSM_plus} : decision -> Prop :=
-  fun (D : decision) =>
+Definition bivalent {message} {S : LSM_sig message} (V : @VLSM message S) {CV : consensus_values} : decision S -> Prop :=
+  fun (D : decision S) =>
     (* All initial states decide on None *) 
     (forall (s0 : state),
       initial_state_prop s0 ->
-      D s0 None) /\
+      D s0 = None) /\
     (* Every protocol trace (already beginning from an initial state) contains a state deciding on each consensus value *) 
-    (forall (c : C) (tr : protocol_trace),
-        exists (s : state) (n : nat), 
-          (trace_nth (proj1_sig tr) n) = Some s /\ D s (Some c)).
+    (forall (c : C) ,
+        exists (tr : protocol_trace) (s : state) (n : nat), 
+          (trace_nth (proj1_sig tr) n) = Some s /\ D s = (Some c)).
 
 (* 3.3.2 No stuck states *) 
 (* Definition stuck_free `{VLSM_plus} : decision -> Prop :=
@@ -187,23 +184,37 @@ Definition bivalent `{VLSM_plus} : decision -> Prop :=
  *)
 (* 3.3.3 Protocol definition symmetry *) 
 (* How do we formalize this property set-theoretically? *)
-Definition behavior `{VLSM_plus} : decision -> Prop := fun _ => True. 
-Definition symmetric `{VLSM_plus} :=
-  forall (D : decision),
-  exists (f : decision -> decision),
+
+Definition behavior 
+  {message} 
+  {S : LSM_sig message} 
+  {V : @VLSM message S} 
+  {CV : consensus_values} : decision S -> Prop := 
+  fun _ => True.
+
+
+Definition symmetric 
+  {message}
+  {S : LSM_sig message}
+  (V : @VLSM message S)
+  {CV : consensus_values} : decision S -> Prop :=
+  fun (D : decision S) =>
+  exists (f : decision S -> decision S),
     behavior D = behavior (f D).
 
+(** TODO Liveness requires complete_traces which are not defined currently. **)
+
 (* 3.4 Liveness *) 
+(**
 Definition live `{VLSM_plus} : (nat -> VLSM_plus) -> (nat -> decision) -> Prop :=
   fun (IS : nat -> VLSM_plus) (ID : nat -> decision) =>
     (* Here we want traces starting at the initial states *)
     forall (tr : protocol_trace) (s : state) (n : nat),
       trace_nth (proj1_sig tr) n = Some s ->
       exists (i n : nat) (c : C),
-        (ID i) s (Some c). 
+        (ID i) s (Some c). **)
+
+
 
 (* Section 4 *) 
-
-
-
   
