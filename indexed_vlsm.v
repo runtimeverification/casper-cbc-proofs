@@ -15,6 +15,8 @@ Section indexing.
 
   Context (message : Type) (lsm_sig : LSM_sig message)
           (index : Type)
+          (IndEqDec : EqDec index)
+          (i0 : index)
           (IS : index -> LSM_sig message).
 
   Definition indexed_state : Type :=
@@ -64,13 +66,13 @@ Section indexing.
   (* An explicit argument for the initial state witness is no longer required: *) 
   Definition indexed_m0
     : indexed_proto_message.
-    destruct (@m0 _ (IS 0)) as [m Hpm].
-    exists m. exists 0. assumption.
+    destruct (@m0 _ (IS i0)) as [m Hpm].
+    exists m. exists i0. assumption.
   Defined.
 
   Definition indexed_l0
     : indexed_label
-    := existT _ 0 (@l0 message (IS 0)) .
+    := existT _ i0 (@l0 message (IS i0)) .
   
   Definition lift_proto_messageI
              (n : index)
@@ -100,7 +102,7 @@ Section indexing.
              (si : @state message (IS i))
              (j : index)
     : @state message (IS j).
-    destruct (nat_eq_dec i j); subst.
+    destruct (eq_dec i j); subst.
     - exact si.
     - exact (s j).
   Defined.
@@ -232,7 +234,6 @@ Section indexing.
 
     Definition indexed_vlsm_constrained_projection_sig
                (IM : forall n : index, @VLSM message (IS n))
-               (Hi : index)
                (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
                (X := @indexed_vlsm_constrained IM constraint)
                (i : index)
@@ -252,20 +253,18 @@ Section indexing.
 
     Definition indexed_vlsm_free_projection_sig
                (IM : forall i : index, @VLSM message (IS i))
-               (Hi : index)
                (i : index)
       : LSM_sig message
       :=
-        indexed_vlsm_constrained_projection_sig IM Hi free_constraint i.
+        indexed_vlsm_constrained_projection_sig IM free_constraint i.
 
     Definition indexed_vlsm_constrained_projection
                (IM : forall i : index, @VLSM message (IS i))
-               (Hi : index)
                (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
                (S := indexed_sig)
                (X := indexed_vlsm_constrained IM constraint)
                (i : index)
-      : @VLSM message (indexed_vlsm_constrained_projection_sig IM Hi constraint i).
+      : @VLSM message (indexed_vlsm_constrained_projection_sig IM constraint i).
       unfold indexed_vlsm_constrained_projection_sig; simpl.
       split; simpl; unfold proto_message; simpl.
       - exact (@transition _ _ (IM i)).
@@ -281,11 +280,10 @@ Section indexing.
 
     Definition indexed_vlsm_free_projection
                (IM : forall i : index, @VLSM message (IS i))
-               (Hi : index)
                (i : index)
-      : @VLSM message (indexed_vlsm_free_projection_sig IM Hi i)
+      : @VLSM message (indexed_vlsm_free_projection_sig IM i)
       :=
-        indexed_vlsm_constrained_projection IM Hi free_constraint i.
+        indexed_vlsm_constrained_projection IM free_constraint i.
 
   End projections.
   

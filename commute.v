@@ -3,6 +3,8 @@ Import List Notations.
 From Casper 
 Require Import preamble ListExtras ListSetExtras RealsExtras protocol common definitions vlsm indexed_vlsm.
 
+(* All this should change with Mihai's PR
+
 (* 3.1 Decisions on consensus values *) 
 
 (* Need to add consensus values (and decision functions) to VLSM definitions? *) 
@@ -92,5 +94,5 @@ Definition live `{VLSM_plus} : (nat -> VLSM_plus) -> (nat -> decision) -> Prop :
 (* Section 4 *) 
 
 
-
+*)
   
