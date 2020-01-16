@@ -11,10 +11,6 @@ Class consensus_values :=
     about_C : exists (c1 c2 : C), c1 <> c2;
   }.
 
-
-(** TODO: Define projection friendliness **)
-(** TODO: Make function **)
-
 Definition decision {message} (S : LSM_sig message) {CV : consensus_values} : Type
   := @state _ S -> option C. 
 
@@ -88,7 +84,8 @@ Definition consistent_mihai
     (ID k) (@s2 k) = (Some c2) -> 
     c1 = c2.
 
-(**Like consistent_mihai, but no longer requiring j <> k, which should imply finality in projections**)
+(** The following is an attempt to include finality in the definition of consistency by dropping the requirement 
+    that (j <> k). **)
 
 Definition final_and_consistent_mihai
   {CV : consensus_values}
@@ -111,36 +108,6 @@ Definition final_and_consistent_mihai
     (ID j) (@s1 j) = (Some c1) -> 
     (ID k) (@s2 k) = (Some c2) -> 
     c1 = c2.
-
-Check final_and_consistent_mihai.
-
-Lemma final_and_consistent_implies_consistent 
-  {CV : consensus_values}
-  {index : Set} `{Heqd : EqDec index}
-  {message : Type} 
-  {IS : index -> LSM_sig message}
-  (IM : forall i : index, @VLSM message (IS i))
-  (Hi : index)
-  (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
-  (X := indexed_vlsm_constrained IM Hi constraint)
-  (ID : forall i : index, decision (IS i))
-  : 
-    final_and_consistent_mihai IM Hi constraint ID ->
-    consistent_mihai IM Hi constraint ID.
-
-Proof.
-   intros.
-   unfold final_and_consistent_mihai in H.
-   unfold consistent_mihai.
-   intros.
-   apply H with (tr := tr )(j := j) (n1 := n1) (n2 := n2) (k := k) (s1 := s1) (s2 := s2).
-   - apply H1.
-   - apply H2.
-   - apply H3.
-   - apply H4.
-Qed.
-
-Check final.
 
 Lemma final_and_consistent_implies_final
   {CV : consensus_values}
@@ -176,12 +143,19 @@ Definition bivalent {message} {S : LSM_sig message} (V : @VLSM message S) {CV : 
           (trace_nth (proj1_sig tr) n) = Some s /\ D s = (Some c)).
 
 (* 3.3.2 No stuck states *) 
-(* Definition stuck_free `{VLSM_plus} : decision -> Prop :=
-  fun (D : decision) =>
-    (exists (s : state),
-        forall (tr : trace) (n : nat),
-            D (Trace_nth tr n) None) -> False. 
- *)
+
+Definition stuck_free {message} {S : LSM_sig message} (V : @VLSM message S) {CV : consensus_values} : decision S -> Prop :=
+  fun (D : decision S) =>
+    (forall (s : state),
+        exists (tr : protocol_trace) 
+               (decided_state : state)
+               (n_s n_decided : nat)
+               (c : C),
+       trace_nth (proj1_sig tr) n_s = Some s /\
+       trace_nth (proj1_sig tr) n_decided = Some decided_state /\
+       n_decided >= n_s /\
+       D decided_state = Some c).
+ 
 (* 3.3.3 Protocol definition symmetry *) 
 (* How do we formalize this property set-theoretically? *)
 
@@ -192,7 +166,6 @@ Definition behavior
   {CV : consensus_values} : decision S -> Prop := 
   fun _ => True.
 
-
 Definition symmetric 
   {message}
   {S : LSM_sig message}
@@ -202,19 +175,38 @@ Definition symmetric
   exists (f : decision S -> decision S),
     behavior D = behavior (f D).
 
-(** TODO Liveness requires complete_traces which are not defined currently. **)
+(** A finite trace is terminating if there's no other trace that contains it as a (proper) prefix.**)
 
-(* 3.4 Liveness *) 
-(**
-Definition live `{VLSM_plus} : (nat -> VLSM_plus) -> (nat -> decision) -> Prop :=
-  fun (IS : nat -> VLSM_plus) (ID : nat -> decision) =>
-    (* Here we want traces starting at the initial states *)
-    forall (tr : protocol_trace) (s : state) (n : nat),
-      trace_nth (proj1_sig tr) n = Some s ->
-      exists (i n : nat) (c : C),
-        (ID i) s (Some c). **)
+Definition terminating_trace_prop `{VLSM} (tr : Trace) : Prop :=
+  match tr with 
+  | Finite s ls => 
+        (exists (tr : protocol_trace) 
+               (last : in_state_out), 
+        trace_prefix (proj1_sig tr) last ls) -> False 
+  | Infinite s ls => False
+  end.
 
+Definition complete_trace_prop `{VLSM} (tr : protocol_trace) : Prop := 
+  match (proj1_sig tr) with 
+  | Finite s ls => terminating_trace_prop (proj1_sig tr)
+  | Infinite s ls => True
+  end.
 
+Definition live 
+  {CV : consensus_values}
+  {index : Set} `{Heqd : EqDec index}
+  {message : Type} 
+  {IS : index -> LSM_sig message}
+  (IM : forall i : index, @VLSM message (IS i))
+  (Hi : index)
+  (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
+  (X := indexed_vlsm_constrained IM Hi constraint)
+  (ID : forall i : index, decision (IS i)) : Prop
+  :=
+  forall (tr : @protocol_trace _ _ X),
+    complete_trace_prop tr -> 
+    exists (s : @state _ (sign X)) (n : nat) (i : index) (c : C), 
+      trace_nth (proj1_sig tr) n = Some s /\
+      (ID i) (@s i) = Some c.
 
-(* Section 4 *) 
-  
+(* Section 4 *)
