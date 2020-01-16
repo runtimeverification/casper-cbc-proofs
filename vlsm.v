@@ -6,10 +6,6 @@ Require Import preamble ListExtras.
 
 (* 2.2.1 VLSM Parameters *)
 
-Section message.
-
-  Context (message : Type).
-  
   Class LSM_sig (message : Type) :=
     { state : Type
       ; label : Type
@@ -25,18 +21,17 @@ Section message.
       ; l0 : label
     }.
 
-  Section LSM_sig. 
-
-    Context (lsm : LSM_sig message). 
-
-    Class VLSM :=
+    Class VLSM {message : Type} (lsm : LSM_sig message) :=
       { transition : label -> state * option proto_message -> state * option proto_message
         ; valid : label -> state * option proto_message -> Prop
       }.
 
     Section VLSM.
 
-      Context (vlsm : VLSM). 
+      Context
+        {message : Type}
+        {Sig : LSM_sig message}
+        (vlsm : VLSM Sig). 
 
       (* 2.2.2 VLSM protocol states and protocol messages *)
 
@@ -660,8 +655,4 @@ we define states and messages together as a property over a product type. *)
         }.
 
     End VLSM.
-
-  End LSM_sig.
-
-End message. 
 

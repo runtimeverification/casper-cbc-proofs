@@ -13,9 +13,9 @@ Assumes classical logic (excluded middle) and the axiom of choice.
 
 Section indexing. 
 
-  Context (message : Type) (lsm_sig : LSM_sig message)
-          (index : Type)
-          (IndEqDec : EqDec index)
+  Context {message : Type}
+          {index : Type}
+          {IndEqDec : EqDec index}
           (i0 : index)
           (IS : index -> LSM_sig message).
 
@@ -233,9 +233,9 @@ Section indexing.
   Section projections. 
 
     Definition indexed_vlsm_constrained_projection_sig
-               (IM : forall n : index, @VLSM message (IS n))
+               (IM : forall n : index, VLSM (IS n))
                (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
-               (X := @indexed_vlsm_constrained IM constraint)
+               (X := indexed_vlsm_constrained IM constraint)
                (i : index)
     : LSM_sig message
       :=
@@ -252,19 +252,19 @@ Section indexing.
 
 
     Definition indexed_vlsm_free_projection_sig
-               (IM : forall i : index, @VLSM message (IS i))
+               (IM : forall i : index, VLSM (IS i))
                (i : index)
       : LSM_sig message
       :=
         indexed_vlsm_constrained_projection_sig IM free_constraint i.
 
     Definition indexed_vlsm_constrained_projection
-               (IM : forall i : index, @VLSM message (IS i))
+               (IM : forall i : index, VLSM (IS i))
                (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
                (S := indexed_sig)
                (X := indexed_vlsm_constrained IM constraint)
                (i : index)
-      : @VLSM message (indexed_vlsm_constrained_projection_sig IM constraint i).
+      : VLSM (indexed_vlsm_constrained_projection_sig IM constraint i).
       unfold indexed_vlsm_constrained_projection_sig; simpl.
       split; simpl; unfold proto_message; simpl.
       - exact (@transition _ _ (IM i)).
@@ -279,9 +279,9 @@ Section indexing.
     Defined.
 
     Definition indexed_vlsm_free_projection
-               (IM : forall i : index, @VLSM message (IS i))
+               (IM : forall i : index, VLSM (IS i))
                (i : index)
-      : @VLSM message (indexed_vlsm_free_projection_sig IM i)
+      : VLSM (indexed_vlsm_free_projection_sig IM i)
       :=
         indexed_vlsm_constrained_projection IM free_constraint i.
 

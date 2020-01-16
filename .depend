@@ -24,7 +24,9 @@ ctl.vo ctl.glob ctl.v.beautified: ctl.v preamble.vo ListExtras.vo ListSetExtras.
 ctl.vio: ctl.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio protocol.vio definitions.vio
 vlsm.vo vlsm.glob vlsm.v.beautified: vlsm.v preamble.vo ListExtras.vo
 vlsm.vio: vlsm.v preamble.vio ListExtras.vio
-commute.vo commute.glob commute.v.beautified: commute.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo common.vo definitions.vo vlsm.vo ./indexed_vlsm.vo
-commute.vio: commute.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio protocol.vio common.vio definitions.vio vlsm.vio ./indexed_vlsm.vio
-vlsmfull.vo vlsmfull.glob vlsmfull.v.beautified: vlsmfull.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo definitions.vo common.vo vlsm.vo ./indexed_vlsm.vo commute.vo fullnode.vo
-vlsmfull.vio: vlsmfull.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio definitions.vio common.vio vlsm.vio ./indexed_vlsm.vio commute.vio fullnode.vio
+indexed_vlsm.vo indexed_vlsm.glob indexed_vlsm.v.beautified: indexed_vlsm.v preamble.vo vlsm.vo
+indexed_vlsm.vio: indexed_vlsm.v preamble.vio vlsm.vio
+commute.vo commute.glob commute.v.beautified: commute.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo common.vo definitions.vo vlsm.vo indexed_vlsm.vo
+commute.vio: commute.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio protocol.vio common.vio definitions.vio vlsm.vio indexed_vlsm.vio
+vlsmfull.vo vlsmfull.glob vlsmfull.v.beautified: vlsmfull.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo definitions.vo common.vo vlsm.vo indexed_vlsm.vo commute.vo fullnode.vo
+vlsmfull.vio: vlsmfull.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio definitions.vio common.vio vlsm.vio indexed_vlsm.vio commute.vio fullnode.vio
