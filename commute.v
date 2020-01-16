@@ -1,7 +1,7 @@
 Require Import Bool List Streams Logic.Epsilon.
 Import List Notations.
 From Casper 
-Require Import preamble ListExtras ListSetExtras RealsExtras protocol common definitions vlsm indexed_vlsm indexed_vlsm_projections.
+Require Import preamble ListExtras ListSetExtras RealsExtras protocol common definitions vlsm indexed_vlsm.
 
 (* 3.1 Decisions on consensus values *) 
 
@@ -12,7 +12,7 @@ Class consensus_values :=
   }.
 
 Definition decision {message} (S : LSM_sig message) {CV : consensus_values} : Type
-  := @state _ S -> option C. 
+  := @state _ S -> option C.
 
 (* 3.2.1 Decision finality *)
 (* Program Definition prot_state0 `{VLSM} : protocol_state := 
@@ -23,12 +23,14 @@ Next Obligation.
   constructor.
 Defined. *)
 
+Print trace_nth.
+
 Definition final {message} {S : LSM_sig message} (V : @VLSM message S) {CV : consensus_values}
   : decision S -> Prop :=
-  fun (D : decision S) => forall (tr : protocol_trace), 
+  fun (D : decision S) => forall (tr : protocol_trace message S V), 
       forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
-        (trace_nth (proj1_sig tr) n1 = Some s1) ->
-        (trace_nth (proj1_sig tr) n2 = Some s2) ->
+        (trace_nth message S (proj1_sig tr) n1 = Some s1) ->
+        (trace_nth message S (proj1_sig tr) n2 = Some s2) ->
         (D s1 = (Some c1)) ->
         (D s2 = (Some c2)) ->
         c1 = c2.

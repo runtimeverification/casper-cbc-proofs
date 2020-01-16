@@ -202,9 +202,9 @@ Section Full.
       remember (exist (fun s : definitions.state => locally_sorted s) s Hss) as ss.
       remember (exist (fun s : definitions.state => locally_sorted s) j Hsj) as sj.
       remember (add_message_sorted (c,v,sj) sj) as sj'.
-      specialize (protocol_generated None ss _om Pss sj' (Some (make_proto_message (c,v,sj)))); intros Pss'.
-      assert (Pcvj : protocol_prop (sj', Some (make_proto_message (c, v, sj)))).
-      { specialize (protocol_generated (Some (c,v)) sj _omj Psj (proj1_sig s0) None (protocol_initial_state s0)); intros Pcvj'.
+      specialize (protocol_generated _ _ (VLSM_full_client1) None ss _om Pss sj' (Some (make_proto_message (c,v,sj)))); intros Pss'.
+      assert (Pcvj : protocol_prop _ _ (VLSM_full_client1) (sj', Some (make_proto_message (c, v, sj)))).
+      { specialize (protocol_generated _ _ (VLSM_full_client1) (Some (c,v)) sj _omj Psj (proj1_sig s0) None (protocol_initial_state _ _ (VLSM_full_client1) s0)); intros Pcvj'.
         assert (Hvj' : valid_client (Some (c, v)) (sj, None)).
         { subst. simpl. split; auto. unfold valid_estimate in H2. unfold estimator in H2; simpl in H2. unfold estimator_proj1 in H2.
           rewrite (make_already_sorted_state j Hsj) in H2. assumption.
@@ -292,13 +292,13 @@ Section Full.
         * { split.
           - specialize protocol_generated; intro PG.
             specialize 
-              (PG (Some (c0, v0))
+              (PG _ _ (VLSM_full_client1) (Some (c0, v0))
                   (exist (fun s : definitions.state => locally_sorted s) j0 Hj0)
                   _om
                   P1
                   (proj1_sig s0)
                   None
-                  (protocol_initial_state s0)
+                  (protocol_initial_state _ _ (VLSM_full_client1) s0)
               ).
             simpl in PG.
             replace Hj with Hj0; try apply proof_irrelevance. apply PG.
@@ -315,13 +315,13 @@ Section Full.
         * clear IHcvj. simpl. split; try (apply add_preserves_inclusion; apply incl_refl).
           specialize protocol_generated; intro PG.
           specialize 
-            (PG (Some (c0, v0))
+            (PG _ _ (VLSM_full_client1) (Some (c0, v0))
                 (exist (fun s : definitions.state => locally_sorted s) j0 Hj0)
                 _om
                 P1
                 (proj1_sig s0)
                 None
-                (protocol_initial_state s0)
+                (protocol_initial_state _ _ (VLSM_full_client1) s0)
                 Hv
             ).
           simpl in PG.
@@ -396,8 +396,8 @@ Section Full.
       simpl in Heqsom. rewrite His in Heqsom. inversion Heqsom; subst; clear Heqsom.
       constructor.
     - destruct im as [m Him]. inversion Him.
-    - assert (P0 : protocol_prop (s0, om0))
-      by (rewrite <- Heqsom; apply (protocol_generated l s _om P1 _s om P2 Hv)).
+    - assert (P0 : protocol_prop _ _ (VLSM_full_client1) (s0, om0))
+      by (rewrite <- Heqsom; apply (protocol_generated _ _ (VLSM_full_client1) l s _om P1 _s om P2 Hv)).
       specialize (protocol_state_messages s0 om0 P0); intro Hmsgs.
       specialize (IHP1 s _om eq_refl).
       specialize (IHP2 _s om eq_refl).
@@ -461,11 +461,11 @@ Section Full.
   Proof. Admitted.
  *)
 
-  Definition vlsm_reach : protocol_state -> protocol_state -> Prop :=
-    fun s1 s2 => exists (ls : list in_state_out), finite_ptrace (proj1_sig s1) ls /\ List.In (proj1_sig s2) (List.map destination ls).
+  Definition vlsm_reach : protocol_state _ _ (VLSM_full_client1) -> protocol_state _ _ (VLSM_full_client1) -> Prop :=
+    fun s1 s2 => exists (ls : list (in_state_out _ (LSM_full_client1))), finite_ptrace _ _ (VLSM_full_client1) (proj1_sig s1) ls /\ List.In (proj1_sig s2) (List.map (destination _ (LSM_full_client1)) ls).
 
   Lemma reach_equiv :
-    forall (s1 s2 : protocol_state),
+    forall (s1 s2 : protocol_state _ _ (VLSM_full_client1)),
       vlsm_reach s1 s2 <->
       incl (get_messages (proj1_sig (proj1_sig s1))) (get_messages (proj1_sig (proj1_sig s2))).
   Proof. Admitted.
@@ -473,14 +473,15 @@ Section Full.
   (* VLSM state union *)
   Lemma join_protocol_state :
     forall (s1 s2 : @state _ LSM_full_client1),
-      protocol_state_prop s1 ->
-      protocol_state_prop s2 -> 
+      protocol_state_prop _ _ (VLSM_full_client1) s1 ->
+      protocol_state_prop _ _ (VLSM_full_client1) s2 -> 
       not_heavy (proj1_sig (sorted_state_union s1 s2)) -> 
-      protocol_state_prop (sorted_state_union s1 s2). 
+      protocol_state_prop _ _ (VLSM_full_client1) (sorted_state_union s1 s2). 
   Proof. 
   Admitted.
 
-  Program Definition protocol_state_union (s1 s2 : protocol_state) (H_weight : not_heavy (sorted_state_union (proj1_sig s1) (proj1_sig s2))) : protocol_state := exist protocol_state_prop (sorted_state_union (proj1_sig s1) (proj1_sig s2)) _.
+  Program Definition protocol_state_union (s1 s2 : protocol_state _ _ (VLSM_full_client1)) (H_weight : not_heavy (sorted_state_union (proj1_sig s1) (proj1_sig s2))) : protocol_state _ _ (VLSM_full_client1)
+  := exist (protocol_state_prop _ _ (VLSM_full_client1)) (sorted_state_union (proj1_sig s1) (proj1_sig s2)) _.
   Next Obligation.
     destruct s1 as [s1 about_s1];
       destruct s2 as [s2 about_s2].
@@ -488,21 +489,21 @@ Section Full.
   Defined.
   
   Lemma vlsm_reach_morphism :
-    forall (s1 s2 : protocol_state) (H_weight : not_heavy (proj1_sig (sorted_state_union (proj1_sig s1) (proj1_sig s2)))),
+    forall (s1 s2 : protocol_state _ _ (VLSM_full_client1)) (H_weight : not_heavy (proj1_sig (sorted_state_union (proj1_sig s1) (proj1_sig s2)))),
       vlsm_reach s1 (protocol_state_union s1 s2 H_weight).
   Proof. Admitted.
 
   (* cf. this and the other definition of reach? *) 
   
   Theorem pair_common_futures :
-    forall (s1 s2 : protocol_state),
+    forall (s1 s2 : protocol_state _ _ (VLSM_full_client1)),
       not_heavy (proj1_sig (sorted_state_union (proj1_sig s1) (proj1_sig s2))) ->
-      exists (s3 : protocol_state),
+      exists (s3 : protocol_state _ _ (VLSM_full_client1)),
         vlsm_reach s1 s3 /\ vlsm_reach s2 s3. 
   Proof. 
     intros.
     remember (sorted_state_union (proj1_sig s1) (proj1_sig s2)) as s3.
-    assert (about_s3 : protocol_state_prop s3).
+    assert (about_s3 : protocol_state_prop _ _ (VLSM_full_client1) s3).
     red.
   Admitted. 
 
@@ -619,6 +620,6 @@ Section Full.
   Defined.
 
   Definition VLSM_full_composed :=
-    @indexed_vlsm_free nat (sorted_message C V) nat_eq_dec IS_index IM_index 0. 
+    @indexed_vlsm_free (sorted_message C V) nat nat_eq_dec 0 IS_index IM_index. 
 
 End Full.
