@@ -46,7 +46,7 @@ Definition consistent
   (X := indexed_vlsm_constrained Hi IS IM constraint)
   (ID : forall i : index, decision (IS i)) : Prop
   :=
-    forall (tr : @protocol_trace _ _ X), 
+    forall (tr : protocol_trace X), 
     forall (n1 n2 : nat),
     forall (j k : index),
     forall (s1 s2 : @state _ (sign X)),
@@ -54,8 +54,8 @@ Definition consistent
     j <> k ->
     trace_nth (proj1_sig tr) n1 = (Some s1) ->
     trace_nth (proj1_sig tr) n2 = (Some s2) ->
-    (ID j) (@s1 j) = (Some c1) -> 
-    (ID k) (@s2 k) = (Some c2) -> 
+    (ID j) (s1 j) = (Some c1) -> 
+    (ID k) (s2 k) = (Some c2) -> 
     c1 = c2.
 
 (** The following is an attempt to include finality in the definition of consistency by dropping the requirement 
@@ -72,15 +72,15 @@ Definition final_and_consistent
   (X := indexed_vlsm_constrained Hi IS IM constraint)
   (ID : forall i : index, decision (IS i)) : Prop
   :=
-    forall (tr : @protocol_trace _ _ X), 
+    forall (tr : protocol_trace X), 
     forall (n1 n2 : nat),
     forall (j k : index),
     forall (s1 s2 : @state _ (sign X)),
     forall (c1 c2 : C),
     trace_nth (proj1_sig tr) n1 = (Some s1) ->
     trace_nth (proj1_sig tr) n2 = (Some s2) ->
-    (ID j) (@s1 j) = (Some c1) -> 
-    (ID k) (@s2 k) = (Some c2) -> 
+    (ID j) (s1 j) = (Some c1) -> 
+    (ID k) (s2 k) = (Some c2) -> 
     c1 = c2.
 
 Lemma final_and_consistent_implies_final
@@ -136,14 +136,14 @@ Definition stuck_free {message} {S : LSM_sig message} (V : @VLSM message S) {CV 
 Definition behavior 
   {message} 
   {S : LSM_sig message} 
-  {V : @VLSM message S} 
+  {V : VLSM S} 
   {CV : consensus_values} : decision S -> Prop := 
   fun _ => True.
 
 Definition symmetric 
   {message}
   {S : LSM_sig message}
-  (V : @VLSM message S)
+  (V : VLSM S)
   {CV : consensus_values} : decision S -> Prop :=
   fun (D : decision S) =>
   exists (f : decision S -> decision S),
@@ -161,9 +161,9 @@ Definition live
   (ID : forall i : index, decision (IS i)) : Prop
   :=
   forall (tr : @protocol_trace _ _ X),
-    @complete_trace_prop _ _ _ _ _ X tr -> 
+    complete_trace_prop X tr -> 
     exists (s : @state _ (sign X)) (n : nat) (i : index) (c : C), 
       trace_nth (proj1_sig tr) n = Some s /\
-      (ID i) (@s i) = Some c.
+      (ID i) (s i) = Some c.
 
 (* Section 4 *)
