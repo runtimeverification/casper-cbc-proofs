@@ -34,35 +34,8 @@ Definition final {message} {S : LSM_sig message} (V : @VLSM message S) {CV : con
         c1 = c2.
 
 (* 3.2.2 Decision consistency *)
-(**
-Definition in_trace `{VLSM} : state -> Trace -> Prop :=
-  fun (s : state) (tr : Trace) => exists (n : nat), trace_nth tr n = Some s.
-**)
 
-(**
 Definition consistent
-  {CV : consensus_values}
-  {index : Set} `{Heqd : EqDec index}
-  {message : Type} 
-  {IS : index -> LSM_sig message}
-  {IM : forall i : index, @VLSM message (IS i)}
-  {Hi : index}
-  (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
-  (X := indexed_vlsm_constrained IM Hi constraint)
-  (ID : forall i : index, decision (IS i))
-  : Prop
-  :=
-    (* Assuming we want traces of the overall protocol *)
-    forall (tr : @protocol_trace _ _ X) (s : @state _ (sign X)), True.
-      in_trace s (proj1_sig tr) ->
-      forall (n1 n2 j k : index),
-      exists (c1 c2 : C),
-        (ID n1) s (Some c1) -> (ID n2) s (Some c2) ->
-        forall (c : C),
-          (ID n1) s (Some c) <-> (ID n2) s (Some c).    
-**)
-
-Definition consistent_mihai
   {CV : consensus_values}
   {index : Set} `{Heqd : EqDec index}
   {message : Type} 
@@ -88,7 +61,7 @@ Definition consistent_mihai
 (** The following is an attempt to include finality in the definition of consistency by dropping the requirement 
     that (j <> k). **)
 
-Definition final_and_consistent_mihai
+Definition final_and_consistent
   {CV : consensus_values}
   {index : Set} `{Heqd : EqDec index}
   {message : Type} 
@@ -121,11 +94,11 @@ Lemma final_and_consistent_implies_final
   (X := indexed_vlsm_constrained Hi IS IM constraint)
   (ID : forall i : index, decision (IS i))
   : 
-    final_and_consistent_mihai IM Hi constraint ID ->
+    final_and_consistent IM Hi constraint ID ->
     forall i : index, final (indexed_vlsm_constrained_projection Hi IS IM constraint i) (ID i).
 
 Proof.
-  unfold final_and_consistent_mihai.
+  unfold final_and_consistent.
   intros.
   unfold final.
   intros.
