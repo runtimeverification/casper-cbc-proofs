@@ -46,6 +46,7 @@ Definition consistent
   (X := indexed_vlsm_constrained Hi IS IM constraint)
   (ID : forall i : index, decision (IS i)) : Prop
   :=
+<<<<<<< HEAD
     forall (tr : protocol_trace X), 
     forall (n1 n2 : nat),
     forall (j k : index),
@@ -165,5 +166,4 @@ Definition live
     exists (s : @state _ (sign X)) (n : nat) (i : index) (c : C), 
       trace_nth (proj1_sig tr) n = Some s /\
       (ID i) (s i) = Some c.
-
 (* Section 4 *)
