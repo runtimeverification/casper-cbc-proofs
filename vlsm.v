@@ -33,6 +33,9 @@ Require Import preamble ListExtras.
         {Sig : LSM_sig message}
         (vlsm : VLSM Sig). 
 
+      Definition sign (vlsm : VLSM Sig):=
+        Sig.
+
       (* 2.2.2 VLSM protocol states and protocol messages *)
 
       (* We choose here to use the second definition hinted at the end of the 2.2.2 section, i.e., 
@@ -439,6 +442,25 @@ we define states and messages together as a property over a product type. *)
           | Finite s ls => exists suffix, ls = prefix ++ (last :: suffix)
           | Infinite s st => exists suffix, st = stream_app prefix (Cons last suffix)
           end.
+
+      (** A finite trace is terminating if there's no other trace that contains it as a (proper) prefix.**)
+
+      Definition terminating_trace_prop (tr : Trace) : Prop 
+         :=
+           match tr with 
+           | Finite s ls => 
+               (exists (tr : protocol_trace) 
+               (last : in_state_out), 
+               trace_prefix (proj1_sig tr) last ls) -> False 
+           | Infinite s ls => False
+           end.
+
+      Definition complete_trace_prop `{VLSM} (tr : protocol_trace) : Prop
+         := 
+            match (proj1_sig tr) with 
+            | Finite s ls => terminating_trace_prop (proj1_sig tr)
+            | Infinite s ls => True
+            end.
 
       Lemma trace_prefix_protocol
             (tr : protocol_trace)
