@@ -46,7 +46,6 @@ Definition consistent
   (X := indexed_vlsm_constrained Hi IS IM constraint)
   (ID : forall i : index, decision (IS i)) : Prop
   :=
-<<<<<<< HEAD
     forall (tr : protocol_trace X), 
     forall (n1 n2 : nat),
     forall (j k : index),
