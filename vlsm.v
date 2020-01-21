@@ -339,6 +339,21 @@ we define states and messages together as a property over a product type. *)
           eapply remove_hd_last.
       Qed.
 
+      Lemma finite_ptrace_from_app_iff (s : state) (ls ls' : list in_state_out) (s' := (last (List.map destination ls) s))
+        : finite_ptrace_from s ls /\ finite_ptrace_from s' ls'
+          <->
+          finite_ptrace_from s (ls ++ ls').
+      Proof.
+        intros. generalize dependent ls'. generalize dependent s. 
+        induction ls; intros; split.
+        - intros [_ H]. assumption.
+        - simpl; intros; split; try assumption. constructor. inversion H; try assumption.
+          destruct H1 as [_om [_s [Hs _]]]. exists _om. assumption.
+        - simpl. intros [Htr Htr']. 
+          destruct a. apply finite_ptrace_extend.
+          + apply IHls. unfold s' in *. rewrite map_cons in Htr'.
+      Admitted.
+
       CoInductive infinite_ptrace_from :
         state -> Stream in_state_out -> Prop :=
       | infinite_ptrace_extend : forall  (s : state) (tl : Stream in_state_out),
@@ -397,6 +412,33 @@ we define states and messages together as a property over a product type. *)
         match proj1_sig tr with
         | Finite s ls => Finite_states (s :: List.map destination ls)
         | Infinite s st => Infinite_states (Cons s (map destination st)) end. 
+
+      Definition in_futures
+        (pfirst psecond : protocol_state)
+        (first := proj1_sig pfirst)
+        (second := proj1_sig psecond)
+        : Prop :=
+        exists (tr : list in_state_out),
+          finite_ptrace_from first tr /\
+          last (List.map destination tr) first = second.
+
+      Lemma in_futures_witness
+        (pfirst psecond : protocol_state)
+        (first := proj1_sig pfirst)
+        (second := proj1_sig psecond)
+        : in_futures pfirst psecond
+        <-> exists (tr : protocol_trace) (n1 n2 : nat),
+          n1 < n2
+          /\ trace_nth (proj1_sig tr) n1 = Some first
+          /\ trace_nth (proj1_sig tr) n2 = Some second.
+      Proof.
+        split.
+        - intros Hfutures.  unfold first in *; clear first. unfold second in *; clear second.
+          destruct pfirst as [first [_mfirst Hfirst]].
+          destruct psecond as [second [_msecond Hsecond]].
+          simpl.
+      Admitted.
+
 
       Definition trace_last (tr : Trace) : option state
         :=
@@ -612,7 +654,7 @@ we define states and messages together as a property over a product type. *)
       (* Protocol runs *) 
       Record proto_run : Type := mk_proto_run
                                    { start : initial_state
-                                     ; transitions : list (label * option proto_message * option proto_message)
+                                     ; transitions : list in_state_out
                                      ; final : state * option proto_message
                                    }.
 
@@ -638,10 +680,42 @@ we define states and messages together as a property over a product type. *)
           (l : label)
           (Hv : valid l (s, om))
           (som' := transition l (s, om))
-        : vlsm_run_prop {| start := is; transitions := ts ++ [(l, om, snd som')]; final := som' |}.
+        : vlsm_run_prop {| start := is; transitions := ts ++ [
+            {|   l := l
+            ;   input := om
+            ;   destination := fst som'
+            ;   output := snd som'
+            |}]; final := som' |}.
 
       Definition vlsm_run : Type :=
         { r : proto_run | vlsm_run_prop r }.
+
+
+      Lemma vlsm_run_last_state
+        (vr : vlsm_run)
+        (r := proj1_sig vr)
+        : last (List.map destination (transitions r)) (proj1_sig (start r)) = fst (final r).
+      Proof.
+        unfold r; clear r; destruct vr as [r Hr]; simpl.
+        induction Hr; simpl; try reflexivity.
+        rewrite map_app; simpl.
+        apply last_is_last.
+      Qed.
+
+      Lemma vlsm_run_last_final
+        (vr : vlsm_run)
+        (r := proj1_sig vr)
+        (tr := transitions r)
+        (Hne_tr : tr <> [])
+        (lst := last_error tr)
+        : option_map destination lst = Some (fst (final r))
+        /\ option_map output lst = Some (snd (final r)).
+      Proof.
+        unfold r in *; clear r; destruct vr as [r Hr]; inversion Hr; subst; simpl in *; clear Hr
+        ; try contradiction.
+        unfold tr in *. unfold lst in *. rewrite last_error_is_last . simpl.
+        split; reflexivity.
+      Qed.
 
       Lemma run_is_protocol
             (vr : vlsm_run)
@@ -668,6 +742,74 @@ we define states and messages together as a property over a product type. *)
           specialize (Hvr msg_run Hmr l1). simpl in Heqs. simpl in Heqm.
           rewrite <- Heqs in Hvr. rewrite <- Heqm in Hvr. specialize (Hvr Hv).
           exists (exist _ _ Hvr). reflexivity.
+      Qed.
+
+      Lemma run_is_trace
+            (vr : vlsm_run)
+            (r := proj1_sig vr)
+        : ptrace_prop (Finite (proj1_sig (start r)) (transitions r)).
+      Proof.
+        unfold r; clear r; destruct vr as [r Hr]; simpl.
+        induction Hr; simpl.
+        - specialize (protocol_initial_state is); intro Hpis; simpl in Hpis.
+          destruct is as [is His]; simpl. constructor; try assumption. constructor.
+          exists None. assumption.
+        - specialize (protocol_initial_state s0); intro Hps0; simpl in Hps0.
+          destruct s0 as [s0 Hs0]; simpl. constructor; try assumption. constructor.
+          exists None. assumption.
+        - destruct IHHr1 as [Htr Hinit].
+          split; try assumption.
+          apply extend_right_finite_trace_from; try assumption.
+          specialize vlsm_run_last_state; intros Hls. specialize (Hls (exist _ state_run Hr1)).
+          simpl in Hls. unfold ts. unfold is. rewrite Hls.
+          exists (snd (final state_run)). exists (fst (final msg_run)).
+          repeat split; try assumption; try apply surjective_pairing; rewrite <- surjective_pairing.
+          + specialize (run_is_protocol (exist _ state_run Hr1)); simpl; intro Hp; assumption.
+          + specialize (run_is_protocol (exist _ msg_run Hr2)); simpl; intro Hp; assumption.
+      Qed.
+
+      Lemma trace_is_run
+        (is : initial_state)
+        (tr : list in_state_out)
+        (Htr : finite_ptrace_from (proj1_sig is) tr)
+        : exists r : proto_run,
+          vlsm_run_prop r /\
+          start r = is /\ transitions r = tr
+        .
+      Proof.
+        generalize dependent tr.
+        apply (rev_ind (fun tr => (finite_ptrace_from (proj1_sig is) tr ->
+                  exists r : proto_run, vlsm_run_prop r /\ start r = is /\ transitions r = tr))).
+        - intros H.
+          exists {| start := is; transitions := []; final := (proj1_sig is, None) |}; simpl; repeat split; try reflexivity.
+          apply empty_run_initial_state.
+        - intros lst prefix IHprefix H. 
+      Admitted.
+
+      Lemma protocol_is_trace
+            (som' : state * option proto_message)
+            (Hp : protocol_prop som')
+            (s' := fst som')
+            (om' := snd som')
+            (Hnot_init : ~initial_state_prop s')
+        : exists (is : state) (tr : list in_state_out),
+              finite_ptrace is tr
+              /\ option_map destination (last_error tr) = Some s'
+              /\ option_map output (last_error tr) = Some om'.
+      Proof.
+        specialize (protocol_is_run som' Hp); intros [vr Heq].
+        specialize (run_is_trace vr); simpl; intros Htr.
+        destruct vr as [r Hvr]; simpl in *.
+        destruct (transitions r) eqn:Htrace.
+        - inversion Hvr; subst; simpl in Htrace. 
+          + destruct is as [s0 His]. contradiction.
+          + destruct s0 as [s0 His]. contradiction.
+          + destruct ts; inversion Htrace.
+        - exists (proj1_sig (start r)). exists (transitions r). rewrite Htrace.
+          split; try assumption.
+          specialize (vlsm_run_last_final (exist _ r Hvr)); simpl; rewrite Htrace; simpl.
+          rewrite <- Heq.
+          intros Hlf; apply Hlf. intros HC; inversion HC.
       Qed.
 
       (* Decidable VLSMs *) 

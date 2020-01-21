@@ -4,6 +4,13 @@ Import ListNotations.
 
 Require Import Casper.preamble.
 
+
+Definition last_error {S} (l : list S) : option S :=
+  match l with
+  | [] => None
+  | a :: t => Some (last t a)
+  end.
+
 Lemma unfold_last_hd {S} : forall (random a b : S) (l : list S),
   last (a :: (b :: l)) random = last (b :: l) random.
 Proof.
@@ -37,6 +44,14 @@ Proof.
   assumption.
 Qed.
 
+Lemma unroll_last {S} : forall (random a : S) (l : list S),
+  last (a :: l) random = last l a.
+Proof.
+  induction l; try reflexivity.
+  destruct l; try reflexivity.
+  rewrite swap_head_last. rewrite unfold_last_hd. rewrite IHl.
+  rewrite unfold_last_hd. reflexivity.
+Qed.
 
 Lemma incl_empty : forall A (l : list A),
   incl l nil -> l = nil.
@@ -240,7 +255,12 @@ Proof.
   rewrite <- app_comm_cons. specialize (IHl x dummy). rewrite <- IHl at 2. simpl.
   destruct l; simpl; reflexivity.
 Qed.
-  
+
+Lemma last_error_is_last {A} : forall (l : list A) (x : A),
+  last_error (l ++ [x]) = Some x.
+Proof.
+  destruct l; try reflexivity; intros; simpl. apply f_equal. apply last_is_last.
+Qed.
 
 Require Import Streams.
 
