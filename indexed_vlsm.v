@@ -285,6 +285,5 @@ Section indexing.
       :=
         indexed_vlsm_constrained_projection IM free_constraint i.
 
-  End projections.
-  
+  End projections. 
 End indexing.

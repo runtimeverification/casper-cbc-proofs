@@ -143,3 +143,41 @@ Section CommuteIndexed.
 End CommuteIndexed.
 
 (* Section 4 *)
+
+Section Estimators.
+  Context
+    {CV : consensus_values}
+    {index : Set} `{Heqd : EqDec index}
+    {message : Type} 
+    {IS : index -> LSM_sig message}
+    (IM : forall i : index, VLSM (IS i))
+    (Hi : index)
+    (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
+    (X := indexed_vlsm_constrained Hi IS IM constraint)
+    (ID : forall i : index, decision (IS i))
+    (IE : forall i : index, Estimator (@state _ (IS i)) C).
+
+  Definition decision_estimator_property
+    (i : index)
+    (Xi := indexed_vlsm_constrained_projection Hi IS IM constraint i)
+    (Ei := @estimator _ _ (IE i))
+    := forall
+      (psigma : protocol_state Xi)
+      (sigma := proj1_sig psigma)
+      (c : C)
+      (HD : ID i sigma = Some c)
+      (psigma' : protocol_state Xi)
+      (sigma' := proj1_sig psigma')
+      (Hreach : in_futures Xi psigma psigma')
+      (c' : C),
+      Ei sigma' c'
+      -> c' = c.
+
+  Lemma decision_estimator_finality
+    (i : index)
+    (Xi := indexed_vlsm_constrained_projection Hi IS IM constraint i)
+    : decision_estimator_property i -> final Xi (ID i).
+  Proof.
+    intros He tr n1 n2 s1 s2 c1 c2 Hs1 Hs2 Hc1 Hc2.
+  Admitted.
+End Estimators.
