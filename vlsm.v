@@ -353,19 +353,19 @@ we define states and messages together as a property over a product type. *)
           destruct a. apply finite_ptrace_extend.
           + apply IHls. inversion Htr. split. apply H2.
             unfold s' in Htr'. 
-            assert (gigi: last (List.map destination ls) destination0 = last
+            assert (last_identity: last (List.map destination ls) destination0 = last
             (List.map destination
                ({| l := l1; input := input0; destination := destination0; output := output0 |} :: ls)) s). {
             rewrite map_cons. rewrite unroll_last. simpl. reflexivity. }
-            rewrite gigi. assumption. 
+            rewrite last_identity. assumption. 
           + inversion Htr. apply H6.
          - intros. inversion H. subst. specialize (IHls s1). simpl in IHls. specialize (IHls ls'). apply IHls in H3.
            destruct H3. split. 
            + constructor. apply H0. apply H4.
-           + assert (gigi : s' = last (List.map destination ls) s1). {
+           + assert (last_identity : s' = last (List.map destination ls) s1). {
              unfold s'. rewrite map_cons. rewrite unroll_last. reflexivity. 
            }
-           rewrite gigi. assumption.
+           rewrite last_identity. assumption.
       Qed.
 
       CoInductive infinite_ptrace_from :
