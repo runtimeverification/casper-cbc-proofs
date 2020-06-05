@@ -1,4 +1,4 @@
-Require Import List Streams ProofIrrelevance.
+Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus.
 Import ListNotations.
  
 From Casper
@@ -259,6 +259,19 @@ we define states and messages together as a property over a product type. *)
       Proof.
         destruct Ht as [_ [[_s Hom] _]].
         exists _s. assumption.
+      Qed.
+
+      Lemma protocol_prop_transition_in
+            {l : label}
+            {s s' : state}
+            {om om' : option proto_message}
+            (Ht : verbose_valid_protocol_transition l s s' om om')
+        : exists _s, protocol_prop (_s, om).
+      Proof.
+        destruct om as [m|].
+        - apply protocol_transition_in in Ht.
+          inversion Ht. exists x. assumption.
+        - exists (proj1_sig s0). constructor.
       Qed.
 
       Lemma protocol_transition_out
@@ -585,7 +598,32 @@ we define states and messages together as a property over a product type. *)
           exists {| start := is; transitions := []; final := (proj1_sig is, None) |}; simpl; repeat split; try reflexivity.
           apply empty_run_initial_state.
         - intros lst prefix IHprefix H. 
-      Admitted.
+          apply finite_ptrace_from_app_iff in H.
+          destruct H as [Hprefix Hlst].
+          specialize (IHprefix Hprefix).
+          destruct IHprefix as [r0 [Hr0 [Hstart Htr_r0]]].
+          exists {| start := is; transitions := prefix ++ [lst]; final := (destination lst, output lst) |}.
+          simpl. repeat split; try reflexivity.
+          specialize (extend_run r0 Hr0); simpl; intro Hextend.
+          apply finite_ptrace_first_valid_transition in Hlst.
+          destruct lst as [lst_l lst_in lst_dest lst_out].
+          simpl in *.
+          specialize (vlsm_run_last_state (exist _ r0 Hr0)); intro Hlast_state.
+          simpl in Hlast_state. rewrite Htr_r0 in Hlast_state.
+          rewrite Hstart in Hlast_state. rewrite Hlast_state in Hlst.
+          specialize (protocol_prop_transition_in Hlst); intro Hmsg.
+          destruct Hmsg as [_s Hmsg].
+          apply protocol_is_run in Hmsg.
+          destruct Hmsg as [[r_msg Hr_msg] Hmsg].
+          specialize (Hextend r_msg Hr_msg lst_l).
+          specialize (protocol_transition_valid Hlst); intro Hvalid.
+          simpl in Hmsg. rewrite <- Hmsg in Hextend. simpl  in Hextend.
+          specialize (Hextend Hvalid). rewrite Hstart in Hextend.
+          specialize (protocol_transition_transition Hlst); intro Htransition.
+          rewrite Htransition in Hextend. simpl in Hextend.
+          rewrite Htr_r0 in Hextend.
+          apply Hextend.
+          Qed.
 
       Lemma protocol_is_trace
             (som' : state * option proto_message)
@@ -640,21 +678,104 @@ we define states and messages together as a property over a product type. *)
           finite_ptrace_from first tr /\
           last (List.map destination tr) first = second.
 
+      
+
       Lemma in_futures_witness
         (pfirst psecond : protocol_state)
         (first := proj1_sig pfirst)
         (second := proj1_sig psecond)
-        : in_futures pfirst psecond
-        <-> exists (tr : protocol_trace) (n1 n2 : nat),
-          n1 < n2
+        (Hfutures : in_futures pfirst psecond)
+        : exists (tr : protocol_trace) (n1 n2 : nat),
+          n1 <= n2
           /\ trace_nth (proj1_sig tr) n1 = Some first
           /\ trace_nth (proj1_sig tr) n2 = Some second.
       Proof.
-        split.
-        - intros Hfutures.  unfold first in *; clear first. unfold second in *; clear second.
-          destruct pfirst as [first [_mfirst Hfirst]].
-          destruct psecond as [second [_msecond Hsecond]].
-          simpl.
+        unfold first in *; clear first. unfold second in *; clear second.
+        destruct pfirst as [first [_mfirst Hfirst]].
+        destruct psecond as [second [_msecond Hsecond]].
+        simpl.
+        unfold in_futures in Hfutures. simpl in Hfutures.
+        destruct Hfutures as [suffix_tr [Hsuffix_tr Hsnd]].
+        apply protocol_is_run in Hfirst.
+        destruct Hfirst as [prefix_run Hprefix_run].
+        specialize (vlsm_run_last_state prefix_run); intro Hprefix_last.
+        specialize (run_is_trace prefix_run); intro Hprefix_tr.
+        destruct prefix_run as [prefix_run Hpref_run].
+        destruct prefix_run as [prefix_start prefix_tr prefix_final].
+        subst; simpl in *.
+        specialize (finite_ptrace_from_app_iff (proj1_sig prefix_start) prefix_tr suffix_tr); intro Happ.
+        simpl in Happ.
+        rewrite Hprefix_last in Happ. rewrite <- Hprefix_run in Happ.
+        simpl in Happ.
+        destruct Happ as [Happ _].
+        destruct Hprefix_tr as [Hprefix_tr Hinit].
+        specialize (Happ (conj Hprefix_tr Hsuffix_tr)).
+        assert (Hfinite_tr: finite_ptrace (proj1_sig prefix_start) (prefix_tr ++ suffix_tr))
+          by (constructor; assumption).
+        assert (Htr : ptrace_prop (Finite (proj1_sig prefix_start) (prefix_tr ++ suffix_tr)))
+          by assumption.
+        exists (exist _ (Finite (proj1_sig prefix_start) (prefix_tr ++ suffix_tr)) Htr).
+        simpl.
+        exists (length prefix_tr).
+        exists (length prefix_tr + length suffix_tr).
+        remember (length prefix_tr) as m.
+        split; try apply le_plus_l.
+        destruct m; simpl.
+        + symmetry in Heqm. apply length_zero_iff_nil in Heqm.
+          subst; simpl in *.
+          split; try (f_equal; assumption).
+          remember (length suffix_tr) as delta.
+          destruct delta; simpl.
+          * symmetry in Heqdelta. apply length_zero_iff_nil in Heqdelta.
+            subst; simpl in *. f_equal.
+          * apply nth_error_last.
+            rewrite map_length. assumption.
+        + rewrite map_app. 
+          assert (Hnth_pref : forall suf, nth_error (List.map destination prefix_tr ++ suf) m = Some first).
+          { intro. rewrite nth_error_app1.
+            - specialize (nth_error_last (List.map destination prefix_tr) m); intro Hnth.
+              assert (Hlen : S m = length (List.map destination prefix_tr))
+                by (rewrite map_length; assumption).
+              specialize (Hnth Hlen (proj1_sig prefix_start)).
+              rewrite Hnth. f_equal. subst.
+              rewrite Hprefix_last. reflexivity.
+            - rewrite map_length. rewrite <- Heqm. constructor.
+          }
+          split; try apply Hnth_pref.
+          remember (length suffix_tr) as delta.
+          destruct delta; simpl.
+          * symmetry in Heqdelta. apply length_zero_iff_nil in Heqdelta.
+            subst; simpl in *. rewrite plus_0_r.
+            apply Hnth_pref.
+          * { rewrite nth_error_app2.
+              - rewrite map_length.
+                rewrite <- Heqm. 
+                assert (Hdelta : m + S delta - S m = delta)
+                  by (rewrite <- plus_Snm_nSm; apply minus_plus).
+                rewrite Hdelta.
+                specialize (nth_error_last (List.map destination suffix_tr) delta); intro Hnth.
+                rewrite map_length in Hnth.
+                specialize (Hnth Heqdelta first).
+                assumption.
+              - rewrite map_length. rewrite <- Heqm.
+                rewrite <- plus_Snm_nSm. simpl.
+                apply le_n_S. apply le_plus_l.
+            }
+      Qed.
+
+      Lemma in_futures_witness_reverse
+        (pfirst psecond : protocol_state)
+        (first := proj1_sig pfirst)
+        (second := proj1_sig psecond)
+        (H : exists (tr : protocol_trace) (n1 n2 : nat),
+          n1 <= n2
+          /\ trace_nth (proj1_sig tr) n1 = Some first
+          /\ trace_nth (proj1_sig tr) n2 = Some second
+        )
+        : in_futures pfirst psecond.
+      Proof.
+      - destruct H as [tr [n1 [n2 [Hle [Hs1 Hs2]]]]].            
+        unfold in_futures.
       Admitted.
 
 

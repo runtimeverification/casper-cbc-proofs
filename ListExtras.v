@@ -289,6 +289,27 @@ Proof.
   simpl. apply f_equal. assumption.
 Qed.
 
+Lemma nth_error_last
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  (Hlast: S n = length l)
+  (_last : A)
+  : nth_error l n = Some (last l _last)
+  .
+Proof.
+  generalize dependent _last.
+  generalize dependent l.
+  induction n; intros.
+  - destruct l; inversion Hlast. symmetry in H0.
+    apply length_zero_iff_nil in H0. subst. reflexivity.
+  - destruct l; inversion Hlast.
+    specialize (IHn l H0 _last). rewrite unroll_last.
+    simpl. rewrite IHn. f_equal.
+    destruct l; inversion H0.
+    repeat rewrite unroll_last.
+    reflexivity.
+Qed.
 
 (**
 

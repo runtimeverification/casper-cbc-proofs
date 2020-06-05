@@ -1,32 +1,32 @@
-preamble.vo preamble.glob preamble.v.beautified: preamble.v
-preamble.vio: preamble.v
-ListExtras.vo ListExtras.glob ListExtras.v.beautified: ListExtras.v preamble.vo
+preamble.vo preamble.glob preamble.v.beautified preamble.required_vo: preamble.v 
+preamble.vio: preamble.v 
+ListExtras.vo ListExtras.glob ListExtras.v.beautified ListExtras.required_vo: ListExtras.v preamble.vo
 ListExtras.vio: ListExtras.v preamble.vio
-ListSetExtras.vo ListSetExtras.glob ListSetExtras.v.beautified: ListSetExtras.v preamble.vo ListExtras.vo
+ListSetExtras.vo ListSetExtras.glob ListSetExtras.v.beautified ListSetExtras.required_vo: ListSetExtras.v preamble.vo ListExtras.vo
 ListSetExtras.vio: ListSetExtras.v preamble.vio ListExtras.vio
-RealsExtras.vo RealsExtras.glob RealsExtras.v.beautified: RealsExtras.v
-RealsExtras.vio: RealsExtras.v
-sorted_lists.vo sorted_lists.glob sorted_lists.v.beautified: sorted_lists.v preamble.vo ListSetExtras.vo
+RealsExtras.vo RealsExtras.glob RealsExtras.v.beautified RealsExtras.required_vo: RealsExtras.v 
+RealsExtras.vio: RealsExtras.v 
+sorted_lists.vo sorted_lists.glob sorted_lists.v.beautified sorted_lists.required_vo: sorted_lists.v preamble.vo ListSetExtras.vo
 sorted_lists.vio: sorted_lists.v preamble.vio ListSetExtras.vio
-protocol.vo protocol.glob protocol.v.beautified: protocol.v preamble.vo ListExtras.vo ListSetExtras.vo
+protocol.vo protocol.glob protocol.v.beautified protocol.required_vo: protocol.v preamble.vo ListExtras.vo ListSetExtras.vo
 protocol.vio: protocol.v preamble.vio ListExtras.vio ListSetExtras.vio
-common.vo common.glob common.v.beautified: common.v preamble.vo ListExtras.vo ListSetExtras.vo sorted_lists.vo protocol.vo RealsExtras.vo
+common.vo common.glob common.v.beautified common.required_vo: common.v preamble.vo ListExtras.vo ListSetExtras.vo sorted_lists.vo protocol.vo RealsExtras.vo
 common.vio: common.v preamble.vio ListExtras.vio ListSetExtras.vio sorted_lists.vio protocol.vio RealsExtras.vio
-definitions.vo definitions.glob definitions.v.beautified: definitions.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo common.vo
+definitions.vo definitions.glob definitions.v.beautified definitions.required_vo: definitions.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo common.vo
 definitions.vio: definitions.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio common.vio
-fullnode.vo fullnode.glob fullnode.v.beautified: fullnode.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo common.vo definitions.vo
+fullnode.vo fullnode.glob fullnode.v.beautified fullnode.required_vo: fullnode.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo common.vo definitions.vo
 fullnode.vio: fullnode.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio protocol.vio common.vio definitions.vio
-lightnode.vo lightnode.glob lightnode.v.beautified: lightnode.v preamble.vo ListExtras.vo ListSetExtras.vo sorted_lists.vo protocol.vo common.vo
+lightnode.vo lightnode.glob lightnode.v.beautified lightnode.required_vo: lightnode.v preamble.vo ListExtras.vo ListSetExtras.vo sorted_lists.vo protocol.vo common.vo
 lightnode.vio: lightnode.v preamble.vio ListExtras.vio ListSetExtras.vio sorted_lists.vio protocol.vio common.vio
-binary.vo binary.glob binary.v.beautified: binary.v preamble.vo ListExtras.vo ListSetExtras.vo sorted_lists.vo protocol.vo
+binary.vo binary.glob binary.v.beautified binary.required_vo: binary.v preamble.vo ListExtras.vo ListSetExtras.vo sorted_lists.vo protocol.vo
 binary.vio: binary.v preamble.vio ListExtras.vio ListSetExtras.vio sorted_lists.vio protocol.vio
-ctl.vo ctl.glob ctl.v.beautified: ctl.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo definitions.vo
+ctl.vo ctl.glob ctl.v.beautified ctl.required_vo: ctl.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo definitions.vo
 ctl.vio: ctl.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio protocol.vio definitions.vio
-vlsm.vo vlsm.glob vlsm.v.beautified: vlsm.v preamble.vo ListExtras.vo
+vlsm.vo vlsm.glob vlsm.v.beautified vlsm.required_vo: vlsm.v preamble.vo ListExtras.vo
 vlsm.vio: vlsm.v preamble.vio ListExtras.vio
-indexed_vlsm.vo indexed_vlsm.glob indexed_vlsm.v.beautified: indexed_vlsm.v preamble.vo vlsm.vo
+indexed_vlsm.vo indexed_vlsm.glob indexed_vlsm.v.beautified indexed_vlsm.required_vo: indexed_vlsm.v preamble.vo vlsm.vo
 indexed_vlsm.vio: indexed_vlsm.v preamble.vio vlsm.vio
-commute.vo commute.glob commute.v.beautified: commute.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo common.vo definitions.vo vlsm.vo indexed_vlsm.vo
+commute.vo commute.glob commute.v.beautified commute.required_vo: commute.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo protocol.vo common.vo definitions.vo vlsm.vo indexed_vlsm.vo
 commute.vio: commute.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio protocol.vio common.vio definitions.vio vlsm.vio indexed_vlsm.vio
-vlsmfull.vo vlsmfull.glob vlsmfull.v.beautified: vlsmfull.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo definitions.vo common.vo vlsm.vo indexed_vlsm.vo commute.vo fullnode.vo
+vlsmfull.vo vlsmfull.glob vlsmfull.v.beautified vlsmfull.required_vo: vlsmfull.v preamble.vo ListExtras.vo ListSetExtras.vo RealsExtras.vo definitions.vo common.vo vlsm.vo indexed_vlsm.vo commute.vo fullnode.vo
 vlsmfull.vio: vlsmfull.v preamble.vio ListExtras.vio ListSetExtras.vio RealsExtras.vio definitions.vio common.vio vlsm.vio indexed_vlsm.vio commute.vio fullnode.vio
