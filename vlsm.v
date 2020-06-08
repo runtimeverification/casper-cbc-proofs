@@ -774,8 +774,12 @@ we define states and messages together as a property over a product type. *)
         )
         : in_futures pfirst psecond.
       Proof.
-      - destruct H as [tr [n1 [n2 [Hle [Hs1 Hs2]]]]].            
-        unfold in_futures.
+      - destruct H as [[tr Htr] [n1 [n2 [Hle [Hs1 Hs2]]]]].
+        unfold in_futures. unfold first in *. clear first.
+        unfold second in *. clear second.
+        destruct pfirst as [first Hfirst].
+        destruct psecond as [second Hsecond].
+        simpl in *.
       Admitted.
 
 

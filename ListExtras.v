@@ -289,6 +289,51 @@ Proof.
   simpl. apply f_equal. assumption.
 Qed.
 
+Lemma stream_app_f_equal
+  {A : Type}
+  (l1 l2 : list A)
+  (s1 s2 : Stream A)
+  (Hl : l1 = l2)
+  (Hs : EqSt s1 s2)
+  : EqSt (stream_app l1 s1) (stream_app l2 s2)
+  .
+Proof.
+  subst. induction l2; try assumption.
+  simpl. constructor; try reflexivity. assumption.
+Qed.
+
+Fixpoint stream_prefix
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  : list A
+  := match n,l with
+  | 0,_ => []
+  | S n, Cons a l => a :: stream_prefix l n
+  end.
+
+Fixpoint stream_suffix
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  : Stream A
+  := match n,l with
+  | 0,_ => l
+  | S n, Cons a l => stream_suffix l n
+  end.
+
+Lemma stream_prefix_suffix
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  : stream_app (stream_prefix l n) (stream_suffix l n) = l
+  .
+Proof.
+  generalize dependent l.
+  induction n; try reflexivity; intros [a l]; simpl.
+  f_equal. apply IHn.
+Qed.
+
 Lemma nth_error_last
   {A : Type}
   (l : list A)
@@ -309,6 +354,128 @@ Proof.
     destruct l; inversion H0.
     repeat rewrite unroll_last.
     reflexivity.
+Qed.
+
+Fixpoint list_suffix
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  : list A
+  := match n,l with
+    | 0,_ => l
+    | _,[] => []
+    | S n, a :: l => list_suffix l n
+    end.
+
+Fixpoint list_prefix
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  : list A
+  := match n,l with
+    | 0,_ => []
+    | _,[] => []
+    | S n, a :: l => a :: list_prefix l n
+    end.
+
+Lemma list_prefix_prefix
+  {A : Type}
+  (l : list A)
+  (n1 n2 : nat)
+  (Hn: n1 <= n2)
+  : list_prefix (list_prefix l n2) n1 = list_prefix l n1
+  .
+Proof.
+  generalize dependent n1. generalize dependent n2.
+  induction l; intros [|n2] [|n1] Hn; try reflexivity.
+  - inversion Hn.
+  - simpl. f_equal. apply IHl. apply le_S_n.  assumption.
+Qed.
+
+Lemma list_prefix_suffix
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  : list_prefix l n ++ list_suffix l n = l
+  .
+  Proof.
+   generalize dependent n. induction l; intros [|n]; try reflexivity.
+   simpl.
+   f_equal. apply IHl.
+  Qed.
+
+Definition list_segment
+  {A : Type}
+  (l : list A)
+  (n1 n2 : nat)
+  := list_suffix (list_prefix l n2) n1.
+
+Lemma list_prefix_segment_suffix
+  {A : Type}
+  (l : list A)
+  (n1 n2 : nat)
+  (Hn : n1 <= n2)
+  : list_prefix l n1 ++ list_segment l n1 n2 ++ list_suffix l n2 = l
+  .
+Proof.
+  rewrite <- (list_prefix_suffix l n2) at 4.
+  rewrite app_assoc.
+  f_equal.
+  unfold list_segment.
+  rewrite <- (list_prefix_suffix (list_prefix l n2) n1) at 2.
+  f_equal.
+  symmetry.
+  apply list_prefix_prefix.
+  assumption.
+Qed.
+
+Lemma stream_prefix_prefix
+  {A : Type}
+  (l : Stream A)
+  (n1 n2 : nat)
+  (Hn: n1 <= n2)
+  : list_prefix (stream_prefix l n2) n1 = stream_prefix l n1
+  .
+Proof.
+  generalize dependent n2.
+  generalize dependent l.
+  induction n1; intros [a l]; intros [|n2] Hn; try reflexivity.
+  - inversion Hn.
+  - simpl. f_equal. apply IHn1. apply le_S_n.  assumption.
+Qed.
+
+Definition stream_segment
+  {A : Type}
+  (l : Stream A)
+  (n1 n2 : nat)
+  : list A
+  := list_suffix (stream_prefix l n2) n1
+  .
+
+Lemma stream_prefix_segment_suffix
+  {A : Type}
+  (l : Stream A)
+  (n1 n2 : nat)
+  (Hn : n1 <= n2)
+  : EqSt
+   (stream_app
+   ((stream_prefix l n1)
+     ++
+    (stream_segment l n1 n2)
+   )
+    (stream_suffix l n2)
+    )
+    l
+  .
+Proof.
+  rewrite <- (stream_prefix_suffix l n2) at 4.
+  apply stream_app_f_equal; try apply EqSt_reflex.
+  unfold stream_segment.
+  rewrite <- (list_prefix_suffix (stream_prefix l n2) n1) at 2.
+  f_equal.
+  symmetry.
+  apply stream_prefix_prefix.
+  assumption.
 Qed.
 
 (**
