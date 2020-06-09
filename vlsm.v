@@ -337,6 +337,17 @@ we define states and messages together as a property over a product type. *)
         inversion Htr. assumption.
       Qed.
 
+      Lemma finite_ptrace_first_pstate
+        (s : state)
+        (tr : list in_state_out)
+        (Htr : finite_ptrace_from s tr)
+        : protocol_state_prop s
+        .
+      Proof.
+        inversion Htr; subst; try assumption.
+        - inversion H0. assumption.
+      Qed.
+
       Lemma finite_ptrace_tail
             (s : state)
             (tr : list in_state_out)
@@ -346,7 +357,6 @@ we define states and messages together as a property over a product type. *)
       Proof.
         inversion Htr. assumption.
       Qed.
-
 
       Lemma finite_ptrace_consecutive_valid_transition
             (s : state)
@@ -422,6 +432,65 @@ we define states and messages together as a property over a product type. *)
            rewrite last_identity. assumption.
       Qed.
 
+      Lemma finite_ptrace_from_prefix
+        (s : state)
+        (ls : list in_state_out)       
+        (Htr : finite_ptrace_from s ls)
+        (n : nat)
+        : finite_ptrace_from s (list_prefix ls n).
+      Proof.
+        specialize (list_prefix_suffix ls n); intro Hdecompose.
+        rewrite <- Hdecompose in Htr.
+        apply finite_ptrace_from_app_iff in Htr.
+        destruct Htr as [Hpr _].
+        assumption.
+      Qed.
+
+      Lemma finite_ptrace_from_suffix
+        (s : state)
+        (ls : list in_state_out)       
+        (Htr : finite_ptrace_from s ls)
+        (n : nat)
+        (nth : state)
+        (Hnth : nth_error (s :: List.map destination ls) n = Some nth)
+        : finite_ptrace_from nth (list_suffix ls n)
+        .
+      Proof.
+        specialize (list_prefix_suffix ls n); intro Hdecompose.
+        rewrite <- Hdecompose in Htr.
+        apply finite_ptrace_from_app_iff in Htr.
+        destruct Htr as [_ Htr].
+        assert (Heq : last (List.map destination (list_prefix ls n)) s = nth).
+        { rewrite list_prefix_map.
+          destruct n.
+          - simpl in Hnth. inversion Hnth; subst; clear Hnth.
+            remember (List.map destination ls) as l.
+            destruct l; reflexivity.
+          - symmetry. apply list_prefix_nth_last.
+            simpl in Hnth. assumption.
+        }
+        rewrite Heq in Htr.
+        assumption.
+      Qed.
+
+      Lemma finite_ptrace_from_segment
+        (s : state)
+        (ls : list in_state_out)       
+        (Htr : finite_ptrace_from s ls)
+        (n1 n2 : nat)
+        (Hle : n1 <= n2)
+        (n1th : state)
+        (Hnth : nth_error (s :: List.map destination ls) n1 = Some n1th)
+        : finite_ptrace_from n1th (list_segment ls n1 n2).
+      Proof.
+        apply finite_ptrace_from_suffix with s.
+        - apply finite_ptrace_from_prefix. assumption.
+        - destruct n1; try assumption.
+          simpl. simpl in Hnth.
+          rewrite list_prefix_map.
+          rewrite list_prefix_nth; assumption.
+      Qed.
+
       CoInductive infinite_ptrace_from :
         state -> Stream in_state_out -> Prop :=
       | infinite_ptrace_extend : forall  (s : state) (tl : Stream in_state_out),
@@ -447,6 +516,72 @@ we define states and messages together as a property over a product type. *)
           specialize (IHtr1 s H2). assumption.
       Qed.
 
+      Lemma infinite_ptrace_from_app_iff
+        (s : state)
+        (ls : list in_state_out)
+        (ls' : Stream in_state_out)
+        (s' := (last (List.map destination ls) s))
+        : finite_ptrace_from s ls /\ infinite_ptrace_from s' ls'
+          <->
+          infinite_ptrace_from s (stream_app ls ls').
+      Proof.
+        intros. generalize dependent ls'. generalize dependent s. 
+        induction ls; intros; split.
+        - intros [_ H]. assumption.
+        - simpl; intros; split; try assumption. constructor. inversion H; try assumption.
+          apply (protocol_transition_origin H1).
+        - simpl. intros [Htr Htr']. 
+          destruct a. apply infinite_ptrace_extend.
+          + apply IHls. inversion Htr. split. apply H2.
+            unfold s' in Htr'. 
+            assert (last_identity: last (List.map destination ls) destination0 = last
+            (List.map destination
+               ({| l := l1; input := input0; destination := destination0; output := output0 |} :: ls)) s). {
+            rewrite map_cons. rewrite unroll_last. simpl. reflexivity. }
+            rewrite last_identity. assumption. 
+          + inversion Htr. apply H6.
+         - intros. inversion H. subst. specialize (IHls s1). simpl in IHls. specialize (IHls ls'). apply IHls in H3.
+           destruct H3. split. 
+           + constructor. apply H0. apply H4.
+           + assert (last_identity : s' = last (List.map destination ls) s1). {
+             unfold s'. rewrite map_cons. rewrite unroll_last. reflexivity. 
+           }
+           rewrite last_identity. assumption.
+      Qed.
+
+      Lemma infinite_ptrace_from_prefix
+        (s : state)
+        (ls : Stream in_state_out)       
+        (Htr : infinite_ptrace_from s ls)
+        (n : nat)
+        : finite_ptrace_from s (stream_prefix ls n).
+      Proof.
+        specialize (stream_prefix_suffix ls n); intro Hdecompose.
+        rewrite <- Hdecompose in Htr.
+        apply infinite_ptrace_from_app_iff in Htr.
+        destruct Htr as [Hpr _].
+        assumption.
+      Qed.
+
+      Lemma infinite_ptrace_from_segment
+        (s : state)
+        (ls : Stream in_state_out)       
+        (Htr : infinite_ptrace_from s ls)
+        (n1 n2 : nat)
+        (Hle : n1 <= n2)
+        (n1th := Str_nth n1 (Cons s (Streams.map destination ls)))
+        : finite_ptrace_from n1th (stream_segment ls n1 n2).
+      Proof.
+        apply finite_ptrace_from_suffix with s.
+        - apply infinite_ptrace_from_prefix. assumption.
+        - destruct n1; try reflexivity.
+          unfold n1th. clear n1th.
+          simpl.
+          rewrite stream_prefix_map.
+          rewrite stream_prefix_nth; try assumption.
+          reflexivity.
+      Qed.
+
       Definition infinite_ptrace (s : state) (st : Stream in_state_out)
         := infinite_ptrace_from s st /\ initial_state_prop s.
 
@@ -454,11 +589,23 @@ we define states and messages together as a property over a product type. *)
       | Finite : state -> list in_state_out -> Trace
       | Infinite : state -> Stream in_state_out -> Trace.
 
+      Definition trace_initial_state (tr : Trace) : state :=
+        match tr with 
+        | Finite s _ => s
+        | Infinite s _ => s
+        end. 
+
       Definition ptrace_prop (tr : Trace) : Prop :=
         match tr with 
         | Finite s ls => finite_ptrace s ls
         | Infinite s sm => infinite_ptrace s sm
-        end. 
+        end.
+
+      Definition ptrace_from_prop (tr : Trace) : Prop :=
+        match tr with 
+        | Finite s ls => finite_ptrace_from s ls
+        | Infinite s sm => infinite_ptrace_from s sm
+        end.
 
       Definition protocol_trace : Type :=
         { tr : Trace | ptrace_prop tr}.
@@ -678,8 +825,6 @@ we define states and messages together as a property over a product type. *)
           finite_ptrace_from first tr /\
           last (List.map destination tr) first = second.
 
-      
-
       Lemma in_futures_witness
         (pfirst psecond : protocol_state)
         (first := proj1_sig pfirst)
@@ -763,6 +908,30 @@ we define states and messages together as a property over a product type. *)
             }
       Qed.
 
+      Definition trace_segment
+        (tr : Trace)
+        (n1 n2 : nat)
+        : list in_state_out
+        := match tr with
+        | Finite s l => list_segment l n1 n2
+        | Infinite s l => stream_segment l n1 n2
+        end.
+
+      Lemma ptrace_segment
+        (tr : Trace)
+        (Htr : ptrace_prop tr)
+        (n1 n2 : nat)
+        (Hle : n1 <= n2)
+        (first : state)
+        (Hfirst : trace_nth tr n1 = Some first)
+        : finite_ptrace_from first (trace_segment tr n1 n2).
+      Proof.
+        destruct tr as [s tr | s tr]; simpl in *; destruct Htr as [Htr Hinit].
+        - apply finite_ptrace_from_segment with s; try assumption.
+        - inversion Hfirst; subst; clear Hfirst.
+          apply (infinite_ptrace_from_segment s tr Htr n1 n2 Hle).
+      Qed.
+
       Lemma in_futures_witness_reverse
         (pfirst psecond : protocol_state)
         (first := proj1_sig pfirst)
@@ -774,14 +943,43 @@ we define states and messages together as a property over a product type. *)
         )
         : in_futures pfirst psecond.
       Proof.
-      - destruct H as [[tr Htr] [n1 [n2 [Hle [Hs1 Hs2]]]]].
+        destruct H as [[tr Htr] [n1 [n2 [Hle [Hs1 Hs2]]]]].
         unfold in_futures. unfold first in *. clear first.
         unfold second in *. clear second.
         destruct pfirst as [first Hfirst].
         destruct psecond as [second Hsecond].
         simpl in *.
-      Admitted.
-
+        inversion Hle; subst; clear Hle.
+        - rewrite Hs1 in Hs2. inversion Hs2; subst; clear Hs2.
+          exists []. split.
+          + constructor. assumption.
+          + reflexivity.
+        -  exists (trace_segment tr n1 (S m)).
+          split.
+          + apply ptrace_segment; try assumption. constructor. assumption.
+          + { destruct tr as [s tr | s tr]; simpl.
+            - unfold list_segment.
+              rewrite list_suffix_map. rewrite list_prefix_map.
+              simpl in Hs2.
+              rewrite list_suffix_last.
+              + symmetry. apply list_prefix_nth_last. assumption.
+              + apply nth_error_length in Hs2.
+                specialize (list_prefix_length (List.map destination tr) (S m) Hs2); intro Hpref_len.
+                rewrite Hpref_len. 
+                apply le_n_S. assumption.
+            - unfold stream_segment.
+              rewrite list_suffix_map. rewrite stream_prefix_map.
+              simpl in Hs2.
+              rewrite list_suffix_last.
+              + symmetry. rewrite stream_prefix_nth_last.
+                unfold Str_nth in Hs2. simpl in Hs2.
+                inversion Hs2; subst.
+                reflexivity.
+              + specialize (stream_prefix_length (Streams.map destination tr) (S m)); intro Hpref_len.
+                rewrite Hpref_len. 
+                apply le_n_S. assumption.
+            }
+      Qed.
 
       Definition trace_last (tr : Trace) : option state
         :=

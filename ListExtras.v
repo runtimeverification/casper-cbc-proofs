@@ -1,4 +1,4 @@
-Require Import Coq.Bool.Bool.
+Require Import Coq.Bool.Bool Coq.Arith.Lt.
 Require Import List.
 Import ListNotations.
 
@@ -312,15 +312,38 @@ Fixpoint stream_prefix
   | S n, Cons a l => a :: stream_prefix l n
   end.
 
-Fixpoint stream_suffix
+Lemma stream_prefix_map
+  {A B : Type}
+  (f : A -> B)
+  (l : Stream A)
+  (n : nat)
+  : List.map f (stream_prefix l n) = stream_prefix (Streams.map f l) n
+  .
+Proof.
+  generalize dependent l. induction n; intros [a l]; try reflexivity.
+  simpl.
+  f_equal.
+  apply IHn.
+Qed.
+
+Lemma stream_prefix_length
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  : length (stream_prefix l n) = n
+  .
+Proof.
+  generalize dependent l. induction n; intros [a l]; try reflexivity.
+  simpl in *. f_equal.
+  apply IHn.
+Qed.
+
+Definition stream_suffix
   {A : Type}
   (l : Stream A)
   (n : nat)
   : Stream A
-  := match n,l with
-  | 0,_ => l
-  | S n, Cons a l => stream_suffix l n
-  end.
+  := Str_nth_tl n l.
 
 Lemma stream_prefix_suffix
   {A : Type}
@@ -329,7 +352,7 @@ Lemma stream_prefix_suffix
   : stream_app (stream_prefix l n) (stream_suffix l n) = l
   .
 Proof.
-  generalize dependent l.
+  generalize dependent l. unfold stream_suffix.
   induction n; try reflexivity; intros [a l]; simpl.
   f_equal. apply IHn.
 Qed.
@@ -367,6 +390,19 @@ Fixpoint list_suffix
     | S n, a :: l => list_suffix l n
     end.
 
+Lemma list_suffix_map
+  {A B : Type}
+  (f : A -> B)
+  (l : list A)
+  (n : nat)
+  : List.map f (list_suffix l n) = list_suffix (List.map f l) n
+  .
+Proof.
+  generalize dependent l. induction n; intros [|a l]; try reflexivity.
+  simpl.
+  apply IHn.
+Qed.
+
 Fixpoint list_prefix
   {A : Type}
   (l : list A)
@@ -377,6 +413,34 @@ Fixpoint list_prefix
     | _,[] => []
     | S n, a :: l => a :: list_prefix l n
     end.
+
+Lemma list_prefix_map
+  {A B : Type}
+  (f : A -> B)
+  (l : list A)
+  (n : nat)
+  : List.map f (list_prefix l n) = list_prefix (List.map f l) n
+  .
+Proof.
+  generalize dependent l. induction n; intros [|a l]; try reflexivity.
+  simpl.
+  f_equal.
+  apply IHn.
+Qed.
+
+Lemma list_prefix_length
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  (Hlen : n <= length l)
+  : length (list_prefix l n) = n
+  .
+Proof.
+  generalize dependent l. induction n; intros [|a l] Hlen; try reflexivity.
+  - inversion Hlen.
+  - simpl in *. f_equal. apply le_S_n in Hlen.
+    apply IHn; assumption.
+Qed.
 
 Lemma list_prefix_prefix
   {A : Type}
@@ -476,6 +540,207 @@ Proof.
   symmetry.
   apply stream_prefix_prefix.
   assumption.
+Qed.
+
+Lemma stream_prefix_nth
+  {A : Type}
+  (s : Stream A)
+  (n : nat)
+  (i : nat)
+  (Hi : i < n)  
+  : nth_error (stream_prefix s n) i = Some (Str_nth i s)
+  .
+Proof.
+  generalize dependent n. generalize dependent s.
+  induction i; intros [a s] [|n] Hi; try reflexivity.
+  - inversion Hi.
+  - inversion Hi.
+  - simpl.
+    apply lt_S_n in Hi.
+    specialize (IHi s n Hi).
+    rewrite IHi.
+    reflexivity.
+Qed.
+
+Lemma list_prefix_nth
+  {A : Type}
+  (s : list A)
+  (n : nat)
+  (i : nat)
+  (Hi : i < n)  
+  : nth_error (list_prefix s n) i = nth_error s i
+  .
+Proof.
+  generalize dependent n. generalize dependent s.
+  induction i; intros [|a s] [|n] Hi; try reflexivity.
+  - inversion Hi.
+  - inversion Hi.
+  - simpl.
+    apply lt_S_n in Hi.
+    specialize (IHi s n Hi).
+    rewrite IHi.
+    reflexivity.
+Qed.
+
+Lemma nth_error_length
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  (a : A)
+  (Hnth : nth_error l n = Some a)
+  : S n <= length l
+  .
+Proof.
+  generalize dependent a. generalize dependent l.
+  induction n; intros [|a l] b Hnth; simpl.
+  - inversion Hnth.
+  - apply le_n_S. apply le_0_n.
+  - inversion Hnth. 
+  - simpl in Hnth. apply le_n_S.
+    specialize (IHn l b Hnth). assumption.
+Qed.
+
+Lemma list_prefix_nth_last
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  (nth : A)
+  (Hnth : nth_error l n = Some nth)
+  (_last : A)
+  : nth = last (list_prefix l (S n)) _last
+  .
+Proof.
+  specialize (nth_error_length l n nth Hnth); intro Hlen.
+  specialize (list_prefix_length l (S n) Hlen); intro Hpref_len.
+  symmetry in Hpref_len.
+  specialize (list_prefix_nth l (S n) n); intro Hpref.
+  rewrite <- Hpref in Hnth.
+  - specialize (nth_error_last (list_prefix l (S n)) n Hpref_len _last); intro Hlast.
+    rewrite Hlast in Hnth. inversion Hnth.
+    reflexivity.
+  - constructor.
+Qed.
+
+Lemma stream_prefix_nth_last
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  (_last : A)
+  : last (stream_prefix l (S n)) _last = Str_nth n l
+  .
+Proof.
+  specialize (nth_error_last (stream_prefix l (S n)) n); intro Hlast.
+  specialize (stream_prefix_length l (S n)); intro Hpref_len.
+  symmetry in Hpref_len.
+  specialize (Hlast Hpref_len _last).
+  specialize (stream_prefix_nth l (S n) n); intro Hnth.
+  assert (Hlt : n < S n) by constructor.
+  specialize (Hnth Hlt).
+  rewrite Hnth in Hlast.
+  simpl.
+  inversion Hlast.
+  reflexivity.
+Qed.
+  
+Lemma list_suffix_nth
+  {A : Type}
+  (s : list A)
+  (n : nat)
+  (i : nat)
+  (Hi : n <= i)  
+  : nth_error (list_suffix s n) (i - n) = nth_error s i
+  .
+Proof.
+  generalize dependent n. generalize dependent s.
+  induction i; intros [|a s] [|n] Hi; try reflexivity.
+  - inversion Hi.
+  - simpl. apply nth_error_None. apply le_0_n.
+  - apply le_S_n in Hi.
+    simpl.
+    apply IHi.
+    assumption.
+Qed.
+
+Lemma list_suffix_last
+  {A : Type}
+  (l : list A)
+  (i : nat)
+  (Hlt : i < length l)
+  (_default : A)
+  : last (list_suffix l i) _default  = last l _default
+  .
+Proof.
+  generalize dependent l. induction i; intros [|a l] Hlt
+  ; try reflexivity.
+  simpl in Hlt. apply lt_S_n in Hlt.
+  specialize (IHi l Hlt).
+  rewrite unroll_last. simpl.
+  rewrite IHi.
+  destruct l.
+  - inversion Hlt.
+  - rewrite unroll_last. rewrite unroll_last. reflexivity.
+Qed.
+
+Lemma list_suffix_last_default
+  {A : Type}
+  (l : list A)
+  (i : nat)
+  (Hlast : i = length l)
+  (_default : A)
+  : last (list_suffix l i) _default  = _default
+  .
+Proof.
+  generalize dependent l. induction i; intros [|a l] Hlast
+  ; try reflexivity.
+  - inversion Hlast.
+  - simpl in Hlast. inversion Hlast.
+  specialize (IHi l H0).
+  simpl. subst.
+  assumption.
+Qed.
+
+Lemma list_segment_nth
+  {A : Type}
+  (l : list A)
+  (n1 n2 : nat)
+  (Hn : n1 <= n2)
+  (i : nat)
+  (Hi1 : n1 <= i)
+  (Hi2 : i < n2)
+  : nth_error (list_segment l n1 n2) (i - n1) = nth_error l i.
+Proof.
+  unfold list_segment.
+  rewrite list_suffix_nth; try assumption.
+  apply list_prefix_nth.
+  assumption.
+Qed.
+
+Lemma stream_segment_nth
+  {A : Type}
+  (l : Stream A)
+  (n1 n2 : nat)
+  (Hn : n1 <= n2)
+  (i : nat)
+  (Hi1 : n1 <= i)
+  (Hi2 : i < n2)
+  : nth_error (stream_segment l n1 n2) (i - n1) = Some (Str_nth i l).
+Proof.
+  unfold stream_segment.
+  rewrite list_suffix_nth; try assumption.
+  apply stream_prefix_nth.
+  assumption.
+Qed.
+
+Lemma nth_error_map
+  {A B : Type}
+  (f : A -> B)
+  (l : list A)
+  (n : nat)
+  : nth_error (List.map f l) n = option_map f (nth_error l n).
+Proof.
+  generalize dependent n.
+  induction l; intros [|n]; try reflexivity; simpl.
+  apply IHl.
 Qed.
 
 (**
