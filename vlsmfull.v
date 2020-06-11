@@ -1,10 +1,10 @@
-Require Import Bool List Streams Logic.Epsilon Reals ProofIrrelevance.
+Require Import Bool List Streams Logic.Epsilon Reals ProofIrrelevance Fin FinFun.
 Import ListNotations.
 From Casper   
 Require Import preamble ListExtras ListSetExtras RealsExtras definitions common vlsm indexed_vlsm commute fullnode.
 
 
-(* Creating a full-node instance of VLSM *)
+(* Section 2.3 Creating a full-node instance of VLSM *)
 
 Section Full. 
 
@@ -588,44 +588,56 @@ Section Full.
   Parameter validators : list V.
   Parameter v0 : V. 
 
-  Lemma nat_eq_dec : EqDec nat.
-  Proof.
-    unfold EqDec. induction x; destruct y.
-    - left. reflexivity.
-    - right. intros HC; inversion HC.
-    - right. intros HC; inversion HC.
-    - specialize (IHx y). destruct IHx as [Heq | Hneq].
-      + left. subst. reflexivity.
-      + right. intros Heq. inversion Heq. contradiction.
-  Qed.
-  
-  Lemma nat_inhabited : Logic.inhabited nat. 
-  Proof. exact (inhabits 0). Qed.
-
-  Definition IT_index : nat -> VLSM_type (sorted_message C V) :=
-    fun n =>
-      match n with
+  Definition IT_index (n : nat) : Fin.t n -> VLSM_type (sorted_message C V) :=
+    fun i =>
+      match proj1_sig (Fin.to_nat i) with
       | 0 => VLSM_type_full_client2
-      | S n => VLSM_type_full_validator
+      | _ => VLSM_type_full_validator
       end.
 
-  Definition IS_index : forall n : nat, LSM_sig (IT_index n).
-  intros.
-  destruct n.
+  Definition IS_index (n : nat) : forall i : Fin.t n, LSM_sig (IT_index n i).
+  intros. unfold IT_index.
+  destruct (proj1_sig (Fin.to_nat i)) eqn:Hi.
   - exact LSM_full_client2.
   - exact LSM_full_validator.
   Defined.
 
-  Definition IM_index : forall (n : nat), VLSM (IS_index n).
-  intros. 
-  destruct n.
-  exact VLSM_full_client2.
-  exact (VLSM_full_validator (nth (n-1) validators v0)).
+  Definition IM_index (n : nat) : forall i : Fin.t n, VLSM (IS_index n i).
+  intros.
+  unfold IT_index. unfold IS_index. 
+  destruct (proj1_sig (Fin.to_nat i)) eqn:Hi.
+  - exact VLSM_full_client2.
+  - exact (VLSM_full_validator (nth n0 validators v0)).
   Defined.
 
-  Definition VLSM_full_composed : VLSM (indexed_sig 0 _ IS_index).
-  specialize nat_eq_dec; intro eq_dec.
-  exact (indexed_vlsm_free 0 IT_index IS_index IM_index).
-  Defined.
+  Fixpoint fin_listing (n : nat) : list (Fin.t n) :=
+    match n with
+      | 0 => []
+      | S n => Fin.F1 :: List.map Fin.FS (fin_listing n)
+    end.
+  
+  Lemma fin_finite (n : nat) : Listing (fin_listing n).
+  Proof.
+    induction n.
+    - split; try constructor. red. inversion a.
+    - destruct IHn as [Hnodup Hfull].
+      split.
+      + simpl. constructor.
+        * intro Hin. apply in_map_iff in Hin.
+          destruct Hin as [x [Hcontra Hin]]. inversion Hcontra.
+        * apply Injective_map_NoDup; try assumption.
+          intros x y Heq.
+          apply FS_inj.
+          assumption.
+      + intro a. simpl. apply (caseS'  a (fun a => F1 = a \/ In a (List.map FS (fin_listing n)))).
+        * left. reflexivity.
+        * intro p. right.
+          apply in_map. apply Hfull.
+  Qed.
+
+  Instance fin_eq_dec (n : nat) : EqDec (Fin.t (S n)) := (@Fin.eq_dec (S n)). 
+
+  Definition VLSM_full_composed (n : nat) : VLSM (indexed_sig (fin_finite (S n)) F1 _ (IS_index (S n)))
+    := (indexed_vlsm_free (fin_finite (S n)) F1 (IT_index (S n)) (IS_index (S n)) (IM_index (S n))).
 
 End Full.

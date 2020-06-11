@@ -335,6 +335,8 @@ we define states and messages together as a property over a product type. *)
             ;   output : option proto_message
         }.
 
+      (* A finite protocol trace originating in a given state *)
+      
       Inductive finite_ptrace_from : state -> list in_state_out -> Prop :=
       | finite_ptrace_empty : forall (s : state), protocol_state_prop s -> finite_ptrace_from s []
       | finite_ptrace_extend : forall  (s : state) (tl : list in_state_out),
@@ -507,6 +509,8 @@ we define states and messages together as a property over a product type. *)
           rewrite list_prefix_nth; assumption.
       Qed.
 
+      (* An infinite protocol trace originating in a given state *)
+      
       CoInductive infinite_ptrace_from :
         state -> Stream in_state_out -> Prop :=
       | infinite_ptrace_extend : forall  (s : state) (tl : Stream in_state_out),
@@ -787,6 +791,8 @@ we define states and messages together as a property over a product type. *)
           rewrite Htr_r0 in Hextend.
           apply Hextend.
           Qed.
+
+      (* protocol states/messages correspond to protocol traces *)
 
       Lemma protocol_is_trace
             (som' : state * option proto_message)

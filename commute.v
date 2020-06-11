@@ -1,3 +1,4 @@
+Require Import Coq.Logic.FinFun.
 Require Import Bool List Streams Logic.Epsilon.
 Import List Notations.
 From Casper 
@@ -84,14 +85,17 @@ Section CommuteIndexed.
 
   Context
     {CV : consensus_values}
-    {index : Set} `{Heqd : EqDec index}
+    {index : Set}
+    {index_listing : list index}
+    (finite_index : Listing index_listing)
+    `{Heqd : EqDec index}
     {message : Type} 
     {IT : index -> VLSM_type message}
     {IS : forall i : index, LSM_sig (IT i)}
     (IM : forall i : index, VLSM (IS i))
     (Hi : index)
-    (constraint : indexed_label IT -> indexed_state IT * option (indexed_proto_message _ _ IS) -> Prop)
-    (X := indexed_vlsm_constrained Hi IT IS IM constraint)
+    (constraint : indexed_label IT -> indexed_state IT * option (indexed_proto_message finite_index _ _ IS) -> Prop)
+    (X := indexed_vlsm_constrained finite_index Hi IT IS IM constraint)
     (ID : forall i : index, decision (IT i)).
     
   (* 3.2.2 Decision consistency *)
@@ -126,7 +130,7 @@ Section CommuteIndexed.
 
   Lemma final_and_consistent_implies_final : 
       final_and_consistent ->
-      forall i : index, final (indexed_vlsm_constrained_projection Hi _ _ IM constraint i) (ID i).
+      forall i : index, final (indexed_vlsm_constrained_projection finite_index Hi _ _ IM constraint i) (ID i).
 
   Proof.
     unfold final_and_consistent.
@@ -149,20 +153,23 @@ End CommuteIndexed.
 Section Estimators.
   Context
     {CV : consensus_values}
-    {index : Set} `{Heqd : EqDec index}
+    {index : Set}
+    {index_listing : list index}
+    (finite_index : Listing index_listing)
+    `{Heqd : EqDec index}
     {message : Type} 
     {IT : index -> VLSM_type message}
     (IS : forall i : index, LSM_sig (IT i))
     (IM : forall i : index, VLSM (IS i))
     (Hi : index)
-    (constraint : indexed_label IT -> indexed_state IT * option (indexed_proto_message _ _ IS) -> Prop)
-    (X := indexed_vlsm_constrained Hi _ IS IM constraint)
+    (constraint : indexed_label IT -> indexed_state IT * option (indexed_proto_message finite_index _ _ IS) -> Prop)
+    (X := indexed_vlsm_constrained finite_index Hi _ IS IM constraint)
     (ID : forall i : index, decision (IT i))
     (IE : forall i : index, Estimator (@state _ (IT i)) C).
 
   Definition decision_estimator_property
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi _ _ IM constraint i)
+    (Xi := indexed_vlsm_constrained_projection finite_index Hi _ _ IM constraint i)
     (Ei := @estimator _ _ (IE i))
     := forall
       (psigma : protocol_state Xi)
@@ -178,7 +185,7 @@ Section Estimators.
 
   Lemma decision_estimator_finality
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi _ _ IM constraint i)
+    (Xi := indexed_vlsm_constrained_projection finite_index Hi _ _ IM constraint i)
     : decision_estimator_property i -> final Xi (ID i).
   Proof.
     intros He tr n1 n2 s1 s2 c1 c2 Hs1 Hs2 Hc1 Hc2.

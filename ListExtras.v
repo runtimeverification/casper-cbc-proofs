@@ -2,6 +2,8 @@ Require Import Coq.Bool.Bool Coq.Arith.Lt.
 Require Import List.
 Import ListNotations.
 
+Require Import Coq.Logic.FinFun.
+
 Require Import Casper.preamble.
 
 
@@ -741,6 +743,73 @@ Proof.
   generalize dependent n.
   induction l; intros [|n]; try reflexivity; simpl.
   apply IHl.
+Qed.
+  
+Lemma forall_finite
+  {index : Type}
+  {index_listing : list index}
+  (Hfinite_index : Full index_listing)
+  (P : index -> Prop)
+  : (forall n : index, P n) <-> Forall P index_listing.
+Proof.
+  split; intros.
+  - apply Forall_forall; intros. apply H.
+  - rewrite Forall_forall in H.
+    apply H. apply Hfinite_index.
+Qed.
+
+Lemma exists_finite
+  {index : Type}
+  {index_listing : list index}
+  (Hfinite_index : Full index_listing)
+  (P : index -> Prop)
+  : (exists n : index, P n) <-> List.Exists P index_listing.
+Proof.
+  split; intros.
+  - apply Exists_exists; intros.
+    destruct H as [n H].
+    exists n.
+    split; try assumption.
+    apply Hfinite_index.  
+  - rewrite Exists_exists in H.
+    destruct H as [n [_ H]].
+    exists n. assumption.
+Qed.
+
+Lemma Exists_dec
+  {A : Type}
+  (P : A -> Prop)
+  (l : list A)
+  (P_dec : forall a : A, {P a} + {~ P a})
+  : {List.Exists P l} + {~ List.Exists P l}
+  .
+Proof.
+  induction l.
+  - right. intro. inversion H.
+  - specialize (P_dec a).
+    destruct P_dec as [Pa | Pna].
+    + left. left. assumption.
+    + destruct IHl as [Pl | Pnl] .
+      * left. right. assumption.
+      * right. intro. inversion H; subst; contradiction.
+Qed.
+
+Lemma Forall_dec
+  {A : Type}
+  (P : A -> Prop)
+  (l : list A)
+  (P_dec : forall a : A, {P a} + {~ P a})
+  : {List.Forall P l} + {~ List.Forall P l}
+  .
+Proof.
+  induction l.
+  - left. constructor.
+  - specialize (P_dec a).
+    destruct P_dec as [Pa | Pna].
+    + destruct IHl as [Pl | Pnl] .
+      * left. constructor;  assumption.
+      * right. intro. inversion H; subst; contradiction.
+    + right. intro. inversion H; contradiction.
 Qed.
 
 (**

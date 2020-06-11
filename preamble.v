@@ -1,4 +1,4 @@
-Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ChoiceFacts ProofIrrelevance.
+Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ChoiceFacts ProofIrrelevance Eqdep_dec.
 Import ListNotations.
 
 Tactic Notation "spec" hyp(H) := 
@@ -42,6 +42,17 @@ Qed.
 Class EqDec X :=
   eq_dec : forall x y : X, {x = y} + {x <> y}.
 
+(* https://coq.discourse.group/t/writing-equality-decision-that-reduces-dec-x-x-for-opaque-x/551/2 *)
+
+Lemma eq_dec_refl A (eq_dec : forall x y : A, {x = y} + {x <> y}) x :
+  eq_dec x x = left eq_refl.
+Proof.
+  destruct (eq_dec x x) as [|[]]; trivial.
+  f_equal.
+  now apply K_dec_type with (P := fun prf => prf = eq_refl).
+Qed.
+
+(*
 Lemma DepEqDec
   {X}
   (Heqd : EqDec X)
@@ -54,6 +65,7 @@ Proof.
   - left. subst. apply f_equal. apply proof_irrelevance.
   - right.  intros Heq. apply Hneq. inversion Heq. reflexivity.
 Qed.
+*)
 
 Lemma nat_eq_dec : EqDec nat.
 Proof.

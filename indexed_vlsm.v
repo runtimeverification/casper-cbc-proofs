@@ -2,22 +2,25 @@ Require Import List.
 Import ListNotations.
 Require Import Logic.FunctionalExtensionality.
 
-Require Import ClassicalDescription ClassicalChoice ChoiceFacts.
+Require Import Coq.Logic.FinFun.
 
 From Casper
-     Require Import preamble vlsm.
+     Require Import ListExtras preamble vlsm.
 
 (*
+Section 2.4 VLSM composition
+
 Composition of indexed VLSMs.
 
-Assumes classical logic (excluded middle) and the axiom of choice.
  *)
 
 Section indexing. 
 
   Context {message : Type}
           {index : Type}
-          {IndEqDec : EqDec index}
+          {index_listing : list index}
+          (finite_index : Listing index_listing)
+          `{IndEqDec : EqDec index}
           (i0 : index)
           (IT : index -> VLSM_type message)
           (IS : forall i : index, LSM_sig (IT i)).
@@ -48,7 +51,17 @@ Section indexing.
     : forall m : message, {_indexed_proto_message_prop m} + {~_indexed_proto_message_prop m}.
   Proof.
     intros.
-    apply excluded_middle_informative.
+    unfold _indexed_proto_message_prop.
+    specialize (Exists_dec (fun n => @proto_message_prop message (IT n) (IS n) m) index_listing); intro Hex_dec.
+    assert (Hdec : (forall a : index, {@proto_message_prop _ _ (IS a) m} + {~ @proto_message_prop _ _ (IS a) m}))
+      by (intro; apply proto_message_decidable).
+    specialize (Hex_dec Hdec).
+    destruct Hex_dec as [Hex | Hnex].
+    - left. apply Exists_exists in Hex. destruct Hex as [x [_ Hpm]].
+      exists x; assumption.
+    - right. intro Hex. apply Hnex.  destruct Hex as [x Hpm].
+      apply Exists_exists. exists x. split; try assumption.
+      destruct finite_index as [_ Hfull]. apply Hfull.
   Qed.
 
   Definition _indexed_proto_message
@@ -145,9 +158,8 @@ Section indexing.
              (si : @state message (IT i))
     : state_update s i si i = si.
   Proof.
-    unfold state_update. destruct (eq_dec i i) eqn:Heq; try contradiction.
-    assert (e = eq_refl) by apply proof_irrelevance.  rewrite H. simpl.
-    reflexivity.
+    unfold state_update.
+    rewrite eq_dec_refl. reflexivity.
   Qed.
 
   Definition _indexed_transition
@@ -294,15 +306,17 @@ Section projections.
 
   Context {message : Type}
           {index : Type}
-          {IndEqDec : EqDec index}
+          {index_listing : list index}
+          (finite_index : Listing index_listing)
+          `{IndEqDec : EqDec index}
           (i0 : index)
           (IT : index -> VLSM_type message)
           (IS : forall i : index, LSM_sig (IT i))
           (IM : forall n : index, VLSM (IS n))
           (T := indexed_type IT)
-          (S := indexed_sig i0 IT IS)
+          (S := indexed_sig finite_index i0 IT IS)
           (constraint : @label _ T -> @state _ T * option (@proto_message _ _ S) -> Prop)
-          (X := indexed_vlsm_constrained i0 IT IS IM constraint)
+          (X := indexed_vlsm_constrained finite_index i0 IT IS IM constraint)
           .
 
   Lemma indexed_valid_message
@@ -401,7 +415,7 @@ Section projections.
         /\
         constraint (existT _ j lj)
         ( proj1_sig s
-        , option_map (lift_proto_messageI _ _ IS j) (option_map (@proj1_sig proto_message _) om)
+        , option_map (lift_proto_messageI _ _ _ IS j) (option_map (@proj1_sig proto_message _) om)
         )
       .
 
@@ -721,8 +735,10 @@ Section free_projections.
 
   Context {message : Type}
           {index : Type}
-          {IndEqDec : EqDec index}
+          `{IndEqDec : EqDec index}
           (i0 : index)
+          {index_listing : list index}
+          (finite_index : Listing index_listing)
           (IT : index -> VLSM_type message)
           (IS : forall i : index, LSM_sig (IT i))
           (IM : forall n : index, VLSM (IS n))
@@ -732,11 +748,11 @@ Section free_projections.
              (i : index)
     : LSM_sig (IT i)
     :=
-      indexed_vlsm_constrained_projection_sig i0 _ _ IM (free_constraint _ _ IS) i.
+      indexed_vlsm_constrained_projection_sig finite_index i0 _ _ IM (free_constraint _ _ _ IS) i.
 
   Definition indexed_vlsm_free_projection
              (i : index)
     : VLSM (indexed_vlsm_free_projection_sig i)
     :=
-      indexed_vlsm_constrained_projection i0 _ _ IM (free_constraint _ _ IS) i.
+      indexed_vlsm_constrained_projection finite_index i0 _ _ IM (free_constraint _ _ _ IS) i.
 End free_projections.
