@@ -11,14 +11,15 @@ Class consensus_values :=
     about_C : exists (c1 c2 : C), c1 <> c2;
   }.
 
-Definition decision {message} (S : LSM_sig message) {CV : consensus_values}
-  := @state _ S -> option C.
+Definition decision {message} (T : VLSM_type message) {CV : consensus_values}
+  := @state _ T -> option C.
 
 Section CommuteSingleton.
   
   Context 
     {message : Type}
-    {S : LSM_sig message}
+    {T : VLSM_type message}
+    {S : LSM_sig T}
     {CV : consensus_values}
     (V : VLSM S).
 
@@ -31,8 +32,8 @@ Section CommuteSingleton.
     constructor.
   Defined. *)
 
-  Definition final : decision S -> Prop :=
-    fun (D : decision S) => forall (tr : protocol_trace V), 
+  Definition final : decision T -> Prop :=
+    fun (D : decision T) => forall (tr : protocol_trace V), 
         forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
           (trace_nth (proj1_sig tr) n1 = Some s1) ->
           (trace_nth (proj1_sig tr) n2 = Some s2) ->
@@ -41,8 +42,8 @@ Section CommuteSingleton.
           c1 = c2.
 
   (* 3.3.1 Initial protocol state bivalence *)
-  Definition bivalent : decision S -> Prop :=
-    fun (D : decision S) =>
+  Definition bivalent : decision T -> Prop :=
+    fun (D : decision T) =>
       (* All initial states decide on None *) 
       (forall (s0 : state),
         initial_state_prop s0 ->
@@ -54,8 +55,8 @@ Section CommuteSingleton.
 
   (* 3.3.2 No stuck states *) 
 
-  Definition stuck_free : decision S -> Prop :=
-    fun (D : decision S) =>
+  Definition stuck_free : decision T -> Prop :=
+    fun (D : decision T) =>
       (forall (s : state),
           exists (tr : protocol_trace V) 
                  (decided_state : state)
@@ -69,12 +70,12 @@ Section CommuteSingleton.
   (* 3.3.3 Protocol definition symmetry *) 
   (* How do we formalize this property set-theoretically? *)
 
-  Definition behavior : decision S -> Prop := 
+  Definition behavior : decision T -> Prop := 
     fun _ => True.
 
-  Definition symmetric : decision S -> Prop :=
-    fun (D : decision S) =>
-    exists (f : decision S -> decision S),
+  Definition symmetric : decision T -> Prop :=
+    fun (D : decision T) =>
+    exists (f : decision T -> decision T),
       behavior D = behavior (f D).
 
 End CommuteSingleton.
@@ -85,12 +86,13 @@ Section CommuteIndexed.
     {CV : consensus_values}
     {index : Set} `{Heqd : EqDec index}
     {message : Type} 
-    {IS : index -> LSM_sig message}
+    {IT : index -> VLSM_type message}
+    {IS : forall i : index, LSM_sig (IT i)}
     (IM : forall i : index, VLSM (IS i))
     (Hi : index)
-    (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
-    (X := indexed_vlsm_constrained Hi IS IM constraint)
-    (ID : forall i : index, decision (IS i)).
+    (constraint : indexed_label IT -> indexed_state IT * option (indexed_proto_message _ _ IS) -> Prop)
+    (X := indexed_vlsm_constrained Hi IT IS IM constraint)
+    (ID : forall i : index, decision (IT i)).
     
   (* 3.2.2 Decision consistency *)
 
@@ -98,7 +100,7 @@ Section CommuteIndexed.
       forall (tr : protocol_trace X), 
       forall (n1 n2 : nat),
       forall (j k : index),
-      forall (s1 s2 : @state _ (sign X)),
+      forall (s1 s2 : @state _ (indexed_type IT)),
       forall (c1 c2 : C),
       j <> k ->
       trace_nth (proj1_sig tr) n1 = (Some s1) ->
@@ -114,7 +116,7 @@ Section CommuteIndexed.
       forall (tr : protocol_trace X), 
       forall (n1 n2 : nat),
       forall (j k : index),
-      forall (s1 s2 : @state _ (sign X)),
+      forall (s1 s2 : @state _ (indexed_type IT)),
       forall (c1 c2 : C),
       trace_nth (proj1_sig tr) n1 = (Some s1) ->
       trace_nth (proj1_sig tr) n2 = (Some s2) ->
@@ -124,7 +126,7 @@ Section CommuteIndexed.
 
   Lemma final_and_consistent_implies_final : 
       final_and_consistent ->
-      forall i : index, final (indexed_vlsm_constrained_projection Hi IM constraint i) (ID i).
+      forall i : index, final (indexed_vlsm_constrained_projection Hi _ _ IM constraint i) (ID i).
 
   Proof.
     unfold final_and_consistent.
@@ -134,9 +136,9 @@ Section CommuteIndexed.
     Admitted.
 
   Definition live :=
-    forall (tr : @Trace _ (sign X)),
+    forall (tr : @Trace _ _ (sign X)),
       complete_trace_prop X tr -> 
-      exists (s : @state _ (sign X)) (n : nat) (i : index) (c : C), 
+      exists (s : @state _ (indexed_type IT)) (n : nat) (i : index) (c : C), 
         trace_nth tr n = Some s /\
         (ID i) (s i) = Some c.
 
@@ -149,17 +151,18 @@ Section Estimators.
     {CV : consensus_values}
     {index : Set} `{Heqd : EqDec index}
     {message : Type} 
-    {IS : index -> LSM_sig message}
+    {IT : index -> VLSM_type message}
+    (IS : forall i : index, LSM_sig (IT i))
     (IM : forall i : index, VLSM (IS i))
     (Hi : index)
-    (constraint : indexed_label IS -> indexed_state IS * option (indexed_proto_message IS) -> Prop)
-    (X := indexed_vlsm_constrained Hi IS IM constraint)
-    (ID : forall i : index, decision (IS i))
-    (IE : forall i : index, Estimator (@state _ (IS i)) C).
+    (constraint : indexed_label IT -> indexed_state IT * option (indexed_proto_message _ _ IS) -> Prop)
+    (X := indexed_vlsm_constrained Hi _ IS IM constraint)
+    (ID : forall i : index, decision (IT i))
+    (IE : forall i : index, Estimator (@state _ (IT i)) C).
 
   Definition decision_estimator_property
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+    (Xi := indexed_vlsm_constrained_projection Hi _ _ IM constraint i)
     (Ei := @estimator _ _ (IE i))
     := forall
       (psigma : protocol_state Xi)
@@ -175,7 +178,7 @@ Section Estimators.
 
   Lemma decision_estimator_finality
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+    (Xi := indexed_vlsm_constrained_projection Hi _ _ IM constraint i)
     : decision_estimator_property i -> final Xi (ID i).
   Proof.
     intros He tr n1 n2 s1 s2 c1 c2 Hs1 Hs2 Hc1 Hc2.

@@ -5,36 +5,50 @@ From Casper
 Require Import preamble ListExtras.
 
 (* 2.2.1 VLSM Parameters *)
-
-  Class LSM_sig (message : Type) :=
+  Class VLSM_type (message : Type) :=
     { state : Type
-      ; label : Type
-      ; proto_message_prop : message -> Prop
-      ; proto_message_decidable : forall m, {proto_message_prop m} + {~ proto_message_prop m}
-      ; proto_message := { m : message | proto_message_prop m }
-      ; initial_state_prop : state -> Prop
-      ; initial_state := { s : state | initial_state_prop s }
-      ; initial_message_prop : proto_message -> Prop
-      ; initial_message := { m : proto_message | initial_message_prop m }
-      ; s0 : initial_state
-      ; m0 : proto_message
-      ; l0 : label
+    ; label : Type
     }.
 
-    Class VLSM {message : Type} (lsm : LSM_sig message) :=
+  Class LSM_sig {message : Type} (vtype : VLSM_type message) :=
+    { proto_message_prop : message -> Prop
+    ; proto_message_decidable : forall m, {proto_message_prop m} + {~ proto_message_prop m}
+    ; proto_message := { m : message | proto_message_prop m }
+    ; initial_state_prop : state -> Prop
+    ; initial_state := { s : state | initial_state_prop s }
+    ; initial_message_prop : proto_message -> Prop
+    ; initial_message := { m : proto_message | initial_message_prop m }
+    ; s0 : initial_state
+    ; m0 : proto_message
+    ; l0 : label
+    }.
+
+    Class VLSM {message : Type} {vtype : VLSM_type message} (lsm : LSM_sig vtype) :=
       { transition : label -> state * option proto_message -> state * option proto_message
         ; valid : label -> state * option proto_message -> Prop
       }.
+
+    Definition sign
+      {message : Type}
+      {vtype : VLSM_type message}
+      {Sig : LSM_sig vtype}
+      (vlsm : VLSM Sig)
+      := Sig.
+
+    Definition type
+      {message : Type}
+      {vtype : VLSM_type message}
+      {Sig : LSM_sig vtype}
+      (vlsm : VLSM Sig)
+      := (state, message, label).
 
     Section VLSM.
 
       Context
         {message : Type}
-        {Sig : LSM_sig message}
+        {vtype : VLSM_type message}
+        {Sig : LSM_sig vtype}
         (vlsm : VLSM Sig). 
-
-      Definition sign (vlsm : VLSM Sig):=
-        Sig.
 
       (* 2.2.2 VLSM protocol states and protocol messages *)
 
@@ -211,6 +225,8 @@ we define states and messages together as a property over a product type. *)
         intros [s' [om' Hps]]. simpl.
         specialize (Hind (s', om') Hps). assumption.
       Qed.
+
+      (* Section 2.2.3 Valid VLSM transitions, VLSM traces, and VLSM identity *)
 
       (* Valid VLSM transitions *)
 
@@ -814,7 +830,11 @@ we define states and messages together as a property over a product type. *)
       Definition protocol_state_trace (tr : protocol_trace) : Trace_states :=
         match proj1_sig tr with
         | Finite s ls => Finite_states (s :: List.map destination ls)
-        | Infinite s st => Infinite_states (Cons s (map destination st)) end. 
+        | Infinite s st => Infinite_states (Cons s (map destination st)) end.
+      
+      Definition protocol_state_trace_prop (tr : Trace_states)
+        := exists (ptr : protocol_trace), tr = protocol_state_trace ptr.
+      
 
       Definition in_futures
         (pfirst psecond : protocol_state)
@@ -1201,3 +1221,18 @@ we define states and messages together as a property over a product type. *)
 
     End VLSM.
 
+    Section VLSM_equality. (* Section 2.2.3 *)
+
+      Context
+        {message : Type}
+        {vtype : VLSM_type message}.
+      
+      Definition VLSM_eq
+        {SigX SigY: LSM_sig vtype}
+        (X : VLSM SigX) (Y : VLSM SigY)
+        :=
+        forall t : Trace_states,
+          protocol_state_trace_prop X t <-> protocol_state_trace_prop Y t
+        .
+
+    End VLSM_equality.
