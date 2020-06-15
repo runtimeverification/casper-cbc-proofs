@@ -192,24 +192,7 @@ Section indexing.
     - exact (valid li (s i, None)).
   Defined.
 
-  Definition _indexed_valid_decidable
-             {IM : forall n : index, VLSM (IS n)}
-             (IDM : forall n : index, VLSM_vdecidable (IM n))
-             (l : indexed_label)
-             (som : indexed_state * option indexed_proto_message)
-    : {_indexed_valid IM l som} + {~_indexed_valid IM l som}.
-    destruct som as [s om].
-    destruct l as [i li]; simpl.
-    destruct om as [[m _]|]; simpl.
-    - destruct (@proto_message_decidable _ _ (IS i) m) as [Hi | _].
-      + apply valid_decidable.
-        apply IDM; assumption. 
-      + right; intro; contradiction.
-    - apply valid_decidable.
-      apply IDM; assumption.
-  Defined.
-
-  (* Constrained VLSM composition *)
+  (* Section 2.4.3 Constrained VLSM composition *)
 
   Definition _indexed_valid_constrained
              (IM : forall n : index, VLSM (IS n))
@@ -237,6 +220,41 @@ Section indexing.
     (IM : forall n : index, VLSM (IS n))
     (constraint : indexed_label -> indexed_state * option (indexed_proto_message) -> Prop)
     := @valid _ _ _ (indexed_vlsm_constrained IM constraint).
+
+  (* Section 2.4.3 Free VLSM composition using constraint = True *)
+
+  Definition free_constraint 
+             (l : indexed_label)
+             (som : indexed_state * option (indexed_proto_message))
+    : Prop
+    :=
+      True.
+
+  Definition indexed_vlsm_free
+             (IM : forall n : index, VLSM (IS n))
+    : VLSM (indexed_sig)
+    :=
+      indexed_vlsm_constrained IM free_constraint
+  .
+
+  (* Composing decidable VLSMs *)
+
+  Definition _indexed_valid_decidable
+             {IM : forall n : index, VLSM (IS n)}
+             (IDM : forall n : index, VLSM_vdecidable (IM n))
+             (l : indexed_label)
+             (som : indexed_state * option indexed_proto_message)
+    : {_indexed_valid IM l som} + {~_indexed_valid IM l som}.
+    destruct som as [s om].
+    destruct l as [i li]; simpl.
+    destruct om as [[m _]|]; simpl.
+    - destruct (@proto_message_decidable _ _ (IS i) m) as [Hi | _].
+      + apply valid_decidable.
+        apply IDM; assumption. 
+      + right; intro; contradiction.
+    - apply valid_decidable.
+      apply IDM; assumption.
+  Defined.
 
   Definition _indexed_valid_constrained_decidable
              {IM : forall n : index, VLSM (IS n)}
@@ -271,27 +289,11 @@ Section indexing.
              (constraint_decidable : forall (l : indexed_label) (som : indexed_state * option (indexed_proto_message)), {constraint l som} + {~constraint l som})
     := @valid_decidable _ _ _ _ (indexed_vlsm_constrained_vdecidable IDM constraint_decidable).
 
-  (* Free VLSM composition *)
-
-  Definition free_constraint 
-             (l : indexed_label)
-             (som : indexed_state * option (indexed_proto_message))
-    : Prop
-    :=
-      True.
-
   Definition free_constraint_decidable
              (l : indexed_label)
              (som : indexed_state * option (indexed_proto_message))
     : {free_constraint l som} + {~free_constraint l som}
     := left I.
-
-  Definition indexed_vlsm_free
-             (IM : forall n : index, VLSM (IS n))
-    : VLSM (indexed_sig)
-    :=
-      indexed_vlsm_constrained IM free_constraint
-  .
 
   Definition indexed_vlsm_free_vdecidable
              {IM : forall n : index, VLSM  (IS n)}
@@ -301,7 +303,7 @@ Section indexing.
       indexed_vlsm_constrained_vdecidable IDM free_constraint_decidable.
 End indexing.
 
-(* From indexed_vlsm_projections.v *)
+(* Section 2.4.4 Projections into VLSM compositions *)
 Section projections. 
 
   Context {message : Type}
@@ -419,6 +421,8 @@ Section projections.
         )
       .
 
+    (* Projects the trace of a composed vlsm to component j *)
+    
     Fixpoint finite_trace_projection_list
       (trx : list (@in_state_out _ _ S))
       : list (@in_state_out _ _ (sign Proj))
@@ -465,6 +469,8 @@ Section projections.
         | _ => tail
         end
       end.
+
+    (* The projection of a protocol trace remains a protocol trace *)
 
     Lemma finite_ptrace_projection
       (s : @state _ T)
@@ -756,3 +762,34 @@ Section free_projections.
     :=
       indexed_vlsm_constrained_projection finite_index i0 _ _ IM (free_constraint _ _ _ IS) i.
 End free_projections.
+
+
+(* Indexed VLSM restrictions
+TODO(traiansf):  this might not be needed. expand only if it becomes useful.
+*)
+Section indexed_vlsm_restriction.
+  Context
+    {message : Type}
+    {index : Type}
+    {index_listing : list index}
+    (finite_index : Listing index_listing)
+    `{IndEqDec : EqDec index}
+    (i0 : index)
+    (IT : index -> VLSM_type message)
+    (IS : forall i : index, LSM_sig (IT i))
+    (IM : forall n : index, VLSM (IS n))
+    (index_restriction : index -> bool)
+    .
+
+Definition restricted_index : Type := {i : index | index_restriction i = true}.
+
+Definition to_restricted_index (i : index) : option restricted_index.
+destruct (index_restriction i) eqn:Hi.
+- exact (Some (exist _ i Hi)).
+- exact None.
+Qed.
+
+Definition restricted_index_listing : list restricted_index
+  := map_option to_restricted_index index_listing.
+
+End indexed_vlsm_restriction.

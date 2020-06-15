@@ -148,7 +148,7 @@ Section CommuteIndexed.
 
 End CommuteIndexed.
 
-(* Section 4 *)
+(* Section 5 *)
 
 Section Estimators.
   Context

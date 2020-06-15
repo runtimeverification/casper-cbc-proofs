@@ -1036,7 +1036,7 @@ we define states and messages together as a property over a product type. *)
         | Infinite _ st => Infinite_messages (map input st) end.
 
       (* Defining equivocation on these trace definitions *)
-      (* Section 6 :
+      (* Section 7 :
   A message m received by a protocol state s with a transition label l in a
   protocol execution trace is called "an equivocation" if it wasn't produced
   in that trace

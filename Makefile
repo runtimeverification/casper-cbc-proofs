@@ -3,11 +3,14 @@ COQDEP = coqdep
 
 COQ_FLAG = -Q "." Casper
 
-SOURCE := preamble.v ListExtras.v ListSetExtras.v RealsExtras.v sorted_lists.v protocol.v common.v definitions.v fullnode.v lightnode.v binary.v ctl.v vlsm.v indexed_vlsm.v commute.v vlsmfull.v
+SRC_DIR := .
+SOURCE := $(wildcard $(SRC_DIR)/*.v)
 
-VO_FILE := $(shell find "." -type f -name '*.vo')
-GLOB_FILE := $(shell find "." -type f -name '*.glob')
-AUX_FILE := $(shell find "." -type f -name '*.vo.aux')
+VO_FILE := $(wildcard $(SRC_DIR)/*.vo)
+VOK_FILE := $(wildcard $(SRC_DIR)/*.vok)
+VOS_FILE := $(wildcard $(SRC_DIR)/*.vos)
+GLOB_FILE := $(wildcard $(SRC_DIR)/*.glob)
+AUX_FILE := $(wildcard $(SRC_DIR)/*.aux)
 
 $(SOURCE:%.v=%.vo): %.vo: %.v
 			@echo COQC $*.v
@@ -19,7 +22,7 @@ dep:
 all: $(SOURCE:%.v=%.vo)
 	
 clean:
-	@rm $(VO_FILE) $(GLOB_FILE) $(AUX_FILE)
+	@rm $(VO_FILE) $(VOK_FILE) $(VOS_FILE) $(GLOB_FILE) $(AUX_FILE)
 
 .DEFAULT_GOAL := all
 

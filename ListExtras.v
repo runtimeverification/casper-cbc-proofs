@@ -812,6 +812,49 @@ Proof.
     + right. intro. inversion H; contradiction.
 Qed.
 
+Definition map_option
+  {A B : Type}
+  (f : A -> option B)
+  : list A -> list B
+  := fold_right
+      (fun x lb =>
+        match f x with
+        | None => lb
+        | Some b => b :: lb
+        end
+      )
+      []
+  .
+
+Lemma in_map_option
+  {A B : Type}
+  (f : A -> option B)
+  (l : list A)
+  (b : B)
+  : In b (map_option f l) <-> exists a : A, In a l /\ f a = Some b.
+Proof.
+  split.
+  - intro Hin.
+    induction l; try inversion Hin.
+    simpl in Hin. destruct (f a) eqn:Hfa.
+    + destruct Hin as [Heq | Hin]; subst.
+      * exists a.
+        split; try assumption.
+        left. reflexivity.
+      * specialize (IHl Hin). destruct IHl as [a' [Hin' Hfa']].
+        exists a'. split; try assumption.
+        right. assumption.
+    + specialize (IHl Hin). destruct IHl as [a' [Hin' Hfa']].
+      exists a'. split; try assumption.
+      right. assumption.
+  - induction l; intros [a' [Hin' Hfa']]; try inversion Hin'; subst; clear Hin'.
+    + simpl. rewrite Hfa'. left. reflexivity.
+    + simpl. destruct (f a) eqn:Hfa.
+      * right. apply IHl. exists a'. split; try assumption.
+      * apply IHl. exists a'. split; try assumption.
+Qed.
+
+
 (**
 
 

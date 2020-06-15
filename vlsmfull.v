@@ -548,7 +548,7 @@ Section Full.
       ; valid := valid_client2
     }.
 
-  (* Minimal full validator protocol for name v: Validator(v) *)
+  (* Section 2.5.2  Minimal full validator protocol for name v: Validator(v) *)
   Definition labelv : Type := option C.
 
   Definition vtransitionv (v : V) (l : labelv) (sm : @sorted_state C V message_type * option proto_message) : @sorted_state C V message_type * option proto_message :=
@@ -586,41 +586,59 @@ Section Full.
     }.
 
   Parameter validators : list V.
-  Parameter v0 : V. 
+  Parameter finite_validators : Listing validators.
+  Parameter v0 : V.  (* non-empty set of validators *)
 
-  Definition IT_index (n : nat) : Fin.t n -> VLSM_type (sorted_message C V) :=
+  Let n : nat := length validators.
+
+  Lemma n_gt_0 : n > 0.
+  Proof.
+    destruct finite_validators as [_ Hfull].
+    specialize (Hfull v0).
+    destruct validators.
+    - try inversion Hfull.
+    - unfold n. simpl. apply lt_0_Sn.
+  Qed.
+
+  Parameter n' : nat. (* number of clients *)
+
+
+  Definition IT_index : Fin.t (n + n') -> VLSM_type (sorted_message C V) :=
     fun i =>
-      match proj1_sig (Fin.to_nat i) with
-      | 0 => VLSM_type_full_client2
+      match proj1_sig (Fin.to_nat i) ?= n with
+      | Gt => VLSM_type_full_client2
       | _ => VLSM_type_full_validator
       end.
 
-  Definition IS_index (n : nat) : forall i : Fin.t n, LSM_sig (IT_index n i).
+  Definition IS_index : forall i : Fin.t (n + n'), LSM_sig (IT_index i).
   intros. unfold IT_index.
-  destruct (proj1_sig (Fin.to_nat i)) eqn:Hi.
-  - exact LSM_full_client2.
+  destruct (proj1_sig (Fin.to_nat i) ?= n) eqn:Hi.
   - exact LSM_full_validator.
+  - exact LSM_full_validator.
+  - exact LSM_full_client2.
   Defined.
 
-  Definition IM_index (n : nat) : forall i : Fin.t n, VLSM (IS_index n i).
+  Definition IM_index : forall i : Fin.t (n + n'), VLSM (IS_index i).
   intros.
   unfold IT_index. unfold IS_index. 
-  destruct (proj1_sig (Fin.to_nat i)) eqn:Hi.
+  remember (proj1_sig (Fin.to_nat i)) as ni.
+  destruct (ni ?= n) eqn:Hi.
+  - exact (VLSM_full_validator (nth (ni - 1) validators v0)).
+  - exact (VLSM_full_validator (nth (ni - 1) validators v0)).
   - exact VLSM_full_client2.
-  - exact (VLSM_full_validator (nth n0 validators v0)).
   Defined.
 
-  Fixpoint fin_listing (n : nat) : list (Fin.t n) :=
-    match n with
+  Fixpoint fin_listing (m : nat) : list (Fin.t m) :=
+    match m with
       | 0 => []
       | S n => Fin.F1 :: List.map Fin.FS (fin_listing n)
     end.
   
-  Lemma fin_finite (n : nat) : Listing (fin_listing n).
+  Lemma fin_finite (m : nat) : Listing (fin_listing m).
   Proof.
-    induction n.
+    induction m.
     - split; try constructor. red. inversion a.
-    - destruct IHn as [Hnodup Hfull].
+    - destruct IHm as [Hnodup Hfull].
       split.
       + simpl. constructor.
         * intro Hin. apply in_map_iff in Hin.
@@ -629,15 +647,29 @@ Section Full.
           intros x y Heq.
           apply FS_inj.
           assumption.
-      + intro a. simpl. apply (caseS'  a (fun a => F1 = a \/ In a (List.map FS (fin_listing n)))).
+      + intro a. simpl. apply (caseS'  a (fun a => F1 = a \/ In a (List.map FS (fin_listing m)))).
         * left. reflexivity.
         * intro p. right.
           apply in_map. apply Hfull.
   Qed.
 
-  Instance fin_eq_dec (n : nat) : EqDec (Fin.t (S n)) := (@Fin.eq_dec (S n)). 
+  Instance fin_eq_dec : EqDec (Fin.t (n + n')) := (@Fin.eq_dec (n + n')). 
 
-  Definition VLSM_full_composed (n : nat) : VLSM (indexed_sig (fin_finite (S n)) F1 _ (IS_index (S n)))
-    := (indexed_vlsm_free (fin_finite (S n)) F1 (IT_index (S n)) (IS_index (S n)) (IM_index (S n))).
+  Definition nlst := n + n' - 1.
+
+  Lemma nlst_S : S nlst = n + n'.
+  Proof.
+    unfold nlst.
+    specialize n_gt_0; intro Hn. destruct n.
+    - inversion Hn.
+    - simpl. f_equal. symmetry. apply minus_n_O.
+  Qed.
+
+  Definition f1_n_plus_n' : Fin.t (n + n').
+  specialize (@F1 nlst). rewrite nlst_S. intro; assumption.
+  Defined.
+
+  Definition VLSM_full_composed : VLSM (indexed_sig (fin_finite (n + n')) f1_n_plus_n' _ IS_index)
+    := indexed_vlsm_free (fin_finite (n + n')) f1_n_plus_n' _ _ IM_index.
 
 End Full.
