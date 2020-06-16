@@ -2,8 +2,8 @@ Require Import Coq.Lists.ListSet.
 Require Import List.
 Import ListNotations.
 
-Require Import Casper.preamble.
-Require Import Casper.ListExtras.
+Require Import Casper.Lib.Preamble.
+Require Import Casper.Lib.ListExtras.
 
 
 Lemma eq_dec_left {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall v,
@@ -539,36 +539,27 @@ Proof.
     apply H3. assumption.
 Qed.
 
-(*
-(* We can always split any two protocol states into two inequal duplicate-free subsets *) 
-Lemma split_nodup_incl_lists {X} `{StrictlyComparable X} :
-  forall (ls : list X),
-    ls <> [] -> 
-  exists (ls1 ls2 : list X),
-    incl ls1 ls /\ incl ls2 ls /\
-    NoDup ls1 /\ NoDup ls2 /\
-    ~ set_eq ls1 ls2. 
+Lemma add_remove_inverse {X} `{StrictlyComparable X}:
+  forall (lv : list X) (v : X),
+    ~ In v lv -> 
+    set_remove compare_eq_dec v (set_add compare_eq_dec v lv) = lv. 
 Proof.
-  intros ls H_non_nil.
-  induction ls as [|hd tl IHls].
-  - exfalso; apply H_non_nil.
-    reflexivity.
-  - destruct tl.
-    exists [hd], [].
-    repeat split.
-    apply incl_refl.
-    easy.
-    constructor.
-    intros; inversion 1.
-    constructor.
-    constructor.
-    intros H_absurd. destruct H_absurd.
-    spec H0 hd (in_eq hd []). inversion H0.
-    spec IHls. intros; inversion 1.
-    destruct IHls as [ls1 [ls2 [H_incl1 [H_incl2 [H_nodup1 [H_nodup2 H_neq]]]]]].
-    exists ls1, ls2; repeat split; try apply incl_tl; assumption.
+  induction lv as [|hd tl IHlv]; intros.
+  - compute.
+    destruct (compare_eq_dec v v). 
+    reflexivity. contradiction.
+  - destruct (compare_eq_dec v hd).
+    subst. exfalso; apply H0.
+    apply in_eq.
+    spec IHlv v. spec IHlv.
+    intro Habsurd. apply H0.
+    right; assumption.
+    rewrite <- IHlv at 2.
+    simpl.
+    destruct (compare_eq_dec v hd).
+    contradiction.
+    simpl. destruct (compare_eq_dec v hd).
+    contradiction. reflexivity.
 Qed.
-*)
-
 
 Unset Implicit Arguments.

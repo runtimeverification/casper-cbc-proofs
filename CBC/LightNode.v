@@ -1,7 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical Sorting.
 Import ListNotations.    
 From Casper  
-Require Import preamble ListExtras ListSetExtras sorted_lists protocol common.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol CBC.Common.
 
 (* Lists of state hashes *) 
 Definition justification_type (hash : Type) : Type := list hash.
@@ -734,26 +734,6 @@ Proof.
     + now apply set_remove_nodup. 
 Qed.
 
-(*
-Lemma message_justification_protocol_state :
-  forall (s : state),
-    protocol_state s ->
-    forall (msg : message),
-      In msg s ->
-      forall (s' : state),
-        hash_state s' = justification msg ->
-        protocol_state s'. 
-Proof.
-  intros s H_prot msg H_in s' H_eq.
-  induction H_prot.
-  inversion H_in. 
-  assert (H_useful := set_remove_not_in compare_eq_dec (c,v,hash_state j) s).
-  spec H_useful.
-  destruct (classic (msg = (c, v, hash_state j))).
-  - subst.
-Abort. 
-*)
-
 (* The intuition is we can never satisfy that neither messages are contained in each other's justifications. *) 
 Lemma non_equivocating_messages_extend
   {C V hash} `{Hsc3 : StrictlyComparable3 C V hash} `{Hmhi : InjectiveMessageHash (message C V hash) hash}
@@ -994,16 +974,6 @@ Proof.
   - constructor; try constructor. apply in_nil.
   - apply not_heavy_singleton.
 Qed.
-
-(*
-      c1 = get_estimate [] 
-      c' = get_estimate [(get_estimate [], v, [])]
-      c2 = get_estimate [(c', v, hash_state [(get_estimate [], v, [])])]
-      j1 = []
-      j2 = [(get_estimate [(get_estimate [], v, [])], v, hash_state [(get_estimate [] , v, [])])]
-      msg1 = (get_estimate [], v, hash_state [])
-      msg2 = (get_estimate [(get_estimate [(get_estimate [], v, [])], v, hash_state [(get_estimate [], v, [])])], v, hash_state [(get_estimate [(get_estimate [], v, [])], v, hash_state [(get_estimate [] , v, [])])])
-*)
 
 (* This is a critical property of the light node protocol *)
 (* Any duplicate-free subset of a protocol state (as list message) is itself a protocol state *) 
@@ -1367,8 +1337,6 @@ Instance level0_light
     A_rel_trans := pstate_light_rel_trans;
   }.
 
-(* Instance level0 : PartialOrder := @level0 FullNode_syntactic. *) 
-
 Instance level1_light
   {C V hash}  `{PS : ProtocolState C V hash}
   : PartialOrderNonLCish (pstate_light C V hash) :=
@@ -1420,11 +1388,6 @@ Definition strong_nontriviality
       /\
       (* But s2 and s3 don't. *) 
       no_common_future s2 s3.
-
-(*
-Definition tweedle_dee (v : common.V) : message := (get_estimate [], v, hash_state []). 
-Definition tweedle_dum (v : common.V) : message := (get_estimate [(get_estimate [(get_estimate [], v, [])], v, hash_state [(get_estimate [], v, [])])], v, hash_state [(get_estimate [(get_estimate [], v, [])], v, hash_state [(get_estimate [] , v, [])])]). 
- *)
 
 (* Here's how to construct an equivocation *) 
 Lemma about_equivocating_messages

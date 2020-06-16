@@ -1,7 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical Sorting.
 Import ListNotations.    
 From Casper  
-Require Import preamble ListExtras ListSetExtras sorted_lists protocol RealsExtras .
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol Lib.RealsExtras .
 
 
 Class InhabitedTwice V := { inhabited_twice : exists (v1 v2 : V), v1 <> v2 }.

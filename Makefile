@@ -4,13 +4,13 @@ COQDEP = coqdep
 COQ_FLAG = -Q "." Casper
 
 SRC_DIR := .
-SOURCE := $(wildcard $(SRC_DIR)/*.v)
+SOURCE := $(wildcard $(SRC_DIR)/*.v) $(wildcard $(SRC_DIR)/Lib/*.v) $(wildcard $(SRC_DIR)/CBC/*.v) $(wildcard $(SRC_DIR)/VLSM/*.v)
 
-VO_FILE := $(wildcard $(SRC_DIR)/*.vo)
-VOK_FILE := $(wildcard $(SRC_DIR)/*.vok)
-VOS_FILE := $(wildcard $(SRC_DIR)/*.vos)
-GLOB_FILE := $(wildcard $(SRC_DIR)/*.glob)
-AUX_FILE := $(wildcard $(SRC_DIR)/*.aux)
+VO_FILE := $(wildcard $(SRC_DIR)/**/*.vo)
+VOK_FILE := $(wildcard $(SRC_DIR)/**/*.vok)
+VOS_FILE := $(wildcard $(SRC_DIR)/**/*.vos)
+GLOB_FILE := $(wildcard $(SRC_DIR)/**/*.glob)
+AUX_FILE := $(wildcard $(SRC_DIR)/**/.*.aux)
 
 $(SOURCE:%.v=%.vo): %.vo: %.v
 			@echo COQC $*.v

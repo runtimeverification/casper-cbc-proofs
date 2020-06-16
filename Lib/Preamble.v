@@ -16,8 +16,6 @@ Tactic Notation "spec" hyp(H) constr(a) constr(b) constr(c) constr(d) :=
 Tactic Notation "spec" hyp(H) constr(a) constr(b) constr(c) constr(d) constr(e) := 
   (generalize (H a b c d e); clear H; intro H).
 
-(** preamble **)
-
 Definition noneOrAll
   (op : option Prop)
   : Prop
@@ -51,21 +49,6 @@ Proof.
   f_equal.
   now apply K_dec_type with (P := fun prf => prf = eq_refl).
 Qed.
-
-(*
-Lemma DepEqDec
-  {X}
-  (Heqd : EqDec X)
-  (P : X -> Prop)
-  : EqDec {x : X | P x}.
-Proof.
-  intros [x Hx] [y Hy].
-  specialize (Heqd x y).
-  destruct Heqd as [Heq | Hneq].
-  - left. subst. apply f_equal. apply proof_irrelevance.
-  - right.  intros Heq. apply Hneq. inversion Heq. reflexivity.
-Qed.
-*)
 
 Lemma nat_eq_dec : EqDec nat.
 Proof.
@@ -356,6 +339,24 @@ Tactic Notation "case_pair" constr(about_M) constr(m1) constr(m2) :=
   assert (H_fresh := @compare_two_cases _ about_M m1 m2);
   destruct H_fresh as [[H_eq1 H_eq2] | [[H_lt H_gt] | [H_gt H_lt]]]. 
 
+Lemma sigify_eq_dec {X : Type} `{StrictlyComparable X} :
+  forall (P : X -> Prop),
+    forall (x1 x2 : {x | P x}), {x1 = x2} + {x1 <> x2}. 
+Proof.
+  intros P x1 x2;
+    destruct x1 as [x1 about_x1];
+    destruct x2 as [x2 about_x2].
+  simpl.
+  destruct (compare_eq_dec x1 x2) as [left | right].
+  left. apply exist_eq; assumption. 
+  right. intro Hnot. apply exist_eq in Hnot.
+  contradiction.
+Qed.
+
+Program Definition sigify_compare {X} `{StrictlyComparable X} (P : X -> Prop) : {x | P x} -> {x | P x} -> comparison := _. 
+Next Obligation.
+  exact (compare X0 X1).
+Defined.
 
 (* Composing StrictlyComparable types *)
 (* Constructing the compare function *)
@@ -611,86 +612,3 @@ Definition triple_strictly_comparable_proj3
     compare := triple_strictly_comparable_proj3_compare;
     compare_strictorder := triple_strictly_comparable_proj3_strictorder;
   |}.
-
-
-(** Polymorphic list library **)
-
-Fixpoint is_member {W} `{StrictlyComparable W} (w : W) (l : list W) : bool :=
-  match l with
-  | [] => false
-  | hd :: tl => match compare w hd with
-              | Eq => true
-              | _ => is_member w tl
-              end
-  end.
-
-Definition compareb {A} `{StrictlyComparable A} (a1 a2 : A) : bool :=
-  match compare a1 a2 with
-  | Eq => true
-  | _ => false
-  end.
-
-Lemma is_member_correct {W} `{StrictlyComparable W} : forall l w, is_member w l = true <-> In w l. 
-Proof. 
-  intros l w.
-  induction l as [|hd tl IHl].
-  - split; intro H'. 
-    + unfold is_member in H'; inversion H'.  
-    + inversion H'.
-  - split; intro H'.
-    + simpl in H'.
-      destruct (compare w hd) eqn:Hcmp;
-        try (right; apply IHl; assumption ). 
-      apply StrictOrder_Reflexive in Hcmp.
-      left. symmetry; assumption.
-    + apply in_inv in H'.
-      destruct H' as [eq | neq]. 
-      rewrite eq.
-      simpl.
-      rewrite compare_eq_refl. 
-      reflexivity.
-      rewrite <- IHl in neq.
-      simpl. assert (H_dec := compare_eq_dec w hd).
-      destruct H_dec as [Heq | Hneq].
-      rewrite Heq. rewrite compare_eq_refl. reflexivity.
-      destruct (compare w hd); try reflexivity;
-        assumption.
-Qed.
-
-Lemma is_member_correct' {W} `{StrictlyComparable W} : forall l w, is_member w l = false <-> ~ In w l. 
-Proof.
-  intros. 
-  apply mirror_reflect.
-  intros; apply is_member_correct.
-Qed.
-
-Lemma In_app_comm {X} : forall l1 l2 (x : X), In x (l1 ++ l2) <-> In x (l2 ++ l1). 
-Proof.
-  intros l1 l2 x; split; intro H_in;
-  apply in_or_app; apply in_app_or in H_in;
-    destruct H_in as [cat | dog];
-    tauto.
-Qed.
-
-Lemma add_remove_inverse {X} `{StrictlyComparable X}:
-  forall (lv : list X) (v : X),
-    ~ In v lv -> 
-    set_remove compare_eq_dec v (set_add compare_eq_dec v lv) = lv. 
-Proof.
-  induction lv as [|hd tl IHlv]; intros.
-  - compute.
-    destruct (compare_eq_dec v v). 
-    reflexivity. contradiction.
-  - destruct (compare_eq_dec v hd).
-    subst. exfalso; apply H0.
-    apply in_eq.
-    spec IHlv v. spec IHlv.
-    intro Habsurd. apply H0.
-    right; assumption.
-    rewrite <- IHlv at 2.
-    simpl.
-    destruct (compare_eq_dec v hd).
-    contradiction.
-    simpl. destruct (compare_eq_dec v hd).
-    contradiction. reflexivity.
-Qed.

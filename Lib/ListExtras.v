@@ -4,7 +4,7 @@ Import ListNotations.
 
 Require Import Coq.Logic.FinFun.
 
-Require Import Casper.preamble.
+Require Import Casper.Lib.Preamble.
 
 
 Definition last_error {S} (l : list S) : option S :=
@@ -262,6 +262,65 @@ Lemma last_error_is_last {A} : forall (l : list A) (x : A),
   last_error (l ++ [x]) = Some x.
 Proof.
   destruct l; try reflexivity; intros; simpl. apply f_equal. apply last_is_last.
+Qed.
+
+(** Polymorphic list library **)
+
+Fixpoint is_member {W} `{StrictlyComparable W} (w : W) (l : list W) : bool :=
+  match l with
+  | [] => false
+  | hd :: tl => match compare w hd with
+              | Eq => true
+              | _ => is_member w tl
+              end
+  end.
+
+Definition compareb {A} `{StrictlyComparable A} (a1 a2 : A) : bool :=
+  match compare a1 a2 with
+  | Eq => true
+  | _ => false
+  end.
+
+Lemma is_member_correct {W} `{StrictlyComparable W} : forall l w, is_member w l = true <-> In w l. 
+Proof. 
+  intros l w.
+  induction l as [|hd tl IHl].
+  - split; intro H'. 
+    + unfold is_member in H'; inversion H'.  
+    + inversion H'.
+  - split; intro H'.
+    + simpl in H'.
+      destruct (compare w hd) eqn:Hcmp;
+        try (right; apply IHl; assumption ). 
+      apply StrictOrder_Reflexive in Hcmp.
+      left. symmetry; assumption.
+    + apply in_inv in H'.
+      destruct H' as [eq | neq]. 
+      rewrite eq.
+      simpl.
+      rewrite compare_eq_refl. 
+      reflexivity.
+      rewrite <- IHl in neq.
+      simpl. assert (H_dec := compare_eq_dec w hd).
+      destruct H_dec as [Heq | Hneq].
+      rewrite Heq. rewrite compare_eq_refl. reflexivity.
+      destruct (compare w hd); try reflexivity;
+        assumption.
+Qed.
+
+Lemma is_member_correct' {W} `{StrictlyComparable W} : forall l w, is_member w l = false <-> ~ In w l. 
+Proof.
+  intros. 
+  apply mirror_reflect.
+  intros; apply is_member_correct.
+Qed.
+
+Lemma In_app_comm {X} : forall l1 l2 (x : X), In x (l1 ++ l2) <-> In x (l2 ++ l1). 
+Proof.
+  intros l1 l2 x; split; intro H_in;
+  apply in_or_app; apply in_app_or in H_in;
+    destruct H_in as [cat | dog];
+    tauto.
 Qed.
 
 Require Import Streams.
@@ -853,25 +912,3 @@ Proof.
       * right. apply IHl. exists a'. split; try assumption.
       * apply IHl. exists a'. split; try assumption.
 Qed.
-
-
-(**
-
-
-Lemma in_dec {A}:
-  (forall x y:A, x = y \/ x <> y) ->
-  forall (a:A) (l:list A), In a l \/ ~ In a l.
-Proof.
-  intros. induction l.
-  - right. intro. inversion H0.
-  - destruct (H a a0).
-    + subst. left; left; reflexivity.
-    + destruct IHl.
-      * left; right; assumption.
-      * right. intro. destruct H2; subst
-      ; try (apply H0; reflexivity).
-      apply H1; assumption.
-Qed.
-
-**)
-

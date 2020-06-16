@@ -1,7 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts ProofIrrelevance.
 Import ListNotations.   
 From Casper   
-Require Import preamble ListExtras ListSetExtras RealsExtras protocol common definitions.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Protocol CBC.Common CBC.Definitions.
 
 (* Implementation -instantiates-> Level Specific *)
 (** Building blocks for instancing CBC_protocol with full node version **)
@@ -412,7 +412,7 @@ Proof.
           }
           rewrite Hequiv0. simpl. rewrite eq_dec_if_true; try reflexivity.
           simpl. simpl in Hgt. unfold Rminus in Hgt.
-          apply (Rplus_gt_compat_r (proj1_sig (common.weight v))) in Hgt. rewrite Rplus_assoc in Hgt.
+          apply (Rplus_gt_compat_r (proj1_sig (CBC.Common.weight v))) in Hgt. rewrite Rplus_assoc in Hgt.
           rewrite Rplus_0_r. rewrite Rplus_0_l in Hgt. rewrite Rplus_opp_l in Hgt. rewrite Rplus_0_r in Hgt.
           apply Rgt_lt. assumption.
         - apply fault_weight_state_incl. unfold syntactic_state_inclusion. simpl.
@@ -995,14 +995,6 @@ Fixpoint next_equivocation_rec
     | [] => s
     | hd :: tl => next_equivocation_rec (next_equivocation_state s hd (get_distinct_sender hd)) tl
     end.
-
-(* 
-Fixpoint next_equivocation_rec' (s : state) (vs : list definitions.V) : state :=
-  match vs with
-  | [] => s
-  | hd :: tl => next_equivocation_state (next_equivocation_rec' s tl) hd (get_distinct_sender hd)
-  end.
-*) 
 
 (* Tweaking this function to give an explicit distinct sender *) 
 Fixpoint next_equivocation_rec'

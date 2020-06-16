@@ -1,38 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ProofIrrelevance.
 Import ListNotations.  
 From Casper
-Require Import preamble ListExtras ListSetExtras.
-
-Lemma exist_eq
-  {X}
-  (P : X -> Prop)
-  (a b : {x : X | P x})
-  : a = b <-> proj1_sig a = proj1_sig b.
-Proof.
-  destruct a as [a Ha]; destruct b as [b Hb]; simpl.
-  split; intros Heq.
-  - inversion Heq. reflexivity.
-  - subst. apply f_equal. apply proof_irrelevance.
-Qed.
-
-Lemma sigify_eq_dec {X : Type} `{StrictlyComparable X} :
-  forall (P : X -> Prop),
-    forall (x1 x2 : {x | P x}), {x1 = x2} + {x1 <> x2}. 
-Proof.
-  intros P x1 x2;
-    destruct x1 as [x1 about_x1];
-    destruct x2 as [x2 about_x2].
-  simpl.
-  destruct (compare_eq_dec x1 x2) as [left | right].
-  left. apply exist_eq; assumption. 
-  right. intro Hnot. apply exist_eq in Hnot.
-  contradiction.
-Qed.
-
-Program Definition sigify_compare {X} `{StrictlyComparable X} (P : X -> Prop) : {x | P x} -> {x | P x} -> comparison := _. 
-Next Obligation.
-  exact (compare X0 X1).
-Defined.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
 
 (* Level 0 : *)
 Class PartialOrder (A : Type) :=
@@ -89,45 +58,6 @@ Class CBC_protocol_eq :=
       about_prot_state : forall s1 s2, prot_state s1 -> prot_state s2 ->
                                   (equivocation_weight (state_union s1 s2) <= proj1_sig t)%R -> prot_state (state_union s1 s2);
    }.
-
-(*
-Class CBC_protocol :=
-   {
-      (** Consensus values equipped with reflexive transitive comparison **) 
-      consensus_values : Type; 
-      about_consensus_values : StrictlyComparable consensus_values; 
-      (** Validators equipped with reflexive transitive comparison **) 
-      validators : Type; 
-      about_validators : StrictlyComparable validators; 
-      (** Weights are positive reals **) 
-      weight : validators -> {r | (r > 0)%R}; 
-      (** Threshold is a non-negative real **) 
-      t : {r | (r >= 0)%R}; 
-      suff_val : exists vs, NoDup vs /\ ((fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R) vs > (proj1_sig t))%R; 
-      (** States with syntactic equality **) 
-      state : Type;
-      about_state : StrictlyComparable state;
-      state0 : state; 
-      state_union : state -> state -> state;
-      state_union_comm : forall s1 s2, state_union s1 s2 = state_union s2 s1;
-      (** Reachability relation **) 
-      reach : state -> state -> Prop;
-      reach_refl : forall s, reach s s; 
-      reach_trans : forall s1 s2 s3, reach s1 s2 -> reach s2 s3 -> reach s1 s3; 
-      reach_union : forall s1 s2, reach s1 (state_union s1 s2);  
-      (** Total estimator **)
-      E : state -> consensus_values -> Prop; 
-      estimator_total : forall s, exists c, E s c; 
-      (** Protocol state definition as predicate **) 
-      prot_state : state -> Prop; 
-      about_state0 : prot_state state0;
-      (** Equivocation weights from states **) 
-      equivocation_weight : state -> R; 
-      equivocation_weight_compat : forall s1 s2, (equivocation_weight s1 <= equivocation_weight (state_union s2 s1))%R; 
-      about_prot_state : forall s1 s2, prot_state s1 -> prot_state s2 ->
-                                  (equivocation_weight (state_union s1 s2) <= proj1_sig t)%R -> prot_state (state_union s1 s2); 
-   }.
- *)
 
 Theorem reach_total `{CBC_protocol_eq} :
   forall s, exists s', reach s s'.
@@ -438,89 +368,3 @@ Class CBC_protocol_eq_plus `{CBC_protocol_eq} :=
     about_next_equivocation2 : forall s, prot_state s -> forall v v', ~ In v (equivocating_senders s) -> equivocation_weight (next_equivocation s v v') = (equivocation_weight s + proj1_sig (weight v))%R;
     about_next_equivocation3 : forall s, prot_state s -> forall v v', ~ In v (equivocating_senders s) -> (equivocation_weight s + proj1_sig (weight v) <= proj1_sig t)%R -> prot_state (next_equivocation s v v') /\ (equivocation_weight (next_equivocation s v v') = equivocation_weight s + proj1_sig (weight v))%R;
   }.
-
-(*
-Section Triviality.
-  Lemma distinct_sender_total `{CBC_protocol_eq_plus} : forall v1 : validators, exists v2 : validators, v1 <> v2.
-  Proof.
-    intros.
-    destruct two_validators  as [v1' [v2' Hneq]].
-    remember about_validators as Hv. 
-    destruct (compare_eq_dec v1 v1') eqn:Heq.
-    - subst. exists v2'. assumption.
-    - exists v1'. assumption.
-  Qed.
-
-  Definition get_distinct_sender `{CBC_protocol_eq_plus} (v : validators) :=
-    proj1_sig (choice validators (fun v' => v <> v') (distinct_sender_total v)).
-
-  Definition get_distinct_sender_correct `{CBC_protocol_eq_plus} (v : validators) :=
-    proj2_sig (choice validators (fun v' => v <> v') (distinct_sender_total v)).
-
-  Lemma get_distinct_sender_correct' `{CBC_protocol_eq_plus} :
-    forall v, get_distinct_sender v <> v. 
-  Proof.
-    intros. unfold get_distinct_sender.
-    assert (H_useful := get_distinct_sender_correct v).
-    simpl in *.
-    intro H_absurd.
-    apply H_useful; symmetry; assumption.
-  Qed.
-  
-  Definition pstate `{CBC_protocol_eq} : Type := {s : state | prot_state s}. 
-
-  Definition pstate_proj1 `{CBC_protocol_eq} (p : pstate) : state :=
-    proj1_sig p. 
-
-  Coercion pstate_proj1 : pstate >-> state.
-
-  Definition pstate_rel `{CBC_protocol_eq} : pstate -> pstate -> Prop :=
-    fun p1 p2 => reach (pstate_proj1 p1) (pstate_proj1 p2).
-
-  Definition non_trivial_pstate `{CBC_protocol_eq} (P : pstate -> Prop) :=
-    (exists (s1 : pstate), forall (s : pstate), pstate_rel s1 s -> P s)
-    /\
-    (exists (s2 : pstate), forall (s : pstate), pstate_rel s2 s -> (P s -> False)).
-
-  Definition in_future `{CBC_protocol_eq} (s1 s2 : state) :=
-    reach s1 s2. 
-
-  (* Here we can't use messages, so we must explicitly describe a minimal transition in terms of general transitions *) 
-  Definition next_future `{CBC_protocol_eq} (s1 s2 : state) :=
-    (* exists (msg : message), add_in_sorted_fn msg s1 = s2.  *)
-    reach s1 s2 /\
-    forall s, reach s1 s /\ reach s s2 -> False. 
-
-  Definition in_past `{CBC_protocol_eq} (s1 s2 : state) :=
-    reach s2 s1. 
-
-  Definition no_common_future `{CBC_protocol_eq} (s1 s2 : pstate) :=
-    forall (s : pstate), in_future s1 s /\ in_future s2 s -> False. 
-
-  Definition yes_common_future `{CBC_protocol_eq} (s1 s2 : pstate) :=
-    exists (s : pstate), in_future s1 s /\ in_future s2 s. 
-
-  Definition strong_nontriviality `{CBC_protocol_eq} :=
-    (* For every state, there exists a state *) 
-    forall (s1 : pstate),
-    exists (s2 : pstate),
-      (* That is reachable in one step *) 
-      next_future s1 s2 /\
-      (* And there exists a third state *)
-      exists (s3 : pstate),
-        (* Such that s1 and s3 share a common future *)
-        yes_common_future s1 s3
-        /\
-        (* But s2 and s3 don't. *) 
-        no_common_future s2 s3. 
-
-  Fixpoint next_equivocation_rec' `{CBC_protocol_eq_plus} (s : state) (vs : list validators) (v0 : validators) : state :=
-  match vs with
-  | [] => s
-  | hd :: tl => next_equivocation (next_equivocation_rec' s tl v0) hd v0
-  end.
-
-End Triviality. 
- *)
-
-

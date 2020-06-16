@@ -2,7 +2,7 @@ Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus.
 Import ListNotations.
  
 From Casper
-Require Import preamble ListExtras.
+Require Import Lib.Preamble Lib.ListExtras.
 
 (* 2.2.1 VLSM Parameters *)
   Class VLSM_type (message : Type) :=
@@ -11,21 +11,18 @@ Require Import preamble ListExtras.
     }.
 
   Class LSM_sig {message : Type} (vtype : VLSM_type message) :=
-    { proto_message_prop : message -> Prop
-    ; proto_message_decidable : forall m, {proto_message_prop m} + {~ proto_message_prop m}
-    ; proto_message := { m : message | proto_message_prop m }
-    ; initial_state_prop : state -> Prop
+    { initial_state_prop : state -> Prop
     ; initial_state := { s : state | initial_state_prop s }
-    ; initial_message_prop : proto_message -> Prop
-    ; initial_message := { m : proto_message | initial_message_prop m }
+    ; initial_message_prop : message -> Prop
+    ; initial_message := { m : message | initial_message_prop m }
     ; s0 : initial_state
-    ; m0 : proto_message
+    ; m0 : message
     ; l0 : label
     }.
 
     Class VLSM {message : Type} {vtype : VLSM_type message} (lsm : LSM_sig vtype) :=
-      { transition : label -> state * option proto_message -> state * option proto_message
-        ; valid : label -> state * option proto_message -> Prop
+      { transition : label -> state * option message -> state * option message
+      ; valid : label -> state * option message -> Prop
       }.
 
     Definition sign
@@ -40,7 +37,7 @@ Require Import preamble ListExtras.
       {vtype : VLSM_type message}
       {Sig : LSM_sig vtype}
       (vlsm : VLSM Sig)
-      := (state, message, label).
+      := vtype.
 
     Section VLSM.
 
@@ -55,7 +52,7 @@ Require Import preamble ListExtras.
       (* We choose here to use the second definition hinted at the end of the 2.2.2 section, i.e., 
 we define states and messages together as a property over a product type. *)
 
-      Inductive protocol_prop : state * option proto_message -> Prop :=
+      Inductive protocol_prop : state * option message -> Prop :=
       | protocol_initial_state
           (is : initial_state)
           (s : state := proj1_sig is)
@@ -63,30 +60,30 @@ we define states and messages together as a property over a product type. *)
       | protocol_initial_message
           (im : initial_message)
           (s : state := proj1_sig s0)
-          (om : option proto_message := Some (proj1_sig im))
+          (om : option message := Some (proj1_sig im))
         : protocol_prop (s, om)
       | protocol_generated
           (l : label)
           (s : state)
-          (_om : option proto_message)
+          (_om : option message)
           (Hps : protocol_prop (s, _om))
           (_s : state)
-          (om : option proto_message)
-          (Hps : protocol_prop (_s, om))
+          (om : option message)
+          (Hpm : protocol_prop (_s, om))
           (Hv : valid l (s, om))
         : protocol_prop (transition l (s, om)).
 
       Definition protocol_state_prop (s : state) :=
-        exists om : option proto_message, protocol_prop (s, om).
+        exists om : option message, protocol_prop (s, om).
 
-      Definition protocol_message_prop (m : proto_message) :=
+      Definition protocol_message_prop (m : message) :=
         exists s : state, protocol_prop (s, (Some m)).
 
       Definition protocol_state : Type :=
         { s : state | protocol_state_prop s }.
 
       Definition protocol_message : Type :=
-        { m : proto_message | protocol_message_prop m }.
+        { m : message | protocol_message_prop m }.
       
       (* Restating validity and transition using protocol_state and protocol_messages. *)
 
@@ -99,11 +96,11 @@ we define states and messages together as a property over a product type. *)
       Definition protocol_transition
                  (l : label)
                  (ps_opm : protocol_state * option protocol_message)
-        : state * option proto_message :=
+        : state * option message :=
         transition l (proj1_sig (fst ps_opm), option_map (@proj1_sig _ _) (snd ps_opm)).
 
       Definition lift_option_proto_message 
-                 (om : option proto_message)
+                 (om : option message)
                  (_s : state)
                  (Hm : protocol_prop (_s, om))
         : option protocol_message.
@@ -128,7 +125,7 @@ we define states and messages together as a property over a product type. *)
           ; try (left; exists is; reflexivity)
           ; try (left; exists s0; reflexivity).
           right. exists (exist _ s (ex_intro _ _ Hps)). exists l.
-          exists (lift_option_proto_message om _s Hps0).
+          exists (lift_option_proto_message om _s Hpm).
           unfold protocol_valid. unfold protocol_transition.
           unfold lift_option_proto_message. 
           destruct om as [m|]; simpl
@@ -154,7 +151,7 @@ we define states and messages together as a property over a product type. *)
       (* Protocol message characterization - similar to the definition in the report. *)
 
       Lemma protocol_message_prop_iff :
-        forall m' : proto_message,
+        forall m' : message,
           protocol_message_prop m'
           <-> (exists im : initial_message, m' = proj1_sig im)
             \/ exists (s : protocol_state) (l : label) (om : option protocol_message),
@@ -166,7 +163,7 @@ we define states and messages together as a property over a product type. *)
           inversion Hpm'; subst
           ; try (left; exists im; reflexivity).
           right. exists (exist _ s (ex_intro _ _ Hps)). exists l.
-          exists (lift_option_proto_message om _s Hps0).
+          exists (lift_option_proto_message om _s Hpm).
           unfold protocol_valid. unfold protocol_transition.
           unfold lift_option_proto_message. 
           destruct om as [m|]
@@ -212,7 +209,7 @@ we define states and messages together as a property over a product type. *)
           (forall s : protocol_state, P (proj1_sig s)).
       Proof.
         intros P HIi HIt.
-        assert (Hind : forall som' : state * option proto_message, protocol_prop som' -> P (fst som')).
+        assert (Hind : forall som' : state * option message, protocol_prop som' -> P (fst som')).
         { intros som' Hp.
           induction Hp; try apply HIi.
           specialize (HIt (exist _ s (ex_intro _ _ Hp1)) IHHp1 l (lift_option_proto_message om _s Hp2)).
@@ -233,8 +230,8 @@ we define states and messages together as a property over a product type. *)
       Definition verbose_valid_protocol_transition
                  (l : label)
                  (s s' : state)
-                 (om om' : option proto_message)
-        := (exists (_om : option proto_message), protocol_prop (s, _om))
+                 (om om' : option message)
+        := (exists (_om : option message), protocol_prop (s, _om))
         /\ (exists (_s : state), protocol_prop (_s, om))
         /\  valid l (s, om)
         /\  transition l (s, om) = (s', om')
@@ -243,7 +240,7 @@ we define states and messages together as a property over a product type. *)
       Lemma protocol_transition_origin
             {l : label}
             {s s' : state}
-            {om om' : option proto_message}
+            {om om' : option message}
             (Ht : verbose_valid_protocol_transition l s s' om om')
         : protocol_state_prop s
       .
@@ -254,7 +251,7 @@ we define states and messages together as a property over a product type. *)
       Lemma protocol_transition_destination
             {l : label}
             {s s' : state}
-            {om om' : option proto_message}
+            {om om' : option message}
             (Ht : verbose_valid_protocol_transition l s s' om om')
         : protocol_state_prop s'
       .
@@ -267,8 +264,8 @@ we define states and messages together as a property over a product type. *)
       Lemma protocol_transition_in
             {l : label}
             {s s' : state}
-            {m : proto_message}
-            {om' : option proto_message}
+            {m : message}
+            {om' : option message}
             (Ht : verbose_valid_protocol_transition l s s' (Some m) om')
         : protocol_message_prop m
       .
@@ -280,7 +277,7 @@ we define states and messages together as a property over a product type. *)
       Lemma protocol_prop_transition_in
             {l : label}
             {s s' : state}
-            {om om' : option proto_message}
+            {om om' : option message}
             (Ht : verbose_valid_protocol_transition l s s' om om')
         : exists _s, protocol_prop (_s, om).
       Proof.
@@ -293,8 +290,8 @@ we define states and messages together as a property over a product type. *)
       Lemma protocol_transition_out
             {l : label}
             {s s' : state}
-            {om : option proto_message}
-            {m' : proto_message}
+            {om : option message}
+            {m' : message}
             (Ht : verbose_valid_protocol_transition l s s' om (Some m'))
         : protocol_message_prop m'
       .
@@ -307,7 +304,7 @@ we define states and messages together as a property over a product type. *)
       Lemma protocol_transition_valid
             {l : label}
             {s s' : state}
-            {om om' : option proto_message}
+            {om om' : option message}
             (Ht : verbose_valid_protocol_transition l s s' om om')
         : valid l (s, om).
       Proof.
@@ -318,7 +315,7 @@ we define states and messages together as a property over a product type. *)
       Lemma protocol_transition_transition
             {l : label}
             {s s' : state}
-            {om om' : option proto_message}
+            {om om' : option message}
             (Ht : verbose_valid_protocol_transition l s s' om om')
           :  transition l (s, om) = (s', om')
         .
@@ -330,9 +327,9 @@ we define states and messages together as a property over a product type. *)
       (* Valid VLSM traces *) 
       Record in_state_out :=
         {   l : label
-            ;   input : option proto_message
+            ;   input : option message
             ;   destination : state
-            ;   output : option proto_message
+            ;   output : option message
         }.
 
       (* A finite protocol trace originating in a given state *)
@@ -341,7 +338,7 @@ we define states and messages together as a property over a product type. *)
       | finite_ptrace_empty : forall (s : state), protocol_state_prop s -> finite_ptrace_from s []
       | finite_ptrace_extend : forall  (s : state) (tl : list in_state_out),
           finite_ptrace_from s tl ->  
-          forall (s' : state) (iom oom : option proto_message) (l : label),
+          forall (s' : state) (iom oom : option message) (l : label),
             verbose_valid_protocol_transition l s' s iom oom ->
             finite_ptrace_from  s' ({| l := l; input := iom; destination := s; output := oom |} :: tl).
 
@@ -515,7 +512,7 @@ we define states and messages together as a property over a product type. *)
         state -> Stream in_state_out -> Prop :=
       | infinite_ptrace_extend : forall  (s : state) (tl : Stream in_state_out),
           infinite_ptrace_from s tl ->  
-          forall (s' : state) (iom oom : option proto_message) (l : label),
+          forall (s' : state) (iom oom : option message) (l : label),
             verbose_valid_protocol_transition l s' s iom oom ->
             infinite_ptrace_from  s' (Cons {| l := l; input := iom; destination := s; output := oom |}  tl).
 
@@ -634,7 +631,7 @@ we define states and messages together as a property over a product type. *)
       Record proto_run : Type := mk_proto_run
                                    { start : initial_state
                                      ; transitions : list in_state_out
-                                     ; final : state * option proto_message
+                                     ; final : state * option message
                                    }.
 
       Inductive vlsm_run_prop : proto_run -> Prop :=
@@ -645,7 +642,7 @@ we define states and messages together as a property over a product type. *)
       | empty_run_initial_message
           (im : initial_message)
           (s : state := proj1_sig s0)
-          (om : option proto_message := Some (proj1_sig im))
+          (om : option message := Some (proj1_sig im))
         : vlsm_run_prop {| start := s0; transitions := []; final := (s, om) |}
       | extend_run
           (state_run : proto_run)
@@ -709,7 +706,7 @@ we define states and messages together as a property over a product type. *)
       Qed.
 
       Lemma protocol_is_run 
-            (som' : state * option proto_message)
+            (som' : state * option message)
             (Hp : protocol_prop som')
         : exists vr : vlsm_run, (som' = final (proj1_sig vr)).
       Proof.
@@ -795,7 +792,7 @@ we define states and messages together as a property over a product type. *)
       (* protocol states/messages correspond to protocol traces *)
 
       Lemma protocol_is_trace
-            (som' : state * option proto_message)
+            (som' : state * option message)
             (Hp : protocol_prop som')
             (s' := fst som')
             (om' := snd som')
@@ -1022,8 +1019,8 @@ we define states and messages together as a property over a product type. *)
           end.
 
       Inductive Trace_messages : Type :=
-      | Finite_messages : list (option proto_message) -> Trace_messages
-      | Infinite_messages : Stream (option proto_message) -> Trace_messages. 
+      | Finite_messages : list (option message) -> Trace_messages
+      | Infinite_messages : Stream (option message) -> Trace_messages. 
 
       Definition protocol_output_messages_trace (tr : protocol_trace) : Trace_messages :=
         match proj1_sig tr with
@@ -1156,7 +1153,7 @@ we define states and messages together as a property over a product type. *)
       (* Also implicitly, the trace leading up to the state is finite *)
 
       Definition equivocation_in_trace
-                 (msg : proto_message)
+                 (msg : message)
                  (tr : protocol_trace)
         : Prop
         :=
@@ -1167,12 +1164,12 @@ we define states and messages together as a property over a product type. *)
             /\  ~ In (Some msg) (List.map output prefix)
       .
 
-      Definition equivocation (msg : proto_message) (s : state) : Prop :=
+      Definition equivocation (msg : message) (s : state) : Prop :=
         exists (tr : protocol_trace), trace_last (proj1_sig tr) = Some s /\ equivocation_in_trace msg tr.
 
       (* Now we can have decidable equivocations! *) 
       (* 6.2.1 Identifying equivocations *)
-      Definition has_been_sent (msg : proto_message) (s : state) : Prop :=
+      Definition has_been_sent (msg : message) (s : state) : Prop :=
         forall (tr : protocol_trace) 
           (last : in_state_out)
           (prefix : list in_state_out)
@@ -1182,19 +1179,19 @@ we define states and messages together as a property over a product type. *)
 
       (* Since equality of proto_messages is decidable, this function must exist : *) 
       Definition proto_message_eqb {Eqd : EqDec message}
-                 (om1 : option proto_message)
-                 (om2 : option proto_message)
+                 (om1 : option message)
+                 (om2 : option message)
         : bool
         :=
           match om1, om2 with
           | None, None => true
-          | Some m1, Some m2 => if eq_dec (proj1_sig m1) (proj1_sig m2) then true else false
+          | Some m1, Some m2 => if eq_dec m1 m2 then true else false
           | _, _ => false
           end.
 
       Fixpoint has_been_sentb
                {Eqd : EqDec message}
-               (msg : proto_message) (ls : list in_state_out) : bool
+               (msg : message) (ls : list in_state_out) : bool
         :=
           existsb (fun x => proto_message_eqb (output x) (Some msg)) ls.
 
@@ -1211,7 +1208,7 @@ we define states and messages together as a property over a product type. *)
 
       (* 6.2.2 Equivocation-free as a composition constraint *)
       Definition composition_constraint : Type :=
-        label -> state * option proto_message -> Prop. 
+        label -> state * option message -> Prop. 
 
       Definition equivocation_free : composition_constraint :=
         fun l som => match (snd som) with

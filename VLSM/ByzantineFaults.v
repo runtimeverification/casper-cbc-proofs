@@ -1,32 +1,30 @@
 Require Import FinFun.
 (* Section 4: Byzantine fault tolerance analysis *)
 From Casper   
-Require Import preamble vlsm indexed_vlsm.
+Require Import Lib.Preamble VLSM.Common VLSM.Composition.
 
 Context
     {message : Type}
     {index : Type}
-    {index_listing : list index}
-    (finite_index : Listing index_listing)
     `{IndEqDec : EqDec index}
     (i0 : index)
     {IT : index -> VLSM_type message}
     {IS : forall i : index, LSM_sig (IT i)}
     (IM : forall n : index, VLSM (IS n))
     (T := indexed_type IT)
-    (S := indexed_sig finite_index i0 IT IS)
-    (constraint : @label _ T -> @state _ T * option (@proto_message _ _ S) -> Prop)
-    (X := indexed_vlsm_constrained finite_index i0 IT IS IM constraint)
+    (S := indexed_sig i0 IS)
+    (constraint : @label _ T -> @state _ T * option message -> Prop)
+    (X := indexed_vlsm_constrained i0 IM constraint)
     .
 
 Definition validating_received_messages
     (i : index)
     :=
-    forall (si : @state _ (IT i)) (mi : @proto_message _ _ (IS i)) (li : @label _ (IT i)),
+    forall (si : @state _ (IT i)) (mi : message) (li : @label _ (IT i)),
         (~ exists (ps : protocol_state X) (pm : protocol_message X),
             (proj1_sig ps) i = si
             /\
-            (proj1_sig (proj1_sig pm)) = proj1_sig mi
+            proj1_sig pm = mi
             /\
             @valid _ _ _ X (existT _ i li) (proj1_sig ps, Some (proj1_sig pm))
         )
@@ -36,16 +34,9 @@ Definition validating_received_messages
 Definition validating_messages
     (i : index)
     :=
-    forall (si : @state _ (IT i)) (omi : option (@proto_message _ _ (IS i))) (li : @label _ (IT i)),
-        @valid _ _ _ (IM i) li (si, omi) ->
-        exists (ps : protocol_state X) (opm : option (protocol_message X)),
-            (proj1_sig ps) i = si
-            /\
-            option_map (@proj1_sig _ _) (option_map (@proj1_sig _ _) opm)
-                = option_map (@proj1_sig _ _) omi
-            /\
-            @valid _ _ _ X (existT _ i li) (proj1_sig ps,  option_map (@proj1_sig _ _) opm)
-            .
+    forall (li : @label _ (IT i)) (siomi : @state _ (IT i) * option message),
+        @valid _ _ _ (IM i) li siomi ->
+        composite_protocol_valid i0 IM constraint i li siomi.
 
 Lemma validating_messages_received
     (i : index)
@@ -53,7 +44,7 @@ Lemma validating_messages_received
 Proof.
     unfold validating_messages. unfold validating_received_messages. intros.
     intro Hvalid. apply H0. clear H0.
-    specialize (H si (Some mi) li Hvalid). clear Hvalid.
+    specialize (H li (si, Some mi) Hvalid). clear Hvalid.
     destruct H as [ps [opm [Hsi [Hmi Hvalid]]]].
     destruct opm as [pm|]; simpl in Hmi; inversion Hmi.
     exists ps. exists pm.
@@ -67,19 +58,17 @@ Definition validating_transitions
     :=
     forall
         (si : @state _ (IT i))
-        (omi : option (@proto_message _ _ (IS i)))
+        (omi : option message)
         (li : @label _ (IT i))
         ,
         @valid _ _ _ (IM i) li (si, omi)
         ->
         (exists 
             (s s' : @state _ T)
-            (om om' : option (@proto_message _ _ S)),
+            (om' : option message),
             si = s i
             /\
-            option_map (@proj1_sig _ _) om = option_map (@proj1_sig _ _) omi
-            /\
-            verbose_valid_protocol_transition X (existT _ i li) s s' om om'
+            verbose_valid_protocol_transition X (existT _ i li) s s' omi om'
         )
         .
 
@@ -87,18 +76,21 @@ Lemma validating_messages_transitions
     (i : index)
     : validating_messages i -> validating_transitions i.
 Proof.
-    unfold validating_messages. unfold validating_transitions. intros.
-    specialize (H si omi li H0). clear H0.
+    unfold validating_messages. unfold validating_transitions. 
+    unfold composite_protocol_valid. unfold verbose_valid_protocol_transition.
+    simpl. intros.
+    specialize (H li (si, omi) H0). clear H0. simpl in H.
     destruct H as [ps [opm [Hsi [Homi Hvalid]]]].
     remember (proj1_sig ps) as s.
-    remember (option_map (@proj1_sig _ _) opm) as om.
-    remember (@transition _ _ _ X (existT _ i li) (s, om)) as t.
+    remember (@transition _ _ _ X (existT _ i li) (s, omi)) as t.
     destruct t as [s' om'].
-    exists s. exists s'. exists om. exists om'.
-    symmetry in Hsi. split; try assumption. split; try assumption.
-    subst.
-    destruct ps as [s Hps]. split; try assumption.
+    exists s. exists s'. exists om'.
+    symmetry in Hsi. subst s; simpl.
+    split; try assumption.
+    destruct ps as [s Hps]; simpl in *.
+    split; try assumption.
     symmetry in Heqt.
+    subst.
     repeat (split; try assumption).
     destruct opm as [[m Hpm]|]; simpl; try assumption.
     remember (proj1_sig (@s0 _ _ S)) as sz.
@@ -112,11 +104,12 @@ Lemma validating_transitions_messages
     : validating_transitions i -> validating_messages i.
 Proof.
     unfold validating_messages. unfold validating_transitions. intros.
+    destruct siomi as [si omi].
     specialize (H si omi li H0); clear H0.
-    destruct H as [s [s' [om [om' [Hsi [Homi [Hps [Hopm [Hvalid Htransition]]]]]]]]].
+    destruct H as [s [s' [om' [Hsi [Hps [Hopm [Hvalid Htransition]]]]]]].
     symmetry in Hsi.
     exists (exist _ s Hps).
-    destruct om as [m|].
+    destruct omi as [m|].
     - exists (Some (exist _ m Hopm)).
       repeat (split; try assumption).
     - exists None.

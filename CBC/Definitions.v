@@ -1,7 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical.
 Import ListNotations.   
 From Casper  
-Require Import preamble ListExtras ListSetExtras RealsExtras common.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Common.
 
 
 Inductive state {C V : Type} : Type :=
@@ -783,7 +783,7 @@ Proof.
         assert (Forall (message_lt (c, v, j)) (get_messages (add_in_sorted_fn (mc, mv, mj) sigma))).
         { apply Forall_forall. intros. apply set_eq_add_in_sorted in H2.
           destruct H2 as [Heq | Hin]; subst.
-          - unfold message_lt. unfold compare_lt. unfold preamble.compare. assumption.
+          - unfold message_lt. unfold compare_lt. unfold Lib.Preamble.compare. assumption.
           - apply locally_sorted_first with sigma; unfold in_state; assumption.
         }
         unfold add_in_sorted_fn in H2. 
