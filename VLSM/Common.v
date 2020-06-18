@@ -613,7 +613,7 @@ Require Import Lib.Preamble Lib.ListExtras.
       | Infinite s _ => s
       end. 
 
-    Definition ptrace_prop (tr : Trace) : Prop :=
+    Definition protocol_trace_prop (tr : Trace) : Prop :=
       match tr with 
       | Finite s ls => finite_ptrace s ls
       | Infinite s sm => infinite_ptrace s sm
@@ -626,7 +626,7 @@ Require Import Lib.Preamble Lib.ListExtras.
       end.
 
     Definition protocol_trace : Type :=
-      { tr : Trace | ptrace_prop tr}.
+      { tr : Trace | protocol_trace_prop tr}.
     
     (* Protocol runs *) 
     Record proto_run : Type := mk_proto_run
@@ -724,7 +724,7 @@ Require Import Lib.Preamble Lib.ListExtras.
     Lemma run_is_trace
           (vr : vlsm_run)
           (r := proj1_sig vr)
-      : ptrace_prop (Finite (proj1_sig (start r)) (transitions r)).
+      : protocol_trace_prop (Finite (proj1_sig (start r)) (transitions r)).
     Proof.
       unfold r; clear r; destruct vr as [r Hr]; simpl.
       induction Hr; simpl.
@@ -881,7 +881,7 @@ Require Import Lib.Preamble Lib.ListExtras.
       specialize (Happ (conj Hprefix_tr Hsuffix_tr)).
       assert (Hfinite_tr: finite_ptrace (proj1_sig prefix_start) (prefix_tr ++ suffix_tr))
         by (constructor; assumption).
-      assert (Htr : ptrace_prop (Finite (proj1_sig prefix_start) (prefix_tr ++ suffix_tr)))
+      assert (Htr : protocol_trace_prop (Finite (proj1_sig prefix_start) (prefix_tr ++ suffix_tr)))
         by assumption.
       exists (exist _ (Finite (proj1_sig prefix_start) (prefix_tr ++ suffix_tr)) Htr).
       simpl.
@@ -943,7 +943,7 @@ Require Import Lib.Preamble Lib.ListExtras.
 
     Lemma ptrace_segment
       (tr : Trace)
-      (Htr : ptrace_prop tr)
+      (Htr : protocol_trace_prop tr)
       (n1 n2 : nat)
       (Hle : n1 <= n2)
       (first : state)
@@ -1065,7 +1065,7 @@ Require Import Lib.Preamble Lib.ListExtras.
          end.
 
     Definition complete_trace_prop (tr : Trace) : Prop
-       := ptrace_prop tr
+       := protocol_trace_prop tr
           /\
           match tr with 
           | Finite _ _ => terminating_trace_prop tr
@@ -1077,11 +1077,11 @@ Require Import Lib.Preamble Lib.ListExtras.
           (last : in_state_out)
           (prefix : list in_state_out)
           (Hprefix : trace_prefix (proj1_sig tr) last prefix)
-      : ptrace_prop (Finite (trace_first (proj1_sig tr)) (prefix ++ [last])).
+      : protocol_trace_prop (Finite (trace_first (proj1_sig tr)) (prefix ++ [last])).
     Proof.
       destruct tr as [tr Htr]. simpl in *.
       generalize dependent tr. generalize dependent last.
-      apply (rev_ind (fun prefix => forall (last : in_state_out) (tr : Trace), ptrace_prop tr -> trace_prefix tr last prefix -> finite_ptrace (trace_first tr) (prefix ++ [last]))).
+      apply (rev_ind (fun prefix => forall (last : in_state_out) (tr : Trace), protocol_trace_prop tr -> trace_prefix tr last prefix -> finite_ptrace (trace_first tr) (prefix ++ [last]))).
       - intros last tr Htr Hprefix; destruct tr as [ | ]; unfold trace_prefix in Hprefix;   simpl in Hprefix
         ; destruct Hprefix as [suffix Heq]; subst; destruct Htr as [Htr Hinit]
         ; unfold trace_first; simpl; constructor; try assumption
@@ -1232,13 +1232,184 @@ Require Import Lib.Preamble Lib.ListExtras.
     Context
       {message : Type}
       {vtype : VLSM_type message}.
-    
+
+    Definition VLSM_incl
+      {SigX SigY: LSM_sig vtype}
+      (X : VLSM SigX) (Y : VLSM SigY)
+      :=
+      forall t : Trace,
+        protocol_trace_prop X t -> protocol_trace_prop Y t
+      .
+
     Definition VLSM_eq
       {SigX SigY: LSM_sig vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
       :=
-      forall t : Trace_states,
-        protocol_state_trace_prop X t <-> protocol_state_trace_prop Y t
+      forall t : Trace,
+        protocol_trace_prop X t <-> protocol_trace_prop Y t
       .
 
+    Lemma VLSM_eq_incl_l
+      {SigX SigY: LSM_sig vtype}
+      (X : VLSM SigX) (Y : VLSM SigY)
+      : VLSM_eq X Y -> VLSM_incl X Y 
+      .
+    Proof.
+      intro Heq.
+      intros t Hxt.
+      apply Heq.
+      assumption.
+    Qed.
+    
+    Lemma VLSM_eq_incl_r
+      {SigX SigY: LSM_sig vtype}
+      (X : VLSM SigX) (Y : VLSM SigY)
+      : VLSM_eq X Y -> VLSM_incl Y X 
+      .
+    Proof.
+      intro Heq.
+      intros t Hyt.
+      apply Heq.
+      assumption.
+    Qed.
+
+    Lemma VLSM_eq_incl_iff
+      {SigX SigY: LSM_sig vtype}
+      (X : VLSM SigX) (Y : VLSM SigY)
+      : VLSM_eq X Y <-> VLSM_incl X Y /\ VLSM_incl Y X
+      .
+    Proof.
+      split.
+      - intro Heq.
+        split.
+        + apply VLSM_eq_incl_l; assumption.
+        + apply VLSM_eq_incl_r; assumption.
+      - intros [Hxy Hyx].
+        intro t.
+        split.
+        + apply Hxy.
+        + apply Hyx.
+    Qed.
+
   End VLSM_equality.
+
+  Definition message_full_vlsm_sig
+    {message : Type}
+    {vtype : VLSM_type message}
+    {Sig : LSM_sig vtype}
+    (X : VLSM Sig)
+    : LSM_sig vtype
+    :=
+    {| initial_state_prop := @initial_state_prop _ _ Sig
+     ; initial_message_prop := fun message => True
+     ; s0 := @s0 _ _ Sig
+     ; m0 := @m0 _ _ Sig
+     ; l0 := @l0 _ _ Sig
+    |}.
+
+  Definition message_full_vlsm
+    {message : Type}
+    {vtype : VLSM_type message}
+    {Sig : LSM_sig vtype}
+    (X : VLSM Sig)
+    : VLSM (message_full_vlsm_sig X)
+    := 
+    {| transition := @transition _ _ _ X
+     ; valid := @valid _ _ _ X
+    |}.
+
+  Lemma message_full_protocol_prop
+    {message : Type}
+    {vtype : VLSM_type message}
+    {Sig : LSM_sig vtype}
+    (X : VLSM Sig)
+    (s : state)
+    (om : option message)
+    (Hps : protocol_prop X (s, om))
+    : protocol_prop (message_full_vlsm X) (s, om).
+  Proof.
+    induction Hps.
+    - apply (protocol_initial_state (message_full_vlsm X) is).
+    - destruct im as [m Him]. simpl in om0. clear Him.
+      assert (Him : @initial_message_prop _ _ (message_full_vlsm_sig X) m)
+        by exact I.
+      apply (protocol_initial_message (message_full_vlsm X) (exist _ m Him)).
+    - apply (protocol_generated (message_full_vlsm X)) with _om _s; assumption.
+  Qed.
+
+  Lemma message_full_verbose_valid_protocol_transition
+    {message : Type}
+    {vtype : VLSM_type message}
+    {Sig : LSM_sig vtype}
+    (X : VLSM Sig)
+    (l : label)
+    (is os : state)
+    (iom oom : option message)
+    (Ht : verbose_valid_protocol_transition X l is os iom oom)
+    : verbose_valid_protocol_transition (message_full_vlsm X) l is os iom oom
+    .
+  Proof.
+    destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+    repeat (split; try assumption).
+    - exists _om. apply message_full_protocol_prop. assumption.
+    - exists _s. apply message_full_protocol_prop. assumption.
+  Qed.
+
+  Lemma message_full_finite_ptrace
+    {message : Type}
+    {vtype : VLSM_type message}
+    {Sig : LSM_sig vtype}
+    (X : VLSM Sig)
+    (s : state)
+    (ls : list in_state_out)
+    (Hpxt : finite_ptrace_from X s ls)
+    : finite_ptrace_from (message_full_vlsm X) s ls
+    .
+  Proof.
+    induction Hpxt.
+    - constructor.
+      destruct H as [m H].
+      apply message_full_protocol_prop in H.
+      exists m. assumption.
+    - constructor; try assumption.
+      apply message_full_verbose_valid_protocol_transition. assumption.
+  Qed.
+
+  Lemma message_full_infinite_ptrace
+    {message : Type}
+    {vtype : VLSM_type message}
+    {Sig : LSM_sig vtype}
+    (X : VLSM Sig)
+    (s : state)
+    (ls : Stream in_state_out)
+    (Hpxt : infinite_ptrace_from X s ls)
+    : infinite_ptrace_from (message_full_vlsm X) s ls
+    .
+  Proof.
+    generalize dependent ls. generalize dependent s.
+    cofix H.
+    intros s [[l input destination output] ls] Hx.
+    inversion Hx; subst.
+    specialize (H destination ls H3).
+    constructor; try assumption.
+    apply message_full_verbose_valid_protocol_transition.
+    assumption.
+  Qed.
+
+  Lemma vlsm_incl_message_full_vlsm
+    {message : Type}
+    {vtype : VLSM_type message}
+    {Sig : LSM_sig vtype}
+    (X : VLSM Sig)
+    (Full := message_full_vlsm X)
+    : VLSM_incl X Full
+    .
+  Proof.
+    intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
+    - apply message_full_finite_ptrace in Hxt.
+      split; try assumption.
+    - apply message_full_infinite_ptrace in Hxt.
+      split; try assumption.
+  Qed.
+
+  

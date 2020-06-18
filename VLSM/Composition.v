@@ -1,4 +1,4 @@
-Require Import List.
+Require Import List Streams.
 Import ListNotations.
 Require Import Logic.FunctionalExtensionality.
 
@@ -271,7 +271,7 @@ Section projections.
           ;   l0 := @l0 _ _ (IS i)
       |}.
 
-  Definition composite_protocol_valid
+  Definition projection_valid
     (i : index)
     (li : @label _ (IT i))
     (siomi : @state _ (IT i) * option message)
@@ -286,11 +286,11 @@ Section projections.
     (i : index)
     (li : @label _ (IT i))
     (siomi : @state _ (IT i) * option message)
-    (Hcomposite : composite_protocol_valid i li siomi)
+    (Hcomposite : projection_valid i li siomi)
     : @valid _ _ _ (IM i) li siomi
     .
   Proof.
-    unfold composite_protocol_valid in Hcomposite.
+    unfold projection_valid in Hcomposite.
     destruct siomi as [si omi].
     destruct Hcomposite as [[s Hps] [opm [Hsi [Homi Hvalid]]]].
     subst; simpl in *.
@@ -302,7 +302,7 @@ Section projections.
              (i : index)
     : VLSM (indexed_vlsm_constrained_projection_sig i) :=
     {|  transition :=  @transition _ _ _ (IM i)
-     ;  valid := composite_protocol_valid i
+     ;  valid := projection_valid i
     |}. 
 
   Section fixed_projection.
@@ -335,6 +335,7 @@ Section projections.
 
 (** 2.4.4.1 Projection friendly composition constraints **)
 
+(*
     Definition projection_friendly
       :=
       forall
@@ -347,7 +348,7 @@ Section projections.
         /\
         constraint (existT _ j lj) (proj1_sig s, option_map (@proj1_sig _ _) om)
       .
-
+*)
     (* Projects the trace of a composed vlsm to component j *)
     
     Fixpoint finite_trace_projection_list
@@ -368,6 +369,57 @@ Section projections.
         | _ => tail
         end
       end.
+    
+    Lemma finite_trace_projection_empty
+      (s : @state _ T)
+      (trx : list (@in_state_out _ T))
+      (Htr : finite_ptrace_from X s trx)
+      (Hempty : finite_trace_projection_list trx = [])
+      (t : (@in_state_out _ T))
+      (Hin : In t trx)
+      : destination t j = s j.
+    Proof.
+      generalize dependent t.
+      induction Htr; simpl; intros t Hin.
+      - inversion Hin.
+      - destruct l as [i l].
+        destruct H as [[_om Hs'] [[_s Hiom] [Hvalid Htransition]]].
+        unfold transition in Htransition; simpl in Htransition.
+        destruct (transition l (s' i, iom)) as [si' om'] eqn:Hteq.
+        inversion Htransition; subst. clear Htransition.
+        destruct Hin as [Heq | Hin]; subst; simpl in *; destruct (eq_dec j i).
+        + inversion Hempty.
+        + apply state_update_neq. assumption.
+        + inversion Hempty.
+        + specialize (IHHtr Hempty t Hin). rewrite IHHtr.
+          apply state_update_neq. assumption.
+    Qed.
+
+    Lemma finite_trace_projection_last_state
+      (start : @state _ T)
+      (transitions : list (@in_state_out _ T))
+      (Htr : finite_ptrace_from X start transitions)
+      (lstx := last (List.map destination transitions) start)
+      (lstj := last (List.map destination (finite_trace_projection_list transitions)) (start j))
+      : lstj = lstx j.
+    Proof.
+      unfold lstx. unfold lstj. clear lstx. clear lstj.
+      induction Htr; try reflexivity.
+      destruct l as [i l].
+      rewrite map_cons.
+      rewrite unroll_last. simpl.
+      destruct (eq_dec j i).
+      - rewrite map_cons. rewrite unroll_last.
+        assumption.
+      - destruct H as [[_om Hs'] [[_s Hiom] [Hvalid Htransition]]].
+        unfold transition in Htransition; simpl in Htransition.
+        destruct (transition l (s' i, iom)) as [si' om'] eqn:Hteq.
+        inversion Htransition; subst. clear Htransition.
+        specialize (state_update_neq _ s' i si' j n); intro Hupd.
+        rewrite Hupd in *.
+        rewrite IHHtr.
+        reflexivity.
+    Qed.
 
     (* The projection of a protocol trace remains a protocol trace *)
 
@@ -433,10 +485,143 @@ Section projections.
           assumption.
     Qed.
 
-  End fixed_projection.
+    Lemma protocol_state_projection
+      (s : state)
+      (Hps : protocol_state_prop X s)
+      : protocol_state_prop Proj (s j)
+      .
+    Proof.
+      destruct Hps as [om Hps].
+      specialize (protocol_is_run X (s, om) Hps); intros [run Heqfinal].
+      specialize (run_is_trace X run); intros Htrace.
+      specialize (vlsm_run_last_state X run); intros Hlast.
+      destruct run as [run Hrun]; simpl in *.
+      rewrite <- Heqfinal in *. simpl in Hlast.
+      destruct run; simpl in *. destruct start as [start Hstart]. simpl in *.
+      clear - Htrace Hlast.
+      destruct Htrace as [Htrace Hinit].
+      specialize (finite_ptrace_projection start); intro Hproj.
+      assert (Hstartj : initial_state_prop (start j)) by apply Hinit.
+      remember (exist _ (start j) Hstartj) as istartj.
+      assert (Hpstartj : protocol_state_prop Proj (start j)).
+      { exists None.
+        specialize (protocol_initial_state Proj istartj); subst; simpl; intro Hpinit.
+        assumption.
+      }
+      specialize (Hproj Hpstartj _ Htrace).
+      specialize (trace_is_run Proj istartj (finite_trace_projection_list transitions))
+      ; subst istartj; simpl; intro Hrun.
+      specialize (Hrun Hproj).
+      destruct Hrun as [run [Hrun [Hstart Htrans]]].
+      specialize (run_is_protocol Proj (exist _ run Hrun)); simpl; intro Hps.
+      specialize (vlsm_run_last_state Proj (exist _ run Hrun)); simpl; intros Hlast'.
+      rewrite Htrans in Hlast'. rewrite Hstart in Hlast'. simpl in Hlast'.
+      destruct (final run) as (s', om). simpl in Hlast'.
+      exists om.
+      subst.
+      specialize (finite_trace_projection_last_state start transitions Htrace)
+      ; simpl; intro Hlast.
+      clear - Hlast Hps.
+      unfold T in Hlast; simpl in Hlast.
+      rewrite <- Hlast.
+      assumption.
+    Qed.
+      
+
+    (* We axiomatize projection friendliness as the converse of finite_ptrace_projection *)
+    Definition projection_friendly
+      := forall
+        (sj : @state _ (IT j))
+        (trj : list (@in_state_out _ (IT j)))
+        (Htrj : finite_ptrace_from Proj sj trj),
+        exists (sx : @state _ T) (trx : list (@in_state_out _ T)),
+          finite_ptrace_from X sx trx
+          /\ sx j = sj
+          /\ finite_trace_projection_list trx = trj.
+
+    Lemma proj_message_full_protocol_prop
+      (Full := message_full_vlsm (IM j))
+      (s : state)
+      (om : option message)
+      (Hps : protocol_prop Proj (s, om))
+      : protocol_prop Full (s, om).
+    Proof.
+      induction Hps.
+      - apply (protocol_initial_state Full is).
+      - destruct im as [m Him]. simpl in om0. clear Him.
+        assert (Him : @initial_message_prop _ _ (message_full_vlsm_sig X) m)
+          by exact I.
+        apply (protocol_initial_message Full (exist _ m Him)).
+      - apply (protocol_generated Full) with _om _s; try assumption.
+        apply composite_protocol_valid_implies_valid. assumption.
+    Qed.
+
+    Lemma proj_message_full_verbose_valid_protocol_transition
+      (Full := message_full_vlsm (IM j))
+      (l : label)
+      (is os : state)
+      (iom oom : option message)
+      (Ht : verbose_valid_protocol_transition Proj l is os iom oom)
+      : verbose_valid_protocol_transition Full l is os iom oom
+      .
+    Proof.
+      destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+      repeat (split; try assumption).
+      - exists _om. apply proj_message_full_protocol_prop. assumption.
+      - exists _s. apply proj_message_full_protocol_prop. assumption.
+      - apply composite_protocol_valid_implies_valid. assumption.
+    Qed.
+
+    Lemma proj_message_full_finite_ptrace
+      (Full := message_full_vlsm (IM j))
+      (s : state)
+      (ls : list in_state_out)
+      (Hpxt : finite_ptrace_from Proj s ls)
+      : finite_ptrace_from Full s ls
+      .
+    Proof.
+      induction Hpxt.
+      - constructor.
+        destruct H as [m H].
+        apply proj_message_full_protocol_prop in H.
+        exists m. assumption.
+      - constructor; try assumption.
+        apply proj_message_full_verbose_valid_protocol_transition. assumption.
+    Qed.
+
+    Lemma proj_message_full_infinite_ptrace
+      (Full := message_full_vlsm (IM j))
+      (s : state)
+      (ls : Stream in_state_out)
+      (Hpxt : infinite_ptrace_from Proj s ls)
+      : infinite_ptrace_from Full s ls
+      .
+    Proof.
+      generalize dependent ls. generalize dependent s.
+      cofix H.
+      intros s [[l input destination output] ls] Hx.
+      inversion Hx; subst.
+      specialize (H destination ls H3).
+      constructor; try assumption.
+      apply proj_message_full_verbose_valid_protocol_transition.
+      assumption.
+    Qed.
+
+    Lemma proj_message_full_incl
+      (Full := message_full_vlsm (IM j))
+      : VLSM_incl Proj Full
+      .
+    Proof.
+      intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
+      - apply proj_message_full_finite_ptrace in Hxt.
+        split; try assumption.
+      - apply proj_message_full_infinite_ptrace in Hxt.
+        split; try assumption.
+    Qed.
+
+    End fixed_projection.
 
 End projections.
-
 
 Section free_projections. 
 
