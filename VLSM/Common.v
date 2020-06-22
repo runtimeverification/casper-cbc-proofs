@@ -581,6 +581,28 @@ Require Import Lib.Preamble Lib.ListExtras.
       assumption.
     Qed.
 
+    Lemma infinite_ptrace_from_prefix_rev
+      (s : state)
+      (ls : Stream in_state_out)       
+      (Hpref: forall n : nat, finite_ptrace_from s (stream_prefix ls n))
+      : infinite_ptrace_from s ls
+      .
+    Proof.
+      generalize dependent Hpref. generalize dependent s. generalize dependent ls.
+      cofix H.
+      intros (a, ls) s Hpref.
+      assert (Hpref0 := Hpref 1).
+      inversion Hpref0; subst.
+      constructor; try assumption.
+      apply H.
+      intro n.
+      specialize (Hpref (S n)).
+      simpl in Hpref.
+      inversion Hpref; subst.
+      assumption.
+    Qed.
+
+
     Lemma infinite_ptrace_from_segment
       (s : state)
       (ls : Stream in_state_out)       

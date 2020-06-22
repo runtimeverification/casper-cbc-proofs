@@ -77,6 +77,19 @@ Proof.
     left. split; assumption.
 Qed.
 
+Lemma not_ex_all_not
+  {A : Type}
+  (P : A -> Prop)
+  (Hne : ~ (exists a : A, P a))
+  : forall a:A, ~ P a.
+Proof.
+  intros a Hpa.
+  apply Hne.
+  exists a.
+  assumption.
+Qed.
+
+
 Lemma mirror_reflect: forall X (f : X -> bool) (P : X -> Prop),
   (forall x : X, f x = true <-> P x) ->
   (forall x : X, f x = false <-> ~P x).
@@ -612,3 +625,35 @@ Definition triple_strictly_comparable_proj3
     compare := triple_strictly_comparable_proj3_compare;
     compare_strictorder := triple_strictly_comparable_proj3_strictorder;
   |}.
+
+
+Definition bounding (P : nat -> Prop)
+  :=  {n1 : nat | forall (n2 : nat), n1 <= n2 -> ~P n2}.
+
+Definition liveness (P : nat -> Prop)
+  := forall (n1 : nat), { n2 : nat | n1 <= n2 /\ P n2}.
+
+Definition liveness_dec (P : nat -> Prop)
+  := forall (n1 : nat), { n2 : nat | n1 <= n2 /\ P n2} + {~exists n2:nat, n1 <= n2 /\ P n2}.
+
+Definition min_liveness (P : nat -> Prop)
+  := forall (n1 : nat), { n2 : nat | n1 <= n2 /\ P n2
+               /\ forall (n3 : nat), n2 <= n3 /\ P n3 -> n2 <= n3}.
+    
+Lemma not_bounding_impl_liveness
+  (P : nat -> Prop)
+  (Hdec : liveness_dec P)
+  (Hnbound : ~exists n1:nat, forall (n2:nat), n1 <= n2 -> ~P n2) 
+  : liveness P.
+Proof.
+  intros n1.
+  specialize (Hdec n1).
+  destruct Hdec as [Hex | Hnex]; try assumption.
+  specialize (not_ex_all_not _ Hnbound); simpl; clear Hnbound; intro Hnbound.
+  specialize (Hnbound n1).
+  elim Hnbound.
+  intros n2 Hleq HnP.
+  apply Hnex.
+  exists n2.
+  split; assumption.
+Qed.

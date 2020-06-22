@@ -1,4 +1,4 @@
-Require Import Coq.Bool.Bool Coq.Arith.Lt.
+Require Import Coq.Bool.Bool Coq.Arith.Lt Coq.Arith.Plus.
 Require Import List.
 Import ListNotations.
 
@@ -363,6 +363,22 @@ Proof.
   simpl. constructor; try reflexivity. assumption.
 Qed.
 
+Lemma stream_app_inj_l
+  {A : Type}
+  (l1 l2 : list A)
+  (s : Stream A)
+  (Heq : stream_app l1 s = stream_app l2 s)
+  (Heq_len : length l1 = length l2)
+  : l1 = l2.
+Proof.
+  generalize dependent l2.
+  induction l1; intros; destruct l2; try reflexivity; try inversion Heq_len.
+  inversion Heq.
+  f_equal.
+  specialize (IHl1 l2 H2 H0).
+  assumption.
+Qed.
+
 Fixpoint stream_prefix
   {A : Type}
   (l : Stream A)
@@ -406,6 +422,19 @@ Definition stream_suffix
   : Stream A
   := Str_nth_tl n l.
 
+Lemma stream_suffix_S
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  : stream_suffix l n = Cons (Str_nth n l) (stream_suffix l (S n))
+  .
+Proof.
+  generalize dependent l. induction n; intros.
+  - destruct l; reflexivity.
+  - specialize (IHn (tl l)); simpl in IHn.
+    simpl. assumption.
+Qed.
+ 
 Lemma stream_prefix_suffix
   {A : Type}
   (l : Stream A)
@@ -603,6 +632,179 @@ Proof.
   assumption.
 Qed.
 
+Definition monotone_nat_stream :=
+  {s : Stream nat | forall n1 n2 : nat, n1 < n2 -> Str_nth n1 s < Str_nth n2 s}.
+
+Definition filtering_subsequence
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (ss : monotone_nat_stream)
+  (ns := proj1_sig ss)
+  := forall n : nat, P (Str_nth n s) <-> exists k : nat, Str_nth k ns = n.
+
+Lemma filtering_subsequence_witness
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (ss : monotone_nat_stream)
+  (Hfs : filtering_subsequence P s ss)
+  (ns := proj1_sig ss)
+  (k : nat)
+  : P (Str_nth (Str_nth k ns) s).
+Proof.
+  specialize (Hfs (Str_nth k ns)).
+  apply Hfs. exists k. reflexivity.
+Qed.
+
+Definition stream_subsequence
+  {A : Type}
+  (s : Stream A)
+  (ss : monotone_nat_stream)
+  (ns := proj1_sig ss)
+  : Stream A
+  := Streams.map (fun k => Str_nth k s) ns.
+
+Lemma all_ForAll_hd
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (Hall : forall n : nat, P (Str_nth n s))
+  : ForAll (fun str => P (hd str)) s.
+Proof.
+  apply ForAll_coind with (fun s : Stream A => forall n : nat, P (Str_nth n s))
+  ; intros.
+  - specialize (H 0). assumption.
+  - specialize (H (S n)). 
+    assumption.
+  - apply Hall.
+Qed.
+
+Lemma stream_filter_Forall
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (ss : monotone_nat_stream)
+  (s' := stream_subsequence s ss)
+  (Hfs : filtering_subsequence P s ss)
+  : ForAll (fun str => P (hd str)) s'.
+Proof.
+  apply all_ForAll_hd.
+  intro n.
+  unfold s'.
+  unfold stream_subsequence.
+  rewrite Str_nth_map.
+  apply filtering_subsequence_witness. assumption.
+Qed.
+
+Fixpoint list_annotate
+  {A : Type}
+  (P : A -> Prop)
+  (l : list A)
+  (Hs : Forall P l)
+  : list (sig P)
+  .
+  destruct l as [| a l].
+  - exact [].
+  - exact ((exist P a (Forall_inv Hs)) :: list_annotate A P l (Forall_inv_tail Hs)).
+Defined.
+
+CoFixpoint stream_annotate
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (Hs : ForAll (fun str => P (hd str)) s)
+  : Stream (sig P) :=
+  match Hs with 
+  | HereAndFurther _ H Hs'
+    => Cons (exist _ (hd s) H) (stream_annotate P (tl s) Hs')
+  end.
+
+Lemma stream_annotate_proj
+  {A : Type}
+  (P : A -> Prop)
+  : forall
+    (s : Stream A)
+    (Hs : ForAll (fun str => P (hd str)) s)
+    , EqSt s (map (@proj1_sig _ _) (stream_annotate P s Hs)).
+Proof.
+  cofix cf.
+  intros (x, s) Hs.
+  constructor.
+  - simpl.
+    destruct Hs.
+    trivial.
+  - destruct Hs.
+    simpl.
+    apply cf.
+Qed.
+
+Definition min_liveness_stream
+  {A : Type}
+  (P : A -> Prop)
+  (str : Stream A)
+  (Pstr := fun (n : nat) => P (Str_nth n str))
+  := min_liveness Pstr.
+
+Lemma min_liveness_stream_cons
+  {A : Type}
+  (P : A -> Prop)
+  (str : Stream A)
+  (Hlive : min_liveness_stream P str)
+  : min_liveness_stream P (tl str).
+Proof.
+  destruct str as [a tr]; simpl.
+  intro n1.
+  specialize (Hlive (S n1)).
+  destruct Hlive as [[|n2] [Hleq [Hidx Hmin]]].
+  - exfalso. inversion Hleq.
+  - apply le_S_n in Hleq.
+    exists n2.
+    split; try assumption.
+    split; try assumption.
+    intros n3 [Hle23 Hidx3].
+    specialize (Hmin (S n3)).
+    apply le_S_n.
+    apply Hmin.
+    split; try assumption.
+    apply le_n_S.
+    assumption.
+Qed.
+
+Lemma min_liveness_stream_suffix
+  {A : Type}
+  (P : A -> Prop)
+  (str : Stream A)
+  (Hlive : min_liveness_stream P str)
+  (n : nat)
+  : min_liveness_stream P (stream_suffix str n).
+Proof.
+  generalize dependent str.
+  induction n; intros tr Hinf; try assumption.
+  specialize (IHn tr Hinf).
+  rewrite stream_suffix_S in IHn.
+  apply min_liveness_stream_cons in IHn.
+  assumption.
+Qed.
+
+CoFixpoint stream_filter
+  {A : Type}
+  (f : A -> bool)
+  (P := fun a => f a = true)
+  (str : Stream A)
+  (Hlive : min_liveness_stream P str)
+  : Stream A
+  :=
+  let Hlive' := min_liveness_stream_cons P str Hlive in
+  let a := hd str in
+  if f a then Cons a (stream_filter f (tl str) Hlive')
+  else
+    let (n2, _) := Hlive' 0 in
+    let Hlive_suf := min_liveness_stream_suffix P (tl str) Hlive' (S n2) in
+    let str' := stream_suffix (tl str) (S n2) in
+    let a := Str_nth n2 (tl str) in
+    Cons a (stream_filter f str' Hlive_suf).
+
 Lemma stream_prefix_nth
   {A : Type}
   (s : Stream A)
@@ -620,6 +822,34 @@ Proof.
     apply lt_S_n in Hi.
     specialize (IHi s n Hi).
     rewrite IHi.
+    reflexivity.
+Qed.
+
+Lemma stream_prefix_succ
+  {A : Type}
+  (s : Stream A)
+  (n : nat)
+  : stream_prefix s (S n) = stream_prefix s n ++ [Str_nth n s].
+Proof.
+  specialize (stream_prefix_suffix s n).
+  rewrite stream_suffix_S. 
+  rewrite <- stream_app_cons.
+  rewrite stream_app_assoc.
+  intros Hn.
+  specialize (stream_prefix_suffix s (S n)); intros Hsn.
+  rewrite <- Hsn in Hn at 4; clear Hsn.
+  specialize
+    (stream_app_inj_l
+      (stream_prefix s n ++ [Str_nth n s])
+      (stream_prefix s (S n))
+      (stream_suffix s (S n))
+      Hn
+    ); intros Hinj.
+    symmetry.
+    apply Hinj.
+    rewrite app_length.
+    repeat (rewrite stream_prefix_length).
+    rewrite plus_comm.
     reflexivity.
 Qed.
 
@@ -911,4 +1141,69 @@ Proof.
     + simpl. destruct (f a) eqn:Hfa.
       * right. apply IHl. exists a'. split; try assumption.
       * apply IHl. exists a'. split; try assumption.
+Qed.
+
+Lemma str_map_tl
+  {A B : Type}
+  (f : A -> B)
+  (s : Stream A)
+  : EqSt (tl (map f s)) (map f (tl s))
+  .
+Proof.
+  generalize dependent s.
+  cofix IH.
+  intros (a, s).
+  constructor; try reflexivity.
+  simpl.
+  apply IH.
+Qed.
+
+Lemma str_map_cons
+  {A B : Type}
+  (f : A -> B)
+  (s : Stream A)
+  : EqSt (map f s) (Cons (f (hd s)) (map f (tl s)))
+  .
+Proof.
+  destruct s as  (a,s).
+  constructor; try reflexivity.
+  simpl.
+  apply EqSt_reflex.
+Qed.
+
+Lemma stream_prefix_EqSt
+  {A : Type}
+  (s1 s2 : Stream A)
+  (Heq : EqSt s1 s2)
+  : forall n : nat, stream_prefix s1 n = stream_prefix s2 n .
+Proof.
+  intro n.
+  generalize dependent s2. generalize dependent s1.
+  induction n; try reflexivity; intros (a1, s1) (a2,s2) Heq.
+  inversion Heq. simpl in H; subst.
+  simpl.
+  f_equal.
+  apply IHn.
+  assumption.
+Qed.
+
+Lemma EqSt_stream_prefix
+  {A : Type}
+  (s1 s2 : Stream A)
+  (Hpref : forall n : nat, stream_prefix s1 n = stream_prefix s2 n)
+  : EqSt s1 s2
+  .
+Proof.
+  apply ntheq_eqst.
+  intro n.
+  assert (Hlt : n < S n) by constructor.
+  assert (HSome : Some (Str_nth n s1) = Some (Str_nth n s2)).
+  { 
+    rewrite <- (stream_prefix_nth  s1 (S n) n Hlt).
+    rewrite <- (stream_prefix_nth  s2 (S n) n Hlt).
+    specialize (Hpref (S n)).
+    rewrite Hpref.
+    reflexivity.
+  }
+  inversion HSome. reflexivity.
 Qed.

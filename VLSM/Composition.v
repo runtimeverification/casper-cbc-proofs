@@ -1,4 +1,4 @@
-Require Import List Streams.
+Require Import List Streams Nat.
 Import ListNotations.
 Require Import Logic.FunctionalExtensionality.
 
@@ -421,7 +421,7 @@ Section projections.
         reflexivity.
     Qed.
 
-    (* The projection of a protocol trace remains a protocol trace *)
+    (* The projection of a finite protocol trace remains a protocol trace *)
 
     Lemma finite_ptrace_projection
       (s : @state _ T)
@@ -526,7 +526,105 @@ Section projections.
       rewrite <- Hlast.
       assumption.
     Qed.
-      
+
+    Definition from_projection
+      (a : @in_state_out _ T)
+      : Prop
+      := j = projT1 (l a).
+
+    Definition in_projection
+       (tr : Stream (@in_state_out _ T))
+       (n : nat)
+       := from_projection (Str_nth n tr)
+       .
+
+    Definition in_projection_dec
+      := forall (tr : Stream (@in_state_out _ T)),
+           bounding (in_projection tr)
+           + { ss : monotone_nat_stream
+             | filtering_subsequence from_projection tr ss
+             }.
+    
+    Definition infinite_trace_projection_stream
+      (ss: Stream (@in_state_out _ T))
+      (ks: monotone_nat_stream)
+      (Hfilter: filtering_subsequence from_projection ss ks)
+      : Stream (@in_state_out _ (IT j))
+      :=
+      let subs := stream_subsequence ss ks in
+      let HForAll := stream_filter_Forall from_projection ss ks Hfilter in
+      let subsP := stream_annotate from_projection subs HForAll in
+      Streams.map
+        (fun item : {a : @in_state_out _ T | from_projection a} =>
+          let (item, e) := item in
+          let lj := eq_rect_r _ (projT2 (l item)) e in
+          @Build_in_state_out _ (type Proj) lj (input item) (destination item j) (output item)
+        )
+        subsP.
+    
+    Lemma finite_trace_projection_stream
+      (ss: Stream (@in_state_out _ T))
+      (ks: monotone_nat_stream)
+      (Hfilter: filtering_subsequence from_projection ss ks)
+      (n : nat)
+      (kn := Str_nth n (proj1_sig ks))
+      (ss_to_kn := stream_prefix ss (succ kn))
+      (sproj := infinite_trace_projection_stream ss ks Hfilter)
+      : stream_prefix sproj (succ n) = finite_trace_projection_list ss_to_kn
+      .
+    Proof.
+      unfold sproj. unfold infinite_trace_projection_stream.
+      rewrite <- stream_prefix_map.
+    Admitted.
+
+    Definition trace_projection
+      (Hproj_dec : in_projection_dec)
+      (tr : @Trace _ T)
+      : @Trace _ (IT j).
+    destruct tr as [s ls | s ss].
+    - exact (Finite (s j) (finite_trace_projection_list ls)).
+    - specialize (Hproj_dec ss).
+      destruct Hproj_dec as [[n1 _] | [ks Hfilter]].
+      + exact (Finite (s j) (finite_trace_projection_list (stream_prefix ss n1))).
+      + exact (Infinite (s j) (infinite_trace_projection_stream ss ks Hfilter)).
+    Defined.
+
+    Lemma infinite_ptrace_projection
+      (s: @state _ T)
+      (ss: Stream in_state_out)
+      (Psj: protocol_state_prop Proj (s j))
+      (Htr: infinite_ptrace_from X s ss)
+      (fs : monotone_nat_stream)
+      (Hfs: filtering_subsequence from_projection ss fs)
+      : infinite_ptrace_from Proj (s j) (infinite_trace_projection_stream ss fs Hfs)
+      .
+    Proof.
+      apply infinite_ptrace_from_prefix_rev.
+      specialize (infinite_ptrace_from_prefix X s ss Htr); intro Hftr.
+      intros [| n].
+      - constructor. assumption.
+      - rewrite finite_trace_projection_stream.
+        apply finite_ptrace_projection; try assumption.
+        apply Hftr.
+    Qed.
+ 
+    (* The projection of an protocol trace remains a protocol trace *)
+
+    Lemma ptrace__fromprojection
+      (Hproj_dec : in_projection_dec)
+      (tr : @Trace _ T)
+      (Psj : protocol_state_prop Proj (trace_initial_state tr j))
+      (Htr : ptrace_from_prop X tr)
+       : ptrace_from_prop Proj (trace_projection Hproj_dec tr).
+    Proof.
+      destruct tr as [s ls | s ss].
+      - apply finite_ptrace_projection; assumption.
+      - simpl. destruct (Hproj_dec ss) as [[n _]|Hinf].
+        + apply finite_ptrace_projection; try assumption.
+          apply infinite_ptrace_from_prefix. assumption.
+        + destruct Hinf as [ks HFilter].
+          apply infinite_ptrace_projection; assumption.
+    Qed.
 
     (* We axiomatize projection friendliness as the converse of finite_ptrace_projection *)
     Definition projection_friendly
