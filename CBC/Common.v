@@ -1,11 +1,7 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical Sorting.
+Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts IndefiniteDescription Classical Sorting.
 Import ListNotations.    
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol Lib.RealsExtras .
-
-(** Logic library **)
-Axiom choice : forall (X : Type), ConstructiveIndefiniteDescription_on X.
-
 
 Class InhabitedTwice V := { inhabited_twice : exists (v1 v2 : V), v1 <> v2 }.
 
@@ -42,13 +38,13 @@ Definition get_distinct_sender
   {V} `{Hdc : DistinctChoice V}
   (v : V)
   :=
-  proj1_sig (choice V (fun v' => v <> v') (distinct_choice_total v)).
+  proj1_sig (constructive_indefinite_description (fun v' => v <> v') (distinct_choice_total v)).
 
 Definition get_distinct_sender_correct
   {V} `{Hdc : DistinctChoice V}
   (v : V)
   :=
-  proj2_sig (choice V (fun v' => v <> v') (distinct_choice_total v)).
+  proj2_sig (constructive_indefinite_description (fun v' => v <> v') (distinct_choice_total v)).
 
 Lemma get_distinct_sender_correct'
   {V} `{Hdc : DistinctChoice V}
@@ -281,10 +277,10 @@ Class Estimator state C :=
   }.
 
 Definition get_estimate {state C} `{Estimator state C} (s : state) :=
-  proj1_sig (choice C (estimator s) (estimator_total s)).
+  proj1_sig (constructive_indefinite_description (estimator s) (estimator_total s)).
 
 Definition get_estimate_correct {state C} `{Estimator state C} (s : state) :=
-  proj2_sig (choice C (estimator s) (estimator_total s)).
+  proj2_sig (constructive_indefinite_description (estimator s) (estimator_total s)).
 
 Lemma get_estimate_consistent {state C} `{Estimator state C}
   (s : state)
@@ -293,7 +289,7 @@ Lemma get_estimate_consistent {state C} `{Estimator state C}
   : estimator s c.
 Proof.
   unfold get_estimate in Heq.
-  remember (choice C (estimator s) (estimator_total s)) as Hchoice. destruct Hchoice as [c' Hc'].
+  remember (constructive_indefinite_description (estimator s) (estimator_total s)) as Hchoice. destruct Hchoice as [c' Hc'].
   simpl in Heq. subst. assumption.
 Qed.
 

@@ -544,7 +544,7 @@ Section projections.
            + { ss : monotone_nat_stream
              | filtering_subsequence from_projection tr ss
              }.
-    
+
     Definition infinite_trace_projection_stream
       (ss: Stream (@in_state_out _ T))
       (ks: monotone_nat_stream)
@@ -561,7 +561,7 @@ Section projections.
           @Build_in_state_out _ (type Proj) lj (input item) (destination item j) (output item)
         )
         subsP.
-    
+
     Lemma finite_trace_projection_stream
       (ss: Stream (@in_state_out _ T))
       (ks: monotone_nat_stream)
@@ -575,6 +575,33 @@ Section projections.
     Proof.
       unfold sproj. unfold infinite_trace_projection_stream.
       rewrite <- stream_prefix_map.
+      specialize
+        (stream_prefix_annotate
+          from_projection
+          (stream_subsequence ss ks)
+          (stream_filter_Forall from_projection ss ks Hfilter)
+          (succ n)
+        ); intros [Hall Heq].
+      clear -Heq.
+      assert
+        (Heq' : 
+          (@stream_prefix
+            (@sig (@in_state_out message T)
+              (fun a : @in_state_out message T => from_projection a))
+            (@stream_annotate (@in_state_out message T) from_projection
+              (@stream_subsequence (@in_state_out message T) ss ks)
+              (@stream_filter_Forall (@in_state_out message T) from_projection
+                  ss ks Hfilter)) (succ n))
+          =
+          (@stream_prefix
+            (@sig (@in_state_out message T) from_projection)
+            (@stream_annotate (@in_state_out message T) from_projection
+              (@stream_subsequence (@in_state_out message T) ss ks)
+              (@stream_filter_Forall (@in_state_out message T) from_projection
+                  ss ks Hfilter)) (succ n))
+        ) by reflexivity.
+        rewrite Heq'.
+        rewrite Heq.
     Admitted.
 
     Definition trace_projection

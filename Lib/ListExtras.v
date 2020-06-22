@@ -697,6 +697,28 @@ Proof.
   apply filtering_subsequence_witness. assumption.
 Qed.
 
+Definition Forall_hd
+  {A : Type}
+  {P : A -> Prop}
+  {a : A}
+  {l : list A}
+  (Hs : Forall P (a :: l))
+  : P a
+  .
+  inversion Hs. subst. exact H1.
+Defined.
+
+Definition Forall_tl
+  {A : Type}
+  {P : A -> Prop}
+  {a : A}
+  {l : list A}
+  (Hs : Forall P (a :: l))
+  : Forall P l
+  .
+  inversion Hs. subst. exact H2.
+Defined.
+
 Fixpoint list_annotate
   {A : Type}
   (P : A -> Prop)
@@ -706,7 +728,8 @@ Fixpoint list_annotate
   .
   destruct l as [| a l].
   - exact [].
-  - exact ((exist P a (Forall_inv Hs)) :: list_annotate A P l (Forall_inv_tail Hs)).
+  - 
+  exact ((exist P a (Forall_hd Hs)) :: list_annotate A P l (Forall_tl Hs)).
 Defined.
 
 CoFixpoint stream_annotate
@@ -720,6 +743,70 @@ CoFixpoint stream_annotate
     => Cons (exist _ (hd s) H) (stream_annotate P (tl s) Hs')
   end.
 
+Lemma stream_prefix_Forall
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (Hs : ForAll (fun str => P (hd str)) s)
+  : forall n : nat, Forall P (stream_prefix s n)
+  .
+Proof.
+  intros n. generalize dependent s.
+  induction n; intros.
+  - constructor.
+  - destruct s as (a,s).
+    simpl.
+    inversion Hs.
+    constructor; try assumption.
+    apply IHn.
+    assumption.
+Qed.
+
+Lemma stream_prefix_Forall_rev
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (Hpref: forall n : nat, Forall P (stream_prefix s n))
+  : ForAll (fun str => P (hd str)) s
+  .
+Proof.
+  generalize dependent s.
+  cofix H.
+  intros (a, s) Hpref.
+  constructor.
+  - specialize (Hpref 1).
+    inversion Hpref.
+    assumption.
+  - apply H.
+    intro n.
+    specialize (Hpref (S n)).
+    inversion Hpref.
+    assumption.
+Qed.
+
+Lemma stream_prefix_annotate
+  {A : Type}
+  (P : A -> Prop)
+  (s : Stream A)
+  (Hs : ForAll (fun str => P (hd str)) s)
+  (n : nat)
+  : exists Hs', stream_prefix (stream_annotate P s Hs) n
+  = list_annotate P (stream_prefix s n) Hs'
+  .
+Proof.
+  generalize dependent s.
+  induction n.
+  - intros. simpl. exists (Forall_nil P). reflexivity.
+  - intros (a, s) (H, H0).
+    specialize (IHn s H0).
+    destruct IHn as [Hs' Heq]. 
+    simpl.
+    rewrite Heq.
+    exists (@Forall_cons A P _ _ H Hs').
+    simpl.
+    f_equal.
+Qed.
+ 
 Lemma stream_annotate_proj
   {A : Type}
   (P : A -> Prop)
