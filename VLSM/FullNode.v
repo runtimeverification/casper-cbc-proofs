@@ -310,7 +310,8 @@ Section Full.
                 Hv
             ).
           simpl in PG.
-          replace Hj with Hj0; try assumption. apply proof_irrelevance.
+          replace Hj with Hj0 by apply proof_irrelevance.
+          assumption.
         * specialize (IHcvj Hin). destruct IHcvj as [Pcvj Hincl]. simpl. split; try assumption.
           apply add_preserves_inclusion. assumption.
       + inversion Heqsom; subst; clear Heqsom.

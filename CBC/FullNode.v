@@ -1,4 +1,4 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts ProofIrrelevance.
+Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts .
 Import ListNotations.   
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Protocol CBC.Common CBC.Definitions.
@@ -106,8 +106,8 @@ Proof.
   simpl. assert (about_s : CompareStrictOrder triple_strictly_comparable_proj3_compare) by apply triple_strictly_comparable_proj3_strictorder.
   destruct about_s. spec StrictOrder_Reflexive s1 s2. rewrite StrictOrder_Reflexive.
   split; intros; subst.
-  f_equal. apply proof_irrelevance.
-  inversion H. reflexivity.
+  - apply exist_eq. reflexivity.
+  - inversion H. reflexivity.
 Qed.
 
 Lemma sorted_state_compare_transitive

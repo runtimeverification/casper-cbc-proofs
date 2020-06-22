@@ -1,4 +1,4 @@
-Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ChoiceFacts ProofIrrelevance Eqdep_dec.
+Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ProofIrrelevance Eqdep_dec.
 Import ListNotations.
 
 Tactic Notation "spec" hyp(H) := 
@@ -61,8 +61,6 @@ Proof.
     + right. intros Heq. inversion Heq. contradiction.
 Qed.
 
-(** Logic library **)
-Axiom choice : forall (X : Type), ConstructiveIndefiniteDescription_on X.
 
 Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
   snd (fst xyz).

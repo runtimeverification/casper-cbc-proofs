@@ -3,6 +3,9 @@ Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol Lib.RealsExtras .
 
+(** Logic library **)
+Axiom choice : forall (X : Type), ConstructiveIndefiniteDescription_on X.
+
 
 Class InhabitedTwice V := { inhabited_twice : exists (v1 v2 : V), v1 <> v2 }.
 
