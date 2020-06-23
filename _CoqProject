@@ -1,6 +1,7 @@
 -Q . CasperCBC
 
 Lib/ListExtras.v
+Lib/StreamExtras.v
 Lib/ListSetExtras.v
 Lib/Preamble.v
 Lib/RealsExtras.v

@@ -2,7 +2,7 @@ Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus.
 Import ListNotations.
  
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras.
+Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
 
 (* 2.2.1 VLSM Parameters *)
   Class VLSM_type (message : Type) :=
