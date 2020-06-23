@@ -655,3 +655,14 @@ Proof.
   exists n2.
   split; assumption.
 Qed.
+
+Definition predicate_to_function
+  {A : Type}
+  {P : A -> Prop}
+  (decP : forall a:A, {P a} + {~P a})
+  (a : A)
+  : bool
+  := match decP a with
+  | left _ => true
+  | _ => false
+  end.

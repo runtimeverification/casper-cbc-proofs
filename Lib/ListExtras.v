@@ -131,6 +131,26 @@ Proof.
     rewrite Hg. assumption.
 Qed.
 
+Lemma filter_nil
+  {A : Type}
+  (f : A -> bool)
+  (l : list A)
+  (Hnone : forall a : A, In a l -> f a = false)
+  : filter f l = []
+  .
+Proof.
+  induction l; try reflexivity.
+  assert (Hno_a := Hnone a). 
+  assert (Hin_a : In a (a :: l)) by (left;reflexivity).
+  specialize (Hno_a Hin_a).
+  simpl. rewrite Hno_a.
+  apply IHl.
+  intros b Hin_b.
+  apply Hnone.
+  right.
+  assumption.
+Qed.
+
 Lemma in_not_in : forall A (x y : A) l,
   In x l ->
   ~ In y l ->
@@ -408,6 +428,17 @@ Proof.
     apply IHn; assumption.
 Qed.
 
+Lemma list_suffix_length
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  : length (list_suffix l n) = length l - n
+  .
+Proof.
+  generalize dependent l. induction n; intros [|a l]; try reflexivity.
+  simpl. apply IHn.
+Qed.
+
 Lemma list_prefix_prefix
   {A : Type}
   (l : list A)
@@ -494,6 +525,32 @@ Fixpoint list_annotate
   exact ((exist P a (Forall_hd Hs)) :: list_annotate A P l (Forall_tl Hs)).
 Defined.
 
+Lemma list_annotate_unroll
+  {A : Type}
+  (P : A -> Prop)
+  (a : A)
+  (l : list A)
+  (Hs : Forall P (a :: l))
+  : list_annotate P (a :: l) Hs = exist P a (Forall_hd Hs) ::  list_annotate P l (Forall_tl Hs).
+Proof.
+  reflexivity.
+Qed.
+
+Fixpoint filter_Forall
+  {A : Type}
+  (P : A -> Prop)
+  (decP : forall a:A, {P a} + {~P a})
+  (l : list A)
+  : Forall P (filter (predicate_to_function decP) l)
+  .
+destruct l; simpl.
+- exact (Forall_nil P).
+- unfold predicate_to_function.
+  specialize (filter_Forall A P decP l).
+  destruct (decP a); simpl.
+  + constructor; assumption.
+  + assumption.
+Defined.
 
 Lemma list_prefix_nth
   {A : Type}
@@ -746,4 +803,23 @@ Proof.
     + simpl. destruct (f a) eqn:Hfa.
       * right. apply IHl. exists a'. split; try assumption.
       * apply IHl. exists a'. split; try assumption.
+Qed.
+
+Lemma nth_error_eq
+  {A : Type}
+  (l1 l2 : list A)
+  (Hnth: forall n : nat, nth_error l1 n = nth_error l2 n)
+  : l1 = l2.
+Proof.
+  generalize dependent l2.
+  induction l1; intros [| a2 l2] Hnth; try reflexivity.
+  - specialize (Hnth 0); simpl in Hnth. inversion Hnth.
+  - specialize (Hnth 0); simpl in Hnth. inversion Hnth.
+  - assert (H0 := Hnth 0). simpl in H0.
+    inversion H0; subst.
+    f_equal.
+    apply IHl1.
+    intro n.
+    specialize (Hnth (S n)).
+    assumption.
 Qed.

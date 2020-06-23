@@ -2,7 +2,7 @@ Require Import List Streams Nat.
 Import ListNotations.
 Require Import Logic.FunctionalExtensionality.
 
-Require Import Coq.Logic.FinFun.
+Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
 
 From CasperCBC
      Require Import Lib.StreamExtras Lib.ListExtras Lib.Preamble VLSM.Common.
@@ -369,6 +369,84 @@ Section projections.
         | _ => tail
         end
       end.
+
+    Definition from_projection
+      (a : @in_state_out _ T)
+      : Prop
+      := j = projT1 (l a).
+    
+    Definition dec_from_projection
+      (a : in_state_out)
+      : {from_projection a} + {~from_projection a}
+      := eq_dec j (projT1 (l a)).
+    
+    Definition finite_trace_projection_list_alt
+      (trx : list (@in_state_out _ T))
+      (ftrx := (filter (predicate_to_function dec_from_projection) trx))
+      (Hall: Forall from_projection ftrx)
+      :=
+      List.map
+        (fun item : {a : @in_state_out _ T | from_projection a} =>
+          let (item, e) := item in
+          let lj := eq_rect_r _ (projT2 (l item)) e in
+          @Build_in_state_out _ (type Proj)
+            lj
+            (input item)
+            (destination item j)
+            (output item)
+        )
+      (list_annotate from_projection ftrx Hall).
+    
+    Lemma finite_trace_projection_list_alt_iff
+      (trx : list (@in_state_out _ T))
+      (ftrx := (filter (predicate_to_function dec_from_projection) trx))
+      (Hall: Forall from_projection ftrx)
+      : finite_trace_projection_list_alt trx Hall = finite_trace_projection_list trx.
+    Proof.
+      unfold ftrx in *. clear ftrx.
+      generalize dependent Hall.
+      induction trx; intros; try reflexivity.
+      simpl.
+      destruct (eq_dec j (projT1 (l a))) eqn:Heq.
+      - assert
+        (Hunroll :
+          filter (predicate_to_function dec_from_projection) (a :: trx)
+          = a :: filter (predicate_to_function dec_from_projection) trx
+        ).
+        { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
+          rewrite Heq. reflexivity.
+        }
+        unfold finite_trace_projection_list_alt.
+        generalize dependent Hall.
+        rewrite Hunroll.
+        intro Hall.
+        rewrite list_annotate_unroll.
+        specialize (IHtrx (Forall_tl Hall)).
+        rewrite <- IHtrx.
+        simpl.
+        f_equal.
+        f_equal; try reflexivity.
+        specialize UIP_refl__Streicher_K; intro K.
+        unfold UIP_refl_ in K.
+        unfold UIP_refl_on_ in K.
+        replace (Forall_hd Hall) with e; try reflexivity.
+        apply UIP.
+      -  assert
+        (Hunroll :
+          filter (predicate_to_function dec_from_projection) (a :: trx)
+          = filter (predicate_to_function dec_from_projection) trx
+        ).
+        { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
+          rewrite Heq. reflexivity.
+        }
+        unfold finite_trace_projection_list_alt.
+        generalize dependent Hall.
+        rewrite Hunroll.
+        intro Hall.
+        specialize (IHtrx Hall).
+        rewrite <- IHtrx.
+        reflexivity.
+    Qed.
     
     Lemma finite_trace_projection_empty
       (s : @state _ T)
@@ -527,11 +605,6 @@ Section projections.
       assumption.
     Qed.
 
-    Definition from_projection
-      (a : @in_state_out _ T)
-      : Prop
-      := j = projT1 (l a).
-
     Definition in_projection
        (tr : Stream (@in_state_out _ T))
        (n : nat)
@@ -602,7 +675,24 @@ Section projections.
         ) by reflexivity.
         rewrite Heq'.
         rewrite Heq.
-    Admitted.
+        specialize
+          (stream_filter_prefix
+            from_projection
+            dec_from_projection
+            ss
+            ks
+            Hfilter
+            n
+          ); intros Hsfilter.
+          remember stream_prefix as sp.
+          simpl in Hsfilter. subst.
+          unfold succ in *.
+          generalize dependent Hall.
+          rewrite Hsfilter.
+          intros.
+          unfold ss_to_kn. unfold kn.
+          apply finite_trace_projection_list_alt_iff.
+    Qed.
 
     Definition trace_projection
       (Hproj_dec : in_projection_dec)
@@ -637,7 +727,7 @@ Section projections.
  
     (* The projection of an protocol trace remains a protocol trace *)
 
-    Lemma ptrace__fromprojection
+    Lemma ptrace_from_projection
       (Hproj_dec : in_projection_dec)
       (tr : @Trace _ T)
       (Psj : protocol_state_prop Proj (trace_initial_state tr j))
