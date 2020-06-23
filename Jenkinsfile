@@ -6,7 +6,7 @@ pipeline {
     }
   }
   options { ansiColor('xterm') }
-  environment { COQ_PACKAGE = 'coq-cbft.dev' }
+  environment { COQ_PACKAGE = 'coq-casper-cbc.dev' }
   stages {
     stage('Init title') {
       when { changeRequest() }
