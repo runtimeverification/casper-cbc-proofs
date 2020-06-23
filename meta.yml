@@ -4,7 +4,6 @@ shortname: casper-cbc-proofs
 opam_name: coq-casper-cbc
 organization: runtimeverification
 community: false
-action: true
 
 synopsis: >-
   Protocol verification of Casper Correct-By-Construction
@@ -33,9 +32,6 @@ license:
 supported_coq_versions:
   text: 8.11 or later
   opam: '{>= "8.11" & < "8.13~"}'
-
-tested_coq_opam_versions:
-- version: '8.11'
 
 namespace: CasperCBC
 

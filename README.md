@@ -1,9 +1,6 @@
 # Casper CBC Proofs
 
-[![CI][action-shield]][action-link]
 
-[action-shield]: https://github.com/runtimeverification/casper-cbc-proofs/workflows/CI/badge.svg?branch=master
-[action-link]: https://github.com/runtimeverification/casper-cbc-proofs/actions?query=workflow%3ACI
 
 
 
