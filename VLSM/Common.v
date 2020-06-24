@@ -848,6 +848,19 @@ Require Import Lib.Preamble Lib.ListExtras.
       exists (tr : list in_state_out),
         finite_ptrace_from first tr /\
         last (List.map destination tr) first = second.
+        
+    Lemma in_futures_reflexive
+      (pfirst: protocol_state)
+      : in_futures pfirst pfirst.
+      
+      Proof.
+      unfold in_futures.
+      exists [].
+      split.
+      - apply finite_ptrace_empty.
+        destruct pfirst. assumption.
+       - simpl. auto.
+      Qed.
 
     Lemma in_futures_witness
       (pfirst psecond : protocol_state)
