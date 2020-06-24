@@ -1359,7 +1359,7 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
 
   End VLSM_equality.
 
-  Definition message_full_vlsm_sig
+  Definition pre_loaded_vlsm_sig
     {message : Type}
     {vtype : VLSM_type message}
     {Sig : LSM_sig vtype}
@@ -1373,18 +1373,18 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
      ; l0 := @l0 _ _ Sig
     |}.
 
-  Definition message_full_vlsm
+  Definition pre_loaded_vlsm
     {message : Type}
     {vtype : VLSM_type message}
     {Sig : LSM_sig vtype}
     (X : VLSM Sig)
-    : VLSM (message_full_vlsm_sig X)
+    : VLSM (pre_loaded_vlsm_sig X)
     := 
     {| transition := @transition _ _ _ X
      ; valid := @valid _ _ _ X
     |}.
 
-  Lemma message_full_protocol_prop
+  Lemma pre_loaded_protocol_prop
     {message : Type}
     {vtype : VLSM_type message}
     {Sig : LSM_sig vtype}
@@ -1392,18 +1392,18 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
     (s : state)
     (om : option message)
     (Hps : protocol_prop X (s, om))
-    : protocol_prop (message_full_vlsm X) (s, om).
+    : protocol_prop (pre_loaded_vlsm X) (s, om).
   Proof.
     induction Hps.
-    - apply (protocol_initial_state (message_full_vlsm X) is).
+    - apply (protocol_initial_state (pre_loaded_vlsm X) is).
     - destruct im as [m Him]. simpl in om0. clear Him.
-      assert (Him : @initial_message_prop _ _ (message_full_vlsm_sig X) m)
+      assert (Him : @initial_message_prop _ _ (pre_loaded_vlsm_sig X) m)
         by exact I.
-      apply (protocol_initial_message (message_full_vlsm X) (exist _ m Him)).
-    - apply (protocol_generated (message_full_vlsm X)) with _om _s; assumption.
+      apply (protocol_initial_message (pre_loaded_vlsm X) (exist _ m Him)).
+    - apply (protocol_generated (pre_loaded_vlsm X)) with _om _s; assumption.
   Qed.
 
-  Lemma message_full_verbose_valid_protocol_transition
+  Lemma pre_loaded_verbose_valid_protocol_transition
     {message : Type}
     {vtype : VLSM_type message}
     {Sig : LSM_sig vtype}
@@ -1412,16 +1412,16 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
     (is os : state)
     (iom oom : option message)
     (Ht : verbose_valid_protocol_transition X l is os iom oom)
-    : verbose_valid_protocol_transition (message_full_vlsm X) l is os iom oom
+    : verbose_valid_protocol_transition (pre_loaded_vlsm X) l is os iom oom
     .
   Proof.
     destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
     repeat (split; try assumption).
-    - exists _om. apply message_full_protocol_prop. assumption.
-    - exists _s. apply message_full_protocol_prop. assumption.
+    - exists _om. apply pre_loaded_protocol_prop. assumption.
+    - exists _s. apply pre_loaded_protocol_prop. assumption.
   Qed.
 
-  Lemma message_full_finite_ptrace
+  Lemma pre_loaded_finite_ptrace
     {message : Type}
     {vtype : VLSM_type message}
     {Sig : LSM_sig vtype}
@@ -1429,19 +1429,19 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
     (s : state)
     (ls : list in_state_out)
     (Hpxt : finite_ptrace_from X s ls)
-    : finite_ptrace_from (message_full_vlsm X) s ls
+    : finite_ptrace_from (pre_loaded_vlsm X) s ls
     .
   Proof.
     induction Hpxt.
     - constructor.
       destruct H as [m H].
-      apply message_full_protocol_prop in H.
+      apply pre_loaded_protocol_prop in H.
       exists m. assumption.
     - constructor; try assumption.
-      apply message_full_verbose_valid_protocol_transition. assumption.
+      apply pre_loaded_verbose_valid_protocol_transition. assumption.
   Qed.
 
-  Lemma message_full_infinite_ptrace
+  Lemma pre_loaded_infinite_ptrace
     {message : Type}
     {vtype : VLSM_type message}
     {Sig : LSM_sig vtype}
@@ -1449,7 +1449,7 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
     (s : state)
     (ls : Stream in_state_out)
     (Hpxt : infinite_ptrace_from X s ls)
-    : infinite_ptrace_from (message_full_vlsm X) s ls
+    : infinite_ptrace_from (pre_loaded_vlsm X) s ls
     .
   Proof.
     generalize dependent ls. generalize dependent s.
@@ -1458,23 +1458,23 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
     inversion Hx; subst.
     specialize (H destination ls H3).
     constructor; try assumption.
-    apply message_full_verbose_valid_protocol_transition.
+    apply pre_loaded_verbose_valid_protocol_transition.
     assumption.
   Qed.
 
-  Lemma vlsm_incl_message_full_vlsm
+  Lemma vlsm_incl_pre_loaded_vlsm
     {message : Type}
     {vtype : VLSM_type message}
     {Sig : LSM_sig vtype}
     (X : VLSM Sig)
-    (Full := message_full_vlsm X)
-    : VLSM_incl X Full
+    (PreLoaded := pre_loaded_vlsm X)
+    : VLSM_incl X PreLoaded
     .
   Proof.
     intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
-    - apply message_full_finite_ptrace in Hxt.
+    - apply pre_loaded_finite_ptrace in Hxt.
       split; try assumption.
-    - apply message_full_infinite_ptrace in Hxt.
+    - apply pre_loaded_infinite_ptrace in Hxt.
       split; try assumption.
   Qed.
 

@@ -66,6 +66,34 @@ Section indexing.
       rewrite eq_dec_refl. reflexivity.
     Qed.
 
+    Lemma state_update_id
+               (s : indexed_state)
+               (i : index)
+               (si : @state message (IT i))
+               (Heq : s i = si)
+      : state_update s i si = s.
+    Proof.
+      apply functional_extensionality_dep_good.
+      intro j.
+      destruct (eq_dec j i).
+      - subst. apply state_update_eq.
+      - apply state_update_neq. assumption.
+    Qed.
+
+    Lemma state_update_twice
+               (s : indexed_state)
+               (i : index)
+               (si si': @state message (IT i))
+      : state_update (state_update s i si) i si' = state_update s i si'.
+    Proof.
+      apply functional_extensionality_dep_good.
+      intro j.
+      destruct (eq_dec j i).
+      - subst. rewrite state_update_eq. symmetry. apply state_update_eq.
+      - repeat rewrite state_update_neq; try assumption.
+        reflexivity.
+    Qed.
+
   End indexed_type.
   
   Section indexed_sig.
@@ -180,6 +208,52 @@ Section indexing.
       :=
         indexed_vlsm_constrained free_constraint
     .
+
+    Lemma protocol_prop_indexed_free_lift
+      (S := (indexed_sig i0 IS))
+      (j : index)
+      (sj : @state _ (IT j))
+      (om : option message)
+      (Hp : protocol_prop (IM j) (sj, om))
+      (s0X := proj1_sig (@s0 _ _ S))
+      : protocol_prop indexed_vlsm_free ((state_update IT s0X j sj), om)
+      .
+    Proof.
+      remember (sj, om) as sjom.
+      generalize dependent om. generalize dependent sj.
+      induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom.
+      - assert (Hinit : @initial_state_prop _ _ S (state_update IT s0X j s)).
+        { intro i.
+          destruct (eq_dec i j).
+          - subst; rewrite state_update_eq. unfold s. destruct is. assumption.
+          - rewrite state_update_neq; try assumption.
+            destruct (@s0 _ _ S) as [s00 Hinit].
+            unfold s0X; clear s0X; simpl.
+            apply Hinit.
+        }
+        remember (exist (@initial_state_prop _ _ S) (state_update IT s0X j s) Hinit) as six.
+        replace (state_update IT s0X j s) with (proj1_sig six); try (subst; reflexivity).
+        apply (protocol_initial_state indexed_vlsm_free).
+      - assert (Hinit : @initial_message_prop _ _ S (proj1_sig im)).
+        { exists j. exists im. reflexivity. }
+        replace (state_update IT s0X j s) with s0X
+        ; try (symmetry; apply state_update_id; reflexivity).
+        unfold s in *; unfold om in *; clear s om.
+        destruct im as [m _H]; simpl in *; clear _H.
+        remember (exist (@initial_message_prop _ _ S) m Hinit) as im.
+        replace m with (proj1_sig im); try (subst; reflexivity).
+        apply (protocol_initial_message indexed_vlsm_free).
+      - specialize (IHHp1 s _om eq_refl).
+        specialize (IHHp2 _s om eq_refl).
+        replace (state_update IT s0X j sj, om0) with (@transition _ _ _ indexed_vlsm_free (existT _ j l) (state_update IT s0X j s, om)).
+        + apply (protocol_generated indexed_vlsm_free) with _om (state_update IT s0X j _s)
+          ; try assumption.
+          split; try exact I.
+          simpl. rewrite state_update_eq. assumption.
+        + simpl. rewrite state_update_eq. rewrite H0.
+          f_equal.
+          apply state_update_twice.
+    Qed.
 
   End indexed_vlsm.
 
@@ -341,6 +415,55 @@ Section projections.
         specialize (Hinit (exist _ im Hini)); simpl in Hinit.
         assumption.
       - apply (protocol_initial_state Proj).
+    Qed.
+
+    Lemma projection_valid_protocol_transition
+      (lj : label)
+      (ps : @protocol_state _ _ _ X)
+      (opm : option (@protocol_message _ _ _ X))
+      (sj := (proj1_sig ps) j)
+      (omj := option_map (@proj1_sig _ _) opm)
+      (Hv : protocol_valid X (existT _ j lj) (ps, opm))
+      : protocol_prop X (@transition _ _ _ X (existT _ j lj) (proj1_sig ps, omj))
+      .
+    Proof.
+      destruct ps as [psX HpsX].
+      simpl in sj. unfold sj in *. clear sj.
+      destruct HpsX as [_omX HpsX].
+      destruct opm as [[pmX [_sX HpmX]]|]
+      ; simpl in omj; unfold omj in *; clear omj.
+      - apply (protocol_generated X) with _omX _sX; assumption.
+      - apply (protocol_generated X) with _omX (proj1_sig (@s0 _ _ S))
+        ; try assumption.
+        apply (protocol_initial_state X).
+    Qed.
+
+    Lemma protocol_message_projection_rev
+      (iom : option message)
+      (Hpmj: exists sj : state, protocol_prop Proj (sj, iom))
+      : exists sx : state, protocol_prop X (sx, iom)
+      .
+    Proof.
+      destruct Hpmj as [sj Hpmj].
+      inversion Hpmj; subst.
+      - exists (proj1_sig (@s0 _ _ S)).
+        apply (protocol_initial_state X).
+      - destruct im as [im Him].
+        unfold om in *; simpl in *; clear om.
+        destruct Him as [[m Hpm] Heq].
+        subst; assumption.
+      - destruct Hv as [psX [opm [Heqs [Heqopm Hv]]]].
+        simpl in Heqs. rewrite <- Heqs in *. clear Heqs.
+        specialize (projection_valid_protocol_transition l psX opm Hv)
+        ; intro HpsX'.
+        rewrite Heqopm in HpsX'.
+        remember (@transition _ _ _ X (existT (fun n : index => label) j l) (proj1_sig psX, om)) as som'.
+        destruct som' as [s' om'].
+        exists s'.
+        simpl in Heqsom'.
+        rewrite H0 in Heqsom'.
+        inversion Heqsom'; subst.
+        assumption.
     Qed.
 
 (** 2.4.4.1 Projection friendly composition constraints **)
@@ -832,62 +955,62 @@ Section projections.
         assumption.
     Qed.
 
-    Lemma proj_message_full_protocol_prop
-      (Full := message_full_vlsm (IM j))
+    Lemma proj_pre_loaded_protocol_prop
+      (PreLoaded := pre_loaded_vlsm (IM j))
       (s : state)
       (om : option message)
       (Hps : protocol_prop Proj (s, om))
-      : protocol_prop Full (s, om).
+      : protocol_prop PreLoaded (s, om).
     Proof.
       induction Hps.
-      - apply (protocol_initial_state Full is).
+      - apply (protocol_initial_state PreLoaded is).
       - destruct im as [m Him]. simpl in om0. clear Him.
-        assert (Him : @initial_message_prop _ _ (message_full_vlsm_sig X) m)
+        assert (Him : @initial_message_prop _ _ (pre_loaded_vlsm_sig X) m)
           by exact I.
-        apply (protocol_initial_message Full (exist _ m Him)).
-      - apply (protocol_generated Full) with _om _s; try assumption.
+        apply (protocol_initial_message PreLoaded (exist _ m Him)).
+      - apply (protocol_generated PreLoaded) with _om _s; try assumption.
         apply composite_protocol_valid_implies_valid. assumption.
     Qed.
 
-    Lemma proj_message_full_verbose_valid_protocol_transition
-      (Full := message_full_vlsm (IM j))
+    Lemma proj_pre_loaded_verbose_valid_protocol_transition
+      (PreLoaded := pre_loaded_vlsm (IM j))
       (l : label)
       (is os : state)
       (iom oom : option message)
       (Ht : verbose_valid_protocol_transition Proj l is os iom oom)
-      : verbose_valid_protocol_transition Full l is os iom oom
+      : verbose_valid_protocol_transition PreLoaded l is os iom oom
       .
     Proof.
       destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
       repeat (split; try assumption).
-      - exists _om. apply proj_message_full_protocol_prop. assumption.
-      - exists _s. apply proj_message_full_protocol_prop. assumption.
+      - exists _om. apply proj_pre_loaded_protocol_prop. assumption.
+      - exists _s. apply proj_pre_loaded_protocol_prop. assumption.
       - apply composite_protocol_valid_implies_valid. assumption.
     Qed.
 
-    Lemma proj_message_full_finite_ptrace
-      (Full := message_full_vlsm (IM j))
+    Lemma proj_pre_loaded_finite_ptrace
+      (PreLoaded := pre_loaded_vlsm (IM j))
       (s : state)
       (ls : list in_state_out)
       (Hpxt : finite_ptrace_from Proj s ls)
-      : finite_ptrace_from Full s ls
+      : finite_ptrace_from PreLoaded s ls
       .
     Proof.
       induction Hpxt.
       - constructor.
         destruct H as [m H].
-        apply proj_message_full_protocol_prop in H.
+        apply proj_pre_loaded_protocol_prop in H.
         exists m. assumption.
       - constructor; try assumption.
-        apply proj_message_full_verbose_valid_protocol_transition. assumption.
+        apply proj_pre_loaded_verbose_valid_protocol_transition. assumption.
     Qed.
 
-    Lemma proj_message_full_infinite_ptrace
-      (Full := message_full_vlsm (IM j))
+    Lemma proj_pre_loaded_infinite_ptrace
+      (PreLoaded := pre_loaded_vlsm (IM j))
       (s : state)
       (ls : Stream in_state_out)
       (Hpxt : infinite_ptrace_from Proj s ls)
-      : infinite_ptrace_from Full s ls
+      : infinite_ptrace_from PreLoaded s ls
       .
     Proof.
       generalize dependent ls. generalize dependent s.
@@ -896,19 +1019,19 @@ Section projections.
       inversion Hx; subst.
       specialize (H destination ls H3).
       constructor; try assumption.
-      apply proj_message_full_verbose_valid_protocol_transition.
+      apply proj_pre_loaded_verbose_valid_protocol_transition.
       assumption.
     Qed.
 
-    Lemma proj_message_full_incl
-      (Full := message_full_vlsm (IM j))
-      : VLSM_incl Proj Full
+    Lemma proj_pre_loaded_incl
+      (PreLoaded := pre_loaded_vlsm (IM j))
+      : VLSM_incl Proj PreLoaded
       .
     Proof.
       intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
-      - apply proj_message_full_finite_ptrace in Hxt.
+      - apply proj_pre_loaded_finite_ptrace in Hxt.
         split; try assumption.
-      - apply proj_message_full_infinite_ptrace in Hxt.
+      - apply proj_pre_loaded_infinite_ptrace in Hxt.
         split; try assumption.
     Qed.
 
@@ -925,6 +1048,7 @@ Section free_projections.
           {IT : index -> VLSM_type message}
           {IS : forall i : index, LSM_sig (IT i)}
           (IM : forall n : index, VLSM (IS n))
+          (X := indexed_vlsm_free i0 IM)
           .
 
   Definition indexed_vlsm_free_projection_sig
@@ -938,4 +1062,59 @@ Section free_projections.
     : VLSM (indexed_vlsm_free_projection_sig i)
     :=
       indexed_vlsm_constrained_projection i0 IM free_constraint i.
+          
 End free_projections.
+
+Section binary_composition.
+  Context
+    {message : Type}
+    {T1 T2 : VLSM_type message}
+    {S1 : LSM_sig T1}
+    {S2 : LSM_sig T2}
+    (M1 : VLSM S1)
+    (M2 : VLSM S2)
+    .
+
+  Inductive binary_index : Set := first : binary_index | second : binary_index.
+
+  Instance binary_index_dec : EqDec binary_index.
+    intros [|] [|].
+    - left; reflexivity.
+    - right; intro; discriminate.
+    - right; intro; discriminate.
+    - left; reflexivity.
+  Defined.
+
+  Definition binary_IT
+    (i : binary_index)
+    :=
+    match i with
+    | first => T1
+    | second => T2
+    end.
+  
+  Definition binary_IS (i : binary_index) : LSM_sig (binary_IT i)
+    :=
+    match i with
+    | first => S1
+    | second => S2
+    end.
+  
+  Definition binary_IM (i : binary_index) : VLSM (binary_IS i)
+    :=
+    match i with
+    | first => M1
+    | second => M2
+    end.
+
+  Definition binary_free_composition
+    : VLSM (indexed_sig first binary_IS)
+    := indexed_vlsm_free first binary_IM.
+
+  Definition binary_free_composition_fst
+    := indexed_vlsm_free_projection first binary_IM  first.
+
+  Definition binary_free_composition_snd
+    := indexed_vlsm_free_projection first binary_IM  second.
+
+End binary_composition.

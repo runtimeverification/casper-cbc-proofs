@@ -3,6 +3,343 @@ Require Import FinFun Streams.
 From CasperCBC   
 Require Import Lib.Preamble VLSM.Common VLSM.Composition.
 
+Section ByzantineTraces.
+Context
+    {message : Type}
+    {T : VLSM_type message}
+    {S : LSM_sig T}
+    (M : VLSM S)
+    .
+
+Definition byzantine_trace_prop
+    (tr : @Trace _ T) :=
+    exists (T' : VLSM_type message) (S' : LSM_sig T') (M' : VLSM S')
+        (Proj := binary_free_composition_fst M M'),
+        protocol_trace_prop Proj tr.
+
+Lemma byzantine_pre_loaded
+    (PreLoaded := pre_loaded_vlsm M)
+    (tr : @Trace _ T)
+    (Hbyz : byzantine_trace_prop tr)
+    : protocol_trace_prop PreLoaded tr.
+Proof.
+    destruct Hbyz as [T' [S' [M' Htr]]].
+    simpl in Htr.
+    specialize
+        (@proj_pre_loaded_incl
+            message
+            _
+            binary_index_dec
+            first
+            _
+            _
+            (binary_IM M M')
+            free_constraint
+            first
+            tr
+            Htr
+        ); intros Htr'.
+    assumption.
+Qed.
+    
+
+Definition all_messages_type : VLSM_type message :=
+    {| label := message
+     ; state := unit
+    |}.
+
+Definition all_messages_sig
+    (inhm : message)
+    : LSM_sig all_messages_type
+    :=
+    {| initial_state_prop := fun s => True
+     ; initial_message_prop := fun m => False
+     ; s0 := exist (fun s: @state _ all_messages_type => True) tt I
+     ; m0 := inhm
+     ; l0 := inhm
+    |}.
+
+Definition all_messages_transition
+    (l : @label _ all_messages_type)
+    (som : @state _ all_messages_type * option message)
+    : @state _ all_messages_type * option message
+    := (tt, Some l)
+    .
+
+Definition all_messages_valid
+    (l : @label _ all_messages_type)
+    (som : @state _ all_messages_type * option message)
+    : Prop
+    := True.
+
+Definition all_messages_vlsm
+    (inhm : message)
+    : VLSM (all_messages_sig inhm)
+    :=
+    {| transition := all_messages_transition
+     ; valid := all_messages_valid
+    |}
+    .
+
+Definition byzantine_trace_prop_alt
+    (tr : @Trace _ T)
+    (Proj := binary_free_composition_fst M (all_messages_vlsm m0))
+    :=
+    protocol_trace_prop Proj tr.
+
+Lemma byzantine_alt_byzantine
+    (tr : @Trace _ T)
+    (Halt : byzantine_trace_prop_alt tr)
+    : byzantine_trace_prop tr.
+Proof.
+    exists all_messages_type.
+    exists (all_messages_sig m0).
+    exists (all_messages_vlsm m0).
+    assumption.
+Qed.
+
+Section pre_loaded_byzantine_alt.
+Context
+    (PreLoaded := pre_loaded_vlsm M)
+    (Proj := binary_free_composition_fst M (all_messages_vlsm m0))
+    (Alt := binary_free_composition M (all_messages_vlsm m0))
+    .
+
+    Lemma alt_protocol_message
+        (m : message)
+        : protocol_message_prop Alt m.
+    Proof.
+        remember (proj1_sig (@s0 _ _ (sign Alt))) as s.
+        exists s.
+        assert (Ht : @transition _ _ _ Alt (existT _ second m) (s, None) = (s, Some m)).
+        { simpl.
+          f_equal.
+          apply state_update_id.
+          subst. reflexivity.
+        }
+        rewrite <- Ht.
+        assert (Hps : protocol_prop Alt (s, None))
+            by (subst; apply protocol_initial_state). 
+        apply protocol_generated with None s; try assumption.
+        split; exact I.
+    Qed.
+
+    Lemma alt_proj_protocol_message
+        (m : message)
+        : protocol_message_prop Proj m.
+    Proof.
+        apply protocol_message_projection.
+        apply alt_protocol_message.
+    Qed.
+
+    Definition lifted_alt_state
+        (s : @state _ T)
+        (init := proj1_sig (@s0 _ _ (sign Alt)))
+        : @state _ (type Alt)
+        := @state_update message binary_index binary_index_dec binary_IT init first s.
+
+    Lemma proj_alt_protocol_state
+        (sj : state)
+        (om : option message)
+        (Hp : protocol_prop Proj (sj, om))
+        : protocol_state_prop Alt (lifted_alt_state sj).
+    Proof.
+      remember (sj, om) as sjom.
+      generalize dependent om. generalize dependent sj.
+      induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom.
+      - assert (Hinit : @initial_state_prop _ _ (sign Alt) (lifted_alt_state s)).
+        { intros [|]; try exact I.
+          unfold lifted_alt_state.
+          rewrite state_update_eq. unfold s. destruct is. assumption.
+        }
+        remember (exist (@initial_state_prop _ _ (sign Alt)) (lifted_alt_state s) Hinit) as six.
+        replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
+        exists None.
+        apply (protocol_initial_state Alt).
+      - assert (Hinit : @initial_state_prop _ _ (sign Alt) (lifted_alt_state s)).
+        { intros [|]; try exact I.
+          unfold lifted_alt_state.
+          rewrite state_update_eq. unfold s. destruct s0. assumption.
+        }
+        remember (exist (@initial_state_prop _ _ (sign Alt)) (lifted_alt_state s) Hinit) as six.
+        replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
+        exists None.
+        apply (protocol_initial_state Alt).
+      - destruct Hv as [[psX HpsX] [opm [Heqs [Heqopm Hv]]]].
+        simpl in Heqs. rewrite <- Heqs in *. clear Heqs.
+        specialize (IHHp1 (psX first) _om eq_refl).
+        destruct Hv as [Hv _].
+        simpl in Hv.
+        rewrite Heqopm in Hv.
+        remember (@transition _ _ _ Alt (existT _ first l) ((lifted_alt_state (psX first)), om)) as xsom'.
+        destruct xsom' as [xs' om'].
+        destruct IHHp1 as [_omX Hlift].
+        exists om'.
+        replace (lifted_alt_state sj) with xs'.
+        + rewrite Heqxsom'.
+          assert (Hsj : exists sj : state, protocol_prop Proj (sj, om))
+            by (exists _s; assumption).
+          specialize
+            (@protocol_message_projection_rev
+                _ _ binary_index_dec first _ _
+                (binary_IM M (all_messages_vlsm m0))
+                free_constraint
+                first
+                om
+                Hsj
+            ); intros [_sX HpmX].
+          apply (protocol_generated Alt) with _omX _sX; try assumption.
+          split; try exact I.
+          assumption.
+        + simpl in Heqxsom'. 
+          unfold lifted_alt_state at 1 in Heqxsom'.
+          rewrite state_update_eq in Heqxsom'.
+          rewrite H0 in Heqxsom'.
+          inversion Heqxsom'; subst.
+          unfold lifted_alt_state.
+          apply state_update_twice.
+    Qed.
+
+    Lemma pre_loaded_alt_protocol_state
+        (sj : state)
+        (om : option message)
+        (Hp : protocol_prop PreLoaded (sj, om))
+        : protocol_state_prop Proj sj.
+    Proof.
+        remember (sj, om) as sjom.
+        generalize dependent om. generalize dependent sj.
+        induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom.
+        - exists None. apply (protocol_initial_state Proj).
+        - exists None. apply (protocol_initial_state Proj).
+        - specialize (IHHp1 s _om eq_refl).
+          specialize (IHHp2 _s om eq_refl).
+          exists om0.
+          replace
+            (@pair
+                (@state message (@binary_IT message T all_messages_type first))
+                (option message)
+                sj
+                om0
+            ) with (@transition _ _ _ Proj l (s, om)).
+          destruct IHHp1 as [_omp Hpsp].
+          specialize (proj_alt_protocol_state s _omp Hpsp)
+          ; intro HpsX.
+          destruct om as [m|].
+          + destruct (alt_proj_protocol_message m) as [_smp Hpmp].
+            apply (protocol_generated Proj) with _omp _smp
+            ; try assumption.
+            exists (exist _ (lifted_alt_state s) HpsX).
+            specialize (alt_protocol_message m); intro HpmX.
+            exists (Some (exist _ m HpmX)).
+            repeat split; assumption.
+          + apply (protocol_generated Proj) with _omp (proj1_sig (@s0 _ _ (sign Proj)))
+            ; try assumption.
+            * apply protocol_initial_state.
+            * exists (exist _ (lifted_alt_state s) HpsX).
+              exists None.
+              repeat split; assumption.
+    Qed.
+ 
+    Lemma pre_loaded_alt_verbose_valid_protocol_transition
+        (l : label)
+        (is os : state)
+        (iom oom : option message)
+        (Ht : verbose_valid_protocol_transition PreLoaded l is os iom oom)
+        : verbose_valid_protocol_transition Proj l is os iom oom
+        .
+    Proof.
+        destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+        repeat (split; try assumption).
+        - apply pre_loaded_alt_protocol_state with _om.
+          assumption.
+        - destruct iom as [im|].
+          + apply alt_proj_protocol_message.
+          + exists (proj1_sig s0). apply (protocol_initial_state Proj s0).
+        - specialize (pre_loaded_alt_protocol_state is _om Hps)
+          ; intros [_ism Hpsp].
+          specialize (proj_alt_protocol_state is _ism Hpsp)
+          ; intro Hps_alt.
+          exists (exist _ (lifted_alt_state is) Hps_alt).
+          destruct iom as [im|].
+          + specialize (alt_protocol_message im); intro Hpim_alt.
+            exists (Some (exist _ im Hpim_alt)).
+            repeat split; assumption.
+          + exists None.
+            repeat split; assumption.
+    Qed.
+
+    Lemma pre_loaded_alt_finite_ptrace
+        (s : state)
+        (ls : list in_state_out)
+        (Hpxt : finite_ptrace_from PreLoaded s ls)
+        : finite_ptrace_from Proj s ls
+        .
+    Proof.
+        induction Hpxt.
+        - constructor.
+          destruct H as [m H].
+          apply pre_loaded_alt_protocol_state with m. assumption.
+        - constructor; try assumption.
+          apply pre_loaded_alt_verbose_valid_protocol_transition.
+          assumption.
+    Qed.
+
+    Lemma pre_loaded_alt_infinite_ptrace
+        (s : state)
+        (ls : Stream in_state_out)
+        (Hpxt : infinite_ptrace_from PreLoaded s ls)
+        : infinite_ptrace_from Proj s ls
+        .
+    Proof.
+        generalize dependent ls. generalize dependent s.
+        cofix H.
+        intros s [[l input destination output] ls] Hx.
+        inversion Hx; subst.
+        specialize (H destination ls H3).
+        constructor; try assumption.
+        apply pre_loaded_alt_verbose_valid_protocol_transition.
+        assumption.
+    Qed.
+
+    Lemma pre_loaded_alt_incl
+        : VLSM_incl PreLoaded Proj
+        .
+    Proof.
+        intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
+        - apply pre_loaded_alt_finite_ptrace in Hxt.
+          split; try assumption.
+        - apply pre_loaded_alt_infinite_ptrace in Hxt.
+          split; try assumption.
+    Qed.
+
+    Lemma alt_pre_loaded_incl
+        : VLSM_incl Proj PreLoaded
+        .
+    Proof.
+        intros t Hpt.
+        apply byzantine_pre_loaded.
+        apply byzantine_alt_byzantine.
+        assumption.
+    Qed.
+
+End pre_loaded_byzantine_alt.
+
+Lemma byzantine_alt_byzantine_iff
+    (tr : @Trace _ T)
+    : byzantine_trace_prop_alt tr <-> byzantine_trace_prop tr.
+Proof.
+    split; intros.
+    - apply byzantine_alt_byzantine; assumption.
+    - apply pre_loaded_alt_incl.
+      apply byzantine_pre_loaded.
+      assumption.
+Qed.
+
+
+End ByzantineTraces.
+
+Section validating.
+
 Context
     {message : Type}
     {index : Type}
@@ -116,12 +453,12 @@ Proof.
       repeat (split; try assumption).
 Qed.
 
-Section message_full_validating_proj.
+Section pre_loaded_validating_proj.
     Context
         (i : index)
         (Hvalidating : validating_condition i)
         (Proj := indexed_vlsm_constrained_projection i0 IM constraint i)
-        (Full := message_full_vlsm (IM i))
+        (PreLoaded := pre_loaded_vlsm (IM i))
         .
 
     Lemma validating_proj_protocol_message
@@ -138,18 +475,16 @@ Section message_full_validating_proj.
         apply protocol_message_projection. assumption.
     Qed.
 
-
-
-    Lemma _message_full_validating_proj_protocol_state
+    Lemma _pre_loaded_validating_proj_protocol_state
         (som : state * option message)
-        (Hps : protocol_prop Full som)
+        (Hps : protocol_prop PreLoaded som)
         : protocol_state_prop Proj (fst som).
     Proof.
         induction Hps.
         - exists None. apply (protocol_initial_state Proj is).
         - exists None. apply (protocol_initial_state Proj (@VLSM.Common.s0 _ _ (IS i))).
         - destruct
-            (@transition message (IT i) (@message_full_vlsm_sig message (IT i) (IS i) (IM i)) Full l
+            (@transition message (IT i) (@pre_loaded_vlsm_sig message (IT i) (IS i) (IM i)) PreLoaded l
                 (@pair (@state message (IT i)) (option message) s om)) as [s' om'] eqn:Ht.
           exists om'. simpl. rewrite <- Ht.
           clear IHHps2. simpl in IHHps1. clear Hps1 Hps2 _s _om.
@@ -163,29 +498,29 @@ Section message_full_validating_proj.
             * apply Hvalidating. assumption.
     Qed.
 
-    Lemma message_full_validating_proj_protocol_state
+    Lemma pre_loaded_validating_proj_protocol_state
         (s : state)
         (om : option message)
-        (Hps : protocol_prop Full (s,om))
+        (Hps : protocol_prop PreLoaded (s,om))
         : protocol_state_prop Proj s.
     Proof.
         remember (s, om) as som. 
         assert (Hs : s = fst som) by (subst; reflexivity).
-        rewrite Hs. apply _message_full_validating_proj_protocol_state.
+        rewrite Hs. apply _pre_loaded_validating_proj_protocol_state.
         assumption.
     Qed.
 
-    Lemma message_full_validating_proj_verbose_valid_protocol_transition
+    Lemma pre_loaded_validating_proj_verbose_valid_protocol_transition
         (l : label)
         (is os : state)
         (iom oom : option message)
-        (Ht : verbose_valid_protocol_transition Full l is os iom oom)
+        (Ht : verbose_valid_protocol_transition PreLoaded l is os iom oom)
         : verbose_valid_protocol_transition Proj l is os iom oom
         .
     Proof.
         destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
         repeat (split; try assumption).
-        - apply message_full_validating_proj_protocol_state with _om.
+        - apply pre_loaded_validating_proj_protocol_state with _om.
           assumption.
         - destruct iom as [im|].
           + apply validating_proj_protocol_message with l is. assumption.
@@ -193,26 +528,26 @@ Section message_full_validating_proj.
         - apply Hvalidating. assumption.
     Qed.
 
-    Lemma message_full_validating_proj_finite_ptrace
+    Lemma pre_loaded_validating_proj_finite_ptrace
         (s : state)
         (ls : list in_state_out)
-        (Hpxt : finite_ptrace_from Full s ls)
+        (Hpxt : finite_ptrace_from PreLoaded s ls)
         : finite_ptrace_from Proj s ls
         .
     Proof.
         induction Hpxt.
         - constructor.
           destruct H as [m H].
-          apply message_full_validating_proj_protocol_state with m. assumption.
+          apply pre_loaded_validating_proj_protocol_state with m. assumption.
         - constructor; try assumption.
-          apply message_full_validating_proj_verbose_valid_protocol_transition.
+          apply pre_loaded_validating_proj_verbose_valid_protocol_transition.
           assumption.
     Qed.
 
-    Lemma message_full_validating_proj_infinite_ptrace
+    Lemma pre_loaded_validating_proj_infinite_ptrace
         (s : state)
         (ls : Stream in_state_out)
-        (Hpxt : infinite_ptrace_from Full s ls)
+        (Hpxt : infinite_ptrace_from PreLoaded s ls)
         : infinite_ptrace_from Proj s ls
         .
     Proof.
@@ -222,28 +557,30 @@ Section message_full_validating_proj.
         inversion Hx; subst.
         specialize (H destination ls H3).
         constructor; try assumption.
-        apply message_full_validating_proj_verbose_valid_protocol_transition.
+        apply pre_loaded_validating_proj_verbose_valid_protocol_transition.
         assumption.
     Qed.
 
-    Lemma message_full_validating_proj_incl
-        : VLSM_incl Full Proj
+    Lemma pre_loaded_validating_proj_incl
+        : VLSM_incl PreLoaded Proj
         .
     Proof.
         intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
-        - apply message_full_validating_proj_finite_ptrace in Hxt.
+        - apply pre_loaded_validating_proj_finite_ptrace in Hxt.
           split; try assumption.
-        - apply message_full_validating_proj_infinite_ptrace in Hxt.
+        - apply pre_loaded_validating_proj_infinite_ptrace in Hxt.
           split; try assumption.
     Qed.
 
-    Lemma message_full_validating_proj_eq
-        : VLSM_eq Full Proj
+    Lemma pre_loaded_validating_proj_eq
+        : VLSM_eq PreLoaded Proj
         .
     Proof.
         split.
-        - apply message_full_validating_proj_incl.
-        - apply proj_message_full_incl.
+        - apply pre_loaded_validating_proj_incl.
+        - apply proj_pre_loaded_incl.
     Qed.
 
-End message_full_validating_proj.
+End pre_loaded_validating_proj.
+
+End validating.
