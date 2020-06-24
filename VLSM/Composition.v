@@ -312,6 +312,16 @@ Section projections.
       (Proj := indexed_vlsm_constrained_projection j)
       .
 
+    Lemma initial_state_projection
+      (s : @state _ T)
+      (Hinit : @initial_state_prop _ _ S s)
+      : @initial_state_prop _ _ (sign Proj) (s j)
+      .
+    Proof.
+      specialize (Hinit j).
+      assumption.
+    Qed.
+
     Lemma transition_projection : @transition _ _ (indexed_vlsm_constrained_projection_sig j) Proj = @transition _ _ _ (IM j).
     Proof. reflexivity.  Qed.
 
@@ -706,6 +716,20 @@ Section projections.
       + exact (Infinite (s j) (infinite_trace_projection_stream ss ks Hfilter)).
     Defined.
 
+    Lemma trace_projection_initial_state
+      (Hproj_dec : in_projection_dec)
+      (tr : @Trace _ T)
+      : trace_initial_state (trace_projection Hproj_dec tr)
+      = trace_initial_state tr j
+      .
+    Proof.
+      destruct tr; try reflexivity.
+      simpl.
+      destruct (Hproj_dec s0).
+      - destruct b; reflexivity.
+      - destruct s1; reflexivity.
+    Qed.
+
     Lemma infinite_ptrace_projection
       (s: @state _ T)
       (ss: Stream in_state_out)
@@ -743,16 +767,70 @@ Section projections.
           apply infinite_ptrace_projection; assumption.
     Qed.
 
-    (* We axiomatize projection friendliness as the converse of finite_ptrace_projection *)
-    Definition projection_friendly
+    Lemma protocol_trace_projection
+      (Hproj_dec : in_projection_dec)
+      (tr : @Trace _ T)
+      (Htr : protocol_trace_prop X tr)
+      : protocol_trace_prop Proj (trace_projection Hproj_dec tr).
+    Proof.
+      assert (Hfrom := protocol_trace_from X tr Htr).
+      assert (Hinit := protocol_trace_initial X tr Htr).
+      apply protocol_trace_from_iff.
+      split.
+      - apply ptrace_from_projection; try assumption.
+        apply protocol_state_prop_iff.
+        left.
+        apply initial_state_projection in Hinit.
+        exists (exist _ _ Hinit).
+        reflexivity.
+      - rewrite trace_projection_initial_state.
+        apply initial_state_projection.
+        assumption.
+    Qed.
+
+    (* We axiomatize projection friendliness as the converse of protocol_trace_projection *)
+    Definition finite_projection_friendly
       := forall
         (sj : @state _ (IT j))
         (trj : list (@in_state_out _ (IT j)))
-        (Htrj : finite_ptrace_from Proj sj trj),
+        (Htrj : finite_ptrace Proj sj trj),
         exists (sx : @state _ T) (trx : list (@in_state_out _ T)),
-          finite_ptrace_from X sx trx
+          finite_ptrace X sx trx
           /\ sx j = sj
           /\ finite_trace_projection_list trx = trj.
+
+    Definition projection_friendly
+      (Hproj_dec : in_projection_dec)
+      := forall
+      (trj : @Trace _ (IT j))
+      (Htrj : protocol_trace_prop Proj trj),
+      exists (tr : @Trace _ T),
+        protocol_trace_prop X tr
+        /\ trace_projection Hproj_dec tr = trj.
+    
+    Lemma projection_friendly_finite
+      (Hproj_dec : in_projection_dec)
+      (Hfr : projection_friendly Hproj_dec)
+      : finite_projection_friendly
+      .
+    Proof.
+      unfold finite_projection_friendly;  intros.
+      specialize (Hfr (Finite sj trj) Htrj).
+      destruct Hfr as [[s tr| s tr] [Htr Heq]].
+      + exists s. exists tr.
+        split; try assumption.
+        unfold trace_projection in Heq.
+        inversion Heq.
+        split; reflexivity.
+      + unfold trace_projection in Heq.
+        destruct (Hproj_dec tr) as [[n1 _] | (ks, Hfilter)]; inversion Heq.
+        subst; clear Heq.
+        exists s. exists (stream_prefix tr n1).
+        destruct Htr as [Htr Hinit].
+        repeat split; try reflexivity; try assumption.
+        apply infinite_ptrace_from_prefix.
+        assumption.
+    Qed.
 
     Lemma proj_message_full_protocol_prop
       (Full := message_full_vlsm (IM j))

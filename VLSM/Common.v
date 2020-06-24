@@ -646,6 +646,37 @@ Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
       | Finite s ls => finite_ptrace_from s ls
       | Infinite s sm => infinite_ptrace_from s sm
       end.
+    
+    Lemma protocol_trace_from
+      (tr : Trace)
+      (Htr : protocol_trace_prop tr)
+      : ptrace_from_prop tr
+      .
+    Proof.
+      destruct tr; simpl; destruct Htr as [Htr Hinit]; assumption.
+    Qed.
+    
+    Lemma protocol_trace_initial
+      (tr : Trace)
+      (Htr : protocol_trace_prop tr)
+      : initial_state_prop (trace_initial_state tr)
+      .
+    Proof.
+      destruct tr; simpl; destruct Htr as [Htr Hinit]; assumption.
+    Qed.
+
+    Lemma protocol_trace_from_iff
+      (tr : Trace)
+      : protocol_trace_prop tr
+      <-> ptrace_from_prop tr /\ initial_state_prop (trace_initial_state tr)
+      .
+    Proof.
+      split.
+      - intro Htr; split.
+        + apply protocol_trace_from; assumption.
+        + apply protocol_trace_initial; assumption.
+      - destruct tr; simpl; intros [Htr Hinit]; split; assumption.
+    Qed.
 
     Definition protocol_trace : Type :=
       { tr : Trace | protocol_trace_prop tr}.
