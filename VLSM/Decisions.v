@@ -32,8 +32,9 @@ Section CommuteSingleton.
     exists None. 
     constructor.
   Defined. *)
-
-  Definition final : decision T -> Prop :=
+  
+  (* Definition of finality per document. *)
+  Definition final_original : decision T -> Prop :=
     fun (D : decision T) => forall (tr : protocol_trace V), 
         forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
           (trace_nth (proj1_sig tr) n1 = Some s1) ->
@@ -41,7 +42,15 @@ Section CommuteSingleton.
           (D s1 = (Some c1)) ->
           (D s2 = (Some c2)) ->
           c1 = c2.
-
+    
+  (* Definition of finality using in_futures, which plays better with the estimator property *)
+  Definition final: decision T -> Prop :=
+  fun (D : decision T) => forall (s1 s2 : protocol_state V) (c1 c2 : C),
+        in_futures V s1 s2 -> 
+        (D (proj1_sig s1) = (Some c1)) ->
+        (D (proj1_sig s2) = (Some c2)) ->
+        c1 = c2.
+  
   (* 3.3.1 Initial protocol state bivalence *)
   Definition bivalent : decision T -> Prop :=
     fun (D : decision T) =>
@@ -181,11 +190,81 @@ Section Estimators.
       Ei sigma' c'
       -> c' = c.
 
-  Lemma decision_estimator_finality
+  Lemma estimator_only_has_decision
+     (i : index)
+     (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+     (Ei := @estimator _ _ (IE i))
+      : decision_estimator_property i ->
+      forall (s : protocol_state Xi) (c c_other : C), (ID i (proj1_sig s)) = (Some c) ->
+      (Ei (proj1_sig s) c_other) ->
+      c_other = c.
+  Proof.
+    intros.
+    unfold decision_estimator_property in H.
+    apply H with (psigma := s) (psigma':= s).
+    assumption.
+    apply in_futures_reflexive.
+    assumption.
+  Qed.
+  
+  Lemma estimator_surely_has_decision
+     (i : index)
+     (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+     (Ei := @estimator _ _ (IE i))
+      : decision_estimator_property i ->
+      forall (s : protocol_state Xi) (c : C), (ID i (proj1_sig s)) = (Some c) ->
+      (Ei (proj1_sig s) c).
+   Proof.
+    intros.
+    unfold decision_estimator_property in H.
+    assert(exists (c_other : C), (Ei (proj1_sig s) c_other)). {
+      apply estimator_total.
+    }
+    destruct H1.
+    assert (x = c). {
+      apply H with (psigma := s) (psigma' := s).
+      assumption.
+      apply in_futures_reflexive.
+      auto.
+   }
+    rewrite <- H2.
+    assumption.
+   Qed.
+  
+  (* We use the following intermediate result, 
+     proven above (in two steps) via the estimator property:
+     (1) If D(state) = Some c then Estimator(state) = {c}.
+     
+     We then fix s1 and s2, such that (in_futures s1 s2) and both are decided and note the following:
+     (2) Estimator(s2) = {Decision(s2)}, by (1)
+     (3) Estimator(s2) = {Decision(s1)}, by the estimator property.
+     
+     Thus Decision(s2) = Decision(s1).
+   *)
+     
+  Theorem decision_estimator_finality
     (i : index)
     (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
     : decision_estimator_property i -> final Xi (ID i).
   Proof.
-    intros He tr n1 n2 s1 s2 c1 c2 Hs1 Hs2 Hc1 Hc2.
-  Admitted.
+    intros. 
+    unfold final.
+    intros.
+    apply estimator_only_has_decision with (i := i) (s := s2).
+    assumption.
+    assumption.
+    unfold decision_estimator_property in H.
+    assert(c2 = c1). {
+      apply H with (psigma := s1) (psigma' := s2).
+      assumption.
+      assumption.
+      apply estimator_surely_has_decision.
+      assumption.
+      assumption.
+    }
+    rewrite <- H3.
+    apply estimator_surely_has_decision.
+    assumption.
+    assumption.
+   Qed.
 End Estimators.
