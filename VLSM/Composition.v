@@ -186,6 +186,66 @@ Section indexing.
         {|  transition := _indexed_transition
             ;   valid := _indexed_valid_constrained constraint
         |}.
+    
+    Section constraint_subsumption.
+
+    Definition constraint_subsumption
+        (constraint1 constraint2 : indexed_label IT -> indexed_state IT * option message -> Prop)
+        :=
+        forall (l : indexed_label IT) (som : indexed_state IT * option message),
+          constraint1 l som -> constraint2 l som.
+    
+    Context
+      (constraint1 constraint2 : indexed_label IT -> indexed_state IT * option message -> Prop)
+      (Hsubsumption : constraint_subsumption constraint1 constraint2)
+      (X1 := indexed_vlsm_constrained constraint1)
+      (X2 := indexed_vlsm_constrained constraint2)
+      (S := indexed_sig i0 IS)
+      (T := indexed_type IT)
+      .
+
+    Lemma constraint_subsumption_protocol_prop
+      (s : state)
+      (om : option message)
+      (Hps : protocol_prop X1 (s, om))
+      : protocol_prop X2 (s, om).
+    Proof.
+      induction Hps.
+      - apply (protocol_initial_state X2 is).
+      - apply (protocol_initial_message X2).
+      - apply (protocol_generated X2) with _om _s; try assumption.
+        destruct Hv as [Hv Hc2].
+        split; try assumption.
+        apply Hsubsumption.
+        assumption.
+    Qed.
+
+    Lemma constraint_subsumption_verbose_valid_protocol_transition
+      (l : label)
+      (is os : state)
+      (iom oom : option message)
+      (Ht : verbose_valid_protocol_transition X1 l is os iom oom)
+      : verbose_valid_protocol_transition X2 l is os iom oom
+      .
+    Proof.
+      destruct Ht as [[_om Hps] [[_s Hpm] [[Hv Hc] Ht]]].
+      repeat (split; try assumption).
+      - exists _om. apply constraint_subsumption_protocol_prop. assumption.
+      - exists _s. apply constraint_subsumption_protocol_prop. assumption.
+      - apply Hsubsumption. assumption.
+    Qed.
+
+    Lemma constraint_subsumption_incl
+      : VLSM_incl X1 X2
+      .
+    Proof.
+      apply (VLSM_incl_from_protocol_prop X1 X2).
+      - intros; assumption.
+      - intros [s om]. apply constraint_subsumption_protocol_prop.
+      - apply constraint_subsumption_verbose_valid_protocol_transition.
+    Qed.
+
+    End constraint_subsumption.
 
     Definition indexed_transition
       (constraint : indexed_label IT -> indexed_state IT * option (message) -> Prop)
@@ -335,7 +395,7 @@ Section projections.
           (constraint : @label _ T -> @state _ T * option message -> Prop)
           (X := indexed_vlsm_constrained i0 IM constraint)
           .
-
+  
   Definition indexed_vlsm_constrained_projection_sig (i : index) : LSM_sig (IT i)
     :=
       {|      initial_state_prop := @initial_state_prop _ _ (IS i)
@@ -988,51 +1048,15 @@ Section projections.
       - apply composite_protocol_valid_implies_valid. assumption.
     Qed.
 
-    Lemma proj_pre_loaded_finite_ptrace
-      (PreLoaded := pre_loaded_vlsm (IM j))
-      (s : state)
-      (ls : list in_state_out)
-      (Hpxt : finite_ptrace_from Proj s ls)
-      : finite_ptrace_from PreLoaded s ls
-      .
-    Proof.
-      induction Hpxt.
-      - constructor.
-        destruct H as [m H].
-        apply proj_pre_loaded_protocol_prop in H.
-        exists m. assumption.
-      - constructor; try assumption.
-        apply proj_pre_loaded_verbose_valid_protocol_transition. assumption.
-    Qed.
-
-    Lemma proj_pre_loaded_infinite_ptrace
-      (PreLoaded := pre_loaded_vlsm (IM j))
-      (s : state)
-      (ls : Stream in_state_out)
-      (Hpxt : infinite_ptrace_from Proj s ls)
-      : infinite_ptrace_from PreLoaded s ls
-      .
-    Proof.
-      generalize dependent ls. generalize dependent s.
-      cofix H.
-      intros s [[l input destination output] ls] Hx.
-      inversion Hx; subst.
-      specialize (H destination ls H3).
-      constructor; try assumption.
-      apply proj_pre_loaded_verbose_valid_protocol_transition.
-      assumption.
-    Qed.
-
     Lemma proj_pre_loaded_incl
       (PreLoaded := pre_loaded_vlsm (IM j))
       : VLSM_incl Proj PreLoaded
       .
     Proof.
-      intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
-      - apply proj_pre_loaded_finite_ptrace in Hxt.
-        split; try assumption.
-      - apply proj_pre_loaded_infinite_ptrace in Hxt.
-        split; try assumption.
+      apply (VLSM_incl_from_protocol_prop Proj PreLoaded).
+      - intros; assumption.
+      - intros [s om]; apply proj_pre_loaded_protocol_prop.
+      - apply proj_pre_loaded_verbose_valid_protocol_transition.
     Qed.
 
     End fixed_projection.

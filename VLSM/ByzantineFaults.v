@@ -263,48 +263,14 @@ Context
             repeat split; assumption.
     Qed.
 
-    Lemma pre_loaded_alt_finite_ptrace
-        (s : state)
-        (ls : list in_state_out)
-        (Hpxt : finite_ptrace_from PreLoaded s ls)
-        : finite_ptrace_from Proj s ls
-        .
-    Proof.
-        induction Hpxt.
-        - constructor.
-          destruct H as [m H].
-          apply pre_loaded_alt_protocol_state with m. assumption.
-        - constructor; try assumption.
-          apply pre_loaded_alt_verbose_valid_protocol_transition.
-          assumption.
-    Qed.
-
-    Lemma pre_loaded_alt_infinite_ptrace
-        (s : state)
-        (ls : Stream in_state_out)
-        (Hpxt : infinite_ptrace_from PreLoaded s ls)
-        : infinite_ptrace_from Proj s ls
-        .
-    Proof.
-        generalize dependent ls. generalize dependent s.
-        cofix H.
-        intros s [[l input destination output] ls] Hx.
-        inversion Hx; subst.
-        specialize (H destination ls H3).
-        constructor; try assumption.
-        apply pre_loaded_alt_verbose_valid_protocol_transition.
-        assumption.
-    Qed.
-
     Lemma pre_loaded_alt_incl
         : VLSM_incl PreLoaded Proj
         .
     Proof.
-        intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
-        - apply pre_loaded_alt_finite_ptrace in Hxt.
-          split; try assumption.
-        - apply pre_loaded_alt_infinite_ptrace in Hxt.
-          split; try assumption.
+        apply (VLSM_incl_from_protocol_state PreLoaded Proj).
+        - intros; try assumption.
+        - apply pre_loaded_alt_protocol_state.
+        - apply pre_loaded_alt_verbose_valid_protocol_transition.
     Qed.
 
     Lemma alt_pre_loaded_incl
@@ -330,10 +296,82 @@ Proof.
       assumption.
 Qed.
 
-
 End ByzantineTraces.
 
-Section validating.
+Section validating_vlsm.
+
+Context
+    {message : Type}
+    {T : VLSM_type message}
+    {S : LSM_sig T}
+    (X : VLSM S)
+    .
+
+Definition validating_vlsm_prop
+    :=
+    forall (l : label) (s : state) (om : option message),
+        valid l (s, om) ->
+        protocol_state_prop X s /\ exists _s, protocol_prop X (_s, om)
+    .
+
+Context
+    (Hvalidating : validating_vlsm_prop)
+    (PreLoaded := pre_loaded_vlsm X)
+    .
+
+    Lemma pre_loaded_validating_vlsm_protocol_state
+        (s : state)
+        (om : option message)
+        (Hps : protocol_prop PreLoaded (s,om))
+        : protocol_state_prop X s.
+    Proof.
+        remember (s, om) as som.
+        generalize dependent om. generalize dependent s.
+        induction Hps; intros; inversion Heqsom; subst; clear Heqsom.
+        - exists None. apply (protocol_initial_state X is).
+        - exists None. apply (protocol_initial_state X (@VLSM.Common.s0 _ _ S)).
+        - exists om0. rewrite <- H0.
+          specialize (Hvalidating _ _ _ Hv).
+          destruct Hvalidating as [[_omX HpsX] [_sX HomX]].
+         apply (protocol_generated X) with _omX _sX; assumption.
+    Qed.
+
+    Lemma pre_loaded_validating_vlsm_verbose_valid_protocol_transition
+        (l : label)
+        (is os : state)
+        (iom oom : option message)
+        (Ht : verbose_valid_protocol_transition PreLoaded l is os iom oom)
+        : verbose_valid_protocol_transition X l is os iom oom
+        .
+    Proof.
+        destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+        specialize (Hvalidating _ _ _ Hv).
+        destruct Hvalidating as [His Hiom].
+        repeat split;  assumption.
+    Qed.
+
+    Lemma pre_loaded_validating_vlsm_incl
+        : VLSM_incl PreLoaded X
+        .
+    Proof.
+        apply (VLSM_incl_from_protocol_state PreLoaded X).
+        - intros; assumption.
+        - apply pre_loaded_validating_vlsm_protocol_state.
+        - apply pre_loaded_validating_vlsm_verbose_valid_protocol_transition.
+    Qed.
+
+    Lemma pre_loaded_validating_vlsm_eq
+        : VLSM_eq PreLoaded X
+        .
+    Proof.
+        split.
+        - apply pre_loaded_validating_vlsm_incl.
+        - apply vlsm_incl_pre_loaded_vlsm.
+    Qed.
+
+End validating_vlsm.
+
+Section validating_projection.
 
 Context
     {message : Type}
@@ -349,7 +387,7 @@ Context
     (X := indexed_vlsm_constrained i0 IM constraint)
     .
 
-Definition validating_messages
+Definition validating_projection_messages
     (i : index)
     :=
     forall (si : @state _ (IT i)) (mi : message) (li : @label _ (IT i)),
@@ -363,18 +401,18 @@ Definition validating_messages
         -> ~ @valid _ _ _ (IM i) li (si, Some mi)
             .
 
-Definition validating_condition
+Definition validating_projection_prop
     (i : index)
     :=
     forall (li : @label _ (IT i)) (siomi : @state _ (IT i) * option message),
         @valid _ _ _ (IM i) li siomi ->
         projection_valid i0 IM constraint i li siomi.
 
-Lemma validating_messages_received
+Lemma validating_projection_messages_received
     (i : index)
-    : validating_condition i -> validating_messages i.
+    : validating_projection_prop i -> validating_projection_messages i.
 Proof.
-    unfold validating_condition. unfold validating_messages. intros.
+    unfold validating_projection_prop. unfold validating_projection_messages. intros.
     intro Hvalid. apply H0. clear H0.
     specialize (H li (si, Some mi) Hvalid). clear Hvalid.
     destruct H as [ps [opm [Hsi [Hmi Hvalid]]]].
@@ -404,11 +442,11 @@ Definition validating_transitions
         )
         .
 
-Lemma validating_messages_transitions
+Lemma validating_projection_messages_transitions
     (i : index)
-    : validating_condition i -> validating_transitions i.
+    : validating_projection_prop i -> validating_transitions i.
 Proof.
-    unfold validating_condition. unfold validating_transitions. 
+    unfold validating_projection_prop. unfold validating_transitions. 
     unfold projection_valid. unfold verbose_valid_protocol_transition.
     simpl. intros.
     specialize (H li (si, omi) H0). clear H0. simpl in H.
@@ -433,9 +471,9 @@ Qed.
     
 Lemma validating_transitions_messages
     (i : index)
-    : validating_transitions i -> validating_condition i.
+    : validating_transitions i -> validating_projection_prop i.
 Proof.
-    unfold validating_condition. unfold validating_transitions. intros.
+    unfold validating_projection_prop. unfold validating_transitions. intros.
     destruct siomi as [si omi].
     specialize (H si omi li H0); clear H0.
     destruct H as [s [s' [om' [Hsi [Hps [Hopm [Hvalid Htransition]]]]]]].
@@ -451,7 +489,7 @@ Qed.
 Section pre_loaded_validating_proj.
     Context
         (i : index)
-        (Hvalidating : validating_condition i)
+        (Hvalidating : validating_projection_prop i)
         (Proj := indexed_vlsm_constrained_projection i0 IM constraint i)
         (PreLoaded := pre_loaded_vlsm (IM i))
         .
@@ -523,48 +561,14 @@ Section pre_loaded_validating_proj.
         - apply Hvalidating. assumption.
     Qed.
 
-    Lemma pre_loaded_validating_proj_finite_ptrace
-        (s : state)
-        (ls : list in_state_out)
-        (Hpxt : finite_ptrace_from PreLoaded s ls)
-        : finite_ptrace_from Proj s ls
-        .
-    Proof.
-        induction Hpxt.
-        - constructor.
-          destruct H as [m H].
-          apply pre_loaded_validating_proj_protocol_state with m. assumption.
-        - constructor; try assumption.
-          apply pre_loaded_validating_proj_verbose_valid_protocol_transition.
-          assumption.
-    Qed.
-
-    Lemma pre_loaded_validating_proj_infinite_ptrace
-        (s : state)
-        (ls : Stream in_state_out)
-        (Hpxt : infinite_ptrace_from PreLoaded s ls)
-        : infinite_ptrace_from Proj s ls
-        .
-    Proof.
-        generalize dependent ls. generalize dependent s.
-        cofix H.
-        intros s [[l input destination output] ls] Hx.
-        inversion Hx; subst.
-        specialize (H destination ls H3).
-        constructor; try assumption.
-        apply pre_loaded_validating_proj_verbose_valid_protocol_transition.
-        assumption.
-    Qed.
-
     Lemma pre_loaded_validating_proj_incl
         : VLSM_incl PreLoaded Proj
         .
     Proof.
-        intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
-        - apply pre_loaded_validating_proj_finite_ptrace in Hxt.
-          split; try assumption.
-        - apply pre_loaded_validating_proj_infinite_ptrace in Hxt.
-          split; try assumption.
+        apply (VLSM_incl_from_protocol_state PreLoaded Proj).
+        - intros; assumption.
+        - apply pre_loaded_validating_proj_protocol_state.
+        - apply pre_loaded_validating_proj_verbose_valid_protocol_transition.
     Qed.
 
     Lemma pre_loaded_validating_proj_eq
@@ -578,4 +582,85 @@ Section pre_loaded_validating_proj.
 
 End pre_loaded_validating_proj.
 
-End validating.
+End validating_projection.
+
+Section composite_validating_byzantine_traces.
+
+    Context {message : Type}
+            {index : Type}
+            `{IndEqDec : EqDec index}
+            {IT : index -> VLSM_type message}
+            (i0 : index)
+            {IS : forall i : index, LSM_sig (IT i)}
+            (IM : forall n : index, VLSM (IS n))
+            (constraint : indexed_label IT -> indexed_state IT  * option message -> Prop)
+            (X := indexed_vlsm_constrained i0 IM constraint)
+            (PreLoadedX := pre_loaded_vlsm X)
+            (FreeX := indexed_vlsm_free i0 IM)
+            (Hvalidating: forall i : index, validating_projection_prop i0 IM constraint i)
+            .
+    
+    Lemma pre_loaded_composite_free_protocol_message
+        (l : label)
+        (s : state)
+        (om : option message)
+        (Hv : @valid _ _ _ PreLoadedX l (s, om))
+        : exists _s : state, protocol_prop FreeX (_s, om).
+    Proof.
+        destruct l as (i, li).
+        destruct Hv as [Hv Hconstraint].
+        specialize (Hvalidating i li (s i, om) Hv).
+        specialize (constraint_subsumption_protocol_prop i0 IM constraint free_constraint)
+        ; intro Hprotocol.
+        assert (Hsubsum : constraint_subsumption constraint free_constraint)
+          by (intro; intros; exact I).
+        specialize (Hprotocol Hsubsum).
+        destruct Hvalidating as [_ [[[mX [_sX HpmX]]|] [_ [Heqm _]]]]
+        ; simpl in Heqm
+        ; try apply Hprotocol in HpmX;  subst.
+        + exists _sX. assumption.
+        + exists (proj1_sig (@Common.s0 _ _ (sign FreeX))).
+          apply (protocol_initial_state FreeX).
+    Qed.
+
+    
+    Lemma pre_loaded_composite_free_protocol_state
+        (s : state)
+        (om : option message)
+        (Hps : protocol_prop PreLoadedX (s,om))
+        : protocol_state_prop FreeX s.
+    Proof.
+        apply VLSM_incl_protocol_state with PreLoadedX om
+        ; try (intros; assumption).
+        - apply pre_loaded_composite_free_protocol_message.
+        - intros. destruct H as [Hv Hc].
+          split; try assumption.
+          exact I.
+        - intros; reflexivity.
+    Qed.
+
+    Lemma pre_loaded_composite_free_incl
+        : VLSM_incl PreLoadedX FreeX
+        .
+    Proof.
+        apply basic_VLSM_incl
+        ; try (intros; assumption).
+        - apply pre_loaded_composite_free_protocol_message.
+        - intros. destruct H as [Hv Hc].
+          split; try assumption.
+          exact I.
+        - intros; reflexivity.
+    Qed.
+
+    Lemma composite_validating_byzantine_traces_are_free
+        (tr : @Trace _ (type X))
+        (Hbyz : byzantine_trace_prop X tr)
+        : protocol_trace_prop FreeX tr.
+    Proof.
+        apply pre_loaded_composite_free_incl.
+        apply alt_pre_loaded_incl.
+        apply byzantine_alt_byzantine_iff.
+        assumption.
+    Qed.
+
+End composite_validating_byzantine_traces.
