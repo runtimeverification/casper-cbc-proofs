@@ -1,4 +1,4 @@
-Require Import List Streams Nat.
+Require Import List Streams Nat Bool.
 Import ListNotations.
 Require Import Logic.FunctionalExtensionality.
 
@@ -1075,36 +1075,33 @@ Section binary_composition.
     (M2 : VLSM S2)
     .
 
-  Inductive binary_index : Set := first : binary_index | second : binary_index.
+  Definition binary_index : Set := bool.
 
-  Instance binary_index_dec : EqDec binary_index.
-    intros [|] [|].
-    - left; reflexivity.
-    - right; intro; discriminate.
-    - right; intro; discriminate.
-    - left; reflexivity.
-  Defined.
+  Definition first : binary_index := true.
+  Definition second : binary_index := false.
+
+  Program Instance binary_index_dec :  EqDec binary_index := bool_dec. 
 
   Definition binary_IT
     (i : binary_index)
     :=
     match i with
-    | first => T1
-    | second => T2
+    | true => T1
+    | false => T2
     end.
   
   Definition binary_IS (i : binary_index) : LSM_sig (binary_IT i)
     :=
     match i with
-    | first => S1
-    | second => S2
+    | true => S1
+    | false => S2
     end.
   
   Definition binary_IM (i : binary_index) : VLSM (binary_IS i)
     :=
     match i with
-    | first => M1
-    | second => M2
+    | true => M1
+    | false => M2
     end.
 
   Definition binary_free_composition

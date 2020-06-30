@@ -26,13 +26,8 @@ Proof.
     destruct Hbyz as [T' [S' [M' Htr]]].
     simpl in Htr.
     specialize
-        (@proj_pre_loaded_incl
-            message
-            _
-            binary_index_dec
+        (proj_pre_loaded_incl
             first
-            _
-            _
             (binary_IM M M')
             free_constraint
             first
@@ -136,7 +131,7 @@ Context
         (s : @state _ T)
         (init := proj1_sig (@s0 _ _ (sign Alt)))
         : @state _ (type Alt)
-        := @state_update message binary_index binary_index_dec binary_IT init first s.
+        := @state_update _ _ binary_index_dec binary_IT init first s.
 
     Lemma proj_alt_protocol_state
         (sj : state)
