@@ -15,7 +15,7 @@ Section indexing.
 
     Context {message : Type}
             {index : Type}
-            `{IndEqDec : EqDec index}
+            {IndEqDec : EqDec index}
             (IT : index -> VLSM_type message).
 
     Definition _indexed_state : Type :=
@@ -100,7 +100,7 @@ Section indexing.
 
     Context {message : Type}
             {index : Type}
-            `{IndEqDec : EqDec index}
+            {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
             (i0 : index)
             (IS : forall i : index, LSM_sig (IT i)).
@@ -145,7 +145,7 @@ Section indexing.
 
     Context {message : Type}
             {index : Type}
-            `{IndEqDec : EqDec index}
+            {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
             (i0 : index)
             {IS : forall i : index, LSM_sig (IT i)}
@@ -321,7 +321,7 @@ Section indexing.
 
     Context {message : Type}
             {index : Type}
-            `{IndEqDec : EqDec index}
+            {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
             (i0 : index)
             {IS : forall i : index, LSM_sig (IT i)}
@@ -385,7 +385,7 @@ Section projections.
 
   Context {message : Type}
           {index : Type}
-          `{IndEqDec : EqDec index}
+          {IndEqDec : EqDec index}
           (i0 : index)
           {IT : index -> VLSM_type message}
           {IS : forall i : index, LSM_sig (IT i)}
@@ -1067,7 +1067,7 @@ Section free_projections.
 
   Context {message : Type}
           {index : Type}
-          `{IndEqDec : EqDec index}
+          {IndEqDec : EqDec index}
           (i0 : index)
           {IT : index -> VLSM_type message}
           {IS : forall i : index, LSM_sig (IT i)}

@@ -376,7 +376,7 @@ Section validating_projection.
 Context
     {message : Type}
     {index : Type}
-    `{IndEqDec : EqDec index}
+    {IndEqDec : EqDec index}
     (i0 : index)
     {IT : index -> VLSM_type message}
     {IS : forall i : index, LSM_sig (IT i)}
@@ -588,7 +588,7 @@ Section composite_validating_byzantine_traces.
 
     Context {message : Type}
             {index : Type}
-            `{IndEqDec : EqDec index}
+            {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
             (i0 : index)
             {IS : forall i : index, LSM_sig (IT i)}

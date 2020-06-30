@@ -25,7 +25,7 @@ Section CommuteSingleton.
     (V : VLSM S).
 
   (* 3.2.1 Decision finality *)
-  (* Program Definition prot_state0 `{VLSM} : protocol_state := 
+  (* Program Definition prot_state0 {VLSM} : protocol_state := 
     exist protocol_state_prop (proj1_sig s0) _.
   Next Obligation.
     red.
@@ -95,7 +95,7 @@ Section CommuteIndexed.
   Context
     {CV : consensus_values}
     {index : Set}
-    `{Heqd : EqDec index}
+    {Heqd : EqDec index}
     {message : Type} 
     {IT : index -> VLSM_type message}
     {IS : forall i : index, LSM_sig (IT i)}
@@ -163,7 +163,7 @@ Section Estimators.
     {index : Set}
     {index_listing : list index}
     (finite_index : Listing index_listing)
-    `{Heqd : EqDec index}
+    {Heqd : EqDec index}
     {message : Type} 
     {IT : index -> VLSM_type message}
     (IS : forall i : index, LSM_sig (IT i))
