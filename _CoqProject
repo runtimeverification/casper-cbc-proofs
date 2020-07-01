@@ -18,3 +18,4 @@ VLSM/Common.v
 VLSM/Composition.v
 VLSM/Decisions.v
 VLSM/FullNode.v
+VLSM/Validating.v
