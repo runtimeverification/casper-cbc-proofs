@@ -224,11 +224,13 @@ Section indexing.
       (l : label)
       (is os : state)
       (iom oom : option message)
-      (Ht : verbose_valid_protocol_transition X1 l is os iom oom)
-      : verbose_valid_protocol_transition X2 l is os iom oom
+      (Ht : protocol_transition X1 l (is, iom) (os, 
+ oom))
+      : protocol_transition X2 l (is, iom) (os, 
+ oom)
       .
     Proof.
-      destruct Ht as [[_om Hps] [[_s Hpm] [[Hv Hc] Ht]]].
+      destruct Ht as [[[_om Hps] [[_s Hpm] [Hv Hc]]] Ht].
       repeat (split; try assumption).
       - exists _om. apply constraint_subsumption_protocol_prop. assumption.
       - exists _s. apply constraint_subsumption_protocol_prop. assumption.
@@ -411,9 +413,8 @@ Section projections.
     (siomi : @state _ (IT i) * option message)
     :=
     let (si, omi) := siomi in
-    exists (ps : @protocol_state _ _ _ X) (opm : option (@protocol_message _ _ _ X)),
-      (proj1_sig ps) i = si /\ option_map (@proj1_sig _ _) opm = omi
-      /\ protocol_valid X (existT _ i li) (ps, opm)
+    exists (s : @state _ T),
+      s i = si /\ protocol_valid X (existT _ i li) (s, omi)
     .
   
   Lemma composite_protocol_valid_implies_valid
@@ -424,9 +425,8 @@ Section projections.
     : @valid _ _ _ (IM i) li siomi
     .
   Proof.
-    unfold projection_valid in Hcomposite.
     destruct siomi as [si omi].
-    destruct Hcomposite as [[s Hps] [opm [Hsi [Homi Hvalid]]]].
+    destruct Hcomposite as [s [Hsi [_ [_ Hvalid]]]].
     subst; simpl in *.
     destruct Hvalid as [Hvalid Hconstraint].
     unfold _indexed_valid in Hvalid. assumption.
@@ -437,7 +437,7 @@ Section projections.
     : VLSM (indexed_vlsm_constrained_projection_sig i) :=
     {|  transition :=  @transition _ _ _ (IM i)
      ;  valid := projection_valid i
-    |}. 
+    |}.
 
   Section fixed_projection.
 
@@ -477,26 +477,6 @@ Section projections.
       - apply (protocol_initial_state Proj).
     Qed.
 
-    Lemma projection_valid_protocol_transition
-      (lj : label)
-      (ps : @protocol_state _ _ _ X)
-      (opm : option (@protocol_message _ _ _ X))
-      (sj := (proj1_sig ps) j)
-      (omj := option_map (@proj1_sig _ _) opm)
-      (Hv : protocol_valid X (existT _ j lj) (ps, opm))
-      : protocol_prop X (@transition _ _ _ X (existT _ j lj) (proj1_sig ps, omj))
-      .
-    Proof.
-      destruct ps as [psX HpsX].
-      simpl in sj. unfold sj in *. clear sj.
-      destruct HpsX as [_omX HpsX].
-      destruct opm as [[pmX [_sX HpmX]]|]
-      ; simpl in omj; unfold omj in *; clear omj.
-      - apply (protocol_generated X) with _omX _sX; assumption.
-      - apply (protocol_generated X) with _omX (proj1_sig (@s0 _ _ S))
-        ; try assumption.
-        apply (protocol_initial_state X).
-    Qed.
 
     Lemma protocol_message_projection_rev
       (iom : option message)
@@ -512,17 +492,21 @@ Section projections.
         unfold om in *; simpl in *; clear om.
         destruct Him as [[m Hpm] Heq].
         subst; assumption.
-      - destruct Hv as [psX [opm [Heqs [Heqopm Hv]]]].
-        simpl in Heqs. rewrite <- Heqs in *. clear Heqs.
-        specialize (projection_valid_protocol_transition l psX opm Hv)
+      - destruct Hv as [sX [Heqs Hv]].
+        specialize (protocol_prop_valid_out X (existT (fun n : index => label) j l) sX om Hv)
         ; intro HpsX'.
-        rewrite Heqopm in HpsX'.
-        remember (@transition _ _ _ X (existT (fun n : index => label) j l) (proj1_sig psX, om)) as som'.
+        simpl in Heqs. rewrite <- Heqs in *. clear Heqs.
+        remember
+          (@transition _ _ _ X
+            (@existT index (fun n : index => @label message (IT n)) j l)
+            (@pair (@state message (@indexed_type message index IT))
+               (option message) sX om))
+          as som'.
         destruct som' as [s' om'].
-        exists s'.
         simpl in Heqsom'.
         rewrite H0 in Heqsom'.
         inversion Heqsom'; subst.
+        exists (state_update IT sX j sj).
         assumption.
     Qed.
 
@@ -545,8 +529,8 @@ Section projections.
     (* Projects the trace of a composed vlsm to component j *)
     
     Fixpoint finite_trace_projection_list
-      (trx : list (@in_state_out _ T))
-      : list (@in_state_out _ (type Proj))
+      (trx : list (@transition_item _ T))
+      : list (@transition_item _ (type Proj))
       :=
       match trx with
       | [] => []
@@ -558,31 +542,31 @@ Section projections.
         match eq_dec j x with
         | left e =>
           let lj := eq_rect_r _ (projT2 l) e in
-          @Build_in_state_out _ (type Proj) lj (input item) (s j) (output item) :: tail
+          @Build_transition_item _ (type Proj) lj (input item) (s j) (output item) :: tail
         | _ => tail
         end
       end.
 
     Definition from_projection
-      (a : @in_state_out _ T)
+      (a : @transition_item _ T)
       : Prop
       := j = projT1 (l a).
     
     Definition dec_from_projection
-      (a : in_state_out)
+      (a : transition_item)
       : {from_projection a} + {~from_projection a}
       := eq_dec j (projT1 (l a)).
     
     Definition finite_trace_projection_list_alt
-      (trx : list (@in_state_out _ T))
+      (trx : list (@transition_item _ T))
       (ftrx := (filter (predicate_to_function dec_from_projection) trx))
       (Hall: Forall from_projection ftrx)
       :=
       List.map
-        (fun item : {a : @in_state_out _ T | from_projection a} =>
+        (fun item : {a : @transition_item _ T | from_projection a} =>
           let (item, e) := item in
           let lj := eq_rect_r _ (projT2 (l item)) e in
-          @Build_in_state_out _ (type Proj)
+          @Build_transition_item _ (type Proj)
             lj
             (input item)
             (destination item j)
@@ -591,7 +575,7 @@ Section projections.
       (list_annotate from_projection ftrx Hall).
     
     Lemma finite_trace_projection_list_alt_iff
-      (trx : list (@in_state_out _ T))
+      (trx : list (@transition_item _ T))
       (ftrx := (filter (predicate_to_function dec_from_projection) trx))
       (Hall: Forall from_projection ftrx)
       : finite_trace_projection_list_alt trx Hall = finite_trace_projection_list trx.
@@ -643,10 +627,10 @@ Section projections.
     
     Lemma finite_trace_projection_empty
       (s : @state _ T)
-      (trx : list (@in_state_out _ T))
-      (Htr : finite_ptrace_from X s trx)
+      (trx : list (@transition_item _ T))
+      (Htr : finite_protocol_trace_from X s trx)
       (Hempty : finite_trace_projection_list trx = [])
-      (t : (@in_state_out _ T))
+      (t : (@transition_item _ T))
       (Hin : In t trx)
       : destination t j = s j.
     Proof.
@@ -654,7 +638,7 @@ Section projections.
       induction Htr; simpl; intros t Hin.
       - inversion Hin.
       - destruct l as [i l].
-        destruct H as [[_om Hs'] [[_s Hiom] [Hvalid Htransition]]].
+        destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
         unfold transition in Htransition; simpl in Htransition.
         destruct (transition l (s' i, iom)) as [si' om'] eqn:Hteq.
         inversion Htransition; subst. clear Htransition.
@@ -668,8 +652,8 @@ Section projections.
 
     Lemma finite_trace_projection_last_state
       (start : @state _ T)
-      (transitions : list (@in_state_out _ T))
-      (Htr : finite_ptrace_from X start transitions)
+      (transitions : list (@transition_item _ T))
+      (Htr : finite_protocol_trace_from X start transitions)
       (lstx := last (List.map destination transitions) start)
       (lstj := last (List.map destination (finite_trace_projection_list transitions)) (start j))
       : lstj = lstx j.
@@ -682,7 +666,7 @@ Section projections.
       destruct (eq_dec j i).
       - rewrite map_cons. rewrite unroll_last.
         assumption.
-      - destruct H as [[_om Hs'] [[_s Hiom] [Hvalid Htransition]]].
+      - destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
         unfold transition in Htransition; simpl in Htransition.
         destruct (transition l (s' i, iom)) as [si' om'] eqn:Hteq.
         inversion Htransition; subst. clear Htransition.
@@ -697,14 +681,14 @@ Section projections.
     Lemma finite_ptrace_projection
       (s : @state _ T)
       (Psj : protocol_state_prop Proj (s j))
-      (trx : list (@in_state_out _ T))
-      (Htr : finite_ptrace_from X s trx)
-       : finite_ptrace_from Proj (s j) (finite_trace_projection_list trx).
+      (trx : list (@transition_item _ T))
+      (Htr : finite_protocol_trace_from X s trx)
+       : finite_protocol_trace_from Proj (s j) (finite_trace_projection_list trx).
     Proof.
       induction Htr.
       - constructor. assumption.
       - destruct l as [x lx]; simpl.
-        destruct H as [Ps' [Piom [[Hv Hc] Ht]]].
+        destruct H as [[Ps' [Piom [Hv Hc]]] Ht].
         assert (Hpp : protocol_prop X (s, oom)).
         { rewrite <- Ht. destruct Ps' as [_om Ps']. destruct Piom as [_s Piom].
           apply (protocol_generated _ _ _ _ Ps' _ _ Piom). split; assumption.
@@ -727,28 +711,22 @@ Section projections.
             specialize (protocol_message_projection _ Piom); intros [sj HPjiom].
             apply (protocol_generated Proj lx (s' j) os'j Psj sj iom HPjiom).
             unfold valid; simpl.
-            exists (exist _ s' Ps').
+            exists s'.
+            split; try reflexivity.
+            split; try assumption.
+            split; try assumption.
             destruct iom as [im|]
-            ; (exists (Some (exist _ im Piom)) || exists None)
-            ; repeat (split; try assumption).
+            ; repeat split; assumption.
           * assert
               (Heqlx :
                 (@eq_rect_r index j (fun n : index => @label message (IT n)) lx j (@eq_refl index j))
                 = lx
               ) by reflexivity.
             rewrite Heqlx.
-            unfold verbose_valid_protocol_transition.
-            destruct Psj as [omsj Psj].
-            split; try (exists omsj; assumption).
             specialize (protocol_message_projection _ Piom); intros HPjiom.
-            split; try assumption.
-            simpl in Ht. simpl in Hv.
-            split; try assumption.
-            unfold valid; simpl.
-            exists (exist _ s' Ps').
-            destruct iom as [im|]
-            ; (exists (Some (exist _ im Piom)) || exists None)
-            ; repeat (split; try assumption).
+            repeat split; try assumption.
+            exists s'.
+            repeat split; assumption.
         + simpl in Ht. destruct (transition lx (s' x, iom)) eqn:Hteq.
           inversion Ht; subst.
           rewrite state_update_neq in IHHtr; try assumption.
@@ -799,37 +777,37 @@ Section projections.
     Qed.
 
     Definition in_projection
-       (tr : Stream (@in_state_out _ T))
+       (tr : Stream (@transition_item _ T))
        (n : nat)
        := from_projection (Str_nth n tr)
        .
 
     Definition in_projection_dec
-      := forall (tr : Stream (@in_state_out _ T)),
+      := forall (tr : Stream (@transition_item _ T)),
            bounding (in_projection tr)
            + { ss : monotone_nat_stream
              | filtering_subsequence from_projection tr ss
              }.
 
     Definition infinite_trace_projection_stream
-      (ss: Stream (@in_state_out _ T))
+      (ss: Stream (@transition_item _ T))
       (ks: monotone_nat_stream)
       (Hfilter: filtering_subsequence from_projection ss ks)
-      : Stream (@in_state_out _ (IT j))
+      : Stream (@transition_item _ (IT j))
       :=
       let subs := stream_subsequence ss ks in
       let HForAll := stream_filter_Forall from_projection ss ks Hfilter in
       let subsP := stream_annotate from_projection subs HForAll in
       Streams.map
-        (fun item : {a : @in_state_out _ T | from_projection a} =>
+        (fun item : {a : @transition_item _ T | from_projection a} =>
           let (item, e) := item in
           let lj := eq_rect_r _ (projT2 (l item)) e in
-          @Build_in_state_out _ (type Proj) lj (input item) (destination item j) (output item)
+          @Build_transition_item _ (type Proj) lj (input item) (destination item j) (output item)
         )
         subsP.
 
     Lemma finite_trace_projection_stream
-      (ss: Stream (@in_state_out _ T))
+      (ss: Stream (@transition_item _ T))
       (ks: monotone_nat_stream)
       (Hfilter: filtering_subsequence from_projection ss ks)
       (n : nat)
@@ -852,18 +830,18 @@ Section projections.
       assert
         (Heq' : 
           (@stream_prefix
-            (@sig (@in_state_out message T)
-              (fun a : @in_state_out message T => from_projection a))
-            (@stream_annotate (@in_state_out message T) from_projection
-              (@stream_subsequence (@in_state_out message T) ss ks)
-              (@stream_filter_Forall (@in_state_out message T) from_projection
+            (@sig (@transition_item message T)
+              (fun a : @transition_item message T => from_projection a))
+            (@stream_annotate (@transition_item message T) from_projection
+              (@stream_subsequence (@transition_item message T) ss ks)
+              (@stream_filter_Forall (@transition_item message T) from_projection
                   ss ks Hfilter)) (succ n))
           =
           (@stream_prefix
-            (@sig (@in_state_out message T) from_projection)
-            (@stream_annotate (@in_state_out message T) from_projection
-              (@stream_subsequence (@in_state_out message T) ss ks)
-              (@stream_filter_Forall (@in_state_out message T) from_projection
+            (@sig (@transition_item message T) from_projection)
+            (@stream_annotate (@transition_item message T) from_projection
+              (@stream_subsequence (@transition_item message T) ss ks)
+              (@stream_filter_Forall (@transition_item message T) from_projection
                   ss ks Hfilter)) (succ n))
         ) by reflexivity.
         rewrite Heq'.
@@ -915,16 +893,16 @@ Section projections.
 
     Lemma infinite_ptrace_projection
       (s: @state _ T)
-      (ss: Stream in_state_out)
+      (ss: Stream transition_item)
       (Psj: protocol_state_prop Proj (s j))
-      (Htr: infinite_ptrace_from X s ss)
+      (Htr: infinite_protocol_trace_from X s ss)
       (fs : monotone_nat_stream)
       (Hfs: filtering_subsequence from_projection ss fs)
-      : infinite_ptrace_from Proj (s j) (infinite_trace_projection_stream ss fs Hfs)
+      : infinite_protocol_trace_from Proj (s j) (infinite_trace_projection_stream ss fs Hfs)
       .
     Proof.
-      apply infinite_ptrace_from_prefix_rev.
-      specialize (infinite_ptrace_from_prefix X s ss Htr); intro Hftr.
+      apply infinite_protocol_trace_from_prefix_rev.
+      specialize (infinite_protocol_trace_from_prefix X s ss Htr); intro Hftr.
       intros [| n].
       - constructor. assumption.
       - rewrite finite_trace_projection_stream.
@@ -945,7 +923,7 @@ Section projections.
       - apply finite_ptrace_projection; assumption.
       - simpl. destruct (Hproj_dec ss) as [[n _]|Hinf].
         + apply finite_ptrace_projection; try assumption.
-          apply infinite_ptrace_from_prefix. assumption.
+          apply infinite_protocol_trace_from_prefix. assumption.
         + destruct Hinf as [ks HFilter].
           apply infinite_ptrace_projection; assumption.
     Qed.
@@ -975,10 +953,10 @@ Section projections.
     Definition finite_projection_friendly
       := forall
         (sj : @state _ (IT j))
-        (trj : list (@in_state_out _ (IT j)))
-        (Htrj : finite_ptrace Proj sj trj),
-        exists (sx : @state _ T) (trx : list (@in_state_out _ T)),
-          finite_ptrace X sx trx
+        (trj : list (@transition_item _ (IT j)))
+        (Htrj : finite_protocol_trace Proj sj trj),
+        exists (sx : @state _ T) (trx : list (@transition_item _ T)),
+          finite_protocol_trace X sx trx
           /\ sx j = sj
           /\ finite_trace_projection_list trx = trj.
 
@@ -1011,7 +989,7 @@ Section projections.
         exists s. exists (stream_prefix tr n1).
         destruct Htr as [Htr Hinit].
         repeat split; try reflexivity; try assumption.
-        apply infinite_ptrace_from_prefix.
+        apply infinite_protocol_trace_from_prefix.
         assumption.
     Qed.
 
@@ -1037,11 +1015,13 @@ Section projections.
       (l : label)
       (is os : state)
       (iom oom : option message)
-      (Ht : verbose_valid_protocol_transition Proj l is os iom oom)
-      : verbose_valid_protocol_transition PreLoaded l is os iom oom
+      (Ht : protocol_transition Proj l (is, iom) (os, 
+ oom))
+      : protocol_transition PreLoaded l (is, iom) (os, 
+ oom)
       .
     Proof.
-      destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+      destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
       repeat (split; try assumption).
       - exists _om. apply proj_pre_loaded_protocol_prop. assumption.
       - exists _s. apply proj_pre_loaded_protocol_prop. assumption.

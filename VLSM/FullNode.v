@@ -448,7 +448,7 @@ Section Full.
  *)
 
   Definition vlsm_reach : protocol_state VLSM_full_client1 -> protocol_state VLSM_full_client1 -> Prop :=
-    fun s1 s2 => exists (ls : list (@in_state_out _ VLSM_type_full_client1)), finite_ptrace (VLSM_full_client1) (proj1_sig s1) ls /\ List.In (proj1_sig s2) (List.map (@destination _ VLSM_type_full_client1) ls).
+    fun s1 s2 => exists (ls : list (@transition_item _ VLSM_type_full_client1)), finite_protocol_trace (VLSM_full_client1) (proj1_sig s1) ls /\ List.In (proj1_sig s2) (List.map (@destination _ VLSM_type_full_client1) ls).
 
   Lemma reach_equiv :
     forall (s1 s2 : protocol_state (VLSM_full_client1)),

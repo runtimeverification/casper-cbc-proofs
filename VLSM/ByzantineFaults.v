@@ -160,12 +160,10 @@ Context
         replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
         exists None.
         apply (protocol_initial_state Alt).
-      - destruct Hv as [[psX HpsX] [opm [Heqs [Heqopm Hv]]]].
+      - destruct Hv as [psX [Heqs [HpsX [Hopm [Hv _]]]]].
         simpl in Heqs. rewrite <- Heqs in *. clear Heqs.
         specialize (IHHp1 (psX first) _om eq_refl).
-        destruct Hv as [Hv _].
         simpl in Hv.
-        rewrite Heqopm in Hv.
         remember (@transition _ _ _ Alt (existT _ first l) ((lifted_alt_state (psX first)), om)) as xsom'.
         destruct xsom' as [xs' om'].
         destruct IHHp1 as [_omX Hlift].
@@ -223,27 +221,28 @@ Context
           + destruct (alt_proj_protocol_message m) as [_smp Hpmp].
             apply (protocol_generated Proj) with _omp _smp
             ; try assumption.
-            exists (exist _ (lifted_alt_state s) HpsX).
             specialize (alt_protocol_message m); intro HpmX.
-            exists (Some (exist _ m HpmX)).
+            exists (lifted_alt_state s).
             repeat split; assumption.
           + apply (protocol_generated Proj) with _omp (proj1_sig (@s0 _ _ (sign Proj)))
             ; try assumption.
             * apply protocol_initial_state.
-            * exists (exist _ (lifted_alt_state s) HpsX).
-              exists None.
-              repeat split; assumption.
+            * exists (lifted_alt_state s).
+              repeat split; try assumption.
+              apply option_protocol_message_None.
     Qed.
  
     Lemma pre_loaded_alt_verbose_valid_protocol_transition
         (l : label)
         (is os : state)
         (iom oom : option message)
-        (Ht : verbose_valid_protocol_transition PreLoaded l is os iom oom)
-        : verbose_valid_protocol_transition Proj l is os iom oom
+        (Ht : protocol_transition PreLoaded l (is, iom) (os, 
+ oom))
+        : protocol_transition Proj l (is, iom) (os, 
+ oom)
         .
     Proof.
-        destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+        destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
         repeat (split; try assumption).
         - apply pre_loaded_alt_protocol_state with _om.
           assumption.
@@ -254,13 +253,12 @@ Context
           ; intros [_ism Hpsp].
           specialize (proj_alt_protocol_state is _ism Hpsp)
           ; intro Hps_alt.
-          exists (exist _ (lifted_alt_state is) Hps_alt).
+          exists (lifted_alt_state is).
+          repeat split; try assumption.
           destruct iom as [im|].
           + specialize (alt_protocol_message im); intro Hpim_alt.
-            exists (Some (exist _ im Hpim_alt)).
-            repeat split; assumption.
-          + exists None.
-            repeat split; assumption.
+            assumption.
+          + apply option_protocol_message_None.
     Qed.
 
     Lemma pre_loaded_alt_incl
@@ -340,11 +338,13 @@ Context
         (l : label)
         (is os : state)
         (iom oom : option message)
-        (Ht : verbose_valid_protocol_transition PreLoaded l is os iom oom)
-        : verbose_valid_protocol_transition X l is os iom oom
+        (Ht : protocol_transition PreLoaded l (is, iom) (os, 
+ oom))
+        : protocol_transition X l (is, iom) (os, 
+ oom)
         .
     Proof.
-        destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+        destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
         specialize (Hvalidating _ _ _ Hv).
         destruct Hvalidating as [His Hiom].
         repeat split;  assumption.
@@ -415,12 +415,10 @@ Proof.
     unfold validating_projection_prop. unfold validating_projection_messages. intros.
     intro Hvalid. apply H0. clear H0.
     specialize (H li (si, Some mi) Hvalid). clear Hvalid.
-    destruct H as [ps [opm [Hsi [Hmi Hvalid]]]].
-    destruct opm as [pm|]; simpl in Hmi; inversion Hmi.
-    exists ps. exists pm.
-    split; try assumption.
-    split; try assumption.
-    reflexivity.
+    destruct H as [ps [Hsi [Hps [Hpm [Hvalid Hctr]]]]].
+    exists (exist _ ps Hps).
+    exists (exist _ mi Hpm).
+    repeat split; assumption.
 Qed.
 
 Definition validating_transitions
@@ -438,7 +436,7 @@ Definition validating_transitions
             (om' : option message),
             si = s i
             /\
-            verbose_valid_protocol_transition X (existT _ i li) s s' omi om'
+            protocol_transition X (existT _ i li) (s, omi) (s', om')
         )
         .
 
@@ -447,26 +445,20 @@ Lemma validating_projection_messages_transitions
     : validating_projection_prop i -> validating_transitions i.
 Proof.
     unfold validating_projection_prop. unfold validating_transitions. 
-    unfold projection_valid. unfold verbose_valid_protocol_transition.
+    unfold projection_valid. unfold protocol_transition.
     simpl. intros.
     specialize (H li (si, omi) H0). clear H0. simpl in H.
-    destruct H as [ps [opm [Hsi [Homi Hvalid]]]].
-    remember (proj1_sig ps) as s.
+    destruct H as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
     remember (@transition _ _ _ X (existT _ i li) (s, omi)) as t.
     destruct t as [s' om'].
     exists s. exists s'. exists om'.
-    symmetry in Hsi. subst s; simpl.
-    split; try assumption.
-    destruct ps as [s Hps]; simpl in *.
-    split; try assumption.
-    symmetry in Heqt.
-    subst.
-    repeat (split; try assumption).
-    destruct opm as [[m Hpm]|]; simpl; try assumption.
-    remember (proj1_sig (@s0 _ _ S)) as sz.
-    exists sz.
-    specialize (protocol_initial_state X s0); simpl; intro Hs0.
-    subst. assumption.
+    symmetry in Hsi. subst si; simpl.
+    repeat split; try assumption.
+    simpl in Heqt.
+    remember (transition li (s i, omi)) as t.
+    destruct t as [si' om''].
+    inversion Heqt; subst.
+    reflexivity.
 Qed.
     
 Lemma validating_transitions_messages
@@ -476,14 +468,9 @@ Proof.
     unfold validating_projection_prop. unfold validating_transitions. intros.
     destruct siomi as [si omi].
     specialize (H si omi li H0); clear H0.
-    destruct H as [s [s' [om' [Hsi [Hps [Hopm [Hvalid Htransition]]]]]]].
+    destruct H as [s [s' [om' [Hsi [Hvalid Htransition]]]]].
     symmetry in Hsi.
-    exists (exist _ s Hps).
-    destruct omi as [m|].
-    - exists (Some (exist _ m Hopm)).
-      repeat (split; try assumption).
-    - exists None.
-      repeat (split; try assumption).
+    exists s. split; assumption.
 Qed.
 
 Section pre_loaded_validating_proj.
@@ -503,8 +490,7 @@ Section pre_loaded_validating_proj.
         .
     Proof.
         apply Hvalidating in Hvalid_m.
-        destruct Hvalid_m as [ps [opm [Hsi [Hm Hvalid]]]].
-        destruct opm as [[m' Hpm]|]; try inversion Hm; clear Hm; subst.
+        destruct Hvalid_m as [s [Hsi [Hps [Hopm Hvalid]]]].
         apply protocol_message_projection. assumption.
     Qed.
 
@@ -547,11 +533,13 @@ Section pre_loaded_validating_proj.
         (l : label)
         (is os : state)
         (iom oom : option message)
-        (Ht : verbose_valid_protocol_transition PreLoaded l is os iom oom)
-        : verbose_valid_protocol_transition Proj l is os iom oom
+        (Ht : protocol_transition PreLoaded l (is, iom) (os, 
+ oom))
+        : protocol_transition Proj l (is, iom) (os, 
+ oom)
         .
     Proof.
-        destruct Ht as [[_om Hps] [[_s Hpm] [Hv Ht]]].
+        destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
         repeat (split; try assumption).
         - apply pre_loaded_validating_proj_protocol_state with _om.
           assumption.
@@ -615,12 +603,9 @@ Section composite_validating_byzantine_traces.
         assert (Hsubsum : constraint_subsumption constraint free_constraint)
           by (intro; intros; exact I).
         specialize (Hprotocol Hsubsum).
-        destruct Hvalidating as [_ [[[mX [_sX HpmX]]|] [_ [Heqm _]]]]
-        ; simpl in Heqm
-        ; try apply Hprotocol in HpmX;  subst.
-        + exists _sX. assumption.
-        + exists (proj1_sig (@Common.s0 _ _ (sign FreeX))).
-          apply (protocol_initial_state FreeX).
+        destruct Hvalidating as [sX [Hsi [Hps [[_s HpmX] H0]]]].
+        apply Hprotocol in HpmX.
+        exists _s. assumption.
     Qed.
 
     
