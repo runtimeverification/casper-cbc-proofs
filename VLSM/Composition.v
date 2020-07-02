@@ -877,8 +877,8 @@ Section projections.
     Lemma trace_projection_initial_state
       (Hproj_dec : in_projection_dec)
       (tr : @Trace _ T)
-      : trace_initial_state (trace_projection Hproj_dec tr)
-      = trace_initial_state tr j
+      : trace_first (trace_projection Hproj_dec tr)
+      = trace_first tr j
       .
     Proof.
       destruct tr; try reflexivity.
@@ -912,7 +912,7 @@ Section projections.
     Lemma ptrace_from_projection
       (Hproj_dec : in_projection_dec)
       (tr : @Trace _ T)
-      (Psj : protocol_state_prop Proj (trace_initial_state tr j))
+      (Psj : protocol_state_prop Proj (trace_first tr j))
       (Htr : ptrace_from_prop X tr)
        : ptrace_from_prop Proj (trace_projection Hproj_dec tr).
     Proof.

@@ -695,8 +695,8 @@ traces, but we choose to omit them here, as they are not essential to our exposi
 
 (** We now define [infinite_protocol_trace]s. The definitions
 resemble their finite counterparts, adapted to the technical
-necessities of defining infinite objects. Notably, <<steps>>
-is stored as a stream, as opposed to a list.
+necessities of defining infinite objects. Notably, <<steps>> is
+stored as a stream, as opposed to a list.
 *)
     
     CoInductive infinite_protocol_trace_from :
@@ -828,11 +828,18 @@ It inherits some previously introduced definitions, culminating with the
     | Finite : state -> list transition_item -> Trace
     | Infinite : state -> Stream transition_item -> Trace.
 
-    Definition trace_initial_state (tr : Trace) : state :=
+    Definition trace_first (tr : Trace) : state :=
       match tr with 
       | Finite s _ => s
       | Infinite s _ => s
       end. 
+
+    Definition trace_last (tr : Trace) : option state
+      :=
+        match tr with
+        | Finite s ls => Some (last (List.map destination ls) s)
+        | Infinite _ _ => None
+        end.
 
     Definition protocol_trace_prop (tr : Trace) : Prop :=
       match tr with 
@@ -860,7 +867,7 @@ It inherits some previously introduced definitions, culminating with the
     Lemma protocol_trace_initial
       (tr : Trace)
       (Htr : protocol_trace_prop tr)
-      : initial_state_prop (trace_initial_state tr)
+      : initial_state_prop (trace_first tr)
       .
     Proof.
       destruct tr; simpl; destruct Htr as [Htr Hinit]; assumption.
@@ -869,7 +876,7 @@ It inherits some previously introduced definitions, culminating with the
     Lemma protocol_trace_from_iff
       (tr : Trace)
       : protocol_trace_prop tr
-      <-> ptrace_from_prop tr /\ initial_state_prop (trace_initial_state tr)
+      <-> ptrace_from_prop tr /\ initial_state_prop (trace_first tr)
       .
     Proof.
       split.
@@ -1050,25 +1057,25 @@ It inherits some previously introduced definitions, culminating with the
         
 (** Having defined [protocol_trace]s, we now connect them to protocol states
 and messages, in the following sense: for each state-message pair (<<s>>, <<m>>)
-that is _protocol_, there exists a [protocol_trace] which ends in <<s>> and by
-outputting <<m>> *)
+that has the [protocol_prop]erty, there exists a [protocol_trace] which ends
+in <<s>> by outputting <<m>> *)
  
     Lemma protocol_is_trace
-          (som' : state * option message)
-          (Hp : protocol_prop som')
-          (s' := fst som')
-          (om' := snd som')
+          (s : state)
+          (om : option message)
+          (Hp : protocol_prop (s, om))
          
-      : initial_state_prop s' \/ exists (is : state) (tr : list transition_item),
+      : initial_state_prop s
+      \/ exists (is : state) (tr : list transition_item),
             finite_protocol_trace is tr
-            /\ option_map destination (last_error tr) = Some s'
-            /\ option_map output (last_error tr) = Some om'.
+            /\ option_map destination (last_error tr) = Some s
+            /\ option_map output (last_error tr) = Some om.
     Proof.
-      specialize (protocol_is_run som' Hp); intros [vr Heq].
+      specialize (protocol_is_run (s,om) Hp); intros [vr Heq].
       specialize (run_is_trace vr); simpl; intros Htr.
       destruct vr as [r Hvr]; simpl in *.
       destruct (transitions r) eqn:Htrace.
-      - inversion Hvr; subst; simpl in Htrace. 
+      - inversion Hvr; subst; simpl in Htrace; simpl in Heq; inversion Heq; subst.
         + destruct is as [s0 His]. left. assumption.
         + destruct s0 as [s0 His]. left. assumption.
         + destruct ts; inversion Htrace.
@@ -1079,13 +1086,11 @@ outputting <<m>> *)
         intros Hlf; apply Hlf. intros HC; inversion HC.
     Qed. 
     
-    (* begin hide *)
-    
-    (* Projections of traces *)
-    Inductive Trace_states : Type :=
-    | Finite_states : list state -> Trace_states
-    | Infinite_states : Stream state -> Trace_states.
-
+(**
+Next function extract the nth state of a trace, where the sequence of
+states of a trace is obtained by appending the all destination
+states in the transition list/stream to the initial state of the trace.
+*)
     Definition trace_nth (tr : Trace)
       : nat -> option state :=
       fun (n : nat) =>
@@ -1093,23 +1098,13 @@ outputting <<m>> *)
         | Finite s ls => nth_error (s::List.map destination ls) n
         | Infinite s st => Some (Str_nth n (Cons s (Streams.map destination st)))
         end. 
-
-    Definition protocol_state_trace (tr : protocol_trace) : Trace_states :=
-      match proj1_sig tr with
-      | Finite s ls => Finite_states (s :: List.map destination ls)
-      | Infinite s st => Infinite_states (Cons s (map destination st)) end.
-    
-    Definition protocol_state_trace_prop (tr : Trace_states)
-      := exists (ptr : protocol_trace), tr = protocol_state_trace ptr.
-      
-     (* end hide *)
      
 (** Another benefit of defining traces is that we can succintly
 describe indirect transitions between arbitrary pairs of states.
 
 We say that state <<second>> is in state <<first>>'s futures if
-there exists a finite (possibly empty) protocol trace that begins with
-<<first>> and ends in <<second>>. 
+there exists a finite (possibly empty) protocol trace that begins
+with <<first>> and ends in <<second>>. 
 
 This relation is often used in stating safety and liveness properties.*)
      
@@ -1128,14 +1123,14 @@ This relation is often used in stating safety and liveness properties.*)
       (pfirst: protocol_state)
       : in_futures pfirst pfirst.
       
-      Proof.
-      unfold in_futures.
-      exists [].
-      split.
-      - apply finite_ptrace_empty.
-        destruct pfirst. assumption.
-       - simpl. auto.
-      Qed.
+    Proof.
+    unfold in_futures.
+    exists [].
+    split.
+    - apply finite_ptrace_empty.
+      destruct pfirst. assumption.
+     - simpl. auto.
+    Qed.
 
     Lemma in_futures_witness
       (pfirst psecond : protocol_state)
@@ -1293,20 +1288,6 @@ This relation is often used in stating safety and liveness properties.*)
           }
     Qed.
 
-    Definition trace_last (tr : Trace) : option state
-      :=
-        match tr with
-        | Finite s ls => Some (last (List.map destination ls) s)
-        | Infinite _ _ => None
-        end.
-
-    Definition trace_first (tr : Trace) : state
-      :=
-        match tr with
-        | Finite s _ => s
-        | Infinite s _ => s
-        end.
-
     Inductive Trace_messages : Type :=
     | Finite_messages : list (option message) -> Trace_messages
     | Infinite_messages : Stream (option message) -> Trace_messages. 
@@ -1320,13 +1301,6 @@ This relation is often used in stating safety and liveness properties.*)
       match proj1_sig tr with
       | Finite _ ls => Finite_messages (List.map input ls)
       | Infinite _ st => Infinite_messages (map input st) end.
-
-    (* Defining equivocation on these trace definitions *)
-    (* Section 7 :
-       A message m received by a protocol state s with a transition label l in a
-       protocol execution trace is called "an equivocation" if it wasn't produced
-       in that trace
-    *)
 
     Definition trace_prefix
                (tr : Trace)
@@ -1453,6 +1427,14 @@ that contains it as a prefix.
 
     (* Implicitly, the state itself must be in the trace, and minimally the last element of the trace *)
     (* Also implicitly, the trace leading up to the state is finite *)
+    (* Defining equivocation on these trace definitions *)
+
+    (* Section 7 :
+       A message m received by a protocol state s with a transition label l in a
+       protocol execution trace is called "an equivocation" if it wasn't produced
+       in that trace
+    *)
+
 
     Definition equivocation_in_trace
                (msg : message)
@@ -1496,17 +1478,6 @@ that contains it as a prefix.
              (msg : message) (ls : list transition_item) : bool
       :=
         existsb (fun x => proto_message_eqb (output x) (Some msg)) ls.
-
-    (* Now we can show that the above and below definitions are unnecessary *) 
-
-    (* Implicitly, the trace must be a protocol trace and also end with the state *) 
-    Definition finite_ptrace_upto 
-               (s : state)
-               (tr : protocol_trace)
-      : Prop
-      :=
-        trace_last (proj1_sig tr) = Some s
-    .
 
     (* 6.2.2 Equivocation-free as a composition constraint *)
     Definition composition_constraint : Type :=
@@ -1611,7 +1582,8 @@ For VLSM <<X>> to be included in VLSM <<Y>>, the following set of conditions is 
 - Every message <<m>> (including the empty one) which can be input to a
 [protocol_valid] transition in <<X>>, is a [protocol_message] in <<Y>>
 - <<X>>'s [protocol_valid] is included in <<Y>>'s [valid].
-- <<X>>'s [transition] is identical to <<Y>>'s [transition].
+- For all [protocol_valid] inputs (in <<X>>), <<Y>>'s [transition] acts
+like <<X>>'s [transition].
 *)
 
 Section basic_VLSM_incl.
