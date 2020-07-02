@@ -864,7 +864,7 @@ It inherits some previously introduced definitions, culminating with the
 
     Definition protocol_trace : Type :=
       { tr : Trace | protocol_trace_prop tr}.
-    
+    (* begin hide *)    
     (* Protocol runs *) 
     Record proto_run : Type := mk_proto_run
                                  { start : initial_state
@@ -1027,8 +1027,13 @@ It inherits some previously introduced definitions, culminating with the
         apply Hextend.
         Qed.
         
-(** *)
-
+        (* end hide *)
+        
+(** Having defined [protocol_trace]s, we now connect them to protocol states
+and messages, in the following sense: for each state-message pair (<<s>>, <<m>>)
+that is _protocol_, there exists a [protocol_trace] which ends in <<s>> and by
+outputting <<m>> *)
+ 
     Lemma protocol_is_trace
           (som' : state * option message)
           (Hp : protocol_prop som')
@@ -1054,7 +1059,9 @@ It inherits some previously introduced definitions, culminating with the
         rewrite <- Heq.
         intros Hlf; apply Hlf. intros HC; inversion HC.
     Qed. 
-
+    
+    (* begin hide *)
+    
     (* Projections of traces *)
     Inductive Trace_states : Type :=
     | Finite_states : list state -> Trace_states
@@ -1075,8 +1082,18 @@ It inherits some previously introduced definitions, culminating with the
     
     Definition protocol_state_trace_prop (tr : Trace_states)
       := exists (ptr : protocol_trace), tr = protocol_state_trace ptr.
-    
+      
+     (* end hide *)
+     
+(** Another benefit of defining traces is that we can succintly
+describe indirect transitions between arbitrary pairs of states.
 
+We say that state <<second>> is in state <<first>>'s futures if
+there exists a finite (possibly empty) protocol trace that begins with
+<<first>> and ends in <<second>>. 
+
+This relation is often used in stating safety and liveness properties.*)
+     
     Definition in_futures
       (pfirst psecond : protocol_state)
       (first := proj1_sig pfirst)
@@ -1085,6 +1102,8 @@ It inherits some previously introduced definitions, culminating with the
       exists (tr : list transition_item),
         finite_protocol_trace_from first tr /\
         last (List.map destination tr) first = second.
+        
+    (* begin hide *)
         
     Lemma in_futures_reflexive
       (pfirst: protocol_state)
@@ -1299,8 +1318,15 @@ It inherits some previously introduced definitions, culminating with the
         | Finite s ls => exists suffix, ls = prefix ++ (last :: suffix)
         | Infinite s st => exists suffix, st = stream_app prefix (Cons last suffix)
         end.
+        
+    (* end hide *)
 
-(** A [protocol_trace] is _terminating_ if there's no other [protocol_trace]
+(** 
+Stating livness properties will require quantifying over complete 
+executions of the protocol. To make this possible, we will now define
+_complete_ [protocol_trace]s.
+
+A [protocol_trace] is _terminating_ if there's no other [protocol_trace]
 that contains it as a prefix.
 *)
 
@@ -1324,7 +1350,8 @@ that contains it as a prefix.
           | Finite _ _ => terminating_trace_prop tr
           | Infinite _ _ => True
           end.
-
+    
+    (* begin hide *)
     Lemma trace_prefix_protocol
           (tr : protocol_trace)
           (last : transition_item)
@@ -1408,8 +1435,6 @@ that contains it as a prefix.
     (* Implicitly, the state itself must be in the trace, and minimally the last element of the trace *)
     (* Also implicitly, the trace leading up to the state is finite *)
 
-(* begin hide *)
-
     Definition equivocation_in_trace
                (msg : message)
                (tr : protocol_trace)
@@ -1482,10 +1507,13 @@ that contains it as a prefix.
 (* end hide *)
   End VLSM.
   
-(** We can define VLSM _inclusion_  and _equality_ in terms of traces.
-- VLSM X is _included_ in VLSM Y if every protocol_trace available to X
+(** 
+*** VLSM Inclusion and Equality.
+
+We can also define VLSM _inclusion_  and _equality_ in terms of traces.
+- VLSM X is _included_ in VLSM Y if every [protocol_trace] available to X
 is also available to Y.
-- VLSM X and VLSM Y are _equal_ if their protocol_traces are exactly the same.
+- VLSM X and VLSM Y are _equal_ if their [protocol_trace]s are exactly the same.
 *)
   
   Section VLSM_equality. 
@@ -1777,7 +1805,10 @@ in a valid transition in <<X>>, there exists a state <<s>> such that
   End VLSM_incl_from_protocol_prop.
   (* end hide *)
 
-(** Given a VLSM <<X>>, we introduce the _pre-loaded_ version of it,
+(** 
+*** Pre-loaded VLSMs
+
+Given a VLSM <<X>>, we introduce the _pre-loaded_ version of it,
 which is identical to <<X>>, except that it is endowed with the
 whole message universe as its initial messages. The high degree
 of freedom allowed to the _pre-loaded_ version lets it experience
