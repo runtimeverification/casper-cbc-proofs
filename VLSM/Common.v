@@ -36,8 +36,8 @@ signature, we find it convenient to extract it as the [LSM_sig] class.
 
 The [LSM_sig] class is parameterized by a [VLSM_type] and defines properties
 for initial states ([initial_state_prop]) and initial messages
-([initial_message_prop]), from which there automatically defined the dependent 
-types of [initial_state] (as [state]s having the [initial_state_prop]erty) and
+([initial_message_prop]), from which we can immediately define the dependent 
+types [initial_state] (as [state]s having the [initial_state_prop]erty) and
 [intial_message] (as <<message>>s having the [initial_message_prop]erty).
 
 Additionally, [LSM_sig] requires the identification of an [initial_state] [s0],
@@ -109,7 +109,12 @@ In this section we assume a fixed [VLSM].
 (** 
 
 *** Protocol states and messages
-  
+
+We further characterize certain objects as being _protocol_, which means they can
+be witnessed or experienced during executions of the protocol. For example,
+a message is a [protocol_message] if there exists an execution of the protocol
+in which it is produced.
+
 We choose here to define protocol states and messages together as the
 [protocol_prop] property, inductively defined over the
 [state * option message] product type,
@@ -175,7 +180,7 @@ dependent types [protocol_state] and [protocol_message].
 
 (**
 As often times we work with optional protocol messages, it is convenient
-to define a protocol message propery for optional messages:
+to define a protocol message property for optional messages:
 *)
 
     Definition option_protocol_message_prop (om : option message) :=
@@ -203,9 +208,8 @@ The definition and results below show that the mutually-recursive definitions
 for [protocol_state]s and [protocol_message]s can be derived from the 
 prior definitions.
 
-First, let us state new [valid]ity and [transition] properties with the
-additional constraint that they can be actually experienced during the 
-execution of a protocol.
+To achieve this, it is useful to further define _protocol_ validity and
+_protocol_ transitions:
 *)
 
     Definition protocol_valid
@@ -423,17 +427,14 @@ and [protocol_message]s, similar to their recursive definition.
     Qed.
 
 (**
-** Traces, VLSM inclusion and equality
+** Traces
 
-A (protocol) trace is defined as a list (or stream) of (protocol) transitions
-originating into an (initial) state.
-*)
+We introduce the concept of a trace to formalize an execution of the protocol.
+It is abstracted as a pair <<(start, steps)>> where <<start>> is a state 
+and <<steps>> is a tuple of objects which fully describe the transitions 
+underwent during execution. Notably, <<steps>> might be infinite.
 
-
-(**
-
-Assuming that the origin of a transition is already known (from the prefix trace),
-we can define a [transition_item] as consisting of:
+In Coq, we can define these objects (which we name [transition_item]s) as consisting of:
 - the [label] [l]
 - the (optional) [input] <<message>>
 - the [destination] [state] of the transition
@@ -448,14 +449,29 @@ we can define a [transition_item] as consisting of:
       }.
 
 (**
-A [finite_protocol_trace_from] a [state] <<s>> is a pair <<(s, l)>> where <<l>>
+Note that it is unnecessary to specify the source state of the transition,
+as it is implied by the preceding [transition_item] (or by the <<start>> state, 
+if such an item doesn't exist). 
+*)
+
+(* *)
+
+(**
+We will now split our groundwork for defining traces into the finite case and 
+the infinite case.
+*)
+
+(* *)
+
+(**
+A [finite_protocol_trace_from] a [state] <<start>> is a pair <<(start, steps)>> where <<steps>>
 is a list of [transition_item]s, and is inductively defined by:
 - <<(s, [])>> is a [finite_protocol_trace_from] <<s>>
 - if there is a [protocol_transition] <<l (s', iom) (s, oom)>>
 
-  and if <<(s,l)>> is a [protocol_trace_from] <<s>> 
+  and if <<(s,steps)>> is a [protocol_trace_from] <<s>> 
 
-  then <<(s', ({| l := l; input := iom; destination := s; output := oom |} :: tl)>>
+  then <<(s', ({| l := l; input := iom; destination := s; output := oom |} :: steps)>>
   is a [protocol_transition_from] <<s'>>.
 
 Note that the definition is given such that it extends an existing trace by
@@ -522,9 +538,15 @@ for infinite traces, which can only be extended at the front.
     Qed.
 (* end hide *)
 
+(**
+To complete our definition of a finite protocol trace, we must also guarantee that <<start>> is an
+initial state according to the protocol.
+*)
+  
     Definition finite_protocol_trace (s : state) (ls : list transition_item) : Prop :=
       finite_protocol_trace_from s ls /\ initial_state_prop s.
-
+      
+        (* begin hide *)
     Lemma extend_right_finite_trace_from
       : forall s1 ts s3 iom3 oom3 l3 (s2 := List.last (List.map destination ts) s1),
         finite_protocol_trace_from s1 ts ->
@@ -549,6 +571,15 @@ for infinite traces, which can only be extended at the front.
         rewrite map_cons.
         eapply remove_hd_last.
     Qed.
+    
+    (* end hide *)
+    
+(**
+We can now prove several general properties of [finite_protocol_trace]s. For example,
+the following lemma states that given two such traces, such that the latter's starting state
+is equal to the former's last state, it is possible to _concatenate_ them into a single 
+[finite_protocol_trace].
+*)
 
     Lemma finite_protocol_trace_from_app_iff (s : state) (ls ls' : list transition_item) (s' := (last (List.map destination ls) s))
       : finite_protocol_trace_from s ls /\ finite_protocol_trace_from s' ls'
@@ -578,7 +609,11 @@ for infinite traces, which can only be extended at the front.
          }
          rewrite last_identity. assumption.
     Qed.
+    
+(** Several other lemmas in this vein are necessary for proving results regarding
+traces, but we choose to omit them here, as they are not essential to our exposition. *)
 
+    (* begin hide *)
     Lemma finite_protocol_trace_from_prefix
       (s : state)
       (ls : list transition_item)       
@@ -637,8 +672,13 @@ for infinite traces, which can only be extended at the front.
         rewrite list_prefix_map.
         rewrite list_prefix_nth; assumption.
     Qed.
+    (* end hide *)
 
-    (* An infinite protocol trace originating in a given state *)
+(** We now define [infinite_protocol_trace]s. The definitions
+resemble their finite counterparts, adapted to the technical
+necessities of defining infinite objects. Notably, <<steps>>
+is stored as a stream, as opposed to a list.
+*)
     
     CoInductive infinite_protocol_trace_from :
       state -> Stream transition_item -> Prop :=
@@ -647,7 +687,8 @@ for infinite traces, which can only be extended at the front.
         forall (s' : state) (iom oom : option message) (l : label),
           protocol_transition l (s', iom) (s, oom) ->
           infinite_protocol_trace_from  s' (Cons {| l := l; input := iom; destination := s; output := oom |}  tl).
-
+          
+    (* begin hide *)
     Lemma infinite_ptrace_consecutive_valid_transition 
           (is : state)
           (tr tr2 : Stream transition_item)
@@ -752,9 +793,17 @@ for infinite traces, which can only be extended at the front.
         rewrite stream_prefix_nth; try assumption.
         reflexivity.
     Qed.
+    
+    (* end hide *)
 
     Definition infinite_ptrace (s : state) (st : Stream transition_item)
       := infinite_protocol_trace_from s st /\ initial_state_prop s.
+      
+(**
+Finally, we define [Trace] as a sum-type of its finite/infinite variants.
+It inherits some previously introduced definitions, culminating with the
+[protocol_trace].
+*)
 
     Inductive Trace : Type :=
     | Finite : state -> list transition_item -> Trace
@@ -777,6 +826,8 @@ for infinite traces, which can only be extended at the front.
       | Finite s ls => finite_protocol_trace_from s ls
       | Infinite s sm => infinite_protocol_trace_from s sm
       end.
+      
+    (* begin hide *)
     
     Lemma protocol_trace_from
       (tr : Trace)
@@ -808,6 +859,8 @@ for infinite traces, which can only be extended at the front.
         + apply protocol_trace_initial; assumption.
       - destruct tr; simpl; intros [Htr Hinit]; split; assumption.
     Qed.
+    
+    (* end hide *)
 
     Definition protocol_trace : Type :=
       { tr : Trace | protocol_trace_prop tr}.
@@ -973,8 +1026,8 @@ for infinite traces, which can only be extended at the front.
         rewrite Htr_r0 in Hextend.
         apply Hextend.
         Qed.
-
-    (* protocol states/messages correspond to protocol traces *)
+        
+(** *)
 
     Lemma protocol_is_trace
           (som' : state * option message)
@@ -1247,9 +1300,9 @@ for infinite traces, which can only be extended at the front.
         | Infinite s st => exists suffix, st = stream_app prefix (Cons last suffix)
         end.
 
-    (** A finite trace is terminating if there's no other trace that contains it
-        as a (proper) prefix.
-    **)
+(** A [protocol_trace] is _terminating_ if there's no other [protocol_trace]
+that contains it as a prefix.
+*)
 
     Definition terminating_trace_prop (tr : Trace) : Prop 
        :=
@@ -1260,6 +1313,9 @@ for infinite traces, which can only be extended at the front.
              trace_prefix (proj1_sig tr) last ls) -> False 
          | Infinite s ls => False
          end.
+         
+(** A [protocol_trace] is _complete_, if it is either _terminating_ or infinite.
+*)
 
     Definition complete_trace_prop (tr : Trace) : Prop
        := protocol_trace_prop tr
@@ -1352,6 +1408,8 @@ for infinite traces, which can only be extended at the front.
     (* Implicitly, the state itself must be in the trace, and minimally the last element of the trace *)
     (* Also implicitly, the trace leading up to the state is finite *)
 
+(* begin hide *)
+
     Definition equivocation_in_trace
                (msg : message)
                (tr : protocol_trace)
@@ -1421,22 +1479,20 @@ for infinite traces, which can only be extended at the front.
     Class VLSM_vdecidable :=
       { valid_decidable : forall l som, {valid l som} + {~valid l som} 
       }.
-
+(* end hide *)
   End VLSM.
-
-  Section VLSM_equality. (* Section 2.2.3 *)
-
+  
+(** We can define VLSM _inclusion_  and _equality_ in terms of traces.
+- VLSM X is _included_ in VLSM Y if every protocol_trace available to X
+is also available to Y.
+- VLSM X and VLSM Y are _equal_ if their protocol_traces are exactly the same.
+*)
+  
+  Section VLSM_equality. 
     Context
       {message : Type}
       {vtype : VLSM_type message}.
-
-    Definition VLSM_incl
-      {SigX SigY: LSM_sig vtype}
-      (X : VLSM SigX) (Y : VLSM SigY)
-      :=
-      forall t : Trace,
-        protocol_trace_prop X t -> protocol_trace_prop Y t
-      .
+      
 
     Definition VLSM_eq
       {SigX SigY: LSM_sig vtype}
@@ -1445,6 +1501,16 @@ for infinite traces, which can only be extended at the front.
       forall t : Trace,
         protocol_trace_prop X t <-> protocol_trace_prop Y t
       .
+    
+    Definition VLSM_incl
+      {SigX SigY: LSM_sig vtype}
+      (X : VLSM SigX) (Y : VLSM SigY)
+      :=
+      forall t : Trace,
+        protocol_trace_prop X t -> protocol_trace_prop Y t
+      .
+      
+    (* begin hide *)
 
     Lemma VLSM_eq_incl_l
       {SigX SigY: LSM_sig vtype}
@@ -1487,8 +1553,17 @@ for infinite traces, which can only be extended at the front.
         + apply Hxy.
         + apply Hyx.
     Qed.
-
+  (* end hide *)
   End VLSM_equality.
+
+(** It is natural to look for sufficient conditions for VLSM inclusion (or equality),
+which are easy to verify in a practical setting. One such result is the following.
+
+For VLSM <<X>> to be included in VLSM <<Y>>, the following set of conditions is sufficient:
+- <<X>>'s [initial_state]s are included in <<Y>>'s [initial state]s 
+- <<X>>'s [protocol_state]s are included in <<Y>>'s [protocol_state]s.
+- <<X>>'s [prtocol_transition]s are included in <<Y>>'s [protocol_transitions]s.
+*)
 
   Section VLSM_incl_from_protocol_state.
 
@@ -1496,28 +1571,30 @@ for infinite traces, which can only be extended at the front.
     {message : Type}
     {T : VLSM_type message}
     {S1 S2 : LSM_sig T}
-    (X1 : VLSM S1)
-    (X2 : VLSM S2)
+    (X : VLSM S1)
+    (Y : VLSM S2)
     (Hinitial_state : 
       forall s : state,
         @initial_state_prop _ _ S1 s -> @initial_state_prop _ _ S2 s
     )
     (Hprotocol_state : 
       forall (s : state) (om : option message),
-        protocol_prop X1 (s,om) -> protocol_state_prop X2 s
+        protocol_prop X (s,om) -> protocol_state_prop Y s
     )
     (Hprotocol_transition :
       forall (l : label) (is os : state) (iom oom : option message),
-        protocol_transition X1 l (is, iom) (os, oom)
-        -> protocol_transition X2 l (is, iom) (os, oom)
+        protocol_transition X l (is, iom) (os, oom)
+        -> protocol_transition Y l (is, iom) (os, oom)
     )
     .
+    
+  (* begin hide *)
 
   Lemma VLSM_incl_finite_ptrace
     (s : state)
     (ls : list transition_item)
-    (Hpxt : finite_protocol_trace_from X1 s ls)
-    : finite_protocol_trace_from X2 s ls
+    (Hpxt : finite_protocol_trace_from X s ls)
+    : finite_protocol_trace_from Y s ls
     .
   Proof.
     induction Hpxt.
@@ -1531,8 +1608,8 @@ for infinite traces, which can only be extended at the front.
   Lemma VLSM_incl_infinite_ptrace
     (s : state)
     (ls : Stream transition_item)
-    (Hpxt : infinite_protocol_trace_from X1 s ls)
-    : infinite_protocol_trace_from X2 s ls
+    (Hpxt : infinite_protocol_trace_from X s ls)
+    : infinite_protocol_trace_from Y s ls
     .
   Proof.
     generalize dependent ls. generalize dependent s.
@@ -1544,9 +1621,11 @@ for infinite traces, which can only be extended at the front.
     apply Hprotocol_transition.
     assumption.
   Qed.
+  
+  (* end hide *)
 
   Lemma VLSM_incl_from_protocol_state
-    : VLSM_incl X1 X2
+    : VLSM_incl X Y
     .
   Proof.
     intros [s ls| s ss]; simpl; intros [Hxt Hinit].  
@@ -1559,6 +1638,17 @@ for infinite traces, which can only be extended at the front.
   Qed.
 
   End VLSM_incl_from_protocol_state.
+  
+
+(**
+ Another condition states that <<X>> is included in <<Y>> if:
+- <<X>>'s [initial_state]s are included in <<Y>>'s [initial state]s
+- For each message <<m>> (including the empty one) which is taken as input
+in a valid transition in <<X>>, there exists a state <<s>> such that
+<<(s, m)>> is protocol in Y.
+- <<X>>'s [valid] is included in <<Y>>'s [valid].
+- <<X>>'s [transition] is identical to <<Y>>'s [transition].
+*)
 
   Section basic_VLSM_incl.
 
@@ -1566,33 +1656,33 @@ for infinite traces, which can only be extended at the front.
     {message : Type}
     {T : VLSM_type message}
     {S1 S2 : LSM_sig T}
-    (X1 : VLSM S1)
-    (X2 : VLSM S2)
+    (X : VLSM S1)
+    (Y : VLSM S2)
     (Hinitial_state : 
       forall s : state,
         @initial_state_prop _ _ S1 s -> @initial_state_prop _ _ S2 s
     )
     (Hprotocol_message : 
       forall (l : label) (s : state) (om : option message),
-        @valid _ _ _ X1 l (s, om)
-        -> exists _s : state, protocol_prop X2 (_s, om)
+        @valid _ _ _ X l (s, om)
+        -> exists _s : state, protocol_prop Y (_s, om)
     )
     (Hvalid : 
       forall (l : label) (s : state) (om : option message),
-        @valid _ _ _ X1 l (s, om)
-        -> @valid _ _ _ X2 l (s, om)
+        @valid _ _ _ X l (s, om)
+        -> @valid _ _ _ Y l (s, om)
     )
     (Htransition :
       forall (l : label) (s : state) (om : option message),
-        @transition _ _ _ X1 l (s, om) = @transition _ _ _ X2 l (s, om)
+        @transition _ _ _ X l (s, om) = @transition _ _ _ Y l (s, om)
     )
     .
-  
+    (*begin hide *)
   Lemma VLSM_incl_protocol_state
     (s : state)
     (om : option message)
-    (Hps : protocol_prop X1 (s,om))
-    : protocol_state_prop X2 s.
+    (Hps : protocol_prop X (s,om))
+    : protocol_state_prop Y s.
   Proof.
     remember (s, om) as som.
     generalize dependent om. generalize dependent s.
@@ -1602,21 +1692,21 @@ for infinite traces, which can only be extended at the front.
       destruct is as [is His]; simpl.
       apply Hinitial_state in His.
       replace is with (proj1_sig (exist _ is His)); try reflexivity.
-      apply (protocol_initial_state X2).
+      apply (protocol_initial_state Y).
     - exists None.
       unfold s in *. clear s.
       destruct s0 as [is His]; simpl.
       apply Hinitial_state in His.
       replace is with (proj1_sig (exist _ is His)); try reflexivity.
-      apply (protocol_initial_state X2).
+      apply (protocol_initial_state Y).
     - exists om0. 
       rewrite Htransition in H0.
       specialize (IHHps1 s _om eq_refl). destruct IHHps1 as [_omf Hfps].
-      replace (s1, om0) with (  @transition _ _ _ X2 l1 (s, om))
+      replace (s1, om0) with (  @transition _ _ _ Y l1 (s, om))
       ; try assumption.
       specialize (Hprotocol_message l1 s om Hv).
       destruct Hprotocol_message as [_sX HpmX].
-      apply (protocol_generated X2) with _omf _sX; try assumption.
+      apply (protocol_generated Y) with _omf _sX; try assumption.
       apply Hvalid.
       assumption.
   Qed.
@@ -1625,8 +1715,8 @@ for infinite traces, which can only be extended at the front.
     (l : label)
     (is os : state)
     (iom oom : option message)
-    (Ht : protocol_transition X1 l (is, iom) (os, oom))
-    : protocol_transition X2 l (is, iom) (os, oom)
+    (Ht : protocol_transition X l (is, iom) (os, oom))
+    : protocol_transition Y l (is, iom) (os, oom)
     .
   Proof.
     destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
@@ -1636,50 +1726,65 @@ for infinite traces, which can only be extended at the front.
     - apply Hvalid. assumption.
     - rewrite <- Htransition. assumption.
   Qed.
-
+  
+  
+    (* end hide *)
   Lemma basic_VLSM_incl
-    : VLSM_incl X1 X2
+    : VLSM_incl X Y
     .
   Proof.
-    apply (VLSM_incl_from_protocol_state X1 X2); try assumption.
+    apply (VLSM_incl_from_protocol_state X Y); try assumption.
     - apply VLSM_incl_protocol_state.
     - apply VLSM_incl_verbose_valid_protocol_transition.
   Qed.
 
   End basic_VLSM_incl.
 
+  
+    (* begin hide *)
   Section VLSM_incl_from_protocol_prop.
+  
 
   Context
     {message : Type}
     {T : VLSM_type message}
     {S1 S2 : LSM_sig T}
-    (X1 : VLSM S1)
-    (X2 : VLSM S2)
+    (X : VLSM S1)
+    (Y : VLSM S2)
     (Hinitial_state : 
       forall s : state,
         @initial_state_prop _ _ S1 s -> @initial_state_prop _ _ S2 s
     )
     (Hprotocol_prop : 
       forall som : state * option message,
-        protocol_prop X1 som -> protocol_prop X2 som
+        protocol_prop X som -> protocol_prop Y som
     )
     (Hprotocol_transition :
       forall (l : label) (is os : state) (iom oom : option message),
-        protocol_transition X1 l (is, iom) (os, oom)
-        -> protocol_transition X2 l (is, iom) (os, oom)
+        protocol_transition X l (is, iom) (os, oom)
+        -> protocol_transition Y l (is, iom) (os, oom)
     )
     .
 
   Lemma VLSM_incl_from_protocol_prop
-    : VLSM_incl X1 X2
+    : VLSM_incl X Y
     .
   Proof.
-    apply (VLSM_incl_from_protocol_state X1 X2); try assumption.
+    apply (VLSM_incl_from_protocol_state X Y); try assumption.
     intros. exists om. apply Hprotocol_prop. assumption.
   Qed.
 
   End VLSM_incl_from_protocol_prop.
+  (* end hide *)
+
+(** Given a VLSM <<X>>, we introduce the _pre-loaded_ version of it,
+which is identical to <<X>>, except that it is endowed with the
+whole message universe as its initial messages. The high degree
+of freedom allowed to the _pre-loaded_ version lets it experience
+everything experienced by <<X>> but also other types of behaviour,
+including _Byzantine_ behaviour, which makes it a useful concept in 
+Byzantine fault tolerance analysis. *)
+
 
   Section pre_loaded_vlsm.
     Context
@@ -1707,7 +1812,8 @@ for infinite traces, which can only be extended at the front.
     {| transition := @transition _ _ _ X
      ; valid := @valid _ _ _ X
     |}.
-
+  
+  (* begin hide *)
   Lemma pre_loaded_protocol_prop
     (s : state)
     (om : option message)
@@ -1738,6 +1844,8 @@ for infinite traces, which can only be extended at the front.
     - exists _om. apply pre_loaded_protocol_prop. assumption.
     - exists _s. apply pre_loaded_protocol_prop. assumption.
   Qed.
+  
+  (* end hide *)
 
   Lemma vlsm_incl_pre_loaded_vlsm
     : VLSM_incl X pre_loaded_vlsm
