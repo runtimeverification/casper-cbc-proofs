@@ -223,6 +223,25 @@ _protocol_ transitions:
       /\ valid l (s,om)
       .
 
+(* begin hide *)
+    Lemma protocol_generated_valid
+      {l : label}
+      {s : state}
+      {_om : option message}
+      {_s : state}
+      {om : option message}
+      (Hps : protocol_prop (s, _om))
+      (Hpm : protocol_prop (_s, om))
+      (Hv : valid l (s, om))
+      : protocol_valid l (s, om)
+      .
+    Proof.
+      repeat split; try assumption.
+      - exists _om. assumption.
+      - exists _s. assumption.
+    Qed.
+(* end hide *)
+
     Definition protocol_transition
       (l : label)
       (som : state * option message)
@@ -1588,36 +1607,95 @@ is also available to Y.
 which are easy to verify in a practical setting. One such result is the following.
 
 For VLSM <<X>> to be included in VLSM <<Y>>, the following set of conditions is sufficient:
-- <<X>>'s [initial_state]s are included in <<Y>>'s [initial state]s 
-- <<X>>'s [protocol_state]s are included in <<Y>>'s [protocol_state]s.
-- <<X>>'s [prtocol_transition]s are included in <<Y>>'s [protocol_transitions]s.
+- <<X>>'s [initial_state]s are included in <<Y>>'s [initial state]s
+- Every message <<m>> (including the empty one) which can be input to a
+[protocol_valid] transition in <<X>>, is a [protocol_message] in <<Y>>
+- <<X>>'s [protocol_valid] is included in <<Y>>'s [valid].
+- <<X>>'s [transition] is identical to <<Y>>'s [transition].
 *)
 
-  Section VLSM_incl_from_protocol_state.
+Section basic_VLSM_incl.
 
-  Context
-    {message : Type}
-    {T : VLSM_type message}
-    {S1 S2 : LSM_sig T}
-    (X : VLSM S1)
-    (Y : VLSM S2)
-    (Hinitial_state : 
-      forall s : state,
-        @initial_state_prop _ _ S1 s -> @initial_state_prop _ _ S2 s
-    )
-    (Hprotocol_state : 
-      forall (s : state) (om : option message),
-        protocol_prop X (s,om) -> protocol_state_prop Y s
-    )
-    (Hprotocol_transition :
-      forall (l : label) (is os : state) (iom oom : option message),
-        protocol_transition X l (is, iom) (os, oom)
-        -> protocol_transition Y l (is, iom) (os, oom)
-    )
-    .
+Context
+  {message : Type}
+  {T : VLSM_type message}
+  {SX SY : LSM_sig T}
+  (X : VLSM SX)
+  (Y : VLSM SY)
+  (Hinitial_state : 
+    forall s : state,
+      @initial_state_prop _ _ SX s -> @initial_state_prop _ _ SY s
+  )
+  (Hprotocol_message : 
+    forall (l : label) (s : state) (om : option message),
+      protocol_valid X l (s, om)
+      -> option_protocol_message_prop Y om
+  )
+  (Hvalid : 
+    forall (l : label) (s : state) (om : option message),
+      protocol_valid X l (s, om)
+      -> @valid _ _ _ Y l (s, om)
+  )
+  (Htransition :
+    forall (l : label) (s : state) (om : option message),
+      protocol_valid X l (s, om)
+      -> @transition _ _ _ X l (s, om) = @transition _ _ _ Y l (s, om)
+  )
+  .
+
+(* begin hide *)
+Lemma VLSM_incl_protocol_state
+  (s : state)
+  (om : option message)
+  (Hps : protocol_prop X (s,om))
+  : protocol_state_prop Y s.
+Proof.
+  remember (s, om) as som.
+  generalize dependent om. generalize dependent s.
+  induction Hps; intros; inversion Heqsom; subst; clear Heqsom.
+  - exists None.
+    unfold s in *. clear s.
+    destruct is as [is His]; simpl.
+    apply Hinitial_state in His.
+    replace is with (proj1_sig (exist _ is His)); try reflexivity.
+    apply (protocol_initial_state Y).
+  - exists None.
+    unfold s in *. clear s.
+    destruct s0 as [is His]; simpl.
+    apply Hinitial_state in His.
+    replace is with (proj1_sig (exist _ is His)); try reflexivity.
+    apply (protocol_initial_state Y).
+  - exists om0. 
+    specialize (protocol_generated_valid X Hps1 Hps2 Hv); intros Hpv.
+    rewrite Htransition in H0; try assumption.
+    specialize (IHHps1 s _om eq_refl). destruct IHHps1 as [_omf Hfps].
+    replace (s1, om0) with (  @transition _ _ _ Y l1 (s, om))
+    ; try assumption.
+    specialize (Hprotocol_message l1 s om Hpv).
+    destruct Hprotocol_message as [_sX HpmX].
+    apply (protocol_generated Y) with _omf _sX; try assumption.
+    specialize (Hvalid l1 s om Hpv).
+    assumption.
+Qed.
+
+Lemma VLSM_incl_protocol_transition
+  (l : label)
+  (is os : state)
+  (iom oom : option message)
+  (Ht : protocol_transition X l (is, iom) (os, oom))
+  : protocol_transition Y l (is, iom) (os, oom)
+  .
+Proof.
+  destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
+  specialize (protocol_generated_valid X Hps Hpm Hv); intros Hpv.
+  repeat split.
+  - apply VLSM_incl_protocol_state with _om. assumption.
+  - apply Hprotocol_message in Hpv. assumption.
+  - specialize (Hvalid l is iom Hpv).
+    assumption.
+  - rewrite <- Htransition; assumption.
+Qed.
     
-  (* begin hide *)
-
   Lemma VLSM_incl_finite_ptrace
     (s : state)
     (ls : list transition_item)
@@ -1628,9 +1706,9 @@ For VLSM <<X>> to be included in VLSM <<Y>>, the following set of conditions is 
     induction Hpxt.
     - constructor.
       destruct H as [m H].
-      apply Hprotocol_state in H. assumption.
+      apply VLSM_incl_protocol_state in H. assumption.
     - constructor; try assumption.
-      apply Hprotocol_transition. assumption.
+      apply VLSM_incl_protocol_transition. assumption.
   Qed.
 
   Lemma VLSM_incl_infinite_ptrace
@@ -1646,13 +1724,13 @@ For VLSM <<X>> to be included in VLSM <<Y>>, the following set of conditions is 
     inversion Hx; subst.
     specialize (H destination ls H3).
     constructor; try assumption.
-    apply Hprotocol_transition.
+    apply VLSM_incl_protocol_transition.
     assumption.
   Qed.
   
   (* end hide *)
 
-  Lemma VLSM_incl_from_protocol_state
+  Lemma basic_VLSM_incl
     : VLSM_incl X Y
     .
   Proof.
@@ -1665,145 +1743,7 @@ For VLSM <<X>> to be included in VLSM <<Y>>, the following set of conditions is 
       apply Hinitial_state. assumption.
   Qed.
 
-  End VLSM_incl_from_protocol_state.
-  
-
-(**
- Another condition states that <<X>> is included in <<Y>> if:
-- <<X>>'s [initial_state]s are included in <<Y>>'s [initial state]s
-- For each message <<m>> (including the empty one) which is taken as input
-in a valid transition in <<X>>, there exists a state <<s>> such that
-<<(s, m)>> is protocol in Y.
-- <<X>>'s [valid] is included in <<Y>>'s [valid].
-- <<X>>'s [transition] is identical to <<Y>>'s [transition].
-*)
-
-  Section basic_VLSM_incl.
-
-  Context
-    {message : Type}
-    {T : VLSM_type message}
-    {S1 S2 : LSM_sig T}
-    (X : VLSM S1)
-    (Y : VLSM S2)
-    (Hinitial_state : 
-      forall s : state,
-        @initial_state_prop _ _ S1 s -> @initial_state_prop _ _ S2 s
-    )
-    (Hprotocol_message : 
-      forall (l : label) (s : state) (om : option message),
-        @valid _ _ _ X l (s, om)
-        -> exists _s : state, protocol_prop Y (_s, om)
-    )
-    (Hvalid : 
-      forall (l : label) (s : state) (om : option message),
-        @valid _ _ _ X l (s, om)
-        -> @valid _ _ _ Y l (s, om)
-    )
-    (Htransition :
-      forall (l : label) (s : state) (om : option message),
-        @transition _ _ _ X l (s, om) = @transition _ _ _ Y l (s, om)
-    )
-    .
-    (*begin hide *)
-  Lemma VLSM_incl_protocol_state
-    (s : state)
-    (om : option message)
-    (Hps : protocol_prop X (s,om))
-    : protocol_state_prop Y s.
-  Proof.
-    remember (s, om) as som.
-    generalize dependent om. generalize dependent s.
-    induction Hps; intros; inversion Heqsom; subst; clear Heqsom.
-    - exists None.
-      unfold s in *. clear s.
-      destruct is as [is His]; simpl.
-      apply Hinitial_state in His.
-      replace is with (proj1_sig (exist _ is His)); try reflexivity.
-      apply (protocol_initial_state Y).
-    - exists None.
-      unfold s in *. clear s.
-      destruct s0 as [is His]; simpl.
-      apply Hinitial_state in His.
-      replace is with (proj1_sig (exist _ is His)); try reflexivity.
-      apply (protocol_initial_state Y).
-    - exists om0. 
-      rewrite Htransition in H0.
-      specialize (IHHps1 s _om eq_refl). destruct IHHps1 as [_omf Hfps].
-      replace (s1, om0) with (  @transition _ _ _ Y l1 (s, om))
-      ; try assumption.
-      specialize (Hprotocol_message l1 s om Hv).
-      destruct Hprotocol_message as [_sX HpmX].
-      apply (protocol_generated Y) with _omf _sX; try assumption.
-      apply Hvalid.
-      assumption.
-  Qed.
-
-  Lemma VLSM_incl_verbose_valid_protocol_transition
-    (l : label)
-    (is os : state)
-    (iom oom : option message)
-    (Ht : protocol_transition X l (is, iom) (os, oom))
-    : protocol_transition Y l (is, iom) (os, oom)
-    .
-  Proof.
-    destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
-    repeat split.
-    - apply VLSM_incl_protocol_state with _om. assumption.
-    - apply Hprotocol_message in Hv. assumption.
-    - apply Hvalid. assumption.
-    - rewrite <- Htransition. assumption.
-  Qed.
-  
-  
-    (* end hide *)
-  Lemma basic_VLSM_incl
-    : VLSM_incl X Y
-    .
-  Proof.
-    apply (VLSM_incl_from_protocol_state X Y); try assumption.
-    - apply VLSM_incl_protocol_state.
-    - apply VLSM_incl_verbose_valid_protocol_transition.
-  Qed.
-
-  End basic_VLSM_incl.
-
-  
-    (* begin hide *)
-  Section VLSM_incl_from_protocol_prop.
-  
-
-  Context
-    {message : Type}
-    {T : VLSM_type message}
-    {S1 S2 : LSM_sig T}
-    (X : VLSM S1)
-    (Y : VLSM S2)
-    (Hinitial_state : 
-      forall s : state,
-        @initial_state_prop _ _ S1 s -> @initial_state_prop _ _ S2 s
-    )
-    (Hprotocol_prop : 
-      forall som : state * option message,
-        protocol_prop X som -> protocol_prop Y som
-    )
-    (Hprotocol_transition :
-      forall (l : label) (is os : state) (iom oom : option message),
-        protocol_transition X l (is, iom) (os, oom)
-        -> protocol_transition Y l (is, iom) (os, oom)
-    )
-    .
-
-  Lemma VLSM_incl_from_protocol_prop
-    : VLSM_incl X Y
-    .
-  Proof.
-    apply (VLSM_incl_from_protocol_state X Y); try assumption.
-    intros. exists om. apply Hprotocol_prop. assumption.
-  Qed.
-
-  End VLSM_incl_from_protocol_prop.
-  (* end hide *)
+End basic_VLSM_incl.
 
 (** 
 *** Pre-loaded VLSMs
@@ -1860,32 +1800,18 @@ Byzantine fault tolerance analysis. *)
     - apply (protocol_generated pre_loaded_vlsm) with _om _s; assumption.
   Qed.
 
-  Lemma pre_loaded_verbose_valid_protocol_transition
-    (l : label)
-    (is os : state)
-    (iom oom : option message)
-    (Ht : protocol_transition X l (is, iom) (os, 
- oom))
-    : protocol_transition pre_loaded_vlsm l (is, iom) (os, 
- oom)
-    .
-  Proof.
-    destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
-    repeat (split; try assumption).
-    - exists _om. apply pre_loaded_protocol_prop. assumption.
-    - exists _s. apply pre_loaded_protocol_prop. assumption.
-  Qed.
-  
   (* end hide *)
 
   Lemma vlsm_incl_pre_loaded_vlsm
     : VLSM_incl X pre_loaded_vlsm
     .
   Proof.
-    apply (VLSM_incl_from_protocol_prop X pre_loaded_vlsm).
-    - intros; assumption.
-    - intros [s om]. apply pre_loaded_protocol_prop.
-    - apply pre_loaded_verbose_valid_protocol_transition.
+    apply (basic_VLSM_incl X pre_loaded_vlsm)
+    ; intros; try (assumption || reflexivity)
+    ; destruct H as [_ [[_s Hpm] Hv]].
+    - exists _s. apply pre_loaded_protocol_prop. assumption.
+    - assumption.
   Qed.
 
 End pre_loaded_vlsm.
+

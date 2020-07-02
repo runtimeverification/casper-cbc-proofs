@@ -207,20 +207,20 @@ of <<Proj>> into <<Preloaded>>
 *)
 
 (* begin show *)
-Lemma alt_pre_loaded_incl
-: VLSM_incl Proj PreLoaded
-.
-Proof.
-intros t Hpt.
-apply byzantine_pre_loaded.
-apply byzantine_alt_byzantine.
-assumption.
-Qed.
+    Lemma alt_pre_loaded_incl
+        : VLSM_incl Proj PreLoaded
+        .
+    Proof.
+        intros t Hpt.
+        apply byzantine_pre_loaded.
+        apply byzantine_alt_byzantine.
+        assumption.
+    Qed.
 (* end show *)
 
 (**
 To prove the reverse inclusion (between <<PreLoaded>> and <<Proj>>) we will use the
-[VLSM_incl_from_protocol_state] meta-result about proving inclusions bewteen
+[basic_VLSM_incl] meta-result about proving inclusions bewteen
 VLSMs which states that
 - if all [valid] messages in the first are [protocol_message]s in the second, and
 - if all [protocol_state]s in the first are also [protocol_state]s in the second,
@@ -234,12 +234,13 @@ First note that _all_ messages are [protocol_message]s for <<Alt>>, as
 [all_messages_vlsm] can generate any message without changing state.
 *)
 
-    Lemma alt_protocol_message
-        (m : message)
-        : protocol_message_prop Alt m.
+    Lemma alt_option_protocol_message
+        (om : option message)
+        : option_protocol_message_prop Alt om.
     Proof.
+        exists (proj1_sig (@s0 _ _ (sign Alt))).
+        destruct om as [m|]; try apply protocol_initial_state.
         remember (proj1_sig (@s0 _ _ (sign Alt))) as s.
-        exists s.
         assert (Ht : @transition _ _ _ Alt (existT _ second m) (s, None) = (s, Some m)).
         { simpl.
           f_equal.
@@ -257,13 +258,13 @@ First note that _all_ messages are [protocol_message]s for <<Alt>>, as
 Using the above, it is straight-forward to show that:
 *)
 
-    Lemma alt_proj_protocol_message
-        (m : message)
-        : protocol_message_prop Proj m.
+    Lemma alt_proj_option_protocol_message
+        (m : option message)
+        : option_protocol_message_prop Proj m.
 (* begin show *)
     Proof.
         apply protocol_message_projection.
-        apply alt_protocol_message.
+        apply alt_option_protocol_message.
     Qed.
 (* end show *)
 
@@ -279,12 +280,12 @@ by simply setting to <<s>> the  corresponding component of the initial
         := @state_update _ _ binary_index_dec binary_IT init first s.
 
 (**
-Lifting a [protocol_state] of <Proj> we obtain a [protocol_state] of <<Alt>>.
+Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Alt>>.
 *)
-    Lemma proj_alt_protocol_state
+    Lemma preloaded_alt_protocol_state
         (sj : state)
         (om : option message)
-        (Hp : protocol_prop Proj (sj, om))
+        (Hp : protocol_prop PreLoaded (sj, om))
         : protocol_state_prop Alt (lifted_alt_state sj).
     Proof.
       remember (sj, om) as sjom.
@@ -308,27 +309,14 @@ Lifting a [protocol_state] of <Proj> we obtain a [protocol_state] of <<Alt>>.
         replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
         exists None.
         apply (protocol_initial_state Alt).
-      - destruct Hv as [psX [Heqs [HpsX [Hopm [Hv _]]]]].
-        simpl in Heqs. rewrite <- Heqs in *. clear Heqs.
-        specialize (IHHp1 (psX first) _om eq_refl).
-        simpl in Hv.
-        remember (@transition _ _ _ Alt (existT _ first l) ((lifted_alt_state (psX first)), om)) as xsom'.
+      - specialize (IHHp1 s _om eq_refl). clear IHHp2.
+        remember (@transition _ _ _ Alt (existT _ first l) (lifted_alt_state s, om)) as xsom'.
         destruct xsom' as [xs' om'].
         destruct IHHp1 as [_omX Hlift].
         exists om'.
         replace (lifted_alt_state sj) with xs'.
         + rewrite Heqxsom'.
-          assert (Hsj : exists sj : state, protocol_prop Proj (sj, om))
-            by (exists _s; assumption).
-          specialize
-            (@protocol_message_projection_rev
-                _ _ binary_index_dec first _ _
-                (binary_IM M (all_messages_vlsm m0))
-                free_constraint
-                first
-                om
-                Hsj
-            ); intros [_sX HpmX].
+          destruct (alt_option_protocol_message om) as [_sX Hopm].
           apply (protocol_generated Alt) with _omX _sX; try assumption.
           split; try exact I.
           assumption.
@@ -342,101 +330,29 @@ Lifting a [protocol_state] of <Proj> we obtain a [protocol_state] of <<Alt>>.
     Qed.
 
 (**
-Using the above result we can show that a [protocol_state] of <<PreLoaded>> is
-also a [protocol_state] of <<Proj>>.
-*)
-
-    Lemma pre_loaded_alt_protocol_state
-        (sj : state)
-        (om : option message)
-        (Hp : protocol_prop PreLoaded (sj, om))
-        : protocol_state_prop Proj sj.
-    Proof.
-        remember (sj, om) as sjom.
-        generalize dependent om. generalize dependent sj.
-        induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom.
-        - exists None. apply (protocol_initial_state Proj).
-        - exists None. apply (protocol_initial_state Proj).
-        - specialize (IHHp1 s _om eq_refl).
-          specialize (IHHp2 _s om eq_refl).
-          exists om0.
-          replace
-            (@pair
-                (@state message (@binary_IT message T all_messages_type first))
-                (option message)
-                sj
-                om0
-            ) with (@transition _ _ _ Proj l (s, om)).
-          destruct IHHp1 as [_omp Hpsp].
-          specialize (proj_alt_protocol_state s _omp Hpsp)
-          ; intro HpsX.
-          destruct om as [m|].
-          + destruct (alt_proj_protocol_message m) as [_smp Hpmp].
-            apply (protocol_generated Proj) with _omp _smp
-            ; try assumption.
-            specialize (alt_protocol_message m); intro HpmX.
-            exists (lifted_alt_state s).
-            repeat split; assumption.
-          + apply (protocol_generated Proj) with _omp (proj1_sig (@s0 _ _ (sign Proj)))
-            ; try assumption.
-            * apply protocol_initial_state.
-            * exists (lifted_alt_state s).
-              repeat split; try assumption.
-              apply option_protocol_message_None.
-    Qed.
- 
-(**
-Similarly, we can show that  a [protocol_transition] for <<Preloaded>>
-is also a [protocol_transition] for <<Proj>>.
-*)
-    Lemma pre_loaded_alt_verbose_valid_protocol_transition
-        (l : label)
-        (is os : state)
-        (iom oom : option message)
-        (Ht : protocol_transition PreLoaded l (is, iom) (os, 
- oom))
-        : protocol_transition Proj l (is, iom) (os, 
- oom)
-        .
-    Proof.
-        destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
-        repeat (split; try assumption).
-        - apply pre_loaded_alt_protocol_state with _om.
-          assumption.
-        - destruct iom as [im|].
-          + apply alt_proj_protocol_message.
-          + exists (proj1_sig s0). apply (protocol_initial_state Proj s0).
-        - specialize (pre_loaded_alt_protocol_state is _om Hps)
-          ; intros [_ism Hpsp].
-          specialize (proj_alt_protocol_state is _ism Hpsp)
-          ; intro Hps_alt.
-          exists (lifted_alt_state is).
-          repeat split; try assumption.
-          destruct iom as [im|].
-          + specialize (alt_protocol_message im); intro Hpim_alt.
-            assumption.
-          + apply option_protocol_message_None.
-    Qed.
-
-(**
-Finally, we can use [VLSM_incl_from_protocol_state] together with the 
+Finally, we can use [basic_VLSM_incl] together with the 
 results above to show that <<Preloaded>> is included in <<Proj>>.
 *)
 
-(* begin show *)
     Lemma pre_loaded_alt_incl
         : VLSM_incl PreLoaded Proj
         .
     Proof.
-        apply (VLSM_incl_from_protocol_state PreLoaded Proj).
-        - intros; try assumption.
-        - apply pre_loaded_alt_protocol_state.
-        - apply pre_loaded_alt_verbose_valid_protocol_transition.
+        apply (basic_VLSM_incl PreLoaded Proj)
+        ; intros; try (assumption || reflexivity).
+        - apply alt_proj_option_protocol_message.
+        - exists (lifted_alt_state s).
+          split; try reflexivity.
+          destruct H as [[_om Hps] [Hpm Hv]].
+          repeat split; try assumption.
+          + apply preloaded_alt_protocol_state with _om. assumption.
+          + apply alt_option_protocol_message.
     Qed.
 
 (**
 Hence, <<Preloaded>> and <<Proj>> are actually trace-equal:
 *)
+(* begin show *)
     Lemma pre_loaded_alt_eq
         : VLSM_eq PreLoaded Proj
         .
@@ -526,28 +442,6 @@ First let us show that each [valid] <<PreloadedX>> message is a
         exists _s. assumption.
     Qed.
 
-(* begin hide *)
-
-(**
-  Next result can be easily deduced from the above, using
-  Lemma [VLSM_incl_protocol_state].
-*)
-    Lemma pre_loaded_composite_free_protocol_state
-        (s : state)
-        (om : option message)
-        (Hps : protocol_prop PreLoadedX (s,om))
-        : protocol_state_prop FreeX s.
-    Proof.
-        apply VLSM_incl_protocol_state with PreLoadedX om
-        ; try (intros; assumption).
-        - apply pre_loaded_composite_free_protocol_message.
-        - intros. destruct H as [Hv Hc].
-          split; try assumption.
-          exact I.
-        - intros; reflexivity.
-    Qed.
-(* end hide *)
-
 (**
 We can now apply the meta-lemma [basic_VLSM_incl], using
 Lemma [pre_loaded_composite_free_protocol_message] above to prove that:
@@ -557,12 +451,12 @@ Lemma [pre_loaded_composite_free_protocol_message] above to prove that:
         .
     Proof.
         apply basic_VLSM_incl
-        ; try (intros; assumption).
-        - apply pre_loaded_composite_free_protocol_message.
-        - intros. destruct H as [Hv Hc].
+        ; intros; try (assumption || reflexivity).
+        - apply pre_loaded_composite_free_protocol_message with l s.
+          destruct H as [_ [_ Hv]]. assumption.
+        - intros. destruct H as [_ [_ [Hv Hc]]].
           split; try assumption.
           exact I.
-        - intros; reflexivity.
     Qed.
 
 (**

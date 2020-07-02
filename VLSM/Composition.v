@@ -204,6 +204,20 @@ Section indexing.
       (T := indexed_type IT)
       .
 
+    Lemma constraint_subsumption_protocol_valid
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : protocol_valid X1 l (s, om))
+      : @valid _ _ _ X2 l (s, om)
+      .
+    Proof.
+      destruct Hv as [Hps [Hopm [Hv Hctr]]].
+      split; try assumption.
+      apply Hsubsumption.
+      assumption.
+    Qed.
+
     Lemma constraint_subsumption_protocol_prop
       (s : state)
       (om : option message)
@@ -214,37 +228,21 @@ Section indexing.
       - apply (protocol_initial_state X2 is).
       - apply (protocol_initial_message X2).
       - apply (protocol_generated X2) with _om _s; try assumption.
-        destruct Hv as [Hv Hc2].
-        split; try assumption.
-        apply Hsubsumption.
-        assumption.
-    Qed.
-
-    Lemma constraint_subsumption_verbose_valid_protocol_transition
-      (l : label)
-      (is os : state)
-      (iom oom : option message)
-      (Ht : protocol_transition X1 l (is, iom) (os, 
- oom))
-      : protocol_transition X2 l (is, iom) (os, 
- oom)
-      .
-    Proof.
-      destruct Ht as [[[_om Hps] [[_s Hpm] [Hv Hc]]] Ht].
-      repeat (split; try assumption).
-      - exists _om. apply constraint_subsumption_protocol_prop. assumption.
-      - exists _s. apply constraint_subsumption_protocol_prop. assumption.
-      - apply Hsubsumption. assumption.
+        apply constraint_subsumption_protocol_valid.
+        apply protocol_generated_valid with _om _s; assumption.
     Qed.
 
     Lemma constraint_subsumption_incl
       : VLSM_incl X1 X2
       .
     Proof.
-      apply (VLSM_incl_from_protocol_prop X1 X2).
-      - intros; assumption.
-      - intros [s om]. apply constraint_subsumption_protocol_prop.
-      - apply constraint_subsumption_verbose_valid_protocol_transition.
+      apply (basic_VLSM_incl X1 X2)
+      ; intros; try (assumption || reflexivity).
+      - destruct H as [_ [[_s Hom] _]]. exists _s. 
+        apply constraint_subsumption_protocol_prop.
+        assumption.
+      - apply constraint_subsumption_protocol_valid.
+        assumption.
     Qed.
 
     End constraint_subsumption.
@@ -476,7 +474,6 @@ Section projections.
         assumption.
       - apply (protocol_initial_state Proj).
     Qed.
-
 
     Lemma protocol_message_projection_rev
       (iom : option message)
@@ -1010,33 +1007,19 @@ Section projections.
         apply composite_protocol_valid_implies_valid. assumption.
     Qed.
 
-    Lemma proj_pre_loaded_verbose_valid_protocol_transition
-      (PreLoaded := pre_loaded_vlsm (IM j))
-      (l : label)
-      (is os : state)
-      (iom oom : option message)
-      (Ht : protocol_transition Proj l (is, iom) (os, 
- oom))
-      : protocol_transition PreLoaded l (is, iom) (os, 
- oom)
-      .
-    Proof.
-      destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
-      repeat (split; try assumption).
-      - exists _om. apply proj_pre_loaded_protocol_prop. assumption.
-      - exists _s. apply proj_pre_loaded_protocol_prop. assumption.
-      - apply composite_protocol_valid_implies_valid. assumption.
-    Qed.
-
     Lemma proj_pre_loaded_incl
       (PreLoaded := pre_loaded_vlsm (IM j))
       : VLSM_incl Proj PreLoaded
       .
     Proof.
-      apply (VLSM_incl_from_protocol_prop Proj PreLoaded).
-      - intros; assumption.
-      - intros [s om]; apply proj_pre_loaded_protocol_prop.
-      - apply proj_pre_loaded_verbose_valid_protocol_transition.
+      apply (basic_VLSM_incl Proj PreLoaded)
+      ; intros; try (assumption || reflexivity).
+      - destruct H as [_ [[_s Hpm] _]]. exists _s.
+        apply proj_pre_loaded_protocol_prop.
+        assumption.
+      - apply composite_protocol_valid_implies_valid. 
+        destruct H as [_ [_ Hv]].
+        assumption.
     Qed.
 
     End fixed_projection.

@@ -54,7 +54,7 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
         .
     Proof.
         apply (basic_VLSM_incl PreLoaded X)
-        ; intros; try (assumption || reflexivity).
+        ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
         apply Hvalidating in H.
         destruct H as [_ Hpm].
         assumption.
@@ -225,7 +225,7 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
         .
     Proof.
         apply (basic_VLSM_incl PreLoaded Proj)
-        ; intros; try (assumption || reflexivity).
+        ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
         - apply Hvalidating in H. destruct H as [_ [_ [_ [Hopm _]]]].
           apply protocol_message_projection. assumption.
         - apply Hvalidating in H. assumption. 
