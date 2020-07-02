@@ -13,8 +13,9 @@ CBC/Definitions.v
 CBC/FullNode.v
 CBC/LightNode.v
 CBC/Protocol.v
-VLSM/ByzantineFaults.v
+VLSM/ByzantineTraces.v
 VLSM/Common.v
 VLSM/Composition.v
 VLSM/Decisions.v
 VLSM/FullNode.v
+VLSM/Validating.v

@@ -1,7 +1,18 @@
 Require Import FinFun Streams.
-(* Section 4: Byzantine fault tolerance analysis *)
 From CasperCBC   
-Require Import Lib.Preamble VLSM.Common VLSM.Composition.
+Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
+
+(**
+** Byzantine traces.
+
+*** Definition and basic properties
+
+In this section we introduce two definitions for byzantine traces,
+then show them equivalent, and equivalent with traces on the
+corresponding pre-loaded VLSM.
+
+We will work with a fixed VLSM <<M>> with signature <<S>> and of type <<T>>.
+*)
 
 Section ByzantineTraces.
 Context
@@ -11,11 +22,29 @@ Context
     (M : VLSM S)
     .
 
+(**
+
+The first definition says that a trace has the [byzantine_trace_prop]erty
+if it is the projection of
+a trace which can be obtained by freely composing <<M>> with an arbitrary
+VLSM <<M'>> (of a signatulre <<S'>> and type <<T'>> over the same set of <<message>>s).
+
+Below, [binary_free_composition_fst] represents the projection of
+the free composition between <<M>> and <<M'>> to the component corresponding
+to <<M>>.
+*)
+
 Definition byzantine_trace_prop
     (tr : @Trace _ T) :=
     exists (T' : VLSM_type message) (S' : LSM_sig T') (M' : VLSM S')
         (Proj := binary_free_composition_fst M M'),
         protocol_trace_prop Proj tr.
+
+(**
+
+The first result says that all traces with the [byzantine_trace_prop]erty
+for a VLSM <<M>> are traces of the [pre_loaded_vlsm] associated to <<M>>:
+*)
 
 Lemma byzantine_pre_loaded
     (PreLoaded := pre_loaded_vlsm M)
@@ -36,12 +65,33 @@ Proof.
         ); intros Htr'.
     assumption.
 Qed.
-    
+
+(**
+
+*** An alternative definition for byzantine traces
+
+The [alternate_byzantine_trace_prop]erty relies on the composition
+of the VLSM with a special VLSM which can produce all messages.
+
+We will define its type ([all_messages_type]),
+signature ([all_messages_sig]) and the VLSM itself ([all_messages_vlsm]) below.
+
+The type of the [all_messages_vlsm] sets the [label] set to consist of all
+<<message>>s and the [state] to consist of a single state (here [tt]).
+*)
 
 Definition all_messages_type : VLSM_type message :=
     {| label := message
      ; state := unit
     |}.
+
+(**
+
+The [all_messages_vlsm] signature further says that the (single) state is
+initial and no messages are initial.
+It takes as parameter a <<message>> to ensure that the sets of labels and
+messages are both non-empty.
+*)
 
 Definition all_messages_sig
     (inhm : message)
@@ -54,6 +104,12 @@ Definition all_messages_sig
      ; l0 := inhm
     |}.
 
+(**
+
+The [transition] function of the [all_messages_vlsm] generates the
+message given as a label: 
+*)
+
 Definition all_messages_transition
     (l : @label _ all_messages_type)
     (som : @state _ all_messages_type * option message)
@@ -61,6 +117,12 @@ Definition all_messages_transition
     := (tt, Some l)
     .
 
+
+(**
+
+The [valid]ity predicate specifies that all transitions are valid
+
+*)
 Definition all_messages_valid
     (l : @label _ all_messages_type)
     (som : @state _ all_messages_type * option message)
@@ -76,15 +138,33 @@ Definition all_messages_vlsm
     |}
     .
 
-Definition byzantine_trace_prop_alt
+(**
+
+Using the VLSM defined above, we can define the [alternate_byzantine_trace_prop]erty
+of a trace <<tr>> for the VLSM <<M>> as being a trace in the projection
+of the free composition between <<M>> and the [all_messages_vlsm],
+to the component corresponding to <<M>>:
+
+*)
+
+Definition alternate_byzantine_trace_prop
     (tr : @Trace _ T)
     (Proj := binary_free_composition_fst M (all_messages_vlsm m0))
     :=
     protocol_trace_prop Proj tr.
 
+(**
+
+Since the [byzantine_trace_prop]erty was referring to the free composition
+to any other VLSM, we can instantiate that definition to the
+[all_messages_vlsm] to derive that a trace with the
+[alternate_byzantine_trace_prop]erty also has the [byzantine_trace_prop]erty.
+
+*)
+
 Lemma byzantine_alt_byzantine
     (tr : @Trace _ T)
-    (Halt : byzantine_trace_prop_alt tr)
+    (Halt : alternate_byzantine_trace_prop tr)
     : byzantine_trace_prop tr.
 Proof.
     exists all_messages_type.
@@ -93,12 +173,66 @@ Proof.
     assumption.
 Qed.
 
+(**
+*** Equivalence between the two byzantine trace definitions
+
+In this section we prove that the [alternate_byzantine_trace_prop]erty is
+equivalent to the [byzantine_trace_prop]erty.
+
+Since we have already proven that the [alternate_byzantine_trace_prop]erty
+implies the [byzantine_trace_prop]erty (Lemma [byzantine_trace_prop]erty]), 
+and since we know that the traces with the [byzantine_trace_prop]erty
+are [protocol_trace]s for the [pre_loaded_vlsm], to prove the
+equivalence it is enough to close the circle by proving the
+[VLSM_incl]usion between the [pre_loaded_vlsm] and the projection VLSM used
+in the definition of the [alternate_byzantine_trace_prop]erty.
+
+*)
+
 Section pre_loaded_byzantine_alt.
+
 Context
     (PreLoaded := pre_loaded_vlsm M)
     (Proj := binary_free_composition_fst M (all_messages_vlsm m0))
     (Alt := binary_free_composition M (all_messages_vlsm m0))
     .
+
+(**
+Let <<PreLoaded>> denote the [pre_loaded_vlsm] of <<M>>, <<Alt>> denote
+the free composition of <<M>> with the [all_messages_vlsm],
+and <<Proj>> denote the projection of <<Alt>> to the component of <<M>>.
+
+First, note that using the results above it is easy to prove the inclusion
+of <<Proj>> into <<Preloaded>>
+*)
+
+(* begin show *)
+Lemma alt_pre_loaded_incl
+: VLSM_incl Proj PreLoaded
+.
+Proof.
+intros t Hpt.
+apply byzantine_pre_loaded.
+apply byzantine_alt_byzantine.
+assumption.
+Qed.
+(* end show *)
+
+(**
+To prove the reverse inclusion (between <<PreLoaded>> and <<Proj>>) we will use the
+[VLSM_incl_from_protocol_state] meta-result about proving inclusions bewteen
+VLSMs which states that
+- if all [valid] messages in the first are [protocol_message]s in the second, and
+- if all [protocol_state]s in the first are also [protocol_state]s in the second,
+- and if all [protocol_transition]s in the first are also [protocol_transition]s
+in the second,
+- then the first VLSM is included in the second.
+
+We will tackle each of these properties in the sequel.
+
+First note that _all_ messages are [protocol_message]s for <<Alt>>, as 
+[all_messages_vlsm] can generate any message without changing state.
+*)
 
     Lemma alt_protocol_message
         (m : message)
@@ -119,20 +253,34 @@ Context
         split; exact I.
     Qed.
 
+(**
+Using the above, it is straight-forward to show that:
+*)
+
     Lemma alt_proj_protocol_message
         (m : message)
         : protocol_message_prop Proj m.
+(* begin show *)
     Proof.
         apply protocol_message_projection.
         apply alt_protocol_message.
     Qed.
+(* end show *)
 
+(**
+Next we define the "lifing" of a [state] <<s>> from <<M>> to <<Alt>>,
+by simply setting to <<s>> the  corresponding component of the initial
+(composed) state [s0] of <<Alt>>.
+*)
     Definition lifted_alt_state
         (s : @state _ T)
         (init := proj1_sig (@s0 _ _ (sign Alt)))
         : @state _ (type Alt)
         := @state_update _ _ binary_index_dec binary_IT init first s.
 
+(**
+Lifting a [protocol_state] of <Proj> we obtain a [protocol_state] of <<Alt>>.
+*)
     Lemma proj_alt_protocol_state
         (sj : state)
         (om : option message)
@@ -193,6 +341,11 @@ Context
           apply state_update_twice.
     Qed.
 
+(**
+Using the above result we can show that a [protocol_state] of <<PreLoaded>> is
+also a [protocol_state] of <<Proj>>.
+*)
+
     Lemma pre_loaded_alt_protocol_state
         (sj : state)
         (om : option message)
@@ -232,6 +385,10 @@ Context
               apply option_protocol_message_None.
     Qed.
  
+(**
+Similarly, we can show that  a [protocol_transition] for <<Preloaded>>
+is also a [protocol_transition] for <<Proj>>.
+*)
     Lemma pre_loaded_alt_verbose_valid_protocol_transition
         (l : label)
         (is os : state)
@@ -261,6 +418,12 @@ Context
           + apply option_protocol_message_None.
     Qed.
 
+(**
+Finally, we can use [VLSM_incl_from_protocol_state] together with the 
+results above to show that <<Preloaded>> is included in <<Proj>>.
+*)
+
+(* begin show *)
     Lemma pre_loaded_alt_incl
         : VLSM_incl PreLoaded Proj
         .
@@ -271,21 +434,31 @@ Context
         - apply pre_loaded_alt_verbose_valid_protocol_transition.
     Qed.
 
-    Lemma alt_pre_loaded_incl
-        : VLSM_incl Proj PreLoaded
+(**
+Hence, <<Preloaded>> and <<Proj>> are actually trace-equal:
+*)
+    Lemma pre_loaded_alt_eq
+        : VLSM_eq PreLoaded Proj
         .
     Proof.
-        intros t Hpt.
-        apply byzantine_pre_loaded.
-        apply byzantine_alt_byzantine.
-        assumption.
+        split.
+        - apply pre_loaded_alt_incl.
+        - apply alt_pre_loaded_incl.
     Qed.
+
+(* end show *)
+
 
 End pre_loaded_byzantine_alt.
 
+(**
+Finally, we can conclude that the two definitions for byzantine traces are
+equivalent:
+*)
+
 Lemma byzantine_alt_byzantine_iff
     (tr : @Trace _ T)
-    : byzantine_trace_prop_alt tr <-> byzantine_trace_prop tr.
+    : alternate_byzantine_trace_prop tr <-> byzantine_trace_prop tr.
 Proof.
     split; intros.
     - apply byzantine_alt_byzantine; assumption.
@@ -296,282 +469,14 @@ Qed.
 
 End ByzantineTraces.
 
-Section validating_vlsm.
+(**
+** Composite validating byzantine traces are free
 
-Context
-    {message : Type}
-    {T : VLSM_type message}
-    {S : LSM_sig T}
-    (X : VLSM S)
-    .
+In this section we show that if all components of a composite VLSM <<X>> have
+the [validating_projection_prop]erty, then its byzantine traces
+are included into the free composition of the components of <<X>>.
 
-Definition validating_vlsm_prop
-    :=
-    forall (l : label) (s : state) (om : option message),
-        valid l (s, om) ->
-        protocol_state_prop X s /\ exists _s, protocol_prop X (_s, om)
-    .
-
-Context
-    (Hvalidating : validating_vlsm_prop)
-    (PreLoaded := pre_loaded_vlsm X)
-    .
-
-    Lemma pre_loaded_validating_vlsm_protocol_state
-        (s : state)
-        (om : option message)
-        (Hps : protocol_prop PreLoaded (s,om))
-        : protocol_state_prop X s.
-    Proof.
-        remember (s, om) as som.
-        generalize dependent om. generalize dependent s.
-        induction Hps; intros; inversion Heqsom; subst; clear Heqsom.
-        - exists None. apply (protocol_initial_state X is).
-        - exists None. apply (protocol_initial_state X (@VLSM.Common.s0 _ _ S)).
-        - exists om0. rewrite <- H0.
-          specialize (Hvalidating _ _ _ Hv).
-          destruct Hvalidating as [[_omX HpsX] [_sX HomX]].
-         apply (protocol_generated X) with _omX _sX; assumption.
-    Qed.
-
-    Lemma pre_loaded_validating_vlsm_verbose_valid_protocol_transition
-        (l : label)
-        (is os : state)
-        (iom oom : option message)
-        (Ht : protocol_transition PreLoaded l (is, iom) (os, 
- oom))
-        : protocol_transition X l (is, iom) (os, 
- oom)
-        .
-    Proof.
-        destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
-        specialize (Hvalidating _ _ _ Hv).
-        destruct Hvalidating as [His Hiom].
-        repeat split;  assumption.
-    Qed.
-
-    Lemma pre_loaded_validating_vlsm_incl
-        : VLSM_incl PreLoaded X
-        .
-    Proof.
-        apply (VLSM_incl_from_protocol_state PreLoaded X).
-        - intros; assumption.
-        - apply pre_loaded_validating_vlsm_protocol_state.
-        - apply pre_loaded_validating_vlsm_verbose_valid_protocol_transition.
-    Qed.
-
-    Lemma pre_loaded_validating_vlsm_eq
-        : VLSM_eq PreLoaded X
-        .
-    Proof.
-        split.
-        - apply pre_loaded_validating_vlsm_incl.
-        - apply vlsm_incl_pre_loaded_vlsm.
-    Qed.
-
-End validating_vlsm.
-
-Section validating_projection.
-
-Context
-    {message : Type}
-    {index : Type}
-    {IndEqDec : EqDec index}
-    (i0 : index)
-    {IT : index -> VLSM_type message}
-    {IS : forall i : index, LSM_sig (IT i)}
-    (IM : forall n : index, VLSM (IS n))
-    (T := indexed_type IT)
-    (S := indexed_sig i0 IS)
-    (constraint : @label _ T -> @state _ T * option message -> Prop)
-    (X := indexed_vlsm_constrained i0 IM constraint)
-    .
-
-Definition validating_projection_messages
-    (i : index)
-    :=
-    forall (si : @state _ (IT i)) (mi : message) (li : @label _ (IT i)),
-        (~ exists (ps : protocol_state X) (pm : protocol_message X),
-            (proj1_sig ps) i = si
-            /\
-            proj1_sig pm = mi
-            /\
-            @valid _ _ _ X (existT _ i li) (proj1_sig ps, Some (proj1_sig pm))
-        )
-        -> ~ @valid _ _ _ (IM i) li (si, Some mi)
-            .
-
-Definition validating_projection_prop
-    (i : index)
-    :=
-    forall (li : @label _ (IT i)) (siomi : @state _ (IT i) * option message),
-        @valid _ _ _ (IM i) li siomi ->
-        projection_valid i0 IM constraint i li siomi.
-
-Lemma validating_projection_messages_received
-    (i : index)
-    : validating_projection_prop i -> validating_projection_messages i.
-Proof.
-    unfold validating_projection_prop. unfold validating_projection_messages. intros.
-    intro Hvalid. apply H0. clear H0.
-    specialize (H li (si, Some mi) Hvalid). clear Hvalid.
-    destruct H as [ps [Hsi [Hps [Hpm [Hvalid Hctr]]]]].
-    exists (exist _ ps Hps).
-    exists (exist _ mi Hpm).
-    repeat split; assumption.
-Qed.
-
-Definition validating_transitions
-    (i : index)
-    :=
-    forall
-        (si : @state _ (IT i))
-        (omi : option message)
-        (li : @label _ (IT i))
-        ,
-        @valid _ _ _ (IM i) li (si, omi)
-        ->
-        (exists 
-            (s s' : @state _ T)
-            (om' : option message),
-            si = s i
-            /\
-            protocol_transition X (existT _ i li) (s, omi) (s', om')
-        )
-        .
-
-Lemma validating_projection_messages_transitions
-    (i : index)
-    : validating_projection_prop i -> validating_transitions i.
-Proof.
-    unfold validating_projection_prop. unfold validating_transitions. 
-    unfold projection_valid. unfold protocol_transition.
-    simpl. intros.
-    specialize (H li (si, omi) H0). clear H0. simpl in H.
-    destruct H as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
-    remember (@transition _ _ _ X (existT _ i li) (s, omi)) as t.
-    destruct t as [s' om'].
-    exists s. exists s'. exists om'.
-    symmetry in Hsi. subst si; simpl.
-    repeat split; try assumption.
-    simpl in Heqt.
-    remember (transition li (s i, omi)) as t.
-    destruct t as [si' om''].
-    inversion Heqt; subst.
-    reflexivity.
-Qed.
-    
-Lemma validating_transitions_messages
-    (i : index)
-    : validating_transitions i -> validating_projection_prop i.
-Proof.
-    unfold validating_projection_prop. unfold validating_transitions. intros.
-    destruct siomi as [si omi].
-    specialize (H si omi li H0); clear H0.
-    destruct H as [s [s' [om' [Hsi [Hvalid Htransition]]]]].
-    symmetry in Hsi.
-    exists s. split; assumption.
-Qed.
-
-Section pre_loaded_validating_proj.
-    Context
-        (i : index)
-        (Hvalidating : validating_projection_prop i)
-        (Proj := indexed_vlsm_constrained_projection i0 IM constraint i)
-        (PreLoaded := pre_loaded_vlsm (IM i))
-        .
-
-    Lemma validating_proj_protocol_message
-        (m : message)
-        (li : label)
-        (si : state)
-        (Hvalid_m : @valid _ _ _ (IM i) li (si, Some m))
-        : protocol_message_prop Proj m
-        .
-    Proof.
-        apply Hvalidating in Hvalid_m.
-        destruct Hvalid_m as [s [Hsi [Hps [Hopm Hvalid]]]].
-        apply protocol_message_projection. assumption.
-    Qed.
-
-    Lemma _pre_loaded_validating_proj_protocol_state
-        (som : state * option message)
-        (Hps : protocol_prop PreLoaded som)
-        : protocol_state_prop Proj (fst som).
-    Proof.
-        induction Hps.
-        - exists None. apply (protocol_initial_state Proj is).
-        - exists None. apply (protocol_initial_state Proj (@VLSM.Common.s0 _ _ (IS i))).
-        - destruct
-            (@transition message (IT i) (@pre_loaded_vlsm_sig message (IT i) (IS i) (IM i)) PreLoaded l
-                (@pair (@state message (IT i)) (option message) s om)) as [s' om'] eqn:Ht.
-          exists om'. simpl. rewrite <- Ht.
-          clear IHHps2. simpl in IHHps1. clear Hps1 Hps2 _s _om.
-          destruct IHHps1 as [_om Hps].
-          destruct om as [m|].
-          + specialize (validating_proj_protocol_message m l s Hv); intros [_s Hpm].
-            apply (protocol_generated Proj) with _om _s; try assumption.
-            apply Hvalidating. assumption.
-          + apply (protocol_generated Proj) with _om (proj1_sig s0); try assumption.
-            * apply (protocol_initial_state Proj s0).
-            * apply Hvalidating. assumption.
-    Qed.
-
-    Lemma pre_loaded_validating_proj_protocol_state
-        (s : state)
-        (om : option message)
-        (Hps : protocol_prop PreLoaded (s,om))
-        : protocol_state_prop Proj s.
-    Proof.
-        remember (s, om) as som. 
-        assert (Hs : s = fst som) by (subst; reflexivity).
-        rewrite Hs. apply _pre_loaded_validating_proj_protocol_state.
-        assumption.
-    Qed.
-
-    Lemma pre_loaded_validating_proj_verbose_valid_protocol_transition
-        (l : label)
-        (is os : state)
-        (iom oom : option message)
-        (Ht : protocol_transition PreLoaded l (is, iom) (os, 
- oom))
-        : protocol_transition Proj l (is, iom) (os, 
- oom)
-        .
-    Proof.
-        destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
-        repeat (split; try assumption).
-        - apply pre_loaded_validating_proj_protocol_state with _om.
-          assumption.
-        - destruct iom as [im|].
-          + apply validating_proj_protocol_message with l is. assumption.
-          + exists (proj1_sig s0). apply (protocol_initial_state Proj s0).
-        - apply Hvalidating. assumption.
-    Qed.
-
-    Lemma pre_loaded_validating_proj_incl
-        : VLSM_incl PreLoaded Proj
-        .
-    Proof.
-        apply (VLSM_incl_from_protocol_state PreLoaded Proj).
-        - intros; assumption.
-        - apply pre_loaded_validating_proj_protocol_state.
-        - apply pre_loaded_validating_proj_verbose_valid_protocol_transition.
-    Qed.
-
-    Lemma pre_loaded_validating_proj_eq
-        : VLSM_eq PreLoaded Proj
-        .
-    Proof.
-        split.
-        - apply pre_loaded_validating_proj_incl.
-        - apply proj_pre_loaded_incl.
-    Qed.
-
-End pre_loaded_validating_proj.
-
-End validating_projection.
-
+*)
 Section composite_validating_byzantine_traces.
 
     Context {message : Type}
@@ -587,13 +492,26 @@ Section composite_validating_byzantine_traces.
             (FreeX := indexed_vlsm_free i0 IM)
             (Hvalidating: forall i : index, validating_projection_prop i0 IM constraint i)
             .
+
+(**
+Let us fix an indexed set of VLSMs <<IM>> and their composition <<X>> using <<constraint>>.
+Let <<FreeX>> be the free composition of <<IM>>, and let <<PreloadedX>> be the
+[pre_loaded_vlsm] associated to <<X>>.
+
+Since we know that <<PreloadedX>> contains precisely
+the byzantine traces of <<X>>, to prove our main result we just need to show
+that <<PreLoadedX>> is included in <<FreeX>>.
+
+First let us show that each [valid] <<PreloadedX>> message is a
+[protocol_message] for <<FreeX>>.
+*)
     
     Lemma pre_loaded_composite_free_protocol_message
         (l : label)
         (s : state)
         (om : option message)
         (Hv : @valid _ _ _ PreLoadedX l (s, om))
-        : exists _s : state, protocol_prop FreeX (_s, om).
+        : option_protocol_message_prop FreeX om.
     Proof.
         destruct l as (i, li).
         destruct Hv as [Hv Hconstraint].
@@ -608,7 +526,12 @@ Section composite_validating_byzantine_traces.
         exists _s. assumption.
     Qed.
 
-    
+(* begin hide *)
+
+(**
+  Next result can be easily deduced from the above, using
+  Lemma [VLSM_incl_protocol_state].
+*)
     Lemma pre_loaded_composite_free_protocol_state
         (s : state)
         (om : option message)
@@ -623,7 +546,12 @@ Section composite_validating_byzantine_traces.
           exact I.
         - intros; reflexivity.
     Qed.
+(* end hide *)
 
+(**
+We can now apply the meta-lemma [basic_VLSM_incl], using
+Lemma [pre_loaded_composite_free_protocol_message] above to prove that:
+*)
     Lemma pre_loaded_composite_free_incl
         : VLSM_incl PreLoadedX FreeX
         .
@@ -637,6 +565,10 @@ Section composite_validating_byzantine_traces.
         - intros; reflexivity.
     Qed.
 
+(**
+Finally,  we can conclude that [composite_validating_byzantine_traces_are_free]:
+*)
+(* begin show *)
     Lemma composite_validating_byzantine_traces_are_free
         (tr : @Trace _ (type X))
         (Hbyz : byzantine_trace_prop X tr)
@@ -647,5 +579,5 @@ Section composite_validating_byzantine_traces.
         apply byzantine_alt_byzantine_iff.
         assumption.
     Qed.
-
+(* end show *)
 End composite_validating_byzantine_traces.
