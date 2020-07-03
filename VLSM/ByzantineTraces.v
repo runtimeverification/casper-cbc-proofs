@@ -180,7 +180,7 @@ In this section we prove that the [alternate_byzantine_trace_prop]erty is
 equivalent to the [byzantine_trace_prop]erty.
 
 Since we have already proven that the [alternate_byzantine_trace_prop]erty
-implies the [byzantine_trace_prop]erty (Lemma [byzantine_trace_prop]erty]), 
+implies the [byzantine_trace_prop]erty (Lemma [byzantine_alt_byzantine]), 
 and since we know that the traces with the [byzantine_trace_prop]erty
 are [protocol_trace]s for the [pre_loaded_vlsm], to prove the
 equivalence it is enough to close the circle by proving the
