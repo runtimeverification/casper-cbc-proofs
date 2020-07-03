@@ -5,6 +5,7 @@
 *.vos
 *.vok
 *.d
+docs
 Makefile.coq
 Makefile.coq.conf
 .depend
@@ -14,4 +15,4 @@ Makefile.coq.conf
 *.v~
 *_eq.v
 _build
-html
+resources/index.html
