@@ -1,5 +1,5 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts IndefiniteDescription Classical Sorting.
-Import ListNotations.    
+Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol Lib.RealsExtras .
 
@@ -10,7 +10,7 @@ Definition pos_R := {r : R | (r > 0)%R}.
 Class Measurable V := { weight : V -> pos_R}.
 
 Definition sum_weights {V} `{Measurable V} (l : list V) : R :=
-  fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R l. 
+  fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R l.
 
 
 Class ReachableThreshold V `{Hm : Measurable V} :=
@@ -48,7 +48,7 @@ Definition get_distinct_sender_correct
 
 Lemma get_distinct_sender_correct'
   {V} `{Hdc : DistinctChoice V}
-  : forall v, get_distinct_sender v <> v. 
+  : forall v, get_distinct_sender v <> v.
 Proof.
   intros. unfold get_distinct_sender.
   assert (H_useful := get_distinct_sender_correct v).
@@ -73,7 +73,7 @@ Proof.
     destruct (eq_dec_left compare_eq_dec v). rewrite H. reflexivity.
   - inversion H; subst; clear H. simpl. assert (Hav := H3). apply (in_not_in _ _ _ _ H1) in Hav.
     destruct (compare_eq_dec v a); try (exfalso; apply Hav; assumption). simpl.
-    rewrite <- Rplus_assoc. rewrite (Rplus_comm (proj1_sig (weight v)) (proj1_sig (weight a))). rewrite Rplus_assoc. 
+    rewrite <- Rplus_assoc. rewrite (Rplus_comm (proj1_sig (weight v)) (proj1_sig (weight a))). rewrite Rplus_assoc.
     apply Rplus_eq_compat_l. apply IHvs; assumption.
 Qed.
 
@@ -105,7 +105,7 @@ Proof.
       * apply IHvs'; try assumption.
         intros x Hin. apply H1 in Hin as Hin'. destruct Hin'; try assumption.
         exfalso; subst. apply n. assumption.
-      * rewrite <- Rplus_0_l at 1. apply Rplus_le_compat_r. left. destruct weight. simpl. auto. 
+      * rewrite <- Rplus_0_l at 1. apply Rplus_le_compat_r. left. destruct weight. simpl. auto.
 Qed.
 
 Lemma set_eq_nodup_sum_weight_eq
@@ -114,12 +114,12 @@ Lemma set_eq_nodup_sum_weight_eq
     NoDup lv1 ->
     NoDup lv2 ->
     set_eq lv1 lv2 ->
-    sum_weights lv1 = sum_weights lv2. 
+    sum_weights lv1 = sum_weights lv2.
 Proof.
   intros lv1 lv2 H_nodup1 H_nodup2 [H_eq_l H_eq_r].
   assert (H_useful := sum_weights_incl lv1 lv2 H_nodup1 H_nodup2 H_eq_l).
   assert (H_useful' := sum_weights_incl lv2 lv1 H_nodup2 H_nodup1 H_eq_r).
-  now apply Rle_antisym. 
+  now apply Rle_antisym.
 Qed.
 
 Lemma sum_weights_app
@@ -138,7 +138,7 @@ Lemma senders_fault_weight_eq
     NoDup lv1 ->
     NoDup lv2 ->
     set_eq lv1 lv2 ->
-    sum_weights lv1 = sum_weights lv2. 
+    sum_weights lv1 = sum_weights lv2.
 Proof.
   induction lv1 as [|hd tl IHlv1]; intros lv2 H_lv1 H_lv2 H_eq.
   - destruct lv2.
@@ -154,10 +154,10 @@ Proof.
     spec IHlv1.
     now apply set_remove_nodup.
     spec IHlv1.
-    replace tl with (set_remove compare_eq_dec hd (hd :: tl)). 
+    replace tl with (set_remove compare_eq_dec hd (hd :: tl)).
     apply set_eq_remove; try assumption.
     now rewrite set_remove_first.
-    (* Now. *) 
+    (* Now. *)
     rewrite IHlv1.
     symmetry.
     apply sum_weights_in. assumption.
@@ -270,7 +270,7 @@ Proof.
     assumption.
 Qed.
 
-(* Defining the estimator function as a relation *) 
+(* Defining the estimator function as a relation *)
 Class Estimator state C :=
   { estimator : state -> C -> Prop
   ; estimator_total : forall s : state, exists c : C, estimator s c
@@ -293,7 +293,7 @@ Proof.
   simpl in Heq. subst. assumption.
 Qed.
 
-(* Estimator approval condition *) 
+(* Estimator approval condition *)
 Definition valid_estimate
   {C state} `{Estimator state C}
   (c : C) (sigma : state) : Prop

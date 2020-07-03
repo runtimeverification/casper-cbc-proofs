@@ -1,7 +1,7 @@
 Require Import Coq.Reals.Reals.
 
 (** This lemma is needed in fault_weight_state_backwards **)
-Lemma Rplusminus_assoc : forall r1 r2 r3, 
+Lemma Rplusminus_assoc : forall r1 r2 r3,
   (r1 + r2 - r3)%R = (r1 + (r2 - r3))%R.
 Proof.
   intros. unfold Rminus.
@@ -9,7 +9,7 @@ Proof.
 Qed.
 
 (** This lemma is needed in fault_weight_state_sorted_subset **)
-Lemma Rplusminus_assoc_r : forall r1 r2 r3, 
+Lemma Rplusminus_assoc_r : forall r1 r2 r3,
   (r1 - r2 + r3)%R = (r1 + (- r2 + r3))%R.
 Proof.
   intros. unfold Rminus.
@@ -42,7 +42,7 @@ Proof.
   intros.
   rewrite <- Rplus_0_r.
   unfold Rminus.
-  apply Rplus_le_compat_l. 
+  apply Rplus_le_compat_l.
   apply Rge_le.
   apply Ropp_0_le_ge_contravar.
   assumption.
@@ -54,7 +54,7 @@ Proof.
   intros.
   rewrite <- Rplus_0_r.
   unfold Rminus.
-  apply Rplus_le_compat_l. 
+  apply Rplus_le_compat_l.
   apply Rge_le.
   apply Ropp_0_le_ge_contravar.
   apply Rlt_le in H.

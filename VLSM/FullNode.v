@@ -1,12 +1,12 @@
 Require Import Bool List Streams Logic.Epsilon Reals ProofIrrelevance Fin FinFun.
 Import ListNotations.
-From CasperCBC   
+From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions CBC.FullNode.
 
 
 (* Section 2.3 Creating a full-node instance of VLSM *)
 
-Section Full. 
+Section Full.
 
   Variables (C V : Type) (about_C : StrictlyComparable C) (about_V : StrictlyComparable V) (Hm : Measurable V) (Hrt : ReachableThreshold V) (He : Estimator (@sorted_state C V message_type) C).
 
@@ -14,29 +14,29 @@ Section Full.
     incl (get_messages s1) (get_messages s2).
 
   Definition proto_message_prop : @sorted_message C V message_type -> Prop :=
-    fun msg => True. 
+    fun msg => True.
 
   Definition message : Type :=
-    { m : @sorted_message C V message_type | proto_message_prop m}. 
+    { m : @sorted_message C V message_type | proto_message_prop m}.
 
   Lemma proto_message_decidable :
-    forall (msg : @sorted_message C V message_type), {proto_message_prop msg} + {~ proto_message_prop msg}. 
-  Proof. 
+    forall (msg : @sorted_message C V message_type), {proto_message_prop msg} + {~ proto_message_prop msg}.
+  Proof.
     intros msg.
     left.
     red. auto.
   Qed.
 
   Definition initial_state_prop : @sorted_state C V message_type -> Prop :=
-    fun s => s = @sorted_state0 C V message_type. 
+    fun s => s = @sorted_state0 C V message_type.
 
   Program Definition state0 : {s | initial_state_prop s} := _.
   Next Obligation.
     exists (@sorted_state0 C V message_type).
     reflexivity.
-  Defined. 
+  Defined.
 
-  Program Definition proto_message0 : message := _. 
+  Program Definition proto_message0 : message := _.
   Next Obligation.
     destruct (@Lib.Preamble.inhabited _ about_C) as [c _].
     destruct (@Lib.Preamble.inhabited _ about_V) as [v _].
@@ -45,41 +45,41 @@ Section Full.
     auto.
   Defined.
 
-  Definition message0 : @sorted_message C V message_type := proj1_sig proto_message0. 
+  Definition message0 : @sorted_message C V message_type := proj1_sig proto_message0.
 
   Definition initial_message_prop (m : message) : Prop := False.
-  
+
   Definition initial_message := { m : message | initial_message_prop m }.
 
   Lemma protocol_state_inhabited : {_ : @sorted_state C V message_type | True}.
   Proof.
     exists (@sorted_state0 C V message_type).
-    auto. 
-  Qed. 
+    auto.
+  Qed.
 
-  Lemma message_inhabited : {m : @sorted_message C V message_type | True}. 
+  Lemma message_inhabited : {m : @sorted_message C V message_type | True}.
   Proof.
     destruct (@message_type C about_C V about_V).
     assert (inhabited_copy := inhabited).
     destruct inhabited_copy as [[(c, v) _] _].
-    exists (c, v, exist _ Empty LSorted_Empty); auto. 
+    exists (c, v, exist _ Empty LSorted_Empty); auto.
   Qed.
 
-  Program Definition make_proto_message_prop (msg : @sorted_message C V message_type) : proto_message_prop msg := _. 
+  Program Definition make_proto_message_prop (msg : @sorted_message C V message_type) : proto_message_prop msg := _.
   Next Obligation.
     unfold proto_message_prop.
     auto.
   Defined.
 
-  Definition make_proto_message (msg : @sorted_message C V message_type) : {msg : @sorted_message C V message_type | proto_message_prop msg} := 
+  Definition make_proto_message (msg : @sorted_message C V message_type) : {msg : @sorted_message C V message_type | proto_message_prop msg} :=
      exist _ msg (make_proto_message_prop msg).
 
   Definition vtransition (l : option (C * V)) (sm : @sorted_state C V message_type * option message) :  @sorted_state C V message_type  * option message :=
     let (s, om) := sm in
-    match l with 
-    | None => match om with 
+    match l with
+    | None => match om with
              | None => (s, None)
-             | Some msg => (add_message_sorted (proj1_sig msg) s, None) 
+             | Some msg => (add_message_sorted (proj1_sig msg) s, None)
              end
     | Some (c, v) =>
       let m' := make_proto_message (c,v,s) in
@@ -94,7 +94,7 @@ Section Full.
     (s : @sorted_state C V message_type)
     (om : option message)
     :=
-    match om with 
+    match om with
     | None => True
     | Some pm =>
       let (m, Hm) := pm in
@@ -106,7 +106,7 @@ Section Full.
      (l : option (C * V)) (sm : @sorted_state C V message_type * option message)
     :=
     let (s, om) := sm in
-    match l with 
+    match l with
     | None => valid_client' s om
     | Some (c, v) =>
       let m' := make_proto_message (c,v,s) in
@@ -134,7 +134,7 @@ Section Full.
     ; l0 := None
     }.
 
-  Instance VLSM_full_client1 : VLSM LSM_full_client1 := 
+  Instance VLSM_full_client1 : VLSM LSM_full_client1 :=
     { transition := vtransition
       ; valid := valid_client
     }.
@@ -142,11 +142,11 @@ Section Full.
 
   (* Converting between full node and VLSM notions *)
 
-  (* How to avoid these solutions to awkward namespace clashes? *) 
+  (* How to avoid these solutions to awkward namespace clashes? *)
   Definition sorted_state_union : (@state _ VLSM_type_full_client1) -> (@state _ VLSM_type_full_client1) -> (@state _ VLSM_type_full_client1) :=
     sorted_state_union.
 
-  Definition estimator_proj1 (s : @CBC.Definitions.state C V) : C -> Prop := (@estimator _ _ He) (make_sorted_state s). 
+  Definition estimator_proj1 (s : @CBC.Definitions.state C V) : C -> Prop := (@estimator _ _ He) (make_sorted_state s).
 
   Lemma estimator_proj1_total : forall s : @CBC.Definitions.state C V, exists c : C, estimator_proj1 s c.
   Proof.
@@ -192,12 +192,12 @@ Section Full.
                 @locally_sorted C V (@message_type C about_C V about_V) s0)
                (@add_in_sorted_fn C V (@message_type C about_C V about_V)
                   (@pair (prod C V) (@CBC.Definitions.state C V) (@pair C V c v) j) s)
-               Hs) (@None message))        
+               Hs) (@None message))
           = vtransition None (ss, om)
         )
         by (subst; simpl; apply injective_projections; try reflexivity; apply exist_eq; reflexivity).
       rewrite Ht.
-      specialize (IHprotocol_state1 Hss). destruct IHprotocol_state1 as [_om Pss]. 
+      specialize (IHprotocol_state1 Hss). destruct IHprotocol_state1 as [_om Pss].
       specialize (IHprotocol_state2 Hsj). destruct IHprotocol_state2 as [_omj Psj].
       subst.
       remember (exist (fun s : CBC.Definitions.state => locally_sorted s) s Hss) as ss.
@@ -246,7 +246,7 @@ Section Full.
         unfold add_message_sorted in Heqsom. destruct msg as [[(c1, v1) [j1 Hj1]] Hmsg].
         simpl in Heqsom.
         inversion Heqsom; subst; clear Heqsom. simpl in Hv. destruct Hv as [Hejc0 [Hrj10 Hnh10]].
-        assert (IHcvj := IHP1 c v j). 
+        assert (IHcvj := IHP1 c v j).
         destruct j as [j Hj].
         simpl in *.
         repeat rewrite in_state_add_in_sorted_iff in Hin.
@@ -276,7 +276,7 @@ Section Full.
           }
         * { split.
           - specialize protocol_generated; intro PG.
-            specialize 
+            specialize
               (PG (VLSM_full_client1) (Some (c0, v0))
                   (exist (fun s : CBC.Definitions.state => locally_sorted s) j0 Hj0)
                   _om
@@ -293,13 +293,13 @@ Section Full.
         * specialize (IHcvj Hin). destruct IHcvj as [Pcvj Hjj0].
           split; try assumption.
           repeat apply add_preserves_inclusion. assumption.
-      + specialize (IHP1 s _om eq_refl). assert (IHcvj := IHP1 c v j). 
+      + specialize (IHP1 s _om eq_refl). assert (IHcvj := IHP1 c v j).
         destruct s as [j0 Hj0]. inversion Heqsom; subst; clear Heqsom.
         destruct j as [j Hj].  simpl in Hin. rewrite in_state_add_in_sorted_iff in Hin.
         simpl in IHcvj. destruct Hin as [Heq | Hin]; try (inversion Heq; subst; clear Heq).
         * clear IHcvj. simpl. split; try (apply add_preserves_inclusion; apply incl_refl).
           specialize protocol_generated; intro PG.
-          specialize 
+          specialize
             (PG (VLSM_full_client1) (Some (c0, v0))
                 (exist (fun s : CBC.Definitions.state => locally_sorted s) j0 Hj0)
                 _om
@@ -342,7 +342,7 @@ Section Full.
                 assumption.
              + inversion H0.
              + inversion H0.
-           - apply add_preserves_inclusion. assumption. 
+           - apply add_preserves_inclusion. assumption.
            }
         * specialize (IHcvj Hin). destruct IHcvj as [Pcvj Hincl]; split; try assumption.
           simpl in *. apply add_preserves_inclusion. assumption.
@@ -391,7 +391,7 @@ Section Full.
       destruct l as [[c0 v0] |]; destruct om as [msg|].
       + destruct s as [j0 Hj0].
         specialize (protocol_state_generated_message _ _ P2); simpl; intro Hin_s.
-        inversion Heqsom; subst; clear Heqsom. 
+        inversion Heqsom; subst; clear Heqsom.
         destruct msg as [[(cm, vm) jm] _Hmsg].
         assert (Hmsg := Hmsgs cm vm jm).
         destruct jm as [jm Hjm]. simpl in Hmsg.
@@ -437,7 +437,7 @@ Section Full.
   Qed.
 
   (* Reachability *)
-  (* VLSM reachability defined in terms of protocol traces (transition and validity) *) 
+  (* VLSM reachability defined in terms of protocol traces (transition and validity) *)
 (*   Definition vlsm_next : protocol_state -> protocol_state -> Prop :=
     fun s1 s2 => protocol_trace_prop (Finite [s1; s2]).
   Lemma next_equiv :
@@ -455,15 +455,15 @@ Section Full.
       vlsm_reach s1 s2 <->
       incl (get_messages (proj1_sig (proj1_sig s1))) (get_messages (proj1_sig (proj1_sig s2))).
   Proof. Admitted.
-  
+
   (* VLSM state union *)
   Lemma join_protocol_state :
     forall (s1 s2 : @state _ VLSM_type_full_client1),
       protocol_state_prop (VLSM_full_client1) s1 ->
-      protocol_state_prop (VLSM_full_client1) s2 -> 
-      not_heavy (proj1_sig (sorted_state_union s1 s2)) -> 
-      protocol_state_prop (VLSM_full_client1) (sorted_state_union s1 s2). 
-  Proof. 
+      protocol_state_prop (VLSM_full_client1) s2 ->
+      not_heavy (proj1_sig (sorted_state_union s1 s2)) ->
+      protocol_state_prop (VLSM_full_client1) (sorted_state_union s1 s2).
+  Proof.
   Admitted.
 
   Program Definition protocol_state_union (s1 s2 : protocol_state (VLSM_full_client1)) (H_weight : not_heavy (sorted_state_union (proj1_sig s1) (proj1_sig s2))) : protocol_state (VLSM_full_client1)
@@ -471,27 +471,27 @@ Section Full.
   Next Obligation.
     destruct s1 as [s1 about_s1];
       destruct s2 as [s2 about_s2].
-    now apply join_protocol_state. 
+    now apply join_protocol_state.
   Defined.
-  
+
   Lemma vlsm_reach_morphism :
     forall (s1 s2 : protocol_state (VLSM_full_client1)) (H_weight : not_heavy (proj1_sig (sorted_state_union (proj1_sig s1) (proj1_sig s2)))),
       vlsm_reach s1 (protocol_state_union s1 s2 H_weight).
   Proof. Admitted.
 
-  (* cf. this and the other definition of reach? *) 
-  
+  (* cf. this and the other definition of reach? *)
+
   Theorem pair_common_futures :
     forall (s1 s2 : protocol_state (VLSM_full_client1)),
       not_heavy (proj1_sig (sorted_state_union (proj1_sig s1) (proj1_sig s2))) ->
       exists (s3 : protocol_state (VLSM_full_client1)),
-        vlsm_reach s1 s3 /\ vlsm_reach s2 s3. 
-  Proof. 
+        vlsm_reach s1 s3 /\ vlsm_reach s2 s3.
+  Proof.
     intros.
     remember (sorted_state_union (proj1_sig s1) (proj1_sig s2)) as s3.
     assert (about_s3 : protocol_state_prop (VLSM_full_client1) s3).
     red.
-  Admitted. 
+  Admitted.
 
 (*   Theorem strong_nontriviality :
     forall (s1 : protocol_state),
@@ -501,13 +501,13 @@ Section Full.
       forall (tr2 : protocol_trace_from (fun s => s = s2))
         (tr3 : protocol_trace_from (fun s => s = s3)),
         (exists (s : protocol_state),
-            in_trace s tr2 /\ in_trace s tr3 -> False). 
-  Proof. 
-  Admitted. 
-  
+            in_trace s tr2 /\ in_trace s tr3 -> False).
+  Proof.
+  Admitted.
+
  *)
-  (* 2.5.1 Minimal full client protocol: Client2 *) 
-  Definition label2 : Type := unit.    
+  (* 2.5.1 Minimal full client protocol: Client2 *)
+  Definition label2 : Type := unit.
 
   Definition vtransition2 (l : unit) (sm : @sorted_state C V message_type * option message) : @sorted_state C V message_type * option message :=
     match l with
@@ -515,8 +515,8 @@ Section Full.
            | None => (fst sm, None)
            | Some msg => (add_message_sorted (proj1_sig msg) (fst sm), None)
            end
-    end. 
-  
+    end.
+
   Inductive valid_client2 : unit -> (@sorted_state C V message_type) * option message -> Prop :=
   | client2_none : forall (s : @sorted_state C V message_type), valid_client2 tt (s, None)
   | client2_receive : forall (s : @sorted_state C V message_type) (m : message),
@@ -536,7 +536,7 @@ Section Full.
     ; l0 := tt
     }.
 
-  Instance VLSM_full_client2  : VLSM LSM_full_client2 := 
+  Instance VLSM_full_client2  : VLSM LSM_full_client2 :=
     { transition := vtransition2
       ; valid := valid_client2
     }.
@@ -547,12 +547,12 @@ Section Full.
   Definition vtransitionv (v : V) (l : labelv) (sm : @sorted_state C V message_type * option message) : @sorted_state C V message_type * option message :=
     match l with
     | None => match (snd sm) with
-             | None => sm 
+             | None => sm
              | Some msg => (add_message_sorted (proj1_sig msg) (fst sm), None)
            end
     | Some c => (add_message_sorted (c,v, fst sm) (fst sm), Some (make_proto_message (c,v, fst sm)))
-    end. 
-  
+    end.
+
   Inductive valid_validator : labelv ->  @sorted_state C V message_type * option message -> Prop :=
   | validator_none : forall (s : @sorted_state C V message_type), valid_validator None (s, None)
   | validator_receive : forall (s : @sorted_state C V message_type) (m : message), reach (justification (proj1_sig m)) s -> valid_validator None (s, Some m)
@@ -571,7 +571,7 @@ Section Full.
     ; l0 := None
     }.
 
-  Instance VLSM_full_validator (v : V) : VLSM LSM_full_validator := 
+  Instance VLSM_full_validator (v : V) : VLSM LSM_full_validator :=
     { transition := vtransitionv v
       ; valid := valid_validator
     }.
@@ -611,7 +611,7 @@ Section Full.
 
   Definition IM_index : forall i : Fin.t (n + n'), VLSM (IS_index i).
   intros.
-  unfold IT_index. unfold IS_index. 
+  unfold IT_index. unfold IS_index.
   remember (proj1_sig (Fin.to_nat i)) as ni.
   destruct (ni ?= n) eqn:Hi.
   - exact (VLSM_full_validator (nth (ni - 1) validators v0)).
@@ -624,7 +624,7 @@ Section Full.
       | 0 => []
       | S n => Fin.F1 :: List.map Fin.FS (fin_listing n)
     end.
-  
+
   Lemma fin_finite (m : nat) : Listing (fin_listing m).
   Proof.
     induction m.
@@ -644,7 +644,7 @@ Section Full.
           apply in_map. apply Hfull.
   Qed.
 
-  Instance fin_eq_dec : EqDec (Fin.t (n + n')) := (@Fin.eq_dec (n + n')). 
+  Instance fin_eq_dec : EqDec (Fin.t (n + n')) := (@Fin.eq_dec (n + n')).
 
   Definition nlst := n + n' - 1.
 

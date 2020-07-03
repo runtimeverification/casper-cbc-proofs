@@ -1,79 +1,6 @@
 Require Import FinFun Streams.
-From CasperCBC   
+From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition.
-
-(**
-** VLSM self-validation
-*)
-
-Section validating_vlsm.
-
-Context
-    {message : Type}
-    {T : VLSM_type message}
-    {S : LSM_sig T}
-    (X : VLSM S)
-    .
-
-(**
-Let us fix a (regular) VLSM <<X>>. <<X>> is (self-)validating if every [valid]
-[state] and <<message>> are [protocol_state] and [protocol_message] for that
-VLSM, respectively.
-*)
-
-Definition validating_vlsm_prop
-    :=
-    forall (l : label) (s : state) (om : option message),
-        valid l (s, om) ->
-        protocol_state_prop X s /\ option_protocol_message_prop X om
-    .
-
-(**
-In the sequel we will show that a VLSM with the [validating_vlsm_prop]erty
-is trace-equal to its associated [pre_loaded_vlsm], basically meaning that
-(due to Lemma [byzantine_pre_loaded]) validating VLSMs cannot expose
-byzantine behavior.
-*)
-
-Context
-    (Hvalidating : validating_vlsm_prop)
-    (PreLoaded := pre_loaded_vlsm X)
-    .
-
-(**
-Let <<PreLoaded>> be the [pre_loaded_vlsm] associated to X.
-From Lemma [vlsm_incl_pre_loaded_vlsm] we know that <<X>> is included
-in <<PreLoaded>>.
-
-To prove the converse we use the [validating_vlsm_prop]erty to 
-verify the conditions of meta-lemma [basic_VLSM_incl].
-*)
-
-    Lemma pre_loaded_validating_vlsm_incl
-        : VLSM_incl PreLoaded X
-        .
-    Proof.
-        apply (basic_VLSM_incl PreLoaded X)
-        ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
-        apply Hvalidating in H.
-        destruct H as [_ Hpm].
-        assumption.
-    Qed.
-
-(**
-We conclude that <<X>> and <<Preloaded>> are trace-equal.
-*)
-
-    Lemma pre_loaded_validating_vlsm_eq
-        : VLSM_eq PreLoaded X
-        .
-    Proof.
-        split.
-        - apply pre_loaded_validating_vlsm_incl.
-        - apply vlsm_incl_pre_loaded_vlsm.
-    Qed.
-
-End validating_vlsm.
 
 (**
 ** Validating projections
@@ -154,7 +81,7 @@ Definition validating_transitions :=
         ,
         valid_i li (si, omi)
         ->
-        (exists 
+        (exists
             (s s' : @state _ T)
             (om' : option message),
             si = s i
@@ -171,7 +98,7 @@ is equivalent with the [validating_transitions] property.
 Lemma validating_projection_messages_transitions
     : validating_projection_prop -> validating_transitions.
 Proof.
-    unfold validating_projection_prop. unfold validating_transitions. 
+    unfold validating_projection_prop. unfold validating_transitions.
     unfold projection_valid. unfold protocol_transition.
     simpl. intros.
     specialize (H li (si, omi) H0). clear H0. simpl in H.
@@ -187,7 +114,7 @@ Proof.
     inversion Heqt; subst.
     reflexivity.
 Qed.
-    
+
 Lemma validating_transitions_messages
     : validating_transitions -> validating_projection_prop.
 Proof.
@@ -228,7 +155,7 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
         - apply Hvalidating in H. destruct H as [_ [_ [_ [Hopm _]]]].
           apply protocol_message_projection. assumption.
-        - apply Hvalidating in H. assumption. 
+        - apply Hvalidating in H. assumption.
     Qed.
 
 (**
@@ -249,3 +176,78 @@ validating component is exhibited by its corresponding projection.
 End pre_loaded_validating_proj.
 
 End validating_projection.
+
+(**
+** VLSM self-validation
+*)
+
+Section validating_vlsm.
+
+Context
+    {message : Type}
+    {T : VLSM_type message}
+    {S : LSM_sig T}
+    (X : VLSM S)
+    .
+
+(**
+Let us fix a (regular) VLSM <<X>>. <<X>> is (self-)validating if every [valid]
+[state] and <<message>> are [protocol_state] and [protocol_message] for that
+VLSM, respectively.
+*)
+
+Definition validating_vlsm_prop
+    :=
+    forall (l : label) (s : state) (om : option message),
+        valid l (s, om) ->
+        protocol_state_prop X s /\ option_protocol_message_prop X om
+    .
+
+(**
+In the sequel we will show that a VLSM with the [validating_vlsm_prop]erty
+is trace-equal to its associated [pre_loaded_vlsm], basically meaning that
+(due to Lemma [byzantine_pre_loaded]) all traces with
+the [byzantine_trace_prop]erty associated to a validating VLSMs are also
+[protocol_trace]s for that VLSM, meaning that the VLSM cannot exhibit
+byzantine behavior.
+*)
+
+Context
+    (Hvalidating : validating_vlsm_prop)
+    (PreLoaded := pre_loaded_vlsm X)
+    .
+
+(**
+Let <<PreLoaded>> be the [pre_loaded_vlsm] associated to X.
+From Lemma [vlsm_incl_pre_loaded_vlsm] we know that <<X>> is included
+in <<PreLoaded>>.
+
+To prove the converse we use the [validating_vlsm_prop]erty to
+verify the conditions of meta-lemma [basic_VLSM_incl].
+*)
+
+    Lemma pre_loaded_validating_vlsm_incl
+        : VLSM_incl PreLoaded X
+        .
+    Proof.
+        apply (basic_VLSM_incl PreLoaded X)
+        ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
+        apply Hvalidating in H.
+        destruct H as [_ Hpm].
+        assumption.
+    Qed.
+
+(**
+We conclude that <<X>> and <<Preloaded>> are trace-equal.
+*)
+
+    Lemma pre_loaded_validating_vlsm_eq
+        : VLSM_eq PreLoaded X
+        .
+    Proof.
+        split.
+        - apply pre_loaded_validating_vlsm_incl.
+        - apply vlsm_incl_pre_loaded_vlsm.
+    Qed.
+
+End validating_vlsm.

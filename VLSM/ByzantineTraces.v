@@ -1,5 +1,5 @@
 Require Import FinFun Streams.
-From CasperCBC   
+From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
 
 (**
@@ -8,10 +8,19 @@ Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
 *** Definition and basic properties
 
 In this section we introduce two definitions for byzantine traces,
-then show them equivalent, and equivalent with traces on the
-corresponding pre-loaded VLSM.
+then show them equivalent (Lemma [byzantine_alt_byzantine_iff]),
+and equivalent with traces on the corresponding pre-loaded VLSM
+(Lemmas [byzantine_pre_loaded] and [pre_loaded_alt_eq]).
 
-We will work with a fixed VLSM <<M>> with signature <<S>> and of type <<T>>.
+Note that, contrary to what one might think, the [byzantine_trace_prop]erty
+does not only capture traces exhibiting byzantine behavior, but also all
+[protocol_trace]s (consequence of Lemma [vlsm_incl_pre_loaded_vlsm]).
+Therefore to avoid confusion we will call _proper byzantine traces_,
+or _traces exhibiting byzantine behavior_ the collection of traces with
+the [byzantine_trace_prop]erty but without the [protocol_trace_prop]erty.
+
+In the remainder of this section we fix a (regular) VLSM <<M>> with
+signature <<S>> and of type <<T>>.
 *)
 
 Section ByzantineTraces.
@@ -107,7 +116,7 @@ Definition all_messages_sig
 (**
 
 The [transition] function of the [all_messages_vlsm] generates the
-message given as a label: 
+message given as a label:
 *)
 
 Definition all_messages_transition
@@ -180,7 +189,7 @@ In this section we prove that the [alternate_byzantine_trace_prop]erty is
 equivalent to the [byzantine_trace_prop]erty.
 
 Since we have already proven that the [alternate_byzantine_trace_prop]erty
-implies the [byzantine_trace_prop]erty (Lemma [byzantine_alt_byzantine]), 
+implies the [byzantine_trace_prop]erty (Lemma [byzantine_alt_byzantine]),
 and since we know that the traces with the [byzantine_trace_prop]erty
 are [protocol_trace]s for the [pre_loaded_vlsm], to prove the
 equivalence it is enough to close the circle by proving the
@@ -230,7 +239,7 @@ in the second,
 
 We will tackle each of these properties in the sequel.
 
-First note that _all_ messages are [protocol_message]s for <<Alt>>, as 
+First note that _all_ messages are [protocol_message]s for <<Alt>>, as
 [all_messages_vlsm] can generate any message without changing state.
 *)
 
@@ -249,7 +258,7 @@ First note that _all_ messages are [protocol_message]s for <<Alt>>, as
         }
         rewrite <- Ht.
         assert (Hps : protocol_prop Alt (s, None))
-            by (subst; apply protocol_initial_state). 
+            by (subst; apply protocol_initial_state).
         apply protocol_generated with None s; try assumption.
         split; exact I.
     Qed.
@@ -320,7 +329,7 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
           apply (protocol_generated Alt) with _omX _sX; try assumption.
           split; try exact I.
           assumption.
-        + simpl in Heqxsom'. 
+        + simpl in Heqxsom'.
           unfold lifted_alt_state at 1 in Heqxsom'.
           rewrite state_update_eq in Heqxsom'.
           rewrite H0 in Heqxsom'.
@@ -330,7 +339,7 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
     Qed.
 
 (**
-Finally, we can use [basic_VLSM_incl] together with the 
+Finally, we can use [basic_VLSM_incl] together with the
 results above to show that <<Preloaded>> is included in <<Proj>>.
 *)
 
@@ -421,7 +430,7 @@ that <<PreLoadedX>> is included in <<FreeX>>.
 First let us show that each [valid] <<PreloadedX>> message is a
 [protocol_message] for <<FreeX>>.
 *)
-    
+
     Lemma pre_loaded_composite_free_protocol_message
         (l : label)
         (s : state)

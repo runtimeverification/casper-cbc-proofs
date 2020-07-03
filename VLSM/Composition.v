@@ -9,8 +9,8 @@ From CasperCBC
 
 (* Section 2.4 VLSM composition *)
 
-Section indexing. 
-  
+Section indexing.
+
   Section indexed_type.
 
     Context {message : Type}
@@ -29,7 +29,7 @@ Section indexing.
       {| state := _indexed_state
        ; label := _indexed_label
       |}.
-  
+
     Definition indexed_state := @state message indexed_type.
     Definition indexed_label := @label message indexed_type.
 
@@ -45,7 +45,7 @@ Section indexing.
       | _ => s j
       end.
 
-    Lemma state_update_neq 
+    Lemma state_update_neq
                (s : indexed_state)
                (i : index)
                (si : @state message (IT i))
@@ -56,7 +56,7 @@ Section indexing.
       unfold state_update. destruct (eq_dec j i); try contradiction. reflexivity.
     Qed.
 
-    Lemma state_update_eq 
+    Lemma state_update_eq
                (s : indexed_state)
                (i : index)
                (si : @state message (IT i))
@@ -95,7 +95,7 @@ Section indexing.
     Qed.
 
   End indexed_type.
-  
+
   Section indexed_sig.
 
     Context {message : Type}
@@ -104,7 +104,7 @@ Section indexing.
             {IT : index -> VLSM_type message}
             (i0 : index)
             (IS : forall i : index, LSM_sig (IT i)).
-    
+
     Definition _indexed_initial_state_prop
                (s : indexed_state IT)
       : Prop
@@ -123,7 +123,7 @@ Section indexing.
       :=
         exists (n : index) (mi : @initial_message _ _ (IS n)), proj1_sig mi = m.
 
-    (* An explicit argument for the initial state witness is no longer required: *) 
+    (* An explicit argument for the initial state witness is no longer required: *)
     Definition _indexed_m0 : message := @m0 _ _ (IS i0).
 
     Definition _indexed_l0 : indexed_label IT
@@ -136,9 +136,9 @@ Section indexing.
            ; s0 := _indexed_s0
            ; initial_message_prop := _indexed_initial_message_prop
            ; m0 := _indexed_m0
-           ; l0 := _indexed_l0 
+           ; l0 := _indexed_l0
         |}.
-  
+
   End indexed_sig.
 
   Section indexed_vlsm.
@@ -186,7 +186,7 @@ Section indexing.
         {|  transition := _indexed_transition
             ;   valid := _indexed_valid_constrained constraint
         |}.
-    
+
     Section constraint_subsumption.
 
     Definition constraint_subsumption
@@ -194,7 +194,7 @@ Section indexing.
         :=
         forall (l : indexed_label IT) (som : indexed_state IT * option message),
           constraint1 l som -> constraint2 l som.
-    
+
     Context
       (constraint1 constraint2 : indexed_label IT -> indexed_state IT * option message -> Prop)
       (Hsubsumption : constraint_subsumption constraint1 constraint2)
@@ -238,7 +238,7 @@ Section indexing.
     Proof.
       apply (basic_VLSM_incl X1 X2)
       ; intros; try (assumption || reflexivity).
-      - destruct H as [_ [[_s Hom] _]]. exists _s. 
+      - destruct H as [_ [[_s Hom] _]]. exists _s.
         apply constraint_subsumption_protocol_prop.
         assumption.
       - apply constraint_subsumption_protocol_valid.
@@ -257,7 +257,7 @@ Section indexing.
 
     (* Section 2.4.3 Free VLSM composition using constraint = True *)
 
-    Definition free_constraint 
+    Definition free_constraint
                (l : indexed_label IT)
                (som : indexed_state IT * option message)
       : Prop
@@ -360,7 +360,7 @@ Section indexing.
       :=
         {|  valid_decidable := _indexed_valid_constrained_decidable constraint_decidable
         |}.
-  
+
     Definition indexed_valid_constrained_decidable
                {constraint : indexed_label IT -> indexed_state IT * option (message) -> Prop}
                (constraint_decidable : forall (l : indexed_label IT) (som : indexed_state IT * option (message)), {constraint l som} + {~constraint l som})
@@ -381,7 +381,7 @@ Section indexing.
 End indexing.
 
 (* Section 2.4.4 Projections into VLSM compositions *)
-Section projections. 
+Section projections.
 
   Context {message : Type}
           {index : Type}
@@ -395,7 +395,7 @@ Section projections.
           (constraint : @label _ T -> @state _ T * option message -> Prop)
           (X := indexed_vlsm_constrained i0 IM constraint)
           .
-  
+
   Definition indexed_vlsm_constrained_projection_sig (i : index) : LSM_sig (IT i)
     :=
       {|      initial_state_prop := @initial_state_prop _ _ (IS i)
@@ -414,7 +414,7 @@ Section projections.
     exists (s : @state _ T),
       s i = si /\ protocol_valid X (existT _ i li) (s, omi)
     .
-  
+
   Lemma composite_protocol_valid_implies_valid
     (i : index)
     (li : @label _ (IT i))
@@ -524,7 +524,7 @@ Section projections.
       .
 *)
     (* Projects the trace of a composed vlsm to component j *)
-    
+
     Fixpoint finite_trace_projection_list
       (trx : list (@transition_item _ T))
       : list (@transition_item _ (type Proj))
@@ -548,12 +548,12 @@ Section projections.
       (a : @transition_item _ T)
       : Prop
       := j = projT1 (l a).
-    
+
     Definition dec_from_projection
       (a : transition_item)
       : {from_projection a} + {~from_projection a}
       := eq_dec j (projT1 (l a)).
-    
+
     Definition finite_trace_projection_list_alt
       (trx : list (@transition_item _ T))
       (ftrx := (filter (predicate_to_function dec_from_projection) trx))
@@ -570,7 +570,7 @@ Section projections.
             (output item)
         )
       (list_annotate from_projection ftrx Hall).
-    
+
     Lemma finite_trace_projection_list_alt_iff
       (trx : list (@transition_item _ T))
       (ftrx := (filter (predicate_to_function dec_from_projection) trx))
@@ -621,7 +621,7 @@ Section projections.
         rewrite <- IHtrx.
         reflexivity.
     Qed.
-    
+
     Lemma finite_trace_projection_empty
       (s : @state _ T)
       (trx : list (@transition_item _ T))
@@ -703,7 +703,7 @@ Section projections.
             exists oom.
             assert (Ht' : @transition _ _ _ Proj lx (s' j, iom) = (si', oom))
               by assumption.
-            rewrite <- Ht'. 
+            rewrite <- Ht'.
             destruct Psj as [os'j Psj].
             specialize (protocol_message_projection _ Piom); intros [sj HPjiom].
             apply (protocol_generated Proj lx (s' j) os'j Psj sj iom HPjiom).
@@ -825,7 +825,7 @@ Section projections.
         ); intros [Hall Heq].
       clear -Heq.
       assert
-        (Heq' : 
+        (Heq' :
           (@stream_prefix
             (@sig (@transition_item message T)
               (fun a : @transition_item message T => from_projection a))
@@ -906,7 +906,7 @@ Section projections.
         apply finite_ptrace_projection; try assumption.
         apply Hftr.
     Qed.
- 
+
     (* The projection of an protocol trace remains a protocol trace *)
 
     Lemma ptrace_from_projection
@@ -965,7 +965,7 @@ Section projections.
       exists (tr : @Trace _ T),
         protocol_trace_prop X tr
         /\ trace_projection Hproj_dec tr = trj.
-    
+
     Lemma projection_friendly_finite
       (Hproj_dec : in_projection_dec)
       (Hfr : projection_friendly Hproj_dec)
@@ -1017,7 +1017,7 @@ Section projections.
       - destruct H as [_ [[_s Hpm] _]]. exists _s.
         apply proj_pre_loaded_protocol_prop.
         assumption.
-      - apply composite_protocol_valid_implies_valid. 
+      - apply composite_protocol_valid_implies_valid.
         destruct H as [_ [_ Hv]].
         assumption.
     Qed.
@@ -1026,7 +1026,7 @@ Section projections.
 
 End projections.
 
-Section free_projections. 
+Section free_projections.
 
   Context {message : Type}
           {index : Type}
@@ -1049,7 +1049,7 @@ Section free_projections.
     : VLSM (indexed_vlsm_free_projection_sig i)
     :=
       indexed_vlsm_constrained_projection i0 IM free_constraint i.
-          
+
 End free_projections.
 
 Section binary_composition.
@@ -1067,7 +1067,7 @@ Section binary_composition.
   Definition first : binary_index := true.
   Definition second : binary_index := false.
 
-  Program Instance binary_index_dec :  EqDec binary_index := bool_dec. 
+  Program Instance binary_index_dec :  EqDec binary_index := bool_dec.
 
   Definition binary_IT
     (i : binary_index)
@@ -1076,14 +1076,14 @@ Section binary_composition.
     | true => T1
     | false => T2
     end.
-  
+
   Definition binary_IS (i : binary_index) : LSM_sig (binary_IT i)
     :=
     match i with
     | true => S1
     | false => S2
     end.
-  
+
   Definition binary_IM (i : binary_index) : VLSM (binary_IS i)
     :=
     match i with

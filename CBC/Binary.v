@@ -1,17 +1,17 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts.
-Import ListNotations.    
+Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol.
 
-(** Building blocks for instancing CBC_protocol_eq with a concrete binary consensus protocol **) 
-(** Set equality on states **) 
+(** Building blocks for instancing CBC_protocol_eq with a concrete binary consensus protocol **)
+(** Set equality on states **)
 
-Section States. 
+Section States.
 
-  Inductive C : Type := 
-  | zero : C 
-  | one : C.  
-  
+  Inductive C : Type :=
+  | zero : C
+  | one : C.
+
   Lemma C_inhabited : {c : C | True}.
   Proof.
     exists one. reflexivity.
@@ -29,44 +29,44 @@ Section States.
             end
     end.
 
-  Lemma C_compare_reflexive : CompareReflexive C_compare. 
+  Lemma C_compare_reflexive : CompareReflexive C_compare.
   Proof.
-    red. intros; split; intros; destruct x; destruct y; try discriminate; try reflexivity. 
+    red. intros; split; intros; destruct x; destruct y; try discriminate; try reflexivity.
   Qed.
 
-  Lemma C_compare_transitive : CompareTransitive C_compare. 
+  Lemma C_compare_transitive : CompareTransitive C_compare.
   Proof. red; intros; destruct x; destruct y; destruct z; destruct comp; try discriminate; try eauto.
-  Qed. 
+  Qed.
 
-  Lemma C_compare_strictorder : CompareStrictOrder C_compare. 
+  Lemma C_compare_strictorder : CompareStrictOrder C_compare.
   Proof. split. apply C_compare_reflexive. apply C_compare_transitive. Qed.
 
   Instance about_C : StrictlyComparable C :=
     { inhabited := C_inhabited;
       compare := C_compare;
       compare_strictorder := C_compare_strictorder;
-    }. 
+    }.
 
-  Variables V H : Type. 
+  Variables V H : Type.
   Context (about_V : `{StrictlyComparable V})
-          (about_H : `{StrictlyComparable H}). 
+          (about_H : `{StrictlyComparable H}).
 
-  Definition posR : Type := {r : R | (r > 0)%R}. 
-  Definition posR_proj1 (r : posR) := proj1_sig r. 
+  Definition posR : Type := {r : R | (r > 0)%R}.
+  Definition posR_proj1 (r : posR) := proj1_sig r.
   Coercion posR_proj1 : posR >-> R.
-    
+
   Parameter weight : V -> posR.
   Definition sum_weights (l : list V) : R :=
-    fold_right (fun v r => ((weight v) + r)%R) 0%R l. 
+    fold_right (fun v r => ((weight v) + r)%R) 0%R l.
 
   Parameters (t_full : {r | (r >= 0)%R})
              (suff_val_full : exists vs, NoDup vs /\ ((fold_right (fun v r => ((weight v) + r)%R) 0%R) vs > (proj1_sig t_full))%R).
 
-  (* Additional types for defining light node states *) 
-  Definition justification_type : Type := list H. 
+  (* Additional types for defining light node states *)
+  Definition justification_type : Type := list H.
 
-  Lemma justification_type_inhabited : { j : justification_type | True}. 
-  Proof. exists []. auto. Qed. 
+  Lemma justification_type_inhabited : { j : justification_type | True}.
+  Proof. exists []. auto. Qed.
 
   Definition justification_compare : (justification_type -> justification_type -> comparison) := list_compare compare.
 
@@ -74,7 +74,7 @@ Section States.
     { inhabited := justification_type_inhabited;
       compare := list_compare compare;
       compare_strictorder := list_compare_strict_order;
-    }. 
+    }.
 
   Definition message : Type := C * V * justification_type.
 
@@ -89,16 +89,16 @@ Section States.
   Definition justification (msg : message) : justification_type :=
     match msg with (_, _, j) => j end.
 
-  (* Defining new states for light node version *) 
+  (* Defining new states for light node version *)
   Definition state := set message.
 
   Definition state0 : state := [].
 
-  Parameter about_state : StrictlyComparable state. 
+  Parameter about_state : StrictlyComparable state.
 
   Definition state_eq (s1 s2 : state) := incl s1 s2 /\ incl s2 s1.
 
-  Definition state_union (s1 s2 : state) : state := set_union compare_eq_dec s1 s2. 
+  Definition state_union (s1 s2 : state) : state := set_union compare_eq_dec s1 s2.
 
   Lemma state_union_comm : forall s1 s2, state_eq (state_union s1 s2) (state_union s2 s1).
   Proof.
@@ -115,13 +115,13 @@ Section States.
 
   Definition later (msg : message) (sigma : state) : list message :=
     filter (fun msg' => inb compare_eq_dec (hash msg) (justification msg')) sigma.
-  
+
   Definition from_sender (v:V) (sigma:state) : list message :=
     filter (fun msg' => compareb (sender msg') v) sigma.
 
   Definition later_from (msg : message) (v : V) (sigma : state) : list message :=
     filter (fun msg' => (inb compare_eq_dec (hash msg) (justification msg')) && (compareb (sender msg') v)) sigma.
-  
+
   Definition is_nil_fn {A:Type} (l:list A) : bool :=
   match l with
     | nil => true
@@ -147,27 +147,27 @@ Section States.
   | left _ => true
   | right _ => false
   end.
-  
+
   Definition validators_latest_estimates (c : C) (sigma : state) : list V :=
     filter (fun v => in_fn compare_eq_dec c (latest_estimates sigma v)) (observed sigma).
-  
+
  Definition score (c : C) (sigma : state) : R :=
     fold_right Rplus R0 (map posR_proj1 (map weight (validators_latest_estimates c sigma))).
 
  Definition reach (s1 s2 : state) := incl s1 s2.
 
  Lemma reach_refl : forall s, reach s s.
- Proof. apply incl_refl. Qed. 
+ Proof. apply incl_refl. Qed.
 
- Lemma reach_trans : forall s1 s2 s3, reach s1 s2 -> reach s2 s3 -> reach s1 s3. 
+ Lemma reach_trans : forall s1 s2 s3, reach s1 s2 -> reach s2 s3 -> reach s1 s3.
  Proof. apply incl_tran. Qed.
 
- Lemma reach_union : forall s1 s2, reach s1 (state_union s1 s2). 
+ Lemma reach_union : forall s1 s2, reach s1 (state_union s1 s2).
  Proof. intros s1 s2 x H_in; apply set_union_iff; left; assumption. Qed.
 
  Lemma reach_morphism : forall s1 s2 s3, reach s1 s2 -> state_eq s2 s3 -> reach s1 s3.
  Proof. intros s1 s2 s3 H_reach H_eq x H_in. spec H_reach x H_in.
-        destruct H_eq as [H_eq _]. spec H_eq x H_reach; assumption. Qed. 
+        destruct H_eq as [H_eq _]. spec H_eq x H_reach; assumption. Qed.
 
  Inductive binEstimator : state -> C -> Prop :=
  | estimator_one : forall sigma,
@@ -191,7 +191,7 @@ Section States.
    - exists one. apply estimator_both_one. assumption.
    - exists zero. apply estimator_zero. assumption.
  Qed.
- 
+
  Definition equivocating_messages (msg1 msg2 : message) : bool :=
    match compare_eq_dec msg1 msg2 with
    | left _  => false
@@ -211,7 +211,7 @@ Section States.
      forall msg,
        equivocating_message_state msg sigma = true -> equivocating_message_state msg sigma' = true.
  Proof.
-   unfold equivocating_message_state. 
+   unfold equivocating_message_state.
    intros. rewrite existsb_exists in *.
    destruct H1 as [x [Hin Heq]]. exists x.
    split; try assumption.
@@ -253,9 +253,9 @@ Section States.
      contradiction. simpl.
      destruct (compare_eq_dec v a). subst; reflexivity.
      simpl. spec IHvs H5 H0.
-     rewrite IHvs. simpl. 
+     rewrite IHvs. simpl.
      rewrite <- Rplus_assoc.
-     rewrite <- (Rplus_comm (weight v) (weight a)). rewrite Rplus_assoc. reflexivity.  
+     rewrite <- (Rplus_comm (weight v) (weight a)). rewrite Rplus_assoc. reflexivity.
  Qed.
 
  Lemma sum_weights_incl : forall vs vs',
@@ -283,7 +283,7 @@ Section States.
          intros x Hin. apply H2 in Hin as Hin'.
          destruct Hin'; try assumption.
          exfalso; subst. apply n. assumption.
-       * rewrite <- Rplus_0_l at 1. apply Rplus_le_compat_r. left. destruct (weight a). simpl; auto. 
+       * rewrite <- Rplus_0_l at 1. apply Rplus_le_compat_r. left. destruct (weight a). simpl; auto.
  Qed.
 
  Lemma fault_weight_state_incl : forall sigma sigma',
@@ -305,13 +305,13 @@ Section States.
    apply filter_In in Hin. destruct Hin; assumption.
  Qed.
 
- Lemma equivocation_weight_compat : forall s1 s2, (fault_weight_state s1 <= fault_weight_state (state_union s2 s1))%R. 
+ Lemma equivocation_weight_compat : forall s1 s2, (fault_weight_state s1 <= fault_weight_state (state_union s2 s1))%R.
  Proof.
    intros s1 s2.
-   assert (H_useful := fault_weight_state_incl s1 (state_union s2 s1)). 
+   assert (H_useful := fault_weight_state_incl s1 (state_union s2 s1)).
    spec H_useful.
    intros x H_in. unfold state_union.
-   rewrite set_union_iff. right; assumption. 
+   rewrite set_union_iff. right; assumption.
    assumption.
  Qed.
 
@@ -321,14 +321,14 @@ Section States.
  Definition fault_tolerance_condition (sigma : state) : Prop :=
    (fault_weight_state sigma <= proj1_sig t_full)%R.
 
- (* What if we don't need sorted hashes here either *) 
+ (* What if we don't need sorted hashes here either *)
  Definition hash_state (sigma : state) : justification_type := map hash sigma.
 
  Inductive protocol_state : state -> Prop :=
  | protocol_state_nil : protocol_state state0
  | protocol_state_cons : forall c v j sigma',
-     protocol_state j -> 
-     valid_estimate_condition c j ->  
+     protocol_state j ->
+     valid_estimate_condition c j ->
      In (c, v, hash_state j) sigma' ->
      protocol_state (set_remove compare_eq_dec (c, v, hash_state j) sigma') ->
      NoDup sigma' ->
@@ -362,8 +362,8 @@ Section States.
  Proof.
    intros. destruct H0.
    apply (fault_tolerance_condition_subset _ _ H2 H1).
- Qed. 
- 
+ Qed.
+
  Lemma set_eq_protocol_state : forall sigma,
      protocol_state sigma ->
      forall sigma',
@@ -378,9 +378,9 @@ Section States.
    - apply (set_eq_remove compare_eq_dec (c, v, hash_state j)) in H4 as Hset_eq; try assumption.
      apply IHH'2 in Hset_eq.
      apply (protocol_state_cons c v j); try assumption.
-     + destruct H4. now apply (H4 (c, v, hash_state j)). 
+     + destruct H4. now apply (H4 (c, v, hash_state j)).
      + apply (fault_tolerance_condition_set_eq _ _ H4 H3).
-     + now apply set_remove_nodup. 
+     + now apply set_remove_nodup.
  Qed.
 
  Lemma about_prot_state :
@@ -388,7 +388,7 @@ Section States.
      protocol_state s1 ->
      protocol_state s2 ->
      (fault_weight_state (state_union s1 s2) <= proj1_sig t_full)%R ->
-     protocol_state (state_union s1 s2). 
+     protocol_state (state_union s1 s2).
  Proof.
    intros sig1 sig2 Hps1 Hps2.
    induction Hps2; intros.
@@ -420,7 +420,7 @@ Section States.
  Qed.
 
  Instance LightNode_seteq : CBC_protocol_eq :=
-   { (* >> *) consensus_values := C;  
+   { (* >> *) consensus_values := C;
      (* >> *) about_consensus_values := about_C;
      validators := V;
      about_validators := about_V;
@@ -439,11 +439,11 @@ Section States.
      reach_union := reach_union;
      reach_morphism := reach_morphism;
      (* >> *) E := binEstimator;
-     estimator_total := estimator_total; 
+     estimator_total := estimator_total;
      prot_state := protocol_state;
      about_state0 := protocol_state_nil;
-     equivocation_weight := fault_weight_state; 
-     equivocation_weight_compat := equivocation_weight_compat; 
+     equivocation_weight := fault_weight_state;
+     equivocation_weight_compat := equivocation_weight_compat;
      about_prot_state := about_prot_state;
    }.
 
@@ -462,7 +462,7 @@ Section States.
   remember decided_on as D.
   remember (D one) as D1. remember (D zero) as D0. rewrite HeqD in *. clear HeqD; clear  D.
   induction Lon1.
-  - intros Loff0; induction Loff0; subst. 
+  - intros Loff0; induction Loff0; subst.
     + unfold decided_on in *. unfold decided in *.
       assert (H_s : pstate_rel sigma sigma) by apply pstate_rel_refl.
       apply H0 in H_s as D1.

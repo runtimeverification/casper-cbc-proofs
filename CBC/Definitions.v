@@ -1,24 +1,24 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical.
-Import ListNotations.   
+Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Common.
 
 
 Inductive state {C V : Type} : Type :=
-  | Empty : state 
+  | Empty : state
   | Next : C ->  V -> state -> state -> state.
 
-Definition state0 (C V : Type) : @state C V := Empty. 
+Definition state0 (C V : Type) : @state C V := Empty.
 
 Notation "'add' ( c , v , j ) 'to' sigma" :=
   (Next c v j sigma)
   (at level 20).
 
-(* Constructing a StrictlyComparable state type *) 
+(* Constructing a StrictlyComparable state type *)
 Lemma state_inhabited
   {C} {V} `{about_C : StrictlyComparable C} `{about_V : StrictlyComparable V}
-  : { s : @state C V | True}. 
-Proof. 
+  : { s : @state C V | True}.
+Proof.
   destruct about_C, about_V.
   destruct inhabited, inhabited0.
   split; try exact I.
@@ -117,12 +117,12 @@ Instance state_type
     compare_strictorder := state_compare_strict_order;
   }.
 
-(* Constructing a StrictlyComparable message type *) 
+(* Constructing a StrictlyComparable message type *)
 Definition message (C V : Type) : Type := (C * V * @state C V).
 
 Lemma message_inhabited
   {C} `{about_C : StrictlyComparable C} {V} `{about_V : StrictlyComparable V}
-  : { m : message C V | True}. 
+  : { m : message C V | True}.
 Proof.
   assert (inhabitedC := about_C); destruct inhabitedC as [inhabitedC _ _ ]; destruct inhabitedC.
   assert (inhabitedV := about_V); destruct inhabitedV as [inhabitedV _ _ ]; destruct inhabitedV.
@@ -147,7 +147,7 @@ Fixpoint get_messages {C V} (sigma : state) : list (message C V) :=
   end.
 
 Definition observed
-  {C V} `{StrictlyComparable V} 
+  {C V} `{StrictlyComparable V}
   (sigma: @state C V) : list V :=
   set_map compare_eq_dec sender (get_messages sigma).
 
@@ -221,17 +221,17 @@ Instance message_type
     compare_strictorder := message_compare_strict_order;
   }.
 
-(* Constructing a StrictOrder type for message_lt *) 
+(* Constructing a StrictOrder type for message_lt *)
 
 Definition message_lt
   {C V} `{about_M : StrictlyComparable (message C V)}
   : message C V -> message C V -> Prop
   :=
-  compare_lt compare. 
+  compare_lt compare.
 
 Instance message_lt_strictorder
   {C V} `{about_M : StrictlyComparable (message C V)}
-  : StrictOrder (@message_lt C V about_M). 
+  : StrictOrder (@message_lt C V about_M).
 split. apply compare_lt_irreflexive.
 apply compare_lt_transitive.
 Defined.
@@ -240,7 +240,7 @@ Defined.
 
 (* Library for state type *)
 
-(* State membership *) 
+(* State membership *)
 Definition in_state
   {C V}
   (msg : message C V) (sigma : state) : Prop
@@ -263,7 +263,7 @@ Qed.
 
 Lemma in_state_dec
   {C V} `{HscM : StrictlyComparable (message C V)}
-  : forall (msg : message C V) sigma, 
+  : forall (msg : message C V) sigma,
   {in_state msg sigma} + {~ in_state msg sigma}.
 Proof.
   intros. apply in_dec. apply compare_eq_dec.
@@ -316,10 +316,10 @@ Qed.
 Lemma in_state_correct'
   {C V} `{HscM : StrictlyComparable (message C V)}
   : forall msg s,
-    in_state_fn msg s = false <-> ~ in_state msg s. 
+    in_state_fn msg s = false <-> ~ in_state msg s.
 Proof.
   intros; assert (H_useful := in_state_correct).
-  now apply mirror_reflect_curry. 
+  now apply mirror_reflect_curry.
 Qed.
 
 Lemma in_state_next_iff
@@ -353,7 +353,7 @@ Proof.
     intros msg Hin. apply H. right. assumption.
 Qed.
 
-(* Ordering on states *) 
+(* Ordering on states *)
 Inductive locally_sorted
   {C V} `{HscM : StrictlyComparable (message C V)}
   : @state C V -> Prop :=
@@ -361,10 +361,10 @@ Inductive locally_sorted
   | LSorted_Singleton : forall c v j,
           locally_sorted j ->
           locally_sorted (next (c, v, j) Empty)
-  | LSorted_Next : forall c v j msg' sigma, 
+  | LSorted_Next : forall c v j msg' sigma,
           locally_sorted j  ->
-          message_lt (c, v, j) msg' -> 
-          locally_sorted (next msg' sigma) -> 
+          message_lt (c, v, j) msg' ->
+          locally_sorted (next msg' sigma) ->
           locally_sorted (next (c, v, j) (next msg' sigma))
   .
 
@@ -393,7 +393,7 @@ Lemma locally_sorted_message_characterization
   (exists msg, locally_sorted_msg msg /\ sigma = next msg Empty)
   \/
   (exists msg1 msg2 sigma',
-    sigma = next msg1 (next msg2 sigma') 
+    sigma = next msg1 (next msg2 sigma')
     /\ locally_sorted (next msg2 sigma')
     /\ locally_sorted_msg msg1
     /\ message_lt msg1 msg2
@@ -461,7 +461,7 @@ Proof.
       clear Hlt.
       destruct msg1' as [(c1', v1') j1']. destruct msg3 as [(c3, v3) j3].
       apply locally_sorted_message_justification in Hj.
-      apply LSorted_Next; assumption. 
+      apply LSorted_Next; assumption.
 Qed.
 
 Lemma locally_sorted_head
@@ -481,7 +481,7 @@ Lemma locally_sorted_tail
 Proof.
   intros.
   apply locally_sorted_message_characterization in H.
-  destruct H as 
+  destruct H as
     [ Hcempty
     | [[cmsg0 [LScmsg0 Hcnext]]
     | [cmsg1 [cmsg2 [csigma' [Hcnext [LScnext [LScmsg1 LTc]]]]]]
@@ -535,7 +535,7 @@ Proof.
   intros.
   intros msg' Hin.
   apply (locally_sorted_first msg) in Hin as Hlt; try assumption.
-  unfold syntactic_state_inclusion in H1. 
+  unfold syntactic_state_inclusion in H1.
   assert (Hin' : In msg' (get_messages (next msg sigma))).
   { rewrite get_messages_next. right. assumption. }
   apply H1 in Hin'. rewrite get_messages_next in Hin'.
@@ -570,7 +570,7 @@ Proof.
     assert (Hlt1 : message_lt msg' msg1).
     { destruct Hin1; subst; try assumption.
       apply (locally_sorted_first msg) in H3; try assumption.
-      assert (CompareTransitive message_compare) by apply message_type. 
+      assert (CompareTransitive message_compare) by apply message_type.
       apply compare_lt_transitive with msg; assumption.
     }
     destruct H1in'; try assumption; subst.
@@ -623,7 +623,7 @@ Proof.
     reflexivity.
 Qed.
 
-(* Constructing ordered states *) 
+(* Constructing ordered states *)
 Fixpoint add_in_sorted_fn
   {C V} `{about_M : StrictlyComparable (message C V)}
   (msg: message C V) (sigma: @state C V) : @state C V
@@ -724,12 +724,12 @@ Lemma add_preserves_message_membership
   : forall (msg : message C V) s,
     in_state msg s ->
     forall c v j,
-      in_state msg (add_in_sorted_fn (c,v,j) s). 
+      in_state msg (add_in_sorted_fn (c,v,j) s).
 Proof.
   intros.
   assert (H_useful := set_eq_add_in_sorted (c,v,j) s).
   destruct H_useful as [_ H_useful].
-  spec H_useful msg; spec H_useful. 
+  spec H_useful msg; spec H_useful.
   right; assumption.
   assumption.
 Qed.
@@ -786,12 +786,12 @@ Proof.
           - unfold message_lt. unfold compare_lt. unfold Lib.Preamble.compare. assumption.
           - apply locally_sorted_first with sigma; unfold in_state; assumption.
         }
-        unfold add_in_sorted_fn in H2. 
-        unfold add_in_sorted_fn in Hadd. 
+        unfold add_in_sorted_fn in H2.
+        unfold add_in_sorted_fn in Hadd.
         rewrite Hadd in H2. rewrite get_messages_next in H2. apply Forall_inv in H2. assumption.
 Qed.
 
-(* Constructing an ordered state from messages *) 
+(* Constructing an ordered state from messages *)
 Definition list_to_state
   {C V} `{about_M : StrictlyComparable (message C V)}
   (msgs : list (message C V)) : state :=
@@ -833,12 +833,12 @@ Proof.
   rewrite add_in_sorted_next. rewrite H0. reflexivity.
 Qed.
 
-(* Defining state_union *) 
+(* Defining state_union *)
 Definition messages_union
   {C V}
   (m1 m2 : list (message C V))
   :=
-  m1 ++ m2. 
+  m1 ++ m2.
 
 Definition state_union
   {C V} `{about_M : StrictlyComparable (message C V)}
@@ -852,13 +852,13 @@ Lemma add_in_sorted_ignore_repeat
     msg = (c, v, j) ->
     forall s,
       add_in_sorted_fn msg (add (c,v,j) to s) =
-      add (c,v,j) to s. 
-Proof.     
+      add (c,v,j) to s.
+Proof.
   intros.
   simpl.
   replace (compare msg (c,v,j)) with Eq.
   reflexivity. subst. rewrite compare_eq_refl.
-  reflexivity. 
+  reflexivity.
 Qed.
 
 Lemma add_in_sorted_swap_base
@@ -866,12 +866,12 @@ Lemma add_in_sorted_swap_base
   : forall x y : message C V,
     add_in_sorted_fn y (add_in_sorted_fn x Empty) =
     add_in_sorted_fn x (add_in_sorted_fn y Empty).
-Proof. 
+Proof.
   intros x y.
   destruct x; destruct p.
   destruct y; destruct p.
   simpl.
-  case_pair about_M (c0,v0,s0) (c,v,s). 
+  case_pair about_M (c0,v0,s0) (c,v,s).
   - rewrite H_eq1, H_eq2.
     apply compare_eq in H_eq2.
     inversion H_eq2; subst. reflexivity.
@@ -884,16 +884,16 @@ Lemma add_in_sorted_swap_succ
   : forall (x y : message C V) s,
     add_in_sorted_fn y (add_in_sorted_fn x s) =
     add_in_sorted_fn x (add_in_sorted_fn y s).
-Proof. 
-  intros x y; induction s as [|c v j IHj prev IHs]. 
-  - apply add_in_sorted_swap_base. 
+Proof.
+  intros x y; induction s as [|c v j IHj prev IHs].
+  - apply add_in_sorted_swap_base.
   - simpl.
     destruct (@compare _ about_M x (c,v,j)) eqn:H_x.
     apply compare_eq in H_x.
     destruct (@compare _ about_M y (c,v,j)) eqn:H_y.
     apply compare_eq in H_y. subst; reflexivity.
     rewrite add_in_sorted_next.
-    assert (H_y_copy := H_y). 
+    assert (H_y_copy := H_y).
     rewrite <- H_x in H_y.
     apply compare_asymmetric in H_y. rewrite H_y.
     simpl. rewrite H_y_copy.
@@ -904,7 +904,7 @@ Proof.
     apply compare_eq in H_y. subst.
     rewrite add_is_next.
     rewrite add_in_sorted_next.
-    apply compare_asymmetric in H_x. 
+    apply compare_asymmetric in H_x.
     rewrite H_x. simpl. rewrite compare_eq_refl.
     reflexivity. rewrite add_in_sorted_next.
     destruct (@compare _ about_M y x) eqn:H_yx.
@@ -930,7 +930,7 @@ Proof.
     destruct (@compare _ about_M x y) eqn:H_xy.
     apply compare_eq in H_xy. subst.
     simpl. rewrite H_x in H_y; inversion H_y.
-    assert (@compare _ about_M x (c,v,j) = Lt). 
+    assert (@compare _ about_M x (c,v,j) = Lt).
     eapply StrictOrder_Transitive. apply H_xy. assumption.
     rewrite H_x in H; inversion H. simpl. rewrite H_x.
     reflexivity. simpl.
@@ -951,7 +951,7 @@ Inductive add_in_sorted
    | add_in_Next_eq : forall msg sigma,
           add_in_sorted msg (next msg sigma) (next msg sigma)
    | add_in_Next_lt : forall msg msg' sigma,
-          message_lt msg msg' ->  
+          message_lt msg msg' ->
           add_in_sorted msg (next msg' sigma) (next msg (next msg' sigma))
    | add_in_Next_gt : forall msg msg' sigma sigma',
           message_lt msg' msg ->
@@ -963,8 +963,8 @@ Lemma add_in_empty
   : forall (msg : message C V) sigma,
   add_in_sorted msg Empty sigma -> sigma = (next msg Empty).
 Proof.
-  intros [(c, v) j] sigma AddA. 
-  inversion AddA as 
+  intros [(c, v) j] sigma AddA.
+  inversion AddA as
     [ [(ca, va) ja] A AEmpty C'
     | [(ca, va) ja] sigmaA A ANext C'
     | [(ca, va) ja] [(ca', va') ja'] sigmaA LTA smsg smsg' smsg1
@@ -981,7 +981,7 @@ Proof.
   induction sigma1; intros; split; intros.
   - apply add_in_empty in H. subst. reflexivity.
   - simpl in H. subst. constructor.
-  - inversion H; subst; rewrite (@add_is_next C V) in *. 
+  - inversion H; subst; rewrite (@add_is_next C V) in *.
     + apply no_confusion_next in H2; destruct H2; subst; simpl.
       rewrite compare_eq_refl. reflexivity.
     + apply no_confusion_next in H0; destruct H0; subst; simpl.
@@ -1020,7 +1020,7 @@ Proof.
   apply add_in_sorted_correct in H.
   destruct sigma.
   - simpl in H. apply (no_confusion_next_empty _ _ H).
-  - simpl in H. 
+  - simpl in H.
     destruct (@compare _ about_M msg (c, v, sigma1))
     ; rewrite (@add_is_next C V) in *
     ; apply (no_confusion_next_empty _ _ H)
@@ -1062,7 +1062,7 @@ Proof.
   [ [(hc, hv) hj]
   | [(hc, hv) hj] Hsigma
   | [(hc, hv) hj] [(hc', hv') hj'] Hsigma HLT
-  | [(hc, hv) hj] [(hc', hv') hj'] Hsigma Hsigma' HGT HAdd H_H 
+  | [(hc, hv) hj] [(hc', hv') hj'] Hsigma Hsigma' HGT HAdd H_H
   ]; intros [(c', v') j'] HIn; rewrite in_state_next_iff in HIn
   ; destruct HIn as [Hin1 | Hin2]
   ; try (right; assumption)
@@ -1077,9 +1077,9 @@ Qed.
 
 Lemma add_sorted
   {C V} `{about_M : StrictlyComparable (message C V)}
-  : forall sigma (msg : message C V), 
-  locally_sorted sigma -> 
-  in_state msg sigma -> 
+  : forall sigma (msg : message C V),
+  locally_sorted sigma ->
+  in_state msg sigma ->
   add_in_sorted msg sigma sigma.
 Proof.
   induction sigma; intros; repeat rewrite add_is_next in *.
@@ -1096,9 +1096,9 @@ Qed.
 Lemma add_in_sorted_ignore
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall (msg : message C V) (s : state),
-    locally_sorted s -> 
+    locally_sorted s ->
     in_state msg s ->
-    add_in_sorted_fn msg s = s. 
+    add_in_sorted_fn msg s = s.
 Proof.
   intros.
   apply add_in_sorted_correct.
@@ -1152,12 +1152,12 @@ Qed.
 
 Lemma state_union_comm_swap
   {C V} `{about_M : StrictlyComparable (message C V)}
-  : forall (x y : message C V) s, 
+  : forall (x y : message C V) s,
     add_in_sorted_fn y (add_in_sorted_fn x s) =
     add_in_sorted_fn x (add_in_sorted_fn y s).
-Proof.                      
+Proof.
   intros.
-  induction s. 
+  induction s.
   - apply add_in_sorted_swap_base.
   - apply add_in_sorted_swap_succ.
 Qed.
@@ -1166,18 +1166,18 @@ Lemma state_union_comm_helper_helper
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall (l1 l2 : list (message C V)),
     Permutation l1 l2 ->
-    list_to_state l1 = list_to_state l2. 
-Proof. 
+    list_to_state l1 = list_to_state l2.
+Proof.
   intros.
   induction H.
   - reflexivity.
   - simpl. rewrite IHPermutation.
     reflexivity.
   - simpl.
-    apply state_union_comm_swap. 
+    apply state_union_comm_swap.
   - rewrite IHPermutation1, IHPermutation2.
     reflexivity.
-Qed. 
+Qed.
 
 Lemma state_union_messages
   {C V} `{about_M : StrictlyComparable (message C V)}
@@ -1213,9 +1213,9 @@ Lemma state_union_iff
 Proof.
   intros; unfold state_union; unfold in_state; split; intros.
   - apply state_union_messages in H. unfold messages_union in H.
-    apply in_app_iff; assumption. 
+    apply in_app_iff; assumption.
   - apply state_union_messages. unfold messages_union.
-    rewrite in_app_iff; assumption. 
+    rewrite in_app_iff; assumption.
 Qed.
 
 Lemma state_union_incl_iterated
@@ -1259,11 +1259,11 @@ Lemma state_union_add_in_sorted
 Proof.
   intros.
   apply sorted_syntactic_state_inclusion_equality_predicate.
-  - apply state_union_sorted; try assumption. 
+  - apply state_union_sorted; try assumption.
     apply add_in_sorted_sorted; assumption.
   - apply add_in_sorted_sorted; try assumption.
     apply state_union_sorted; assumption.
-  - intros msg Hin. 
+  - intros msg Hin.
     apply state_union_iff in Hin.
     apply set_eq_add_in_sorted.
     destruct Hin as [Hin | Hin].
@@ -1279,7 +1279,7 @@ Proof.
     + apply state_union_iff in Hin.
       destruct Hin.
       * left; assumption.
-      * right. apply set_eq_add_in_sorted. 
+      * right. apply set_eq_add_in_sorted.
       right; assumption.
 Qed.
 
@@ -1294,7 +1294,7 @@ Definition compare_eq_dec_v
   :=
   @compare_eq_dec _ _ (compare_strict_order_v HscM).
 
-(* Defining message equivocation, computationally and propositionally *) 
+(* Defining message equivocation, computationally and propositionally *)
 Definition equivocating_messages
   {C V} `{about_M : StrictlyComparable (message C V)}
   (msg1 msg2 : message C V) : bool :=
@@ -1317,15 +1317,15 @@ Definition equivocating_messages_prop
 Lemma equivocating_messages_sender
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall msg1 msg2 : message C V,
-  equivocating_messages msg1 msg2 = true -> sender msg1 = sender msg2. 
+  equivocating_messages msg1 msg2 = true -> sender msg1 = sender msg2.
 Proof.
-  unfold equivocating_messages. 
-  intros [(c1, v1) j1] [(c2, v2) j2] H. 
+  unfold equivocating_messages.
+  intros [(c1, v1) j1] [(c2, v2) j2] H.
   simpl.
   destruct (compare_eq_dec (c1, v1, j1) (c2, v2, j2)).
-  rewrite eq_dec_if_true in H. 
+  rewrite eq_dec_if_true in H.
   inversion H.
-  assumption. 
+  assumption.
   rewrite eq_dec_if_false in H.
   destruct (compare_eq_dec_v about_M v1 v2).
   assumption. inversion H. assumption.
@@ -1334,15 +1334,15 @@ Qed.
 Lemma equivocating_messages_correct
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall (msg1 msg2 : message C V),
-    equivocating_messages msg1 msg2 = true <-> equivocating_messages_prop msg1 msg2. 
-Proof. 
+    equivocating_messages msg1 msg2 = true <-> equivocating_messages_prop msg1 msg2.
+Proof.
   intros [[c1 v1] j1] [[c2 v2] j2]; split; intro H.
   - repeat split.
     + (* Proving inequality obligation *)
       intro H_absurd.
       unfold equivocating_messages in H.
       rewrite eq_dec_if_true in H.
-      inversion H. assumption. 
+      inversion H. assumption.
     + (* Proving sender obligation *)
       now apply equivocating_messages_sender.
     + (* Proving msg1 is not in msg2's justification *)
@@ -1365,7 +1365,7 @@ Proof.
       assumption. rewrite eq_dec_if_false in H.
       destruct (compare_eq_dec_v about_M v1 v2).
       rewrite andb_false_r in H. inversion H.
-      inversion H. assumption. 
+      inversion H. assumption.
   - destruct H as [H_neq [H_sender [H_in1 H_in2]]].
     apply in_state_correct' in H_in1.
     apply in_state_correct' in H_in2.
@@ -1391,9 +1391,9 @@ Proof.
   subst. rewrite eq_dec_if_true.
   rewrite eq_dec_if_true. reflexivity.
   symmetry; assumption.
-  assumption. 
-  rewrite (eq_dec_if_false compare_eq_dec). 
-  destruct (compare_eq_dec_v about_M v1 v2). 
+  assumption.
+  rewrite (eq_dec_if_false compare_eq_dec).
+  destruct (compare_eq_dec_v about_M v1 v2).
   rewrite eq_dec_if_false.
   rewrite e. rewrite eq_dec_if_true.
   rewrite andb_comm. reflexivity. reflexivity.
@@ -1402,8 +1402,8 @@ Proof.
   rewrite eq_dec_if_false. reflexivity.
   intro Hnot; symmetry in Hnot; tauto.
   intro Hnot; symmetry in Hnot; tauto.
-  assumption. 
-Qed. 
+  assumption.
+Qed.
 
 Lemma equivocating_messages_prop_swap
   {C V} `{about_M : StrictlyComparable (message C V)}
@@ -1414,9 +1414,9 @@ Proof.
   rewrite <- equivocating_messages_correct.
   rewrite equivocating_messages_comm.
   tauto.
-Qed. 
-  
-(* The intuition is we can never satisfy that neither messages are contained in each other's justifications. *) 
+Qed.
+
+(* The intuition is we can never satisfy that neither messages are contained in each other's justifications. *)
 Lemma non_equivocating_messages_extend
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall msg sigma1 (c : C) (v : V),
@@ -1425,17 +1425,17 @@ Lemma non_equivocating_messages_extend
 Proof.
   intros [(c0, v0) sigma']; intros.
   unfold equivocating_messages.
-  destruct (compare_eq_dec (c0, v0, sigma') (c, v, sigma1)).  
+  destruct (compare_eq_dec (c0, v0, sigma') (c, v, sigma1)).
   - (* In the case that these two messages are equal, they cannot be equivocating *)
-    now rewrite eq_dec_if_true. 
+    now rewrite eq_dec_if_true.
   - (* In the case that these messages are not equal, *)
     rewrite eq_dec_if_false.
     (* When their senders are equal *)
-    destruct (compare_eq_dec_v about_M v0 v).  
+    destruct (compare_eq_dec_v about_M v0 v).
     + subst. apply in_state_correct in H.
       rewrite H. tauto.
     + reflexivity.
-    + assumption. 
+    + assumption.
 Qed.
 
 Lemma non_equivocating_messages_sender
@@ -1484,7 +1484,7 @@ Lemma equivocating_in_state_correct'
   : forall (msg : message C V) s,
   equivocating_in_state msg s = false <-> ~ equivocating_in_state_prop msg s.
 Proof.
-  intros. 
+  intros.
   apply mirror_reflect_curry.
   exact equivocating_in_state_correct.
 Qed.
@@ -1506,10 +1506,10 @@ Lemma equivocating_in_state_not_seen
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall (msg : message C V) sigma,
   ~ In (sender msg) (set_map (compare_eq_dec_v about_M) sender (get_messages sigma)) ->
-  ~ equivocating_in_state_prop msg sigma.  
+  ~ equivocating_in_state_prop msg sigma.
 Proof.
   intros [(c, v) j] sigma Hnin. rewrite set_map_exists in Hnin. simpl in Hnin.
-  rewrite <- equivocating_in_state_correct'. 
+  rewrite <- equivocating_in_state_correct'.
   apply existsb_forall.
   intros [(cx, vx) jx] Hin.
   apply non_equivocating_messages_sender. simpl.
@@ -1529,14 +1529,14 @@ Definition equivocating_senders_prop
   {C V}
   (s : @state C V) (lv : set V)
   :=
-  forall v, In v lv <-> exists msg, in_state msg s /\ sender msg = v /\ equivocating_in_state_prop msg s. 
+  forall v, In v lv <-> exists msg, in_state msg s /\ sender msg = v /\ equivocating_in_state_prop msg s.
 
 Lemma equivocating_senders_correct
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall s : @state C V,
   equivocating_senders_prop s (equivocating_senders s).
 Proof.
-  intros s v; split; intro H. 
+  intros s v; split; intro H.
   - (* Left direction *)
     apply set_map_exists in H.
     destruct H as [msg [H_in H_sender]].
@@ -1545,7 +1545,7 @@ Proof.
     destruct H_in. repeat split; try assumption.
     rewrite <- equivocating_in_state_correct.
     assumption.
-  - destruct H as [msg [H_in [H_sender H_equiv]]]. 
+  - destruct H as [msg [H_in [H_sender H_equiv]]].
     unfold equivocating_senders.
     rewrite <- H_sender.
     apply set_map_in.
@@ -1569,7 +1569,7 @@ Proof.
     destruct H_in. split. assumption.
     rewrite equivocating_in_state_correct in *.
     now apply equivocating_in_state_incl with sigma.
-Qed. 
+Qed.
 
 Lemma equivocating_senders_extend
   {C V} `{about_M : StrictlyComparable (message C V)}
@@ -1578,9 +1578,9 @@ Lemma equivocating_senders_extend
 Proof.
   unfold equivocating_senders. intros.
   (* Why doesn't the suff tactic work *)
-  assert (H_suff : 
+  assert (H_suff :
     (filter (fun msg : message C V => equivocating_in_state msg (add (c, v, sigma)to sigma))
-      (get_messages (add (c, v, sigma)to sigma))) = 
+      (get_messages (add (c, v, sigma)to sigma))) =
     (filter (fun msg : message C V => equivocating_in_state msg sigma)
       (get_messages sigma))); try (rewrite H_suff; reflexivity).
   simpl.
@@ -1648,7 +1648,7 @@ Proof.
       apply in_state_add_in_sorted_iff. right. assumption.
 Qed.
 
-(* Lifting parameterization from set V to states *) 
+(* Lifting parameterization from set V to states *)
 Definition fault_weight_state
   {C V} `{about_M : StrictlyComparable (message C V)} `{Measurable V}
   (sigma : @state C V) : R
@@ -1666,7 +1666,7 @@ Proof.
   - apply equivocating_senders_incl. assumption.
 Qed.
 
-(* Justification subset condition *) 
+(* Justification subset condition *)
 Definition incl_messages
   {C V}
   (s1 s2 : @state C V) : Prop
@@ -1680,7 +1680,7 @@ Definition not_heavy
   :=
   (fault_weight_state sigma <= proj1_sig threshold)%R.
 
-(* States following Empty states are never overweight *) 
+(* States following Empty states are never overweight *)
 Lemma not_heavy_single
   {C V} `{about_M : StrictlyComparable (message C V)} `{ReachableThreshold V}
   : forall msg : message C V,
@@ -1689,13 +1689,13 @@ Proof.
   intros [(c, v) j].
   unfold not_heavy, fault_weight_state, equivocating_senders.
   simpl. unfold equivocating_in_state. simpl.
-  unfold equivocating_messages. 
+  unfold equivocating_messages.
   rewrite eq_dec_if_true; try reflexivity. simpl.
   apply Rge_le. destruct threshold.
   simpl; auto.
 Qed.
 
-(* If a state is not overweight, none of its subsets are *) 
+(* If a state is not overweight, none of its subsets are *)
 Lemma not_heavy_subset
   {C V} `{about_M : StrictlyComparable (message C V)} `{ReachableThreshold V}
   : forall s s' : @state C V,
@@ -1711,7 +1711,7 @@ Qed.
 
 Class ProtocolState C V `{about_M : StrictlyComparable (message C V)} `{Hrt : ReachableThreshold V} `{He : Estimator (@state C V) C}.
 
-(* Valid protocol state definition *) 
+(* Valid protocol state definition *)
 Inductive protocol_state
   {C V} `{PS : ProtocolState C V}
   : @state C V -> Prop
@@ -1727,7 +1727,7 @@ Inductive protocol_state
 
 Lemma nil_empty_state
   {C V}
-  : forall s : @state C V, get_messages s = [] -> s = Empty. 
+  : forall s : @state C V, get_messages s = [] -> s = Empty.
 Proof.
   intros s H_nil.
   induction s. reflexivity.
@@ -1735,11 +1735,11 @@ Proof.
 Qed.
 
 (** Facts about protocol states as traces **)
-(* All protocol states are sorted by construction *) 
+(* All protocol states are sorted by construction *)
 Lemma protocol_state_sorted
   {C V} `{PS : ProtocolState C V}
   : forall state : @state C V,
-  protocol_state state -> 
+  protocol_state state ->
   locally_sorted state.
 Proof.
   intros.
@@ -1749,7 +1749,7 @@ Proof.
     apply locally_sorted_message_justification. assumption.
 Qed.
 
-(* All protocol states are not too heavy *) 
+(* All protocol states are not too heavy *)
 Lemma protocol_state_not_heavy
   {C V} `{PS : ProtocolState C V}
   : forall s : @state C V,
@@ -1759,11 +1759,11 @@ Proof.
   intros.
   inversion H.
   - unfold not_heavy. unfold fault_weight_state.
-    simpl. apply Rge_le. destruct threshold; simpl; auto. 
+    simpl. apply Rge_le. destruct threshold; simpl; auto.
   - assumption.
 Qed.
 
-(* All messages in protocol states are estimator approved *) 
+(* All messages in protocol states are estimator approved *)
 Lemma protocol_state_valid_estimate
   {C V} `{PS : ProtocolState C V}
   : forall s : @state C V,
@@ -1773,7 +1773,7 @@ Lemma protocol_state_valid_estimate
       valid_estimate (estimate msg) (justification msg).
 Proof.
   intros s H_ps msg H_in.
-  induction H_ps. 
+  induction H_ps.
   inversion H_in.
   rewrite in_state_add_in_sorted_iff in H_in.
   destruct H_in as [H_eq | H_in].
@@ -1782,7 +1782,7 @@ Proof.
   now apply IHH_ps1.
 Qed.
 
-(* All singleton states are protocol states *) 
+(* All singleton states are protocol states *)
 Lemma protocol_state_singleton
   {C V} `{PS : ProtocolState C V}
   : forall (c : C) (v : V),
@@ -1793,11 +1793,11 @@ Proof.
   assert (Heq : add_in_sorted_fn (c, v, Empty) Empty = (next (c, v, Empty) Empty)); try reflexivity.
   rewrite <- Heq.
   apply protocol_state_next; try assumption; try apply protocol_state_empty.
-  - apply incl_refl. 
+  - apply incl_refl.
   - simpl. rewrite add_is_next. apply not_heavy_single.
 Qed.
 
-(* All protocol states are either empty or contain a message with an empty justification *) 
+(* All protocol states are either empty or contain a message with an empty justification *)
 Lemma protocol_state_start_from_empty
   {C V} `{PS : ProtocolState C V}
   : forall s : @state C V,
@@ -1816,14 +1816,14 @@ Proof.
     + subst. destruct IHprotocol_state1.
       inversion H4.
       destruct H4 as [msg [H_in H_empty]].
-      exists msg. 
+      exists msg.
       repeat split. apply in_state_add_in_sorted_iff.
       right; assumption. assumption.
     + destruct H4 as [msg [H_in H_empty]].
-      exists msg. 
+      exists msg.
       repeat split. apply in_state_add_in_sorted_iff.
       right. apply H1. assumption. assumption.
-Qed. 
+Qed.
 
 (* Recording entire histories preserves protocol state-ness *)
 Lemma copy_protocol_state
@@ -1843,38 +1843,38 @@ Proof.
   - unfold not_heavy. unfold fault_weight_state.
     rewrite equivocating_senders_extend.
     apply protocol_state_not_heavy in Hps. assumption.
-Qed. 
+Qed.
 
-(* Two protocol states if not too heavy combined can be combined into a protocol state. *) 
+(* Two protocol states if not too heavy combined can be combined into a protocol state. *)
 Lemma union_protocol_states
   {C V} `{PS : ProtocolState C V}
   : forall (s1 s2 : @state C V),
     locally_sorted s1 ->
-    locally_sorted s2 -> 
+    locally_sorted s2 ->
     protocol_state s1 ->
     protocol_state s2 ->
     (fault_weight_state (state_union s1 s2) <= proj1_sig threshold)%R ->
-    protocol_state (state_union s1 s2). 
+    protocol_state (state_union s1 s2).
 Proof.
   intros s1 s2 about_s1 about_s2 Hps1 Hps2.
   induction Hps2; intros.
-  - unfold state_union. simpl. 
+  - unfold state_union. simpl.
     unfold messages_union. rewrite app_nil_r.
     rewrite list_to_state_sorted. assumption.
     apply protocol_state_sorted. assumption.
   - replace (state_union s1 (add_in_sorted_fn (c,v,j) s)) with (add_in_sorted_fn (c,v,j) (state_union s1 s)) in *.
     2 : { rewrite (state_union_add_in_sorted s1 (c, v, j) s).
-          reflexivity. 
+          reflexivity.
           now apply protocol_state_sorted.
           now apply protocol_state_sorted.
           apply (locally_sorted_message_justification c v j).
           now apply protocol_state_sorted. }
-    apply protocol_state_next; try assumption. 
-    apply IHHps2_1. 
+    apply protocol_state_next; try assumption.
+    apply IHHps2_1.
     now apply protocol_state_sorted. apply not_heavy_subset with (add_in_sorted_fn (c, v, j) (state_union s1 s)); try assumption.
     intros msg H_in. apply set_eq_add_in_sorted.
     right; assumption.
-    intros msg H_in. 
+    intros msg H_in.
     apply state_union_iff.
     right. apply H. assumption.
 Qed.
@@ -1884,67 +1884,67 @@ Lemma message_subset_correct
   {C V} `{PS : ProtocolState C V}
   : forall s : @state C V, protocol_state s ->
        forall msg, In msg (get_messages s) ->
-              incl_messages (justification msg) s.  
+              incl_messages (justification msg) s.
 Proof.
   intros s H_ps msg H_in_msg m H_in.
-  induction H_ps; subst. 
+  induction H_ps; subst.
   inversion H_in_msg.
   assert (H_useful := in_state_add_in_sorted_iff m (c,v,j) s).
   rewrite H_useful. clear H_useful.
-  apply in_state_add_in_sorted_iff in H_in_msg. 
+  apply in_state_add_in_sorted_iff in H_in_msg.
   destruct H_in_msg as [H_eq | H_in_msg].
   - right. subst; simpl in H_in.
     spec H m H_in.
     assert (H_useful := set_eq_add_in_sorted (c,v,j) s).
     destruct H_useful as [H_left H_right].
     spec H_right (c,v,j) (in_eq (c,v,j) (get_messages s)).
-    assumption. 
+    assumption.
   - right; apply IHH_ps1.
     assumption.
 Qed.
 
-(** Lemmas about justifications of messages contained within protocol states, i.e. "past" protocol states **) 
-(* Any justification of protocol state messages are themselves protocol states *) 
+(** Lemmas about justifications of messages contained within protocol states, i.e. "past" protocol states **)
+(* Any justification of protocol state messages are themselves protocol states *)
 Lemma protocol_state_justification
   {C V} `{PS : ProtocolState C V}
   : forall s : @state C V, protocol_state s ->
        forall msg, in_state msg s ->
-              protocol_state (justification msg). 
+              protocol_state (justification msg).
 Proof.
   intros s H_ps msg H_in.
   induction H_ps.
-  - inversion H_in. 
+  - inversion H_in.
   - apply in_state_add_in_sorted_iff in H_in.
     destruct H_in as [left | right].
-    + subst. simpl. assumption. 
+    + subst. simpl. assumption.
     + now apply IHH_ps1.
 Qed.
 
-(* All justifications of protocol state messages are themselves protocol states *) 
+(* All justifications of protocol state messages are themselves protocol states *)
 Lemma protocol_state_all_justifications
   {C V} `{PS : ProtocolState C V}
   : forall s, protocol_state s ->
        Forall protocol_state (map justification (get_messages s)).
 Proof.
   intros s H_ps.
-  induction H_ps; apply Forall_forall; intros x H_in.  
-  - inversion H_in. 
+  induction H_ps; apply Forall_forall; intros x H_in.
+  - inversion H_in.
   - rewrite in_map_iff in H_in.
     destruct H_in as [msg [H_justif H_justif_in]].
     subst.
-    apply (protocol_state_justification (add_in_sorted_fn (c,v,j) s)); try constructor; assumption. 
+    apply (protocol_state_justification (add_in_sorted_fn (c,v,j) s)); try constructor; assumption.
 Qed.
 
-(* No protocol state can contain a message that contains itself as the justification *) 
+(* No protocol state can contain a message that contains itself as the justification *)
 Theorem no_self_justification
   {C V} `{PS : ProtocolState C V}
   : forall j : @state C V, protocol_state j ->
-       forall c v, in_state (c, v, j) j -> False. 
+       forall c v, in_state (c, v, j) j -> False.
 Proof.
   intros j H_prot c v H_in.
   induction H_prot.
-  - inversion H_in. 
-  - rewrite in_state_add_in_sorted_iff in H_in. 
+  - inversion H_in.
+  - rewrite in_state_add_in_sorted_iff in H_in.
     destruct H_in as [H_eq | H_in].
     + inversion H_eq.
       subst. apply IHH_prot2. rewrite <- H5 at 2.
@@ -1966,7 +1966,7 @@ Lemma messages_equivocating_senders_eq
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall s1 s2 : @state C V,
     set_eq (get_messages s1) (get_messages s2) ->
-    set_eq (equivocating_senders s1) (equivocating_senders s2). 
+    set_eq (equivocating_senders s1) (equivocating_senders s2).
 Proof.
   intros s1 s2 [H_eq1 H_eq2].
   apply set_map_eq.
@@ -1999,7 +1999,7 @@ Qed.
 
 Lemma equivocating_senders_empty
   {C V} `{about_M : StrictlyComparable (message C V)}
-  : equivocating_senders (@Empty C V) = []. 
+  : equivocating_senders (@Empty C V) = [].
 Proof.
   unfold equivocating_senders.
   simpl. reflexivity.
@@ -2010,14 +2010,14 @@ Lemma equivocating_senders_extend'
   : forall (s : state) (c : C) (v : V) (j : state),
     In v (equivocating_senders s) ->
     set_eq (equivocating_senders (add (c, v, j) to s))
-           (equivocating_senders s). 
+           (equivocating_senders s).
 Proof.
   intros.
   unfold equivocating_senders.
   split; intros v0 H_in; apply set_map_exists.
   - (* Arbitrary v0 is an equivocating sender in the new state *)
     apply set_map_exists in H_in.
-    (* Arbitrary v0 has sent an equivocating_in_state message in the new state *) 
+    (* Arbitrary v0 has sent an equivocating_in_state message in the new state *)
     destruct H_in as [msg [H_in H_sender]].
     apply filter_In in H_in.
     simpl in H_in.
@@ -2025,9 +2025,9 @@ Proof.
     rewrite equivocating_in_state_correct in H_equiv.
     destruct H_equiv as [msg' [H_in' H_equiv]].
     (* This message has an equivocation partner *)
-    (* Both of these messages are in the new state - case analysis on each of them with the hd element *) 
+    (* Both of these messages are in the new state - case analysis on each of them with the hd element *)
     destruct H_in as [H_hd | H_tl].
-    + (* In the case that the first equivocating message is the hd  *) 
+    + (* In the case that the first equivocating message is the hd  *)
       subst.
       destruct H_in' as [H_absurd | H_in'].
       * (* In the case that the second equivocating message is also the hd, we have a contradiction *)
@@ -2052,15 +2052,15 @@ Proof.
         destruct H_equiv as [_ [H_sender _]].
         simpl in H_sender. symmetry; assumption.
       * (* In the case that the second equivocating message is in the tl, *)
-        exists msg. 
+        exists msg.
         rewrite filter_In.
         repeat split; try assumption.
         rewrite equivocating_in_state_correct.
         exists msg'; split; try assumption.
   - (* Arbitrary v0 is an equivocating sender in the old state *)
-    apply set_map_exists in H_in. 
+    apply set_map_exists in H_in.
     destruct H_in as [msg0 [H_in0 H_sender0]].
-    apply filter_In in H_in0. 
+    apply filter_In in H_in0.
     destruct H_in0 as [H_in0 H_equiv0].
     exists msg0. rewrite filter_In.
     repeat split.
@@ -2078,9 +2078,9 @@ Lemma equivocating_senders_fault_weight_eq
   {C V} `{about_M : StrictlyComparable (message C V)} `{Hm : Measurable V}
   : forall s1 s2 : @state C V,
     set_eq (equivocating_senders s1) (equivocating_senders s2) ->
-    fault_weight_state s1 = fault_weight_state s2. 
+    fault_weight_state s1 = fault_weight_state s2.
 Proof.
-  intros s1 s2 H_eq. 
+  intros s1 s2 H_eq.
   apply (@set_eq_nodup_sum_weight_eq _ (triple_strictly_comparable_proj2 about_M)); try apply set_map_nodup.
   assumption.
 Qed.
@@ -2089,23 +2089,23 @@ Lemma messages_fault_weight_eq
   {C V} `{about_M : StrictlyComparable (message C V)} `{Hm : Measurable V}
   : forall s1 s2 : @state C V,
     set_eq (get_messages s1) (get_messages s2) ->
-    fault_weight_state s1 = fault_weight_state s2. 
-Proof. 
+    fault_weight_state s1 = fault_weight_state s2.
+Proof.
   intros s1 s2 H_eq.
   apply equivocating_senders_fault_weight_eq.
   now apply messages_equivocating_senders_eq.
 Qed.
 
 Lemma add_next_equivocating_senders_eq
-  {C V} `{about_M : StrictlyComparable (message C V)} 
+  {C V} `{about_M : StrictlyComparable (message C V)}
   : forall (c : C) (v : V) j s,
     set_eq (equivocating_senders (add_in_sorted_fn (c,v,j) s))
-           (equivocating_senders (next (c,v,j) s)). 
+           (equivocating_senders (next (c,v,j) s)).
 Proof.
   intros.
   assert (H_obv : set_eq (get_messages (add_in_sorted_fn (c,v,j) s))
                          (get_messages (next (c,v,j) s))).
-  { split; intros msg H_in. 
+  { split; intros msg H_in.
     - apply in_state_add_in_sorted_iff in H_in.
       destruct H_in. subst. simpl. tauto.
       right. assumption.
@@ -2113,7 +2113,7 @@ Proof.
       inversion H_in. subst. tauto.
       right; assumption. }
   now apply messages_equivocating_senders_eq.
-Qed. 
+Qed.
 
 (* A new equivocation from a sender inducts it into the set of equivocating_senders *)
 (* This says nothing about protocol state validity *)
@@ -2124,7 +2124,7 @@ Lemma add_already_equivocating_sender
     forall (msg : message C V),
       In (sender msg) (equivocating_senders s) ->
         set_eq (equivocating_senders s)
-               (equivocating_senders (add_in_sorted_fn msg s)). 
+               (equivocating_senders (add_in_sorted_fn msg s)).
 Proof.
   intros s about_s msg H_in.
   split; intros v H_v_in.
@@ -2135,7 +2135,7 @@ Proof.
     rewrite <- H_msg'_sender.
     apply set_map_in.
     apply filter_in. apply in_state_add_in_sorted_iff.
-    right. 
+    right.
     tauto.
     rewrite equivocating_in_state_correct.
     destruct H_v_in.
@@ -2169,14 +2169,14 @@ Proof.
       subst. destruct H_equiv.
       destruct H1. contradiction.
       assumption. assumption.
-Qed. 
+Qed.
 
 Lemma equivocating_sender_add_in_sorted_iff
   {C V} `{about_M : StrictlyComparable (message C V)}
   : forall (s : state) (msg : message C V) (v : V),
     In v (equivocating_senders (add_in_sorted_fn msg s)) <->
     (v = sender msg /\ equivocating_in_state_prop msg s) \/
-    In v (equivocating_senders s). 
+    In v (equivocating_senders s).
 Proof.
   intros s msg v. split; intros.
   -  apply equivocating_senders_correct in H.
@@ -2189,14 +2189,14 @@ Proof.
        exists msg_partner.
        rewrite in_state_add_in_sorted_iff in H_msg_partner.
        destruct H_msg_partner. subst. inversion H_equiv.
-       contradiction. tauto. 
+       contradiction. tauto.
      + destruct H_equiv as [msg'_partner [H_msg'_partner H_equiv]].
-       apply in_state_add_in_sorted_iff in H_msg'_partner. 
+       apply in_state_add_in_sorted_iff in H_msg'_partner.
        destruct H_msg'_partner as [H_eq' | H_noteq'].
        * subst. left. destruct H_equiv. split. tauto.
          exists msg'. split.
          assumption. split.
-         auto. split. easy. tauto. 
+         auto. split. easy. tauto.
        * right.
          apply equivocating_senders_correct.
          exists msg'_partner. split. assumption.
@@ -2205,7 +2205,7 @@ Proof.
          apply equivocating_messages_prop_swap.
          red; tauto.
   - destruct H as [[H_sender H_equiv] | H_noteq].
-    + subst. 
+    + subst.
       apply equivocating_senders_correct.
       destruct H_equiv as [msg_partner [H_msg_partner H_equiv]].
       exists msg_partner.
@@ -2230,7 +2230,7 @@ Proof.
       exists msg'_partner. split.
       rewrite in_state_add_in_sorted_iff; tauto.
       tauto.
-Qed. 
+Qed.
 
 Lemma add_equivocating_sender
   {C V} `{PS : ProtocolState C V}
@@ -2243,8 +2243,8 @@ Lemma add_equivocating_sender
       set_eq (equivocating_senders (add_in_sorted_fn msg s))
              (set_add (compare_eq_dec_v about_M) (sender msg) (equivocating_senders s)).
 Proof.
-  (* Because we're using set_add, we don't need to care about whether (sender msg) is already in (equivocating_senders s) *) 
-  intros s about_s msg [msg' [H_in H_equiv]]. 
+  (* Because we're using set_add, we don't need to care about whether (sender msg) is already in (equivocating_senders s) *)
+  intros s about_s msg [msg' [H_in H_equiv]].
   destruct (classic (in_state msg s)) as [H_msg_in | H_msg_out].
   - (* In the case that msg is already in s, *)
     (* Adding it does nothing to the state *)
@@ -2252,24 +2252,24 @@ Proof.
     assert (H_ignore := add_in_sorted_ignore msg s s_sorted H_msg_in).
     simpl in *. rewrite H_ignore.
     clear H_ignore s_sorted.
-    (* Adding the sender should do nothing to (equivocating_senders s) *) 
+    (* Adding the sender should do nothing to (equivocating_senders s) *)
     split.
     + intros v0 H_mem.
-      (* The following is winding and painful *) 
+      (* The following is winding and painful *)
       unfold equivocating_senders in H_mem.
       rewrite set_map_exists in H_mem.
       destruct H_mem as [msg0 [H0_in H0_sender]].
       rewrite filter_In in H0_in.
-      assert (H_senders := equivocating_senders_correct s). 
+      assert (H_senders := equivocating_senders_correct s).
       red in H_senders.
       destruct H0_in as [H0_in H0_equiv].
-      apply set_add_iff. 
+      apply set_add_iff.
       destruct (classic (msg = msg0)).
       * subst.
-        left; reflexivity. 
+        left; reflexivity.
       * right. spec H_senders v0.
         apply H_senders.
-        rewrite equivocating_in_state_correct in H0_equiv. 
+        rewrite equivocating_in_state_correct in H0_equiv.
         destruct H0_equiv as [msg0_partner [H0_equivl H0_equivr]].
         exists msg0_partner. repeat split; try assumption.
         rewrite <- H0_sender.
@@ -2293,37 +2293,37 @@ Proof.
         destruct H_mem.
         contradiction. assumption.
   - (* In the case that msg is not already in s, *)
-    (* For all we know (sender msg) could already be in (equivocating_senders s) *)  
+    (* For all we know (sender msg) could already be in (equivocating_senders s) *)
     destruct (classic (In (sender msg) (equivocating_senders s))).
     + (* If (sender msg) is already in there, then adding it again does nothing *)
       assert (H_ignore : set_eq (set_add (compare_eq_dec_v about_M) (sender msg) (equivocating_senders s)) (equivocating_senders s)).
-      {  split; intros v H_v_in. 
+      {  split; intros v H_v_in.
          apply set_add_iff in H_v_in.
          destruct H_v_in.
          subst; assumption.
          assumption.
          apply set_add_iff. right; assumption. }
-      apply set_eq_comm in H_ignore. 
-      eapply set_eq_tran. 
+      apply set_eq_comm in H_ignore.
+      eapply set_eq_tran.
       2 : exact H_ignore.
       apply set_eq_comm.
       now apply add_already_equivocating_sender.
     + (* If (sender msg) is not already in there *)
-      split; intros.  
+      split; intros.
       * intros v0 H_in0.
-        destruct (classic (v0 = sender msg)). 
+        destruct (classic (v0 = sender msg)).
         ** subst.
            apply set_add_iff.
            tauto.
         ** apply set_add_iff.
            right.
            destruct msg as [[c v] j].
-           apply equivocating_sender_add_in_sorted_iff in H_in0. 
+           apply equivocating_sender_add_in_sorted_iff in H_in0.
            destruct H_in0.
            destruct H1; contradiction.
            assumption.
       * intros v0 H_in0.
-        destruct (classic (v0 = sender msg)). 
+        destruct (classic (v0 = sender msg)).
         ** subst.
            apply set_add_iff in H_in0.
            destruct H_in0.
@@ -2335,7 +2335,7 @@ Proof.
            red. exists msg'.
            split. rewrite in_state_add_in_sorted_iff.
            tauto. assumption.
-           contradiction. 
+           contradiction.
         ** apply set_add_iff in H_in0.
            destruct H_in0.
            contradiction.
@@ -2411,7 +2411,7 @@ Proof.
   - inversion H.
   - destruct H as [Heq | Hin].
     + subst. simpl. apply in_state_add_in_sorted_iff. left. reflexivity.
-    + simpl. apply in_state_add_in_sorted_iff. right. 
+    + simpl. apply in_state_add_in_sorted_iff. right.
       apply in_state_add_in_sorted_iff. right.  apply IHvs. assumption.
 Qed.
 
@@ -2427,12 +2427,12 @@ Proof.
   - destruct H as [Heq | Hin].
     + subst. simpl. apply in_state_add_in_sorted_iff. right.
        apply in_state_add_in_sorted_iff. left. reflexivity.
-    + simpl. apply in_state_add_in_sorted_iff. right. 
+    + simpl. apply in_state_add_in_sorted_iff. right.
       apply in_state_add_in_sorted_iff. right.  apply IHvs. assumption.
 Qed.
 
 Lemma valid_protocol_state_equivocating_senders
-  {C V} `{about_M : StrictlyComparable (message C V)} `{He : Estimator (@state C V) C} 
+  {C V} `{about_M : StrictlyComparable (message C V)} `{He : Estimator (@state C V) C}
   : forall cempty : C,
   estimator Empty cempty ->
   forall (v : V) vs,
@@ -2484,11 +2484,11 @@ Proof.
       * unfold equivocating_messages.
         { rewrite eq_dec_if_false.
           - rewrite eq_dec_if_true; try reflexivity. apply andb_true_iff. split.
-            + apply negb_true_iff. unfold in_state_fn. 
+            + apply negb_true_iff. unfold in_state_fn.
               rewrite in_state_dec_if_false; try reflexivity.
               rewrite Heqsigma. intro. apply in_singleton_state in H2.
               apply H0. inversion H2; subst; clear H2. assumption.
-            + apply negb_true_iff. unfold in_state_fn. 
+            + apply negb_true_iff. unfold in_state_fn.
               rewrite in_state_dec_if_false; try reflexivity.
               apply in_empty_state.
           - intro. inversion H2; subst. inversion H5.

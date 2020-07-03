@@ -16,30 +16,30 @@ Definition last_error {S} (l : list S) : option S :=
 Lemma unfold_last_hd {S} : forall (random a b : S) (l : list S),
   last (a :: (b :: l)) random = last (b :: l) random.
 Proof.
-  intros random h1 h2 tl. 
+  intros random h1 h2 tl.
   unfold last. reflexivity.
 Qed.
 
 Lemma swap_head_last {S} : forall (random a b c : S) (l : list S),
-    last (a :: b :: c :: l) random = last (b :: a :: c :: l) random. 
+    last (a :: b :: c :: l) random = last (b :: a :: c :: l) random.
 Proof.
   intros random h1 h2 s tl.
   induction tl as [| hd tl IHl].
-  - reflexivity. 
+  - reflexivity.
   - simpl. reflexivity.
 Qed.
 
 Lemma remove_hd_last {X} :
   forall (hd1 hd2 d1 d2 : X) (tl : list X),
     last (hd1 :: hd2 :: tl) d1 = last (hd2 :: tl) d2.
-Proof. 
+Proof.
   intros. induction tl.
   simpl. reflexivity.
-  rewrite unfold_last_hd. 
+  rewrite unfold_last_hd.
   rewrite unfold_last_hd in IHtl.
   rewrite unfold_last_hd.
   rewrite unfold_last_hd.
-  destruct tl. 
+  destruct tl.
   reflexivity.
   do 2 rewrite unfold_last_hd in IHtl.
   do 2 rewrite unfold_last_hd.
@@ -90,7 +90,7 @@ Lemma filter_incl {A} (f : A -> bool) : forall s1 s2,
   incl s1 s2 ->
   incl (filter f s1) (filter f s2).
 Proof.
-  induction s1; intros; intro x; intros. 
+  induction s1; intros; intro x; intros.
   - inversion H0.
   - simpl in H0. destruct (f a) eqn:Hfa.
     + destruct H0.
@@ -140,7 +140,7 @@ Lemma filter_nil
   .
 Proof.
   induction l; try reflexivity.
-  assert (Hno_a := Hnone a). 
+  assert (Hno_a := Hnone a).
   assert (Hin_a : In a (a :: l)) by (left;reflexivity).
   specialize (Hno_a Hin_a).
   simpl. rewrite Hno_a.
@@ -160,7 +160,7 @@ Proof.
 Qed.
 
 Fixpoint inb {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (x : A) (xs : list A) :=
-  match xs with 
+  match xs with
   | [] => false
   | h::t => if Aeq_dec x h then true else inb Aeq_dec x t
   end.
@@ -181,7 +181,7 @@ Qed.
 
 Lemma in_correct {X} `{StrictlyComparable X} :
   forall (l : list X) (x : X),
-    In x l <-> inb compare_eq_dec x l = true. 
+    In x l <-> inb compare_eq_dec x l = true.
 Proof.
   intros s msg.
   apply in_function.
@@ -189,11 +189,11 @@ Qed.
 
 Lemma in_correct' {X} `{StrictlyComparable X} :
   forall (l : list X) (x : X),
-    ~ In x l <-> inb compare_eq_dec x l = false. 
+    ~ In x l <-> inb compare_eq_dec x l = false.
 Proof.
   intros s msg.
-  symmetry. apply mirror_reflect_curry. 
-  symmetry; now apply in_correct. 
+  symmetry. apply mirror_reflect_curry.
+  symmetry; now apply in_correct.
 Qed.
 
 Lemma map_injective : forall A B (f : A -> B),
@@ -220,7 +220,7 @@ Lemma existsb_forall {A} (f : A -> bool):
   forall l, existsb f l = false <-> forall x, In x l -> f x = false.
 Proof.
   induction l; split; intros.
-  - inversion H0. 
+  - inversion H0.
   - reflexivity.
   - inversion H. apply orb_false_iff in  H2. destruct H2 as [Hfa Hex]. rewrite Hfa.
     rewrite Hex. simpl. destruct H0 as [Heq | Hin]; subst; try assumption.
@@ -301,24 +301,24 @@ Definition compareb {A} `{StrictlyComparable A} (a1 a2 : A) : bool :=
   | _ => false
   end.
 
-Lemma is_member_correct {W} `{StrictlyComparable W} : forall l w, is_member w l = true <-> In w l. 
-Proof. 
+Lemma is_member_correct {W} `{StrictlyComparable W} : forall l w, is_member w l = true <-> In w l.
+Proof.
   intros l w.
   induction l as [|hd tl IHl].
-  - split; intro H'. 
-    + unfold is_member in H'; inversion H'.  
+  - split; intro H'.
+    + unfold is_member in H'; inversion H'.
     + inversion H'.
   - split; intro H'.
     + simpl in H'.
       destruct (compare w hd) eqn:Hcmp;
-        try (right; apply IHl; assumption ). 
+        try (right; apply IHl; assumption ).
       apply StrictOrder_Reflexive in Hcmp.
       left. symmetry; assumption.
     + apply in_inv in H'.
-      destruct H' as [eq | neq]. 
+      destruct H' as [eq | neq].
       rewrite eq.
       simpl.
-      rewrite compare_eq_refl. 
+      rewrite compare_eq_refl.
       reflexivity.
       rewrite <- IHl in neq.
       simpl. assert (H_dec := compare_eq_dec w hd).
@@ -328,14 +328,14 @@ Proof.
         assumption.
 Qed.
 
-Lemma is_member_correct' {W} `{StrictlyComparable W} : forall l w, is_member w l = false <-> ~ In w l. 
+Lemma is_member_correct' {W} `{StrictlyComparable W} : forall l w, is_member w l = false <-> ~ In w l.
 Proof.
-  intros. 
+  intros.
   apply mirror_reflect.
   intros; apply is_member_correct.
 Qed.
 
-Lemma In_app_comm {X} : forall l1 l2 (x : X), In x (l1 ++ l2) <-> In x (l2 ++ l1). 
+Lemma In_app_comm {X} : forall l1 l2 (x : X), In x (l1 ++ l2) <-> In x (l2 ++ l1).
 Proof.
   intros l1 l2 x; split; intro H_in;
   apply in_or_app; apply in_app_or in H_in;
@@ -521,7 +521,7 @@ Fixpoint list_annotate
   .
   destruct l as [| a l].
   - exact [].
-  - 
+  -
   exact ((exist P a (Forall_hd Hs)) :: list_annotate A P l (Forall_tl Hs)).
 Defined.
 
@@ -557,7 +557,7 @@ Lemma list_prefix_nth
   (s : list A)
   (n : nat)
   (i : nat)
-  (Hi : i < n)  
+  (Hi : i < n)
   : nth_error (list_prefix s n) i = nth_error s i
   .
 Proof.
@@ -585,7 +585,7 @@ Proof.
   induction n; intros [|a l] b Hnth; simpl.
   - inversion Hnth.
   - apply le_n_S. apply le_0_n.
-  - inversion Hnth. 
+  - inversion Hnth.
   - simpl in Hnth. apply le_n_S.
     specialize (IHn l b Hnth). assumption.
 Qed.
@@ -610,13 +610,13 @@ Proof.
     reflexivity.
   - constructor.
 Qed.
-  
+
 Lemma list_suffix_nth
   {A : Type}
   (s : list A)
   (n : nat)
   (i : nat)
-  (Hi : n <= i)  
+  (Hi : n <= i)
   : nth_error (list_suffix s n) (i - n) = nth_error s i
   .
 Proof.
@@ -695,7 +695,7 @@ Proof.
   induction l; intros [|n]; try reflexivity; simpl.
   apply IHl.
 Qed.
-  
+
 Lemma forall_finite
   {index : Type}
   {index_listing : list index}
@@ -721,7 +721,7 @@ Proof.
     destruct H as [n H].
     exists n.
     split; try assumption.
-    apply Hfinite_index.  
+    apply Hfinite_index.
   - rewrite Exists_exists in H.
     destruct H as [n [_ H]].
     exists n. assumption.

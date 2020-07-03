@@ -34,7 +34,7 @@ Lemma set_eq_empty
 Proof.
   intros.
   destruct l as [|hd tl].
-  - reflexivity. 
+  - reflexivity.
   - destruct H.
     spec H hd (in_eq hd tl).
     inversion H.
@@ -85,7 +85,7 @@ Qed.
 Fixpoint set_eq_fn_rec {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (s1 s2 : list A) : bool :=
   match s1 with
   | [] =>
-    match s2 with 
+    match s2 with
     | [] => true
     | _ => false
     end
@@ -342,7 +342,7 @@ Proof.
   - exfalso. inversion H1.
 Qed.
 
-Lemma set_map_injective {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) : 
+Lemma set_map_injective {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) :
   Injective f ->
   forall s s',
     set_eq (set_map Aeq_dec f s) (set_map Aeq_dec f s') -> set_eq s s'.
@@ -355,12 +355,12 @@ Qed.
 Lemma filter_set_add {X} `{StrictlyComparable X} :
   forall (l : list X) (f : X -> bool) (x : X),
     f x = false ->
-    filter f l = filter f (set_add compare_eq_dec x l). 
+    filter f l = filter f (set_add compare_eq_dec x l).
 Proof.
-  induction l as [|hd tl IHl]; intros f x H_false. 
+  induction l as [|hd tl IHl]; intros f x H_false.
   - simpl. rewrite H_false. reflexivity.
-  - simpl. spec IHl f x H_false. 
-    destruct (compare_eq_dec x hd). 
+  - simpl. spec IHl f x H_false.
+    destruct (compare_eq_dec x hd).
     + subst. rewrite H_false.
       simpl. rewrite H_false. reflexivity.
     + case_eq (f hd); intro H_eq;
@@ -371,13 +371,13 @@ Qed.
 Lemma set_add_ignore {X} `{StrictlyComparable X} :
   forall (l : list X) (x : X),
     In x l ->
-    set_add compare_eq_dec x l = l. 
+    set_add compare_eq_dec x l = l.
 Proof.
-  induction l as [|hd tl IHl]; intros x H_in. 
+  induction l as [|hd tl IHl]; intros x H_in.
   - inversion H_in.
   - inversion H_in.
     + subst. simpl.
-      destruct (compare_eq_dec x x). 
+      destruct (compare_eq_dec x x).
       reflexivity.
       contradiction.
     + spec IHl x H0. simpl.
@@ -420,7 +420,7 @@ Lemma set_remove_nodup_1 {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : fora
 Proof.
   induction s; intros.
   - constructor.
-  - simpl in H0 . destruct (Aeq_dec x a). 
+  - simpl in H0 . destruct (Aeq_dec x a).
     + subst. simpl in H. destruct (eq_dec_left Aeq_dec a). rewrite H1 in H. constructor; assumption.
     + apply not_in_cons in H0. destruct H0. simpl in H.
       destruct (eq_dec_right Aeq_dec x a H0).
@@ -451,7 +451,7 @@ Lemma set_eq_remove {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x 
   set_eq s1 s2 ->
   set_eq (set_remove Aeq_dec x s1) (set_remove Aeq_dec x s2).
 Proof.
-  intros. 
+  intros.
   destruct H1. split; intros a Hin
   ; apply set_remove_iff; try assumption
   ; apply set_remove_iff in Hin; try assumption; destruct Hin
@@ -541,12 +541,12 @@ Qed.
 
 Lemma add_remove_inverse {X} `{StrictlyComparable X}:
   forall (lv : list X) (v : X),
-    ~ In v lv -> 
-    set_remove compare_eq_dec v (set_add compare_eq_dec v lv) = lv. 
+    ~ In v lv ->
+    set_remove compare_eq_dec v (set_add compare_eq_dec v lv) = lv.
 Proof.
   induction lv as [|hd tl IHlv]; intros.
   - compute.
-    destruct (compare_eq_dec v v). 
+    destruct (compare_eq_dec v v).
     reflexivity. contradiction.
   - destruct (compare_eq_dec v hd).
     subst. exfalso; apply H0.
