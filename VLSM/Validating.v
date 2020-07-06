@@ -20,10 +20,10 @@ Context
     {IT : index -> VLSM_type message}
     {IS : forall i : index, LSM_sig (IT i)}
     (IM : forall n : index, VLSM (IS n))
-    (T := indexed_type IT)
-    (S := indexed_sig i0 IS)
+    (T := composite_type IT)
+    (S := composite_sig i0 IS)
     (constraint : @label _ T -> @state _ T * option message -> Prop)
-    (X := indexed_vlsm_constrained i0 IM constraint)
+    (X := composite_vlsm_constrained i0 IM constraint)
     (i : index)
     (valid_i := @valid _ _ _ (IM i))
     (projection_valid_i := projection_valid i0 IM constraint i)
@@ -137,7 +137,7 @@ and <<Preloaded>> be the [pre_loaded_vlsm] associated to component <<i>>.
 Section pre_loaded_validating_proj.
     Context
         (Hvalidating : validating_projection_prop)
-        (Proj := indexed_vlsm_constrained_projection i0 IM constraint i)
+        (Proj := composite_vlsm_constrained_projection i0 IM constraint i)
         (PreLoaded := pre_loaded_vlsm (IM i))
         .
 

@@ -15,12 +15,12 @@ Context
   {IT : index -> VLSM_type message}
   {IS : forall i : index, LSM_sig (IT i)}
   (IM : forall n : index, VLSM (IS n))
-  (T := indexed_type IT)
-  (S := indexed_sig i0 IS)
+  (T := composite_type IT)
+  (S := composite_sig i0 IS)
   (constraint : @label _ T -> @state _ T * option message -> Prop)
-  (X := indexed_vlsm_constrained i0 IM constraint)
+  (X := composite_vlsm_constrained i0 IM constraint)
   (j : index)
-  (Proj := indexed_vlsm_constrained_projection i0 IM constraint j)
+  (Proj := composite_vlsm_constrained_projection i0 IM constraint j)
   .
 
 Fixpoint finite_trace_projection_list
@@ -189,7 +189,7 @@ Proof.
       apply (protocol_generated _ _ _ _ Ps' _ _ Piom). split; assumption.
     }
     assert (Hps : protocol_state_prop X s) by (exists oom; assumption).
-    unfold indexed_valid in Hv.
+    unfold composite_valid in Hv.
     destruct (eq_dec j x).
     + subst x.
       simpl in Ht.

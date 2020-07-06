@@ -411,10 +411,10 @@ Section composite_validating_byzantine_traces.
             (i0 : index)
             {IS : forall i : index, LSM_sig (IT i)}
             (IM : forall n : index, VLSM (IS n))
-            (constraint : indexed_label IT -> indexed_state IT  * option message -> Prop)
-            (X := indexed_vlsm_constrained i0 IM constraint)
+            (constraint : composite_label IT -> composite_state IT  * option message -> Prop)
+            (X := composite_vlsm_constrained i0 IM constraint)
             (PreLoadedX := pre_loaded_vlsm X)
-            (FreeX := indexed_vlsm_free i0 IM)
+            (FreeX := composite_vlsm_free i0 IM)
             (Hvalidating: forall i : index, validating_projection_prop i0 IM constraint i)
             .
 

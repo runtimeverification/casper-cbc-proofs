@@ -7,34 +7,42 @@ Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
 From CasperCBC
      Require Import Lib.StreamExtras Lib.ListExtras Lib.Preamble VLSM.Common.
 
-(* Section 2.4 VLSM composition *)
+(**
+
+** VLSM compositions and projections
+
+This section provides Coq definitions for composite VLSMs and their projections
+to components.
+
+In the sequel we will succesively define 
+*)
 
 Section indexing.
 
-  Section indexed_type.
+  Section composite_type.
 
     Context {message : Type}
             {index : Type}
             {IndEqDec : EqDec index}
             (IT : index -> VLSM_type message).
 
-    Definition _indexed_state : Type :=
+    Definition _composite_state : Type :=
       forall n : index, (@state _ (IT n)).
 
-    Definition _indexed_label
+    Definition _composite_label
       : Type
       := sigT (fun n => @label _ (IT n)).
 
-    Definition indexed_type : VLSM_type message :=
-      {| state := _indexed_state
-       ; label := _indexed_label
+    Definition composite_type : VLSM_type message :=
+      {| state := _composite_state
+       ; label := _composite_label
       |}.
 
-    Definition indexed_state := @state message indexed_type.
-    Definition indexed_label := @label message indexed_type.
+    Definition composite_state := @state message composite_type.
+    Definition composite_label := @label message composite_type.
 
     Definition state_update
-               (s : indexed_state)
+               (s : composite_state)
                (i : index)
                (si : @state message (IT i))
                (j : index)
@@ -46,7 +54,7 @@ Section indexing.
       end.
 
     Lemma state_update_neq
-               (s : indexed_state)
+               (s : composite_state)
                (i : index)
                (si : @state message (IT i))
                (j : index)
@@ -57,7 +65,7 @@ Section indexing.
     Qed.
 
     Lemma state_update_eq
-               (s : indexed_state)
+               (s : composite_state)
                (i : index)
                (si : @state message (IT i))
       : state_update s i si i = si.
@@ -67,7 +75,7 @@ Section indexing.
     Qed.
 
     Lemma state_update_id
-               (s : indexed_state)
+               (s : composite_state)
                (i : index)
                (si : @state message (IT i))
                (Heq : s i = si)
@@ -81,7 +89,7 @@ Section indexing.
     Qed.
 
     Lemma state_update_twice
-               (s : indexed_state)
+               (s : composite_state)
                (i : index)
                (si si': @state message (IT i))
       : state_update (state_update s i si) i si' = state_update s i si'.
@@ -94,9 +102,9 @@ Section indexing.
         reflexivity.
     Qed.
 
-  End indexed_type.
+  End composite_type.
 
-  Section indexed_sig.
+  Section composite_sig.
 
     Context {message : Type}
             {index : Type}
@@ -105,43 +113,43 @@ Section indexing.
             (i0 : index)
             (IS : forall i : index, LSM_sig (IT i)).
 
-    Definition _indexed_initial_state_prop
-               (s : indexed_state IT)
+    Definition _composite_initial_state_prop
+               (s : composite_state IT)
       : Prop
       :=
         forall n : index, @initial_state_prop _ _ (IS n) (s n).
 
-    Definition _indexed_initial_state
-      := { s : indexed_state IT | _indexed_initial_state_prop s }.
+    Definition _composite_initial_state
+      := { s : composite_state IT | _composite_initial_state_prop s }.
 
-    Definition _indexed_s0 : _indexed_initial_state.
+    Definition _composite_s0 : _composite_initial_state.
       exists (fun (n : index) => proj1_sig (@s0 _ _ (IS n))).
       intro i. destruct s0 as [s Hs]. assumption.
     Defined.
 
-    Definition _indexed_initial_message_prop (m : message) : Prop
+    Definition _composite_initial_message_prop (m : message) : Prop
       :=
         exists (n : index) (mi : @initial_message _ _ (IS n)), proj1_sig mi = m.
 
     (* An explicit argument for the initial state witness is no longer required: *)
-    Definition _indexed_m0 : message := @m0 _ _ (IS i0).
+    Definition _composite_m0 : message := @m0 _ _ (IS i0).
 
-    Definition _indexed_l0 : indexed_label IT
+    Definition _composite_l0 : composite_label IT
       := existT _ i0 (@l0 _ _ (IS i0)) .
 
-    Definition indexed_sig
-      : LSM_sig (indexed_type IT)
+    Definition composite_sig
+      : LSM_sig (composite_type IT)
       :=
-        {|   initial_state_prop := _indexed_initial_state_prop
-           ; s0 := _indexed_s0
-           ; initial_message_prop := _indexed_initial_message_prop
-           ; m0 := _indexed_m0
-           ; l0 := _indexed_l0
+        {|   initial_state_prop := _composite_initial_state_prop
+           ; s0 := _composite_s0
+           ; initial_message_prop := _composite_initial_message_prop
+           ; m0 := _composite_m0
+           ; l0 := _composite_l0
         |}.
 
-  End indexed_sig.
+  End composite_sig.
 
-  Section indexed_vlsm.
+  Section composite_vlsm.
 
     Context {message : Type}
             {index : Type}
@@ -151,19 +159,19 @@ Section indexing.
             {IS : forall i : index, LSM_sig (IT i)}
             (IM : forall n : index, VLSM (IS n)).
 
-    Definition _indexed_transition
-               (l : indexed_label IT)
-               (som : indexed_state IT * option message)
-      : indexed_state IT * option message
+    Definition _composite_transition
+               (l : composite_label IT)
+               (som : composite_state IT * option message)
+      : composite_state IT * option message
       :=
       let (s, om) := som in
       let (i, li) := l in
       let (si', om') := transition li (s i, om) in
       (state_update IT s i si',  om').
 
-    Definition _indexed_valid
-               (l : indexed_label IT)
-               (som : indexed_state IT * option message)
+    Definition _composite_valid
+               (l : composite_label IT)
+               (som : composite_state IT * option message)
       : Prop
       :=
       let (s, om) := som in
@@ -172,36 +180,36 @@ Section indexing.
 
     (* Section 2.4.3 Constrained VLSM composition *)
 
-    Definition _indexed_valid_constrained
-               (constraint : indexed_label IT -> indexed_state IT  * option message -> Prop)
-               (l : indexed_label IT)
-               (som : indexed_state IT * option message)
+    Definition _composite_valid_constrained
+               (constraint : composite_label IT -> composite_state IT  * option message -> Prop)
+               (l : composite_label IT)
+               (som : composite_state IT * option message)
       :=
-        _indexed_valid l som /\ constraint l som.
+        _composite_valid l som /\ constraint l som.
 
-    Definition indexed_vlsm_constrained
-               (constraint : indexed_label IT -> indexed_state IT * option (message) -> Prop)
-      : VLSM (indexed_sig i0 IS)
+    Definition composite_vlsm_constrained
+               (constraint : composite_label IT -> composite_state IT * option (message) -> Prop)
+      : VLSM (composite_sig i0 IS)
       :=
-        {|  transition := _indexed_transition
-            ;   valid := _indexed_valid_constrained constraint
+        {|  transition := _composite_transition
+            ;   valid := _composite_valid_constrained constraint
         |}.
 
     Section constraint_subsumption.
 
     Definition constraint_subsumption
-        (constraint1 constraint2 : indexed_label IT -> indexed_state IT * option message -> Prop)
+        (constraint1 constraint2 : composite_label IT -> composite_state IT * option message -> Prop)
         :=
-        forall (l : indexed_label IT) (som : indexed_state IT * option message),
+        forall (l : composite_label IT) (som : composite_state IT * option message),
           constraint1 l som -> constraint2 l som.
 
     Context
-      (constraint1 constraint2 : indexed_label IT -> indexed_state IT * option message -> Prop)
+      (constraint1 constraint2 : composite_label IT -> composite_state IT * option message -> Prop)
       (Hsubsumption : constraint_subsumption constraint1 constraint2)
-      (X1 := indexed_vlsm_constrained constraint1)
-      (X2 := indexed_vlsm_constrained constraint2)
-      (S := indexed_sig i0 IS)
-      (T := indexed_type IT)
+      (X1 := composite_vlsm_constrained constraint1)
+      (X2 := composite_vlsm_constrained constraint2)
+      (S := composite_sig i0 IS)
+      (T := composite_type IT)
       .
 
     Lemma constraint_subsumption_protocol_valid
@@ -247,36 +255,36 @@ Section indexing.
 
     End constraint_subsumption.
 
-    Definition indexed_transition
-      (constraint : indexed_label IT -> indexed_state IT * option (message) -> Prop)
-      := @transition _ _ _ (indexed_vlsm_constrained constraint).
+    Definition composite_transition
+      (constraint : composite_label IT -> composite_state IT * option (message) -> Prop)
+      := @transition _ _ _ (composite_vlsm_constrained constraint).
 
-    Definition indexed_valid
-      (constraint : indexed_label IT -> indexed_state IT * option (message) -> Prop)
-      := @valid _ _ _ (indexed_vlsm_constrained constraint).
+    Definition composite_valid
+      (constraint : composite_label IT -> composite_state IT * option (message) -> Prop)
+      := @valid _ _ _ (composite_vlsm_constrained constraint).
 
     (* Section 2.4.3 Free VLSM composition using constraint = True *)
 
     Definition free_constraint
-               (l : indexed_label IT)
-               (som : indexed_state IT * option message)
+               (l : composite_label IT)
+               (som : composite_state IT * option message)
       : Prop
       :=
         True.
 
-    Definition indexed_vlsm_free : VLSM (indexed_sig i0 IS)
+    Definition composite_vlsm_free : VLSM (composite_sig i0 IS)
       :=
-        indexed_vlsm_constrained free_constraint
+        composite_vlsm_constrained free_constraint
     .
 
-    Lemma protocol_prop_indexed_free_lift
-      (S := (indexed_sig i0 IS))
+    Lemma protocol_prop_composite_free_lift
+      (S := (composite_sig i0 IS))
       (j : index)
       (sj : @state _ (IT j))
       (om : option message)
       (Hp : protocol_prop (IM j) (sj, om))
       (s0X := proj1_sig (@s0 _ _ S))
-      : protocol_prop indexed_vlsm_free ((state_update IT s0X j sj), om)
+      : protocol_prop composite_vlsm_free ((state_update IT s0X j sj), om)
       .
     Proof.
       remember (sj, om) as sjom.
@@ -293,7 +301,7 @@ Section indexing.
         }
         remember (exist (@initial_state_prop _ _ S) (state_update IT s0X j s) Hinit) as six.
         replace (state_update IT s0X j s) with (proj1_sig six); try (subst; reflexivity).
-        apply (protocol_initial_state indexed_vlsm_free).
+        apply (protocol_initial_state composite_vlsm_free).
       - assert (Hinit : @initial_message_prop _ _ S (proj1_sig im)).
         { exists j. exists im. reflexivity. }
         replace (state_update IT s0X j s) with s0X
@@ -302,11 +310,11 @@ Section indexing.
         destruct im as [m _H]; simpl in *; clear _H.
         remember (exist (@initial_message_prop _ _ S) m Hinit) as im.
         replace m with (proj1_sig im); try (subst; reflexivity).
-        apply (protocol_initial_message indexed_vlsm_free).
+        apply (protocol_initial_message composite_vlsm_free).
       - specialize (IHHp1 s _om eq_refl).
         specialize (IHHp2 _s om eq_refl).
-        replace (state_update IT s0X j sj, om0) with (@transition _ _ _ indexed_vlsm_free (existT _ j l) (state_update IT s0X j s, om)).
-        + apply (protocol_generated indexed_vlsm_free) with _om (state_update IT s0X j _s)
+        replace (state_update IT s0X j sj, om0) with (@transition _ _ _ composite_vlsm_free (existT _ j l) (state_update IT s0X j s, om)).
+        + apply (protocol_generated composite_vlsm_free) with _om (state_update IT s0X j _s)
           ; try assumption.
           split; try exact I.
           simpl. rewrite state_update_eq. assumption.
@@ -315,9 +323,9 @@ Section indexing.
           apply state_update_twice.
     Qed.
 
-  End indexed_vlsm.
+  End composite_vlsm.
 
-  Section indexed_vlsm_decidable.
+  Section composite_vlsm_decidable.
 
     Context {message : Type}
             {index : Type}
@@ -330,54 +338,54 @@ Section indexing.
 
     (* Composing decidable VLSMs *)
 
-    Definition _indexed_valid_decidable
-               (l : indexed_label IT)
-               (som : indexed_state IT * option message)
-      : {_indexed_valid IM l som} + {~_indexed_valid IM l som}.
+    Definition _composite_valid_decidable
+               (l : composite_label IT)
+               (som : composite_state IT * option message)
+      : {_composite_valid IM l som} + {~_composite_valid IM l som}.
       destruct som as [s om].
       destruct l as [i li]; simpl.
       apply (valid_decidable (IM i)).
     Defined.
 
-    Definition _indexed_valid_constrained_decidable
-               {constraint : indexed_label IT -> indexed_state IT * option message -> Prop}
-               (constraint_decidable : forall (l : indexed_label IT) (som : indexed_state IT * option (message)), {constraint l som} + {~constraint l som})
-               (l : indexed_label IT)
-               (som : indexed_state IT * option message)
-      : {indexed_valid i0 IM constraint l som} + {~indexed_valid i0 IM constraint l som}.
+    Definition _composite_valid_constrained_decidable
+               {constraint : composite_label IT -> composite_state IT * option message -> Prop}
+               (constraint_decidable : forall (l : composite_label IT) (som : composite_state IT * option (message)), {constraint l som} + {~constraint l som})
+               (l : composite_label IT)
+               (som : composite_state IT * option message)
+      : {composite_valid i0 IM constraint l som} + {~composite_valid i0 IM constraint l som}.
       intros.
       destruct (constraint_decidable l som) as [Hc | Hnc].
-      - destruct (_indexed_valid_decidable l som) as [Hv | Hnv].
+      - destruct (_composite_valid_decidable l som) as [Hv | Hnv].
         + left. split; try assumption.
         + right. intros [Hv _]. contradiction.
       - right. intros [_ Hc]. contradiction.
     Defined.
 
-    Definition indexed_vlsm_constrained_vdecidable
-               {constraint : indexed_label IT -> indexed_state IT * option message -> Prop}
-               (constraint_decidable : forall (l : indexed_label IT) (som : indexed_state IT * option (message)), {constraint l som} + {~constraint l som})
-      : VLSM_vdecidable (indexed_vlsm_constrained i0 IM constraint)
+    Definition composite_vlsm_constrained_vdecidable
+               {constraint : composite_label IT -> composite_state IT * option message -> Prop}
+               (constraint_decidable : forall (l : composite_label IT) (som : composite_state IT * option (message)), {constraint l som} + {~constraint l som})
+      : VLSM_vdecidable (composite_vlsm_constrained i0 IM constraint)
       :=
-        {|  valid_decidable := _indexed_valid_constrained_decidable constraint_decidable
+        {|  valid_decidable := _composite_valid_constrained_decidable constraint_decidable
         |}.
 
-    Definition indexed_valid_constrained_decidable
-               {constraint : indexed_label IT -> indexed_state IT * option (message) -> Prop}
-               (constraint_decidable : forall (l : indexed_label IT) (som : indexed_state IT * option (message)), {constraint l som} + {~constraint l som})
-      := @valid_decidable _ _ _ _ (indexed_vlsm_constrained_vdecidable constraint_decidable).
+    Definition composite_valid_constrained_decidable
+               {constraint : composite_label IT -> composite_state IT * option (message) -> Prop}
+               (constraint_decidable : forall (l : composite_label IT) (som : composite_state IT * option (message)), {constraint l som} + {~constraint l som})
+      := @valid_decidable _ _ _ _ (composite_vlsm_constrained_vdecidable constraint_decidable).
 
     Definition free_constraint_decidable
-               (l : indexed_label IT)
-               (som : indexed_state IT * option (message))
+               (l : composite_label IT)
+               (som : composite_state IT * option (message))
       : {free_constraint l som} + {~free_constraint l som}
       := left I.
 
-    Definition indexed_vlsm_free_vdecidable
-      : VLSM_vdecidable (indexed_vlsm_free i0 IM)
+    Definition composite_vlsm_free_vdecidable
+      : VLSM_vdecidable (composite_vlsm_free i0 IM)
       :=
-        indexed_vlsm_constrained_vdecidable free_constraint_decidable.
+        composite_vlsm_constrained_vdecidable free_constraint_decidable.
 
-  End indexed_vlsm_decidable.
+  End composite_vlsm_decidable.
 End indexing.
 
 (* Section 2.4.4 Projections into VLSM compositions *)
@@ -390,13 +398,13 @@ Section projections.
           {IT : index -> VLSM_type message}
           {IS : forall i : index, LSM_sig (IT i)}
           (IM : forall n : index, VLSM (IS n))
-          (T := indexed_type IT)
-          (S := indexed_sig i0 IS)
+          (T := composite_type IT)
+          (S := composite_sig i0 IS)
           (constraint : @label _ T -> @state _ T * option message -> Prop)
-          (X := indexed_vlsm_constrained i0 IM constraint)
+          (X := composite_vlsm_constrained i0 IM constraint)
           .
 
-  Definition indexed_vlsm_constrained_projection_sig (i : index) : LSM_sig (IT i)
+  Definition composite_vlsm_constrained_projection_sig (i : index) : LSM_sig (IT i)
     :=
       {|      initial_state_prop := @initial_state_prop _ _ (IS i)
           ;   initial_message_prop := fun pmi => exists xm : (@protocol_message _ _ _ X), proj1_sig xm = pmi
@@ -427,12 +435,12 @@ Section projections.
     destruct Hcomposite as [s [Hsi [_ [_ Hvalid]]]].
     subst; simpl in *.
     destruct Hvalid as [Hvalid Hconstraint].
-    unfold _indexed_valid in Hvalid. assumption.
+    unfold _composite_valid in Hvalid. assumption.
   Qed.
 
-  Definition indexed_vlsm_constrained_projection
+  Definition composite_vlsm_constrained_projection
              (i : index)
-    : VLSM (indexed_vlsm_constrained_projection_sig i) :=
+    : VLSM (composite_vlsm_constrained_projection_sig i) :=
     {|  transition :=  @transition _ _ _ (IM i)
      ;  valid := projection_valid i
     |}.
@@ -441,7 +449,7 @@ Section projections.
   
     Context
       (j : index)
-      (Proj := indexed_vlsm_constrained_projection j)
+      (Proj := composite_vlsm_constrained_projection j)
       .
   
     Lemma initial_state_projection
@@ -454,7 +462,7 @@ Section projections.
       assumption.
     Qed.
   
-    Lemma transition_projection : @transition _ _ (indexed_vlsm_constrained_projection_sig j) Proj = @transition _ _ _ (IM j).
+    Lemma transition_projection : @transition _ _ (composite_vlsm_constrained_projection_sig j) Proj = @transition _ _ _ (IM j).
     Proof. reflexivity.  Qed.
   
     Lemma protocol_message_projection
@@ -496,7 +504,7 @@ Section projections.
         remember
           (@transition _ _ _ X
             (@existT index (fun n : index => @label message (IT n)) j l)
-            (@pair (@state message (@indexed_type message index IT))
+            (@pair (@state message (@composite_type message index IT))
                (option message) sX om))
           as som'.
         destruct som' as [s' om'].
@@ -552,20 +560,20 @@ Section free_projections.
           {IT : index -> VLSM_type message}
           {IS : forall i : index, LSM_sig (IT i)}
           (IM : forall n : index, VLSM (IS n))
-          (X := indexed_vlsm_free i0 IM)
+          (X := composite_vlsm_free i0 IM)
           .
 
-  Definition indexed_vlsm_free_projection_sig
+  Definition composite_vlsm_free_projection_sig
              (i : index)
     : LSM_sig (IT i)
     :=
-      indexed_vlsm_constrained_projection_sig i0 IM free_constraint i.
+      composite_vlsm_constrained_projection_sig i0 IM free_constraint i.
 
-  Definition indexed_vlsm_free_projection
+  Definition composite_vlsm_free_projection
              (i : index)
-    : VLSM (indexed_vlsm_free_projection_sig i)
+    : VLSM (composite_vlsm_free_projection_sig i)
     :=
-      indexed_vlsm_constrained_projection i0 IM free_constraint i.
+      composite_vlsm_constrained_projection i0 IM free_constraint i.
 
 End free_projections.
 
@@ -609,13 +617,13 @@ Section binary_composition.
     end.
 
   Definition binary_free_composition
-    : VLSM (indexed_sig first binary_IS)
-    := indexed_vlsm_free first binary_IM.
+    : VLSM (composite_sig first binary_IS)
+    := composite_vlsm_free first binary_IM.
 
   Definition binary_free_composition_fst
-    := indexed_vlsm_free_projection first binary_IM  first.
+    := composite_vlsm_free_projection first binary_IM  first.
 
   Definition binary_free_composition_snd
-    := indexed_vlsm_free_projection first binary_IM  second.
+    := composite_vlsm_free_projection first binary_IM  second.
 
 End binary_composition.

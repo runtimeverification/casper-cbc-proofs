@@ -660,7 +660,7 @@ Section Full.
   specialize (@F1 nlst). rewrite nlst_S. intro; assumption.
   Defined.
 
-  Definition VLSM_full_composed : VLSM (indexed_sig f1_n_plus_n' IS_index)
-    := indexed_vlsm_free f1_n_plus_n' IM_index.
+  Definition VLSM_full_composed : VLSM (composite_sig f1_n_plus_n' IS_index)
+    := composite_vlsm_free f1_n_plus_n' IM_index.
 
 End Full.

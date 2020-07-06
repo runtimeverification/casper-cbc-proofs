@@ -101,8 +101,8 @@ Section CommuteIndexed.
     {IS : forall i : index, LSM_sig (IT i)}
     (Hi : index)
     (IM : forall i : index, VLSM (IS i))
-    (constraint : indexed_label IT -> indexed_state IT * option message -> Prop)
-    (X := indexed_vlsm_constrained Hi IM constraint)
+    (constraint : composite_label IT -> composite_state IT * option message -> Prop)
+    (X := composite_vlsm_constrained Hi IM constraint)
     (ID : forall i : index, decision (IT i)).
 
   (* 3.2.2 Decision consistency *)
@@ -111,7 +111,7 @@ Section CommuteIndexed.
       forall (tr : protocol_trace X),
       forall (n1 n2 : nat),
       forall (j k : index),
-      forall (s1 s2 : @state _ (indexed_type IT)),
+      forall (s1 s2 : @state _ (composite_type IT)),
       forall (c1 c2 : C),
       j <> k ->
       trace_nth (proj1_sig tr) n1 = (Some s1) ->
@@ -127,7 +127,7 @@ Section CommuteIndexed.
       forall (tr : protocol_trace X),
       forall (n1 n2 : nat),
       forall (j k : index),
-      forall (s1 s2 : @state _ (indexed_type IT)),
+      forall (s1 s2 : @state _ (composite_type IT)),
       forall (c1 c2 : C),
       trace_nth (proj1_sig tr) n1 = (Some s1) ->
       trace_nth (proj1_sig tr) n2 = (Some s2) ->
@@ -137,7 +137,7 @@ Section CommuteIndexed.
 
   Lemma final_and_consistent_implies_final :
       final_and_consistent ->
-      forall i : index, final (indexed_vlsm_constrained_projection Hi IM constraint i) (ID i).
+      forall i : index, final (composite_vlsm_constrained_projection Hi IM constraint i) (ID i).
 
   Proof.
     unfold final_and_consistent.
@@ -149,7 +149,7 @@ Section CommuteIndexed.
   Definition live :=
     forall (tr : @Trace _ (type X)),
       complete_trace_prop X tr ->
-      exists (s : @state _ (indexed_type IT)) (n : nat) (i : index) (c : C),
+      exists (s : @state _ (composite_type IT)) (n : nat) (i : index) (c : C),
         trace_nth tr n = Some s /\
         (ID i) (s i) = Some c.
 
@@ -169,14 +169,14 @@ Section Estimators.
     (IS : forall i : index, LSM_sig (IT i))
     (IM : forall i : index, VLSM (IS i))
     (Hi : index)
-    (constraint : indexed_label IT -> indexed_state IT * option message -> Prop)
-    (X := indexed_vlsm_constrained Hi IM constraint)
+    (constraint : composite_label IT -> composite_state IT * option message -> Prop)
+    (X := composite_vlsm_constrained Hi IM constraint)
     (ID : forall i : index, decision (IT i))
     (IE : forall i : index, Estimator (@state _ (IT i)) C).
 
   Definition decision_estimator_property
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+    (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
     (Ei := @estimator _ _ (IE i))
     := forall
       (psigma : protocol_state Xi)
@@ -192,7 +192,7 @@ Section Estimators.
 
   Lemma estimator_only_has_decision
      (i : index)
-     (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+     (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
      (Ei := @estimator _ _ (IE i))
       : decision_estimator_property i ->
       forall (s : protocol_state Xi) (c c_other : C), (ID i (proj1_sig s)) = (Some c) ->
@@ -209,7 +209,7 @@ Section Estimators.
 
   Lemma estimator_surely_has_decision
      (i : index)
-     (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+     (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
      (Ei := @estimator _ _ (IE i))
       : decision_estimator_property i ->
       forall (s : protocol_state Xi) (c : C), (ID i (proj1_sig s)) = (Some c) ->
@@ -244,7 +244,7 @@ Section Estimators.
 
   Theorem decision_estimator_finality
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+    (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
     : decision_estimator_property i -> final Xi (ID i).
   Proof.
     intros.
