@@ -18,4 +18,5 @@ VLSM/Common.v
 VLSM/Composition.v
 VLSM/Decisions.v
 VLSM/FullNode.v
+VLSM/ProjectionTraces.v
 VLSM/Validating.v
