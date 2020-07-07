@@ -2,10 +2,9 @@ Require Import FinFun Streams.
 From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
 
-(**
-* Byzantine traces. Definition and basic properties
+(** * Byzantine Traces
 
-In this section we introduce two definitions for byzantine traces,
+In this section, we introduce two definitions of Byzantine traces,
 then show them equivalent (Lemma [byzantine_alt_byzantine_iff]),
 and equivalent with traces on the corresponding pre-loaded VLSM
 (Lemmas [byzantine_pre_loaded] and [pre_loaded_alt_eq]).
@@ -17,9 +16,11 @@ Therefore to avoid confusion we will call _proper byzantine traces_,
 or _traces exhibiting byzantine behavior_ the collection of traces with
 the [byzantine_trace_prop]erty but without the [protocol_trace_prop]erty.
 
-In the remainder of this section we fix a (regular) VLSM <<M>> with
+In the remainder of this section, we fix a (regular) VLSM <<M>> with
 signature <<S>> and of type <<T>>.
 *)
+
+(** ** Definition and basic properties *)
 
 Section ByzantineTraces.
 Context
@@ -73,9 +74,7 @@ Proof.
     assumption.
 Qed.
 
-(**
-
-* An alternative definition for byzantine traces
+(** ** An alternative definition
 
 The [alternate_byzantine_trace_prop]erty relies on the composition
 of the VLSM with a special VLSM which can produce all messages.
@@ -180,8 +179,7 @@ Proof.
     assumption.
 Qed.
 
-(**
-* Equivalence between the two byzantine trace definitions
+(** ** Equivalence between the two Byzantine trace definitions
 
 In this section we prove that the [alternate_byzantine_trace_prop]erty is
 equivalent to the [byzantine_trace_prop]erty.
@@ -386,8 +384,7 @@ Qed.
 
 End ByzantineTraces.
 
-(**
-* Composite validating byzantine traces are free
+(** ** Composite-validating Byzantine traces are free
 
 In this section we show that if all components of a composite VLSM <<X>> have
 the [validating_projection_prop]erty, then its byzantine traces
