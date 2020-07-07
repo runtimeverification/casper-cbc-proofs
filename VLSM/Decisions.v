@@ -20,7 +20,7 @@ Section CommuteSingleton.
   Context
     {message : Type}
     {T : VLSM_type message}
-    {S : LSM_sig T}
+    {S : VLSM_sign T}
     {CV : consensus_values}
     (V : VLSM S).
 
@@ -98,11 +98,11 @@ Section CommuteIndexed.
     {Heqd : EqDec index}
     {message : Type}
     {IT : index -> VLSM_type message}
-    {IS : forall i : index, LSM_sig (IT i)}
+    {IS : forall i : index, VLSM_sign (IT i)}
     (Hi : index)
     (IM : forall i : index, VLSM (IS i))
     (constraint : composite_label IT -> composite_state IT * option message -> Prop)
-    (X := composite_vlsm_constrained Hi IM constraint)
+    (X := composite_vlsm Hi IM constraint)
     (ID : forall i : index, decision (IT i)).
 
   (* 3.2.2 Decision consistency *)
@@ -166,11 +166,11 @@ Section Estimators.
     {Heqd : EqDec index}
     {message : Type}
     {IT : index -> VLSM_type message}
-    (IS : forall i : index, LSM_sig (IT i))
+    (IS : forall i : index, VLSM_sign (IT i))
     (IM : forall i : index, VLSM (IS i))
     (Hi : index)
     (constraint : composite_label IT -> composite_state IT * option message -> Prop)
-    (X := composite_vlsm_constrained Hi IM constraint)
+    (X := composite_vlsm Hi IM constraint)
     (ID : forall i : index, decision (IT i))
     (IE : forall i : index, Estimator (@state _ (IT i)) C).
 

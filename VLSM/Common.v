@@ -5,14 +5,14 @@ From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
 
 (**
-* Basic VLSM infrastructure
+This module provides basic VLSM infrastructure
 *)
 
 (**
 
-** VLSM definition
+* VLSM definition
 
-*** The type of a VLSM
+** The type of a VLSM
 
 The type of a VLSM is a triple consisting of the undelying types of
 messages, states, and labels.
@@ -29,24 +29,24 @@ easily shared by multiple VLSMs during composition.
 
 (**
 
-*** The signature of a VLSM
+** The signature of a VLSM
 
 Although the VLSM definition does not single out the notion of a VLSM
-signature, we find it convenient to extract it as the [LSM_sig] class.
+signature, we find it convenient to extract it as the [VLSM_sign] class.
 
-The [LSM_sig] class is parameterized by a [VLSM_type] and defines properties
+The [VLSM_sign] class is parameterized by a [VLSM_type] and defines properties
 for initial states ([initial_state_prop]) and initial messages
 ([initial_message_prop]), from which we can immediately define the dependent
 types [initial_state] (as [state]s having the [initial_state_prop]erty) and
 [intial_message] (as <<message>>s having the [initial_message_prop]erty).
 
-Additionally, [LSM_sig] requires the identification of an [initial_state] [s0],
+Additionally, [VLSM_sign] requires the identification of an [initial_state] [s0],
 a <<message>> [m0], and a [label] [l0] to ensure the non-emptiness of the
 corresponding sets.
 
 *)
 
-  Class LSM_sig {message : Type} (vtype : VLSM_type message) :=
+  Class VLSM_sign {message : Type} (vtype : VLSM_type message) :=
     { initial_state_prop : state -> Prop
     ; initial_state := { s : state | initial_state_prop s }
     ; initial_message_prop : message -> Prop
@@ -58,21 +58,21 @@ corresponding sets.
 
 (**
 
-*** VLSM class definition
+** VLSM class definition
 
-Given a V[LSM_sig]nature, a [VLSM] is defined by providing a [transition]
+Given a V[VLSM_sign]nature, a [VLSM] is defined by providing a [transition]
 function and a [valid]ity condition.
 
 *)
 
-  Class VLSM {message : Type} {vtype : VLSM_type message} (lsm : LSM_sig vtype) :=
+  Class VLSM {message : Type} {vtype : VLSM_type message} (lsm : VLSM_sign vtype) :=
     { transition : label -> state * option message -> state * option message
     ; valid : label -> state * option message -> Prop
     }.
 
 (**
 
-Given a [VLSM], it is convenient to be able to retrieve its V[LSM_sig]nature
+Given a [VLSM], it is convenient to be able to retrieve its V[VLSM_sign]nature
 or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
 
 *)
@@ -80,14 +80,14 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition sign
     {message : Type}
     {vtype : VLSM_type message}
-    {Sig : LSM_sig vtype}
+    {Sig : VLSM_sign vtype}
     (vlsm : VLSM Sig)
     := Sig.
 
   Definition type
     {message : Type}
     {vtype : VLSM_type message}
-    {Sig : LSM_sig vtype}
+    {Sig : VLSM_sign vtype}
     (vlsm : VLSM Sig)
     := vtype.
 
@@ -101,14 +101,14 @@ In this section we assume a fixed [VLSM].
     Context
       {message : Type}
       {vtype : VLSM_type message}
-      {Sig : LSM_sig vtype}
+      {Sig : VLSM_sign vtype}
       (vlsm : VLSM Sig).
 
 
 
 (**
 
-*** Protocol states and messages
+** Protocol states and messages
 
 We further characterize certain objects as being _protocol_, which means they can
 be witnessed or experienced during executions of the protocol. For example,
@@ -202,11 +202,8 @@ to define a protocol message property for optional messages:
     Qed.
 
 (**
-**** Recovering the mutually-recursive definitions as lemmas
 
-The definition and results below show that the mutually-recursive definitions
-for [protocol_state]s and [protocol_message]s can be derived from the
-prior definitions.
+** Protocol validity and protocol transitions
 
 To achieve this, it is useful to further define _protocol_ validity and
 _protocol_ transitions:
@@ -223,24 +220,6 @@ _protocol_ transitions:
       /\ valid l (s,om)
       .
 
-(* begin hide *)
-    Lemma protocol_generated_valid
-      {l : label}
-      {s : state}
-      {_om : option message}
-      {_s : state}
-      {om : option message}
-      (Hps : protocol_prop (s, _om))
-      (Hpm : protocol_prop (_s, om))
-      (Hv : valid l (s, om))
-      : protocol_valid l (s, om)
-      .
-    Proof.
-      repeat split; try assumption.
-      - exists _om. assumption.
-      - exists _s. assumption.
-    Qed.
-(* end hide *)
 
     Definition protocol_transition
       (l : label)
@@ -251,7 +230,10 @@ _protocol_ transitions:
       /\  transition l som = som'
       .
 
-(* begin hide *)
+(**
+  Next three lemmas show the two definitions above are strongly related.
+*)
+
     Lemma protocol_transition_valid
       (l : label)
       (som : state * option message)
@@ -273,6 +255,44 @@ _protocol_ transitions:
     Proof.
       exists (transition l som).
       repeat split; assumption.
+    Qed.
+
+    Lemma protocol_valid_transition_iff
+      (l : label)
+      (som : state * option message)
+      : protocol_valid l som
+      <-> exists (som' : state * option message),
+            protocol_transition l som som'
+      .
+    Proof.
+      split.
+      - apply protocol_valid_transition.
+      - intros [som' Hpt].
+        apply protocol_transition_valid with som'.
+        assumption.
+    Qed.
+
+(**
+
+The next couple of lemmas relate the two definitions above with 
+pre-existing concepts.
+
+*)
+    Lemma protocol_generated_valid
+      {l : label}
+      {s : state}
+      {_om : option message}
+      {_s : state}
+      {om : option message}
+      (Hps : protocol_prop (s, _om))
+      (Hpm : protocol_prop (_s, om))
+      (Hv : valid l (s, om))
+      : protocol_valid l (s, om)
+      .
+    Proof.
+      repeat split; try assumption.
+      - exists _om. assumption.
+      - exists _s. assumption.
     Qed.
 
     Lemma protocol_transition_origin
@@ -375,28 +395,14 @@ _protocol_ transitions:
       apply (protocol_prop_transition_out Ht).
     Qed.
 
-(* end hide *)
-
 (**
-  It can easily be seen that these two notions are strongly related.
-*)
 
-    Lemma protocol_valid_transition_iff
-      (l : label)
-      (som : state * option message)
-      : protocol_valid l som
-      <-> exists (som' : state * option message),
-            protocol_transition l som som'
-      .
-    Proof.
-      split.
-      - apply protocol_valid_transition.
-      - intros [som' Hpt].
-        apply protocol_transition_valid with som'.
-        assumption.
-    Qed.
+** Protocol state and protocol message characterization
 
-(**
+The definition and results below show that the mutually-recursive definitions
+for [protocol_state]s and [protocol_message]s can be derived from the
+prior definitions.
+
 The results below offers equivalent characterizations for [protocol_state]s
 and [protocol_message]s, similar to their recursive definition.
 *)
@@ -446,7 +452,7 @@ and [protocol_message]s, similar to their recursive definition.
     Qed.
 
 (**
-** Traces
+* Traces
 
 We introduce the concept of a trace to formalize an execution of the protocol.
 It is abstracted as a pair <<(start, steps)>> where <<start>> is a state
@@ -473,16 +479,15 @@ as it is implied by the preceding [transition_item] (or by the <<start>> state,
 if such an item doesn't exist).
 *)
 
-(* *)
-
 (**
 We will now split our groundwork for defining traces into the finite case and
 the infinite case.
 *)
 
-(* *)
-
 (**
+
+** Finite [protocol_trace]s
+
 A [finite_protocol_trace_from] a [state] <<start>> is a pair <<(start, steps)>> where <<steps>>
 is a list of [transition_item]s, and is inductively defined by:
 - <<(s, [])>> is a [finite_protocol_trace_from] <<s>>
@@ -507,7 +512,19 @@ for infinite traces, which can only be extended at the front.
           protocol_transition l (s', iom) (s, oom) ->
           finite_protocol_trace_from  s' ({| l := l; input := iom; destination := s; output := oom |} :: tl).
 
-(* begin hide *)
+(**
+To complete our definition of a finite protocol trace, we must also guarantee that <<start>> is an
+initial state according to the protocol.
+*)
+
+    Definition finite_protocol_trace (s : state) (ls : list transition_item) : Prop :=
+      finite_protocol_trace_from s ls /\ initial_state_prop s.
+
+(**
+In the remainder of the section we provide various results allowing us to
+decompose the above properties in proofs.
+*)
+
     Lemma finite_ptrace_first_valid_transition
           (s : state)
           (tr : list transition_item)
@@ -555,17 +572,7 @@ for infinite traces, which can only be extended at the front.
         intros tr Heq is Htr; subst. inversion Htr; subst.
         simpl in IHtr1. specialize (IHtr1 s H2). assumption.
     Qed.
-(* end hide *)
 
-(**
-To complete our definition of a finite protocol trace, we must also guarantee that <<start>> is an
-initial state according to the protocol.
-*)
-
-    Definition finite_protocol_trace (s : state) (ls : list transition_item) : Prop :=
-      finite_protocol_trace_from s ls /\ initial_state_prop s.
-
-        (* begin hide *)
     Lemma extend_right_finite_trace_from
       : forall s1 ts s3 iom3 oom3 l3 (s2 := List.last (List.map destination ts) s1),
         finite_protocol_trace_from s1 ts ->
@@ -591,7 +598,6 @@ initial state according to the protocol.
         eapply remove_hd_last.
     Qed.
 
-    (* end hide *)
 
 (**
 We can now prove several general properties of [finite_protocol_trace]s. For example,
@@ -630,9 +636,9 @@ is equal to the former's last state, it is possible to _concatenate_ them into a
     Qed.
 
 (** Several other lemmas in this vein are necessary for proving results regarding
-traces, but we choose to omit them here, as they are not essential to our exposition. *)
+traces.
+*)
 
-    (* begin hide *)
     Lemma finite_protocol_trace_from_prefix
       (s : state)
       (ls : list transition_item)
@@ -691,7 +697,10 @@ traces, but we choose to omit them here, as they are not essential to our exposi
         rewrite list_prefix_map.
         rewrite list_prefix_nth; assumption.
     Qed.
-    (* end hide *)
+
+(**
+** Infinite [protcol_trace]s
+*)
 
 (** We now define [infinite_protocol_trace]s. The definitions
 resemble their finite counterparts, adapted to the technical
@@ -707,7 +716,13 @@ stored as a stream, as opposed to a list.
           protocol_transition l (s', iom) (s, oom) ->
           infinite_protocol_trace_from  s' (Cons {| l := l; input := iom; destination := s; output := oom |}  tl).
 
-    (* begin hide *)
+    Definition infinite_ptrace (s : state) (st : Stream transition_item)
+      := infinite_protocol_trace_from s st /\ initial_state_prop s.
+
+(**
+As for the finite case, the following lemmas help decompose teh above
+definitions, mostly reducing them to properties about their finite segments.
+*)      
     Lemma infinite_ptrace_consecutive_valid_transition
           (is : state)
           (tr tr2 : Stream transition_item)
@@ -813,12 +828,10 @@ stored as a stream, as opposed to a list.
         reflexivity.
     Qed.
 
-    (* end hide *)
-
-    Definition infinite_ptrace (s : state) (st : Stream transition_item)
-      := infinite_protocol_trace_from s st /\ initial_state_prop s.
-
 (**
+
+** Protocol traces
+
 Finally, we define [Trace] as a sum-type of its finite/infinite variants.
 It inherits some previously introduced definitions, culminating with the
 [protocol_trace].
@@ -841,19 +854,20 @@ It inherits some previously introduced definitions, culminating with the
         | Infinite _ _ => None
         end.
 
-    Definition protocol_trace_prop (tr : Trace) : Prop :=
-      match tr with
-      | Finite s ls => finite_protocol_trace s ls
-      | Infinite s sm => infinite_ptrace s sm
-      end.
-
     Definition ptrace_from_prop (tr : Trace) : Prop :=
       match tr with
       | Finite s ls => finite_protocol_trace_from s ls
       | Infinite s sm => infinite_protocol_trace_from s sm
       end.
 
-    (* begin hide *)
+    Definition protocol_trace_prop (tr : Trace) : Prop :=
+      match tr with
+      | Finite s ls => finite_protocol_trace s ls
+      | Infinite s sm => infinite_ptrace s sm
+      end.
+
+    Definition protocol_trace : Type :=
+      { tr : Trace | protocol_trace_prop tr}.
 
     Lemma protocol_trace_from
       (tr : Trace)
@@ -886,10 +900,6 @@ It inherits some previously introduced definitions, culminating with the
       - destruct tr; simpl; intros [Htr Hinit]; split; assumption.
     Qed.
 
-    (* end hide *)
-
-    Definition protocol_trace : Type :=
-      { tr : Trace | protocol_trace_prop tr}.
     (* begin hide *)
     (* Protocol runs *)
     Record proto_run : Type := mk_proto_run
@@ -1489,16 +1499,11 @@ that contains it as a prefix.
                 | Some msg => equivocation msg (fst som) -> False
                 end.
 
-    (* Decidable VLSMs *)
-
-    Class VLSM_vdecidable :=
-      { valid_decidable : forall l som, {valid l som} + {~valid l som}
-      }.
 (* end hide *)
   End VLSM.
 
 (**
-*** VLSM Inclusion and Equality.
+** VLSM Inclusion and Equality.
 
 We can also define VLSM _inclusion_  and _equality_ in terms of traces.
 - VLSM X is _included_ in VLSM Y if every [protocol_trace] available to X
@@ -1513,7 +1518,7 @@ is also available to Y.
 
 
     Definition VLSM_eq
-      {SigX SigY: LSM_sig vtype}
+      {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
       :=
       forall t : Trace,
@@ -1521,7 +1526,7 @@ is also available to Y.
       .
 
     Definition VLSM_incl
-      {SigX SigY: LSM_sig vtype}
+      {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
       :=
       forall t : Trace,
@@ -1531,7 +1536,7 @@ is also available to Y.
     (* begin hide *)
 
     Lemma VLSM_eq_incl_l
-      {SigX SigY: LSM_sig vtype}
+      {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
       : VLSM_eq X Y -> VLSM_incl X Y
       .
@@ -1543,7 +1548,7 @@ is also available to Y.
     Qed.
 
     Lemma VLSM_eq_incl_r
-      {SigX SigY: LSM_sig vtype}
+      {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
       : VLSM_eq X Y -> VLSM_incl Y X
       .
@@ -1555,7 +1560,7 @@ is also available to Y.
     Qed.
 
     Lemma VLSM_eq_incl_iff
-      {SigX SigY: LSM_sig vtype}
+      {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
       : VLSM_eq X Y <-> VLSM_incl X Y /\ VLSM_incl Y X
       .
@@ -1591,7 +1596,7 @@ Section basic_VLSM_incl.
 Context
   {message : Type}
   {T : VLSM_type message}
-  {SX SY : LSM_sig T}
+  {SX SY : VLSM_sign T}
   (X : VLSM SX)
   (Y : VLSM SY)
   (Hinitial_state :
@@ -1718,7 +1723,7 @@ Qed.
 End basic_VLSM_incl.
 
 (**
-*** Pre-loaded VLSMs
+** Pre-loaded VLSMs
 
 Given a VLSM <<X>>, we introduce the _pre-loaded_ version of it,
 which is identical to <<X>>, except that it is endowed with the
@@ -1733,12 +1738,12 @@ Byzantine fault tolerance analysis. *)
     Context
       {message : Type}
       {vtype : VLSM_type message}
-      {Sig : LSM_sig vtype}
+      {Sig : VLSM_sign vtype}
       .
 
   Definition pre_loaded_vlsm_sig
     (X : VLSM Sig)
-    : LSM_sig vtype
+    : VLSM_sign vtype
     :=
     {| initial_state_prop := @initial_state_prop _ _ Sig
      ; initial_message_prop := fun message => True

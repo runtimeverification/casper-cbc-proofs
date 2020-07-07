@@ -13,19 +13,19 @@ Context
   {IndEqDec : EqDec index}
   (i0 : index)
   {IT : index -> VLSM_type message}
-  {IS : forall i : index, LSM_sig (IT i)}
+  {IS : forall i : index, VLSM_sign (IT i)}
   (IM : forall n : index, VLSM (IS n))
   (T := composite_type IT)
   (S := composite_sig i0 IS)
   (constraint : @label _ T -> @state _ T * option message -> Prop)
-  (X := composite_vlsm_constrained i0 IM constraint)
+  (X := composite_vlsm i0 IM constraint)
   (j : index)
-  (Proj := composite_vlsm_constrained_projection i0 IM constraint j)
+  (Xj := composite_vlsm_constrained_projection i0 IM constraint j)
   .
 
 Fixpoint finite_trace_projection_list
   (trx : list (@transition_item _ T))
-  : list (@transition_item _ (type Proj))
+  : list (@transition_item _ (type Xj))
   :=
   match trx with
   | [] => []
@@ -37,7 +37,7 @@ Fixpoint finite_trace_projection_list
     match eq_dec j x with
     | left e =>
       let lj := eq_rect_r _ (projT2 l) e in
-      @Build_transition_item _ (type Proj) lj (input item) (s j) (output item) :: tail
+      @Build_transition_item _ (type Xj) lj (input item) (s j) (output item) :: tail
     | _ => tail
     end
   end.
@@ -61,7 +61,7 @@ Definition finite_trace_projection_list_alt
     (fun item : {a : @transition_item _ T | from_projection a} =>
       let (item, e) := item in
       let lj := eq_rect_r _ (projT2 (l item)) e in
-      @Build_transition_item _ (type Proj)
+      @Build_transition_item _ (type Xj)
         lj
         (input item)
         (destination item j)
@@ -175,10 +175,10 @@ Qed.
 
 Lemma finite_ptrace_projection
   (s : @state _ T)
-  (Psj : protocol_state_prop Proj (s j))
+  (Psj : protocol_state_prop Xj (s j))
   (trx : list (@transition_item _ T))
   (Htr : finite_protocol_trace_from X s trx)
-   : finite_protocol_trace_from Proj (s j) (finite_trace_projection_list trx).
+   : finite_protocol_trace_from Xj (s j) (finite_trace_projection_list trx).
 Proof.
   induction Htr.
   - constructor. assumption.
@@ -199,12 +199,12 @@ Proof.
       constructor.
       * apply IHHtr.
         exists oom.
-        assert (Ht' : @transition _ _ _ Proj lx (s' j, iom) = (si', oom))
+        assert (Ht' : @transition _ _ _ Xj lx (s' j, iom) = (si', oom))
           by assumption.
         rewrite <- Ht'.
         destruct Psj as [os'j Psj].
         specialize (protocol_message_projection i0 IM constraint j _ Piom); intros [sj HPjiom].
-        apply (protocol_generated Proj lx (s' j) os'j Psj sj iom HPjiom).
+        apply (protocol_generated Xj lx (s' j) os'j Psj sj iom HPjiom).
         unfold valid; simpl.
         exists s'.
         split; try reflexivity.
@@ -232,7 +232,7 @@ Qed.
 Lemma protocol_state_projection
   (s : state)
   (Hps : protocol_state_prop X s)
-  : protocol_state_prop Proj (s j)
+  : protocol_state_prop Xj (s j)
   .
 Proof.
   destruct Hps as [om Hps].
@@ -247,18 +247,18 @@ Proof.
   specialize (finite_ptrace_projection start); intro Hproj.
   assert (Hstartj : initial_state_prop (start j)) by apply Hinit.
   remember (exist _ (start j) Hstartj) as istartj.
-  assert (Hpstartj : protocol_state_prop Proj (start j)).
+  assert (Hpstartj : protocol_state_prop Xj (start j)).
   { exists None.
-    specialize (protocol_initial_state Proj istartj); subst; simpl; intro Hpinit.
+    specialize (protocol_initial_state Xj istartj); subst; simpl; intro Hpinit.
     assumption.
   }
   specialize (Hproj Hpstartj _ Htrace).
-  specialize (trace_is_run Proj istartj (finite_trace_projection_list transitions))
+  specialize (trace_is_run Xj istartj (finite_trace_projection_list transitions))
   ; subst istartj; simpl; intro Hrun.
   specialize (Hrun Hproj).
   destruct Hrun as [run [Hrun [Hstart Htrans]]].
-  specialize (run_is_protocol Proj (exist _ run Hrun)); simpl; intro Hps.
-  specialize (vlsm_run_last_state Proj (exist _ run Hrun)); simpl; intros Hlast'.
+  specialize (run_is_protocol Xj (exist _ run Hrun)); simpl; intro Hps.
+  specialize (vlsm_run_last_state Xj (exist _ run Hrun)); simpl; intros Hlast'.
   rewrite Htrans in Hlast'. rewrite Hstart in Hlast'. simpl in Hlast'.
   destruct (final run) as (s', om). simpl in Hlast'.
   exists om.
@@ -297,7 +297,7 @@ Definition infinite_trace_projection_stream
     (fun item : {a : @transition_item _ T | from_projection a} =>
       let (item, e) := item in
       let lj := eq_rect_r _ (projT2 (l item)) e in
-      @Build_transition_item _ (type Proj) lj (input item) (destination item j) (output item)
+      @Build_transition_item _ (type Xj) lj (input item) (destination item j) (output item)
     )
     subsP.
 
@@ -389,11 +389,11 @@ Qed.
 Lemma infinite_ptrace_projection
   (s: @state _ T)
   (ss: Stream transition_item)
-  (Psj: protocol_state_prop Proj (s j))
+  (Psj: protocol_state_prop Xj (s j))
   (Htr: infinite_protocol_trace_from X s ss)
   (fs : monotone_nat_stream)
   (Hfs: filtering_subsequence from_projection ss fs)
-  : infinite_protocol_trace_from Proj (s j) (infinite_trace_projection_stream ss fs Hfs)
+  : infinite_protocol_trace_from Xj (s j) (infinite_trace_projection_stream ss fs Hfs)
   .
 Proof.
   apply infinite_protocol_trace_from_prefix_rev.
@@ -410,9 +410,9 @@ Qed.
 Lemma ptrace_from_projection
   (Hproj_dec : in_projection_dec)
   (tr : @Trace _ T)
-  (Psj : protocol_state_prop Proj (trace_first tr j))
+  (Psj : protocol_state_prop Xj (trace_first tr j))
   (Htr : ptrace_from_prop X tr)
-   : ptrace_from_prop Proj (trace_projection Hproj_dec tr).
+   : ptrace_from_prop Xj (trace_projection Hproj_dec tr).
 Proof.
   destruct tr as [s ls | s ss].
   - apply finite_ptrace_projection; assumption.
@@ -427,7 +427,7 @@ Lemma protocol_trace_projection
   (Hproj_dec : in_projection_dec)
   (tr : @Trace _ T)
   (Htr : protocol_trace_prop X tr)
-  : protocol_trace_prop Proj (trace_projection Hproj_dec tr).
+  : protocol_trace_prop Xj (trace_projection Hproj_dec tr).
 Proof.
   assert (Hfrom := protocol_trace_from X tr Htr).
   assert (Hinit := protocol_trace_initial X tr Htr).
@@ -449,7 +449,7 @@ Definition finite_projection_friendly
   := forall
     (sj : @state _ (IT j))
     (trj : list (@transition_item _ (IT j)))
-    (Htrj : finite_protocol_trace Proj sj trj),
+    (Htrj : finite_protocol_trace Xj sj trj),
     exists (sx : @state _ T) (trx : list (@transition_item _ T)),
       finite_protocol_trace X sx trx
       /\ sx j = sj
@@ -459,7 +459,7 @@ Definition projection_friendly
   (Hproj_dec : in_projection_dec)
   := forall
   (trj : @Trace _ (IT j))
-  (Htrj : protocol_trace_prop Proj trj),
+  (Htrj : protocol_trace_prop Xj trj),
   exists (tr : @Trace _ T),
     protocol_trace_prop X tr
     /\ trace_projection Hproj_dec tr = trj.

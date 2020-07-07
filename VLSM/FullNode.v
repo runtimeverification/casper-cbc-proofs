@@ -126,7 +126,7 @@ Section Full.
     ; label := option (C * V)
     }.
 
-  Instance LSM_full_client1 : LSM_sig VLSM_type_full_client1 :=
+  Instance LSM_full_client1 : VLSM_sign VLSM_type_full_client1 :=
     { initial_state_prop := initial_state_prop
     ; initial_message_prop := initial_message_prop
     ; s0 := state0
@@ -528,7 +528,7 @@ Section Full.
     ; label := label2
     }.
 
-  Instance LSM_full_client2 : LSM_sig VLSM_type_full_client2 :=
+  Instance LSM_full_client2 : VLSM_sign VLSM_type_full_client2 :=
     { initial_state_prop := initial_state_prop
     ; initial_message_prop := initial_message_prop
     ; s0 := state0
@@ -563,7 +563,7 @@ Section Full.
     ; label := labelv
     }.
 
-  Instance LSM_full_validator : LSM_sig VLSM_type_full_validator :=
+  Instance LSM_full_validator : VLSM_sign VLSM_type_full_validator :=
     { initial_state_prop := initial_state_prop
     ; initial_message_prop := initial_message_prop
     ; s0 := state0
@@ -601,7 +601,7 @@ Section Full.
       | _ => VLSM_type_full_validator
       end.
 
-  Definition IS_index : forall i : Fin.t (n + n'), LSM_sig (IT_index i).
+  Definition IS_index : forall i : Fin.t (n + n'), VLSM_sign (IT_index i).
   intros. unfold IT_index.
   destruct (proj1_sig (Fin.to_nat i) ?= n) eqn:Hi.
   - exact LSM_full_validator.
@@ -661,6 +661,6 @@ Section Full.
   Defined.
 
   Definition VLSM_full_composed : VLSM (composite_sig f1_n_plus_n' IS_index)
-    := composite_vlsm_free f1_n_plus_n' IM_index.
+    := free_composite_vlsm f1_n_plus_n' IM_index.
 
 End Full.
