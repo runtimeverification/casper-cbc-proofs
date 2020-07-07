@@ -1,11 +1,12 @@
 -Q . CasperCBC
 
-Lib/ListExtras.v
-Lib/StreamExtras.v
-Lib/ListSetExtras.v
-Lib/Preamble.v
-Lib/RealsExtras.v
-Lib/SortedLists.v
+VLSM/Common.v
+VLSM/Composition.v
+VLSM/Decisions.v
+VLSM/ProjectionTraces.v
+VLSM/Validating.v
+VLSM/ByzantineTraces.v
+VLSM/FullNode.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
@@ -13,10 +14,9 @@ CBC/Definitions.v
 CBC/FullNode.v
 CBC/LightNode.v
 CBC/Protocol.v
-VLSM/ByzantineTraces.v
-VLSM/Common.v
-VLSM/Composition.v
-VLSM/Decisions.v
-VLSM/FullNode.v
-VLSM/ProjectionTraces.v
-VLSM/Validating.v
+Lib/StreamExtras.v
+Lib/RealsExtras.v
+Lib/ListSetExtras.v
+Lib/SortedLists.v
+Lib/ListExtras.v
+Lib/Preamble.v
