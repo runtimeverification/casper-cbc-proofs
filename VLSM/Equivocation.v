@@ -4,14 +4,23 @@ Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition.
 
-Section Something.
-
+Section Simple.
 
     Context
       {message : Type}
       {vtype : VLSM_type message}
       {Sig : LSM_sig vtype}
       (vlsm : VLSM Sig).
+
+    Definition trace_has_message
+      (message_selector : transition_item -> option message)
+      (msg : message)
+      (tr : protocol_trace vlsm)
+      : Prop
+      := exists (last : transition_item),
+         exists (prefix : list transition_item),
+          trace_prefix (proj1_sig tr) last prefix
+          /\ message_selector last = Some msg.
 
     Definition equivocation_in_trace
                (msg : message)
@@ -80,7 +89,7 @@ Section Something.
     Definition has_not_been_received_prop : message_oracle vlsm -> protocol_state vlsm -> protocol_message vlsm -> Prop
       := (no_traces_have_message_prop input).
 
-    Class send_oracle := { 
+    Class has_been_sent_capability := { 
       has_been_sent: message_oracle vlsm;
       
       proper_sent: 
@@ -94,13 +103,40 @@ Section Something.
                (m : protocol_message vlsm), 
                has_not_been_sent_prop has_not_been_sent s m;
       
-      excluded_middle : 
+      sent_excluded_middle : 
         forall (s : protocol_state vlsm) 
                (m : protocol_message vlsm),
                has_been_sent s m = true <-> has_not_been_sent s m = false;
     }.
     
-    (* Old stuff below, sorting them is work in progress. )
+    Class has_been_received_capability := {
+      has_been_received: message_oracle vlsm;
+      
+      proper_received: 
+        forall (s : protocol_state vlsm) 
+               (m : protocol_message vlsm), 
+               (has_been_received_prop has_been_received s m);
+      
+      has_not_been_received: message_oracle vlsm;
+      proper_not_received: 
+        forall (s : protocol_state vlsm) 
+               (m : protocol_message vlsm), 
+               has_not_been_received_prop has_not_been_received s m;
+      
+      received_excluded_middle : 
+        forall (s : protocol_state vlsm) 
+               (m : protocol_message vlsm),
+               has_been_received s m = true <-> has_not_been_received s m = false;
+    }.
+    
+    
+    Class StrongVLSM := {
+      x : VLSM Sig;
+      send_capable : has_been_sent_capability;
+      receive_capable : has_been_received_capability;
+    }.
+    
+    (* Old stuff below, sorting them is work in progress. *)
     
     (*
     Definition has_been_sent (msg : message) (s : state) : Prop :=
@@ -135,4 +171,23 @@ Section Something.
                 | Some msg => equivocation msg (fst som) -> False
                 end.
      *)
-End Something.
+End Simple.
+
+Section Composite.
+
+    Context {message : Type}
+            {index : Type}
+            {IndEqDec : EqDec index}
+            {IT : index -> VLSM_type message}
+            (i0 : index)
+            {IS : forall i : index, LSM_sig (IT i)}
+            (IM : forall n : index, VLSM (IS n))
+            (constraint : indexed_label IT -> indexed_state IT  * option message -> Prop)
+            (X := indexed_vlsm_constrained i0 IM constraint).
+            
+     Definition equivocation (state : protocol_state X) (message : protocol_message X) : Prop 
+      := exists (i : index),
+         
+     
+     .
+End Composite.
