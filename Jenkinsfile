@@ -35,7 +35,7 @@ pipeline {
         sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
           sh '''
             make -j 6 coqdoc
-            export COQ_SHA=`git rev-parse HEAD`
+            export COQ_SHA=$(git rev-parse HEAD)
 
             git clone 'ssh://github.com/runtimeverification/casper-cbc-proof-docs.git'
             cd casper-cbc-proof-docs
