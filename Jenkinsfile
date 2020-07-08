@@ -30,7 +30,7 @@ pipeline {
       }
     }
     stage('Deploy Docs') {
-      // when { branch 'master' }
+      when { branch 'master' }
       steps {
         sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
           sh '''
