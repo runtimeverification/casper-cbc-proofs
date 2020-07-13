@@ -4,6 +4,7 @@ VLSM/Common.v
 VLSM/Composition.v
 VLSM/Decisions.v
 VLSM/ProjectionTraces.v
+VLSM/CommonFutures.v
 VLSM/Validating.v
 VLSM/ByzantineTraces.v
 VLSM/FullNode.v

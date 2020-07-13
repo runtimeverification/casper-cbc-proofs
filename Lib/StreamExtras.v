@@ -5,6 +5,25 @@ Import ListNotations.
 From CasperCBC
      Require Import Lib.ListExtras Preamble.
 
+Lemma recons
+  {A : Type}
+  (s : Stream A)
+  : Cons (hd s) (tl s) = s.
+Proof.
+  case s.  reflexivity.
+Qed.
+
+Lemma map_Cons
+  {A B : Type}
+  (f : A -> B)
+  (x : A)
+  (s : Stream A)
+  : map f (Cons x s) = Cons (f x) (map f s).
+Proof.
+  intros. 
+  rewrite <- (recons (map f (Cons x s))). reflexivity.
+Qed.
+
 Definition stream_app
   {A : Type}
   (prefix : list A)
@@ -377,6 +396,38 @@ Proof.
   f_equal.
   apply stream_prefix_segment.
   assumption.
+Qed.
+
+Lemma stream_segment_app
+  {A : Type}
+  (l : Stream A)
+  (n1 n2 n3 : nat)
+  (H12 : n1 <= n2)
+  (H23 : n2 <= n3)
+  : stream_segment l n1 n2 ++ stream_segment l n2 n3 = stream_segment l n1 n3
+  .
+Proof.
+  assert (Hle : n1 <= n3) by (apply le_trans with n2; assumption).
+  specialize (stream_prefix_segment_suffix l n1 n3 Hle); intro Hl1.
+  specialize (stream_prefix_segment_suffix l n2 n3 H23); intro Hl2.
+  rewrite <- Hl2 in Hl1 at 4. clear Hl2.
+  apply stream_app_inj_l in Hl1.
+  - specialize (list_prefix_suffix (stream_prefix l n2) n1); intro Hl2.
+    specialize (stream_prefix_prefix l n1 n2 H12); intro Hl3.
+    rewrite Hl3 in Hl2.
+    rewrite <- Hl2 in Hl1.
+    rewrite <- app_assoc in Hl1.
+    apply app_inv_head in Hl1.
+    symmetry.
+    assumption.
+  - repeat rewrite app_length.
+    unfold stream_segment.
+    repeat rewrite list_suffix_length.
+    repeat rewrite stream_prefix_length.
+    apply le_plus_minus in Hle.
+    apply le_plus_minus in H23.
+    rewrite Hle in H23 at 1.
+    assumption.
 Qed.
 
 Definition monotone_nat_stream_prop
@@ -891,6 +942,33 @@ Proof.
   simpl.
   inversion Hlast.
   reflexivity.
+Qed.
+
+Lemma stream_segment_singleton
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  : stream_segment l n (S n) = [Str_nth n l]
+  .
+Proof.
+  remember (Str_nth n l) as a.
+  unfold stream_segment.
+  assert (Hlt : n < length (stream_prefix l (S n)))
+    by (rewrite stream_prefix_length; constructor).
+  specialize (list_suffix_last (stream_prefix l (S n)) n Hlt a); intro Hlast1.
+  specialize (stream_prefix_nth_last l n a); intro Hlast2.
+  rewrite Hlast2 in Hlast1.
+  specialize (list_suffix_length (stream_prefix l (S n)) n).
+  rewrite stream_prefix_length; try assumption.
+  intro Hlength.
+  rewrite <- minus_Sn_m in Hlength; try constructor.
+  rewrite <- minus_diag_reverse in Hlength.
+  remember (list_suffix (stream_prefix l (S n)) n) as x.
+  rewrite <- Heqa in Hlast1.
+  clear -Hlength Hlast1.
+  destruct x; inversion Hlength.
+  destruct x; inversion H0.
+  simpl in Hlast1; subst; reflexivity.
 Qed.
 
 Lemma str_map_tl

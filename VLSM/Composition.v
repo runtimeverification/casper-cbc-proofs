@@ -206,6 +206,47 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       : composite_state IT
       := state_update IT s0X j sj
       .
+    
+    Lemma lift_to_composite_state_initial
+      (j : index)
+      (sj : @state _ (IT j))
+      (Hinitj : initial_state_prop sj)
+      : @initial_state_prop _ _ composite_sig (lift_to_composite_state j sj)
+      .
+    Proof.
+      intro i.
+      unfold lift_to_composite_state.
+      destruct (eq_dec i j).
+      - subst. rewrite state_update_eq. assumption.
+      - rewrite state_update_neq; try assumption.
+        simpl. 
+        destruct s0 as [s Hs].
+        assumption.
+    Qed.
+
+    Definition lift_to_composite_transition_item
+      (j : index)
+      (item : @transition_item _ (IT j))
+      (s0X := proj1_sig (@s0 _ _ composite_sig))
+      : @transition_item _ (composite_type IT)
+      .
+      destruct item.
+      split.
+      - exact (existT _ j l).
+      - exact input.
+      - exact (lift_to_composite_state j destination).
+      - exact output.
+    Defined.
+
+    Definition lift_to_composite_trace
+      (j : index)
+      (trj : @Trace _ (IT j))
+      : @Trace _ (composite_type IT)
+      :=
+      match trj with
+      | Finite s l => Finite (lift_to_composite_state j s) (List.map (lift_to_composite_transition_item j) l)
+      | Infinite s l => Infinite (lift_to_composite_state j s) (Streams.map (lift_to_composite_transition_item j) l)
+      end.
 
   End composite_sig.
 
@@ -664,8 +705,208 @@ We can now finally prove the main result for this section:
         destruct H as [_ [_ Hv]].
         assumption.
     Qed.
-  
+
   End fixed_projection.
+
+  Section projection_friendliness_sufficient_condition.
+
+  (** ** A sufficient condition for being [projection_friendly]. *)
+
+  Context
+  (j : index)
+  (Xj := composite_vlsm_constrained_projection j)
+  .
+
+  (**
+  This condition states that [protocol_valid]ity in a projection <<Xj>>
+  can be lifted to any [protocol_state] in <<X>> which projects to the
+  corresponding <<Xj>> state.
+  *)
+
+  Definition projection_friendliness_sufficient_condition
+    := forall 
+      (lj : @label _ (IT j))
+      (sj : @state _ (IT j))
+      (om : option message)
+      (Hpv : protocol_valid Xj lj (sj, om))
+      (s : @state _ (type X))
+      (Hs : protocol_state_prop X s)
+      (Hsi : s j = sj)
+      , @valid _ _ _ X (existT _ j lj) (s, om)
+    .
+
+  Lemma projection_friendliness_sufficient_condition_protocol_message
+    (l : label)
+    (s : state)
+    (om : option message)
+    (Hv : protocol_valid Xj l (s, om))
+    : option_protocol_message_prop X om
+    .
+  Proof.
+    destruct Hv as [Hpsj [Hpmj [sx [Hs [HpsX [HpmX Hv]]]]]].
+    assumption.
+  Qed.
+
+  Lemma projection_friendliness_sufficient_condition_protocol_state
+    (Hfr : projection_friendliness_sufficient_condition)
+    (s : state)
+    (om : option message)
+    (Hp : protocol_prop Xj (s, om))
+    : protocol_state_prop X (lift_to_composite_state i0 IS j s)
+    .
+  Proof.
+    remember (s, om) as som.
+    generalize dependent om. generalize dependent s.
+    induction Hp; intros; inversion Heqsom; subst; clear Heqsom.
+    - exists None.
+      destruct is as [is' Hinit].
+      unfold s in *; simpl in *.
+      specialize (lift_to_composite_state_initial i0 IS j is' Hinit)
+      ; intro HinitX.
+      remember (lift_to_composite_state i0 IS j is') as initX.
+      replace initX with (proj1_sig (exist _ initX HinitX)); try reflexivity.
+      apply (protocol_initial_state X).
+    - replace (lift_to_composite_state i0 IS j s) with (proj1_sig (@s0 _ _ (sign X))).
+      + exists None. apply (protocol_initial_state X).
+      + unfold lift_to_composite_state.
+        rewrite state_update_id; reflexivity.
+    - specialize (IHHp1 s _om eq_refl).
+      exists om0.
+      replace
+        (lift_to_composite_state i0 IS j s0, om0)
+        with (@transition _ _ _ X (existT _ j l) (lift_to_composite_state i0 IS j s, om)).
+      + 
+        specialize (protocol_generated_valid Xj Hp1 Hp2 Hv); intros Hpvj.
+        specialize (Hfr l s om Hpvj _ IHHp1).
+        unfold lift_to_composite_state at 1 in Hfr.
+        rewrite state_update_eq in Hfr.
+        specialize (Hfr eq_refl).
+        specialize (projection_friendliness_sufficient_condition_protocol_message _ _ _ Hpvj)
+        ; intros  [_sX HpmX].
+        destruct IHHp1 as [_omX HpsX].
+        apply
+          (protocol_generated X
+            (existT (fun n : index => label) j l)
+            (lift_to_composite_state i0 IS j s)
+            _omX
+            HpsX
+            _sX
+            om
+            HpmX
+            Hfr
+          ).
+      + simpl. unfold lift_to_composite_state at 1. rewrite state_update_eq.
+        rewrite H0.
+        f_equal.
+        unfold lift_to_composite_state.
+        apply state_update_twice.
+  Qed.
+
+  Lemma projection_friendliness_sufficient_condition_valid
+    (Hfr : projection_friendliness_sufficient_condition)
+    (l : label)
+    (s : state)
+    (om : option message)
+    (Hv : protocol_valid Xj l (s, om))
+    : @valid _ _ _ X (existT _ j l) (lift_to_composite_state i0 IS j s, om)
+    .
+  Proof.
+    specialize (projection_friendliness_sufficient_condition_protocol_state Hfr s)
+    ; intros HpsX.
+    specialize (Hfr l s om Hv (lift_to_composite_state i0 IS j s)).
+    destruct Hv as [[_om Hpsj] [Hpmj [_sx [Hs [_HpsX [HpmX Hv]]]]]].
+    specialize (HpsX _om Hpsj).
+    unfold lift_to_composite_state at 2 in Hfr.
+    rewrite state_update_eq in Hfr.
+    specialize (Hfr HpsX eq_refl).
+    assumption.
+  Qed.
+
+  Lemma projection_friendliness_sufficient_condition_protocol_transition
+    (Hfr : projection_friendliness_sufficient_condition)
+    (l : label)
+    (is os : state)
+    (iom oom : option message)
+    (Ht : protocol_transition Xj l (is, iom) (os, oom))
+    : protocol_transition X (existT _ j l) (lift_to_composite_state i0 IS j is, iom) (lift_to_composite_state i0 IS j os, oom)
+    .
+  Proof.
+    destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
+    specialize (protocol_generated_valid Xj Hps Hpm Hv); intros Hpv.
+    repeat split.
+    - apply projection_friendliness_sufficient_condition_protocol_state with _om; assumption.
+    - apply projection_friendliness_sufficient_condition_protocol_message in Hpv. assumption.
+    - specialize (projection_friendliness_sufficient_condition_valid Hfr l is iom Hpv); intros [HvX _].
+      assumption.
+    - specialize (projection_friendliness_sufficient_condition_valid Hfr l is iom Hpv); intros [_ Hctr].
+      assumption.
+    - simpl. unfold lift_to_composite_state at 1. rewrite state_update_eq.
+      replace (transition l (is, iom)) with (os, oom).
+      f_equal.
+      unfold lift_to_composite_state.
+      apply state_update_twice.
+  Qed.
+
+  Lemma projection_friendliness_sufficient_condition_finite_ptrace
+    (Hfr : projection_friendliness_sufficient_condition)
+    (s : state)
+    (ls : list transition_item)
+    (Hpxt : finite_protocol_trace_from Xj s ls)
+    : finite_protocol_trace_from X (lift_to_composite_state i0 IS j s) (List.map (lift_to_composite_transition_item i0 IS j) ls)
+    .
+  Proof.
+    induction Hpxt.
+    - constructor.
+      destruct H as [m H].
+      apply projection_friendliness_sufficient_condition_protocol_state in H; assumption.
+    - constructor; try assumption.
+      apply projection_friendliness_sufficient_condition_protocol_transition; assumption.
+  Qed.
+
+  Lemma projection_friendliness_sufficient_condition_infinite_ptrace
+    (Hfr : projection_friendliness_sufficient_condition)
+    (s : state)
+    (ls : Stream transition_item)
+    (Hpxt : infinite_protocol_trace_from Xj s ls)
+    : infinite_protocol_trace_from X (lift_to_composite_state i0 IS j s) (Streams.map (lift_to_composite_transition_item i0 IS j) ls)
+    .
+  Proof.
+    generalize dependent s. generalize dependent ls.
+    cofix H.
+    intros [[l input destination output] ls] s Hx.
+    inversion Hx; subst.
+    rewrite map_Cons.
+    constructor.
+    - apply H. assumption.
+    - apply projection_friendliness_sufficient_condition_protocol_transition
+    ; assumption.
+  Qed.
+
+  (**
+  The result below shows that the [projection_friendliness_sufficient_condition]
+  might be too strong, in the sense that it allows any trace from the
+  projection to be lifted direclty to <<X>>
+  (all other machines stay in their initial state).
+  *)
+  Lemma projection_friendliness_sufficient_condition_protocol_trace
+    (Hfr : projection_friendliness_sufficient_condition)
+    (t : Trace)
+    (Hpt : protocol_trace_prop Xj t)
+    : protocol_trace_prop X (lift_to_composite_trace i0 IS j t)
+    .
+  Proof.
+    destruct t as [s ls| s ss]; simpl in *; destruct Hpt as [Hxt Hinit].
+    - apply projection_friendliness_sufficient_condition_finite_ptrace in Hxt
+      ; try assumption.
+      split; try assumption.
+      apply lift_to_composite_state_initial. assumption.
+    - apply projection_friendliness_sufficient_condition_infinite_ptrace in Hxt
+      ; try assumption.
+      split; try assumption.
+      apply lift_to_composite_state_initial. assumption.
+  Qed.
+
+  End projection_friendliness_sufficient_condition.
 
 End projections.
 

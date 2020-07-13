@@ -13,49 +13,24 @@ Section Full.
   Definition reach (s1 s2 : @CBC.Definitions.state C V) : Prop :=
     incl (get_messages s1) (get_messages s2).
 
-  Definition proto_message_prop : @sorted_message C V message_type -> Prop :=
-    fun msg => True.
+  Definition message : Type := @sorted_message C V message_type.
 
-  Definition message : Type :=
-    { m : @sorted_message C V message_type | proto_message_prop m}.
+  Definition initial_state_prop
+    (s : @sorted_state C V message_type)
+    : Prop
+    :=
+    s = @sorted_state0 C V message_type.
 
-  Lemma proto_message_decidable :
-    forall (msg : @sorted_message C V message_type), {proto_message_prop msg} + {~ proto_message_prop msg}.
-  Proof.
-    intros msg.
-    left.
-    red. auto.
-  Qed.
+  Definition state0 : {s | initial_state_prop s} := 
+    exist _ (@sorted_state0 C V message_type) eq_refl.
 
-  Definition initial_state_prop : @sorted_state C V message_type -> Prop :=
-    fun s => s = @sorted_state0 C V message_type.
-
-  Program Definition state0 : {s | initial_state_prop s} := _.
-  Next Obligation.
-    exists (@sorted_state0 C V message_type).
-    reflexivity.
-  Defined.
-
-  Program Definition proto_message0 : message := _.
-  Next Obligation.
-    destruct (@Lib.Preamble.inhabited _ about_C) as [c _].
-    destruct (@Lib.Preamble.inhabited _ about_V) as [v _].
-    exists (c,v,@sorted_state0 C V message_type).
-    red.
-    auto.
-  Defined.
-
-  Definition message0 : @sorted_message C V message_type := proj1_sig proto_message0.
+  Definition message0 : message := 
+    let (c,_) := @Lib.Preamble.inhabited _ about_C in
+    let (v,_) := @Lib.Preamble.inhabited _ about_V in
+    (c,v,@sorted_state0 C V message_type)
+    .
 
   Definition initial_message_prop (m : message) : Prop := False.
-
-  Definition initial_message := { m : message | initial_message_prop m }.
-
-  Lemma protocol_state_inhabited : {_ : @sorted_state C V message_type | True}.
-  Proof.
-    exists (@sorted_state0 C V message_type).
-    auto.
-  Qed.
 
   Lemma message_inhabited : {m : @sorted_message C V message_type | True}.
   Proof.
@@ -65,28 +40,19 @@ Section Full.
     exists (c, v, exist _ Empty LSorted_Empty); auto.
   Qed.
 
-  Program Definition make_proto_message_prop (msg : @sorted_message C V message_type) : proto_message_prop msg := _.
-  Next Obligation.
-    unfold proto_message_prop.
-    auto.
-  Defined.
-
-  Definition make_proto_message (msg : @sorted_message C V message_type) : {msg : @sorted_message C V message_type | proto_message_prop msg} :=
-     exist _ msg (make_proto_message_prop msg).
-
   Definition vtransition (l : option (C * V)) (sm : @sorted_state C V message_type * option message) :  @sorted_state C V message_type  * option message :=
     let (s, om) := sm in
     match l with
     | None => match om with
              | None => (s, None)
-             | Some msg => (add_message_sorted (proj1_sig msg) s, None)
+             | Some msg => (add_message_sorted msg s, None)
              end
     | Some (c, v) =>
-      let m' := make_proto_message (c,v,s) in
+      let m' := (c,v,s) in
       let s' := add_message_sorted (c,v,s) s in
       match om with
       | None => (s', Some m')
-      | Some msg => (add_message_sorted (proj1_sig msg) s', Some m')
+      | Some msg => (add_message_sorted msg s', Some m')
       end
     end.
 
@@ -96,8 +62,7 @@ Section Full.
     :=
     match om with
     | None => True
-    | Some pm =>
-      let (m, Hm) := pm in
+    | Some m =>
       let (_, j) := m in
       reach j s /\ not_heavy (add_message_sorted m s)
     end.
@@ -109,8 +74,7 @@ Section Full.
     match l with
     | None => valid_client' s om
     | Some (c, v) =>
-      let m' := make_proto_message (c,v,s) in
-      let s' := add_message_sorted (c,v,s) s in
+      let s' := add_message_sorted (c, v, s) s in
       (@estimator (@sorted_state C V message_type) C He) s c
       /\ valid_client' s' om
     end.
@@ -130,7 +94,7 @@ Section Full.
     { initial_state_prop := initial_state_prop
     ; initial_message_prop := initial_message_prop
     ; s0 := state0
-    ; m0 := proto_message0
+    ; m0 := message0
     ; l0 := None
     }.
 
@@ -179,7 +143,7 @@ Section Full.
       rewrite Heq; clear Heq. constructor.
     + specialize (protocol_state_sorted j H0); intros Hsj.
       specialize (protocol_state_sorted s H); intros Hss.
-      remember (Some (make_proto_message (c, v, (exist _ j Hsj)))) as om.
+      remember (Some (c, v, (exist _ j Hsj))) as om.
       remember (exist _ s Hss) as ss.
       assert (Hv : valid_client None (ss,om))
         by (subst; simpl; split; assumption).
@@ -203,8 +167,8 @@ Section Full.
       remember (exist (fun s : CBC.Definitions.state => locally_sorted s) s Hss) as ss.
       remember (exist (fun s : CBC.Definitions.state => locally_sorted s) j Hsj) as sj.
       remember (add_message_sorted (c,v,sj) sj) as sj'.
-      specialize (protocol_generated (VLSM_full_client1) None ss _om Pss sj' (Some (make_proto_message (c,v,sj)))); intros Pss'.
-      assert (Pcvj : protocol_prop (VLSM_full_client1) (sj', Some (make_proto_message (c, v, sj)))).
+      specialize (protocol_generated (VLSM_full_client1) None ss _om Pss sj' (Some (c,v,sj))); intros Pss'.
+      assert (Pcvj : protocol_prop (VLSM_full_client1) (sj', Some (c, v, sj))).
       { specialize (protocol_generated (VLSM_full_client1) (Some (c,v)) sj _omj Psj (proj1_sig s0) None (protocol_initial_state (VLSM_full_client1) s0)); intros Pcvj'.
         assert (Hvj' : valid_client (Some (c, v)) (sj, None)).
         { subst. simpl. split; auto. unfold valid_estimate in H2. unfold estimator in H2; simpl in H2. unfold estimator_proj1 in H2.
@@ -220,14 +184,14 @@ Section Full.
 
   Lemma protocol_state_messages
     (s : @state _ VLSM_type_full_client1)
-    (om : option {msg : sorted_message C V | proto_message_prop msg})
+    (om : option message)
     (P : (protocol_prop VLSM_full_client1) (s, om))
   : forall
     (c : C)
     (v : V)
     (j : @state _ VLSM_type_full_client1)
     (Hin : in_state (c, v, (proj1_sig j)) (proj1_sig s))
-    , (protocol_prop VLSM_full_client1) (add_message_sorted (c, v, j) j, Some (make_proto_message (c, v, j)))
+    , (protocol_prop VLSM_full_client1) (add_message_sorted (c, v, j) j, Some (c, v, j))
       /\ syntactic_state_inclusion (proj1_sig j) (proj1_sig s)
     .
   Proof.
@@ -243,7 +207,7 @@ Section Full.
       destruct l as [[c0 v0] |]; destruct om as [msg|].
       + specialize (IHP1 s _om eq_refl).
         destruct s as [j0 Hj0].  specialize (IHP2 _s (Some msg) eq_refl).
-        unfold add_message_sorted in Heqsom. destruct msg as [[(c1, v1) [j1 Hj1]] Hmsg].
+        unfold add_message_sorted in Heqsom. destruct msg as [(c1, v1) [j1 Hj1]].
         simpl in Heqsom.
         inversion Heqsom; subst; clear Heqsom. simpl in Hv. destruct Hv as [Hejc0 [Hrj10 Hnh10]].
         assert (IHcvj := IHP1 c v j).
@@ -257,7 +221,7 @@ Section Full.
             inversion H0; subst; clear H0.
             split.
             + specialize (IHP2 c1 v1 (exist _ j1 Hj)).
-            destruct msg as [[(c2, v2) [j2 Hj2]] Hmsg2]. simpl in IHP2.
+            destruct msg as [(c2, v2) [j2 Hj2]]. simpl in IHP2.
             assert (Hin : in_state (c1, v1, j1) (add_in_sorted_fn (c2, v2, j2) (add_in_sorted_fn (c1, v1, j1) j1)))
               by (apply add_preserves_message_membership; apply in_state_add_in_sorted_iff; left; reflexivity).
             specialize (IHP2 Hin). destruct IHP2 as [P _]. assumption.
@@ -318,7 +282,7 @@ Section Full.
         specialize (IHP1 s _om eq_refl). destruct s as [s Hs].
         assert (IHcvj := IHP1 c v j). destruct j as [j Hj].
         specialize (IHP2 _s (Some msg) eq_refl).
-        destruct msg as [[(cm, vm) [jm Hjm]] Hmsg]. simpl in Hin.
+        destruct msg as [(cm, vm) [jm Hjm]]. simpl in Hin.
         rewrite in_state_add_in_sorted_iff in Hin.
         destruct Hin as [Heq | Hin]; try (inversion Heq; subst; clear Heq).
         * simpl. simpl in Hv. destruct Hv as [Hincl Hnh].
@@ -328,7 +292,7 @@ Section Full.
             + destruct s0 as [j1' Hj1'].
               inversion H0; subst; clear H0.
               specialize (IHP2 cm vm (exist _ jm Hjm)).
-              destruct msg as [[(c2, v2) [j2 Hj2]] Hmsg2]. simpl in IHP2.
+              destruct msg as [(c2, v2) [j2 Hj2]]. simpl in IHP2.
               assert (Hin : in_state (cm, vm, jm) (add_in_sorted_fn (c2, v2, j2) (add_in_sorted_fn (cm, vm, jm) jm)))
                 by (apply add_preserves_message_membership; apply in_state_add_in_sorted_iff; left; reflexivity).
               specialize (IHP2 Hin). destruct IHP2 as [P _].
@@ -337,7 +301,6 @@ Section Full.
              + destruct s0 as [j1' Hj1'].
                inversion H0; subst; clear H0.
                 replace Hj1' with Hj in P2 by apply proof_irrelevance.
-                replace Hmsg with I in P2 by apply proof_irrelevance.
                 replace Hjm with Hj in P2 by apply proof_irrelevance.
                 assumption.
              + inversion H0.
@@ -352,16 +315,16 @@ Section Full.
 
   Lemma protocol_state_generated_message
     (s : @state _ VLSM_type_full_client1)
-    (m : {msg : sorted_message C V | proto_message_prop msg})
+    (m : sorted_message C V)
     (P : (protocol_prop VLSM_full_client1) (s, Some m))
-    : in_state (proj1_sig m) (proj1_sig s).
+    : in_state m (proj1_sig s).
   Proof.
     inversion P; try (destruct im as [im Him]; inversion Him).
     destruct l as [[c0 v0] |]; destruct om as [msg|]
     ; inversion H0; subst; clear H0
     ; destruct s0 as [j0 Hj0]
     ; try
-      ( destruct msg as [[(cm, vm) [jm Hjm]] _Hmsg]
+      ( destruct msg as [(cm, vm) [jm Hjm]]
         ; apply in_state_add_in_sorted_iff; right
       )
     ; apply in_state_add_in_sorted_iff; left
@@ -392,7 +355,7 @@ Section Full.
       + destruct s as [j0 Hj0].
         specialize (protocol_state_generated_message _ _ P2); simpl; intro Hin_s.
         inversion Heqsom; subst; clear Heqsom.
-        destruct msg as [[(cm, vm) jm] _Hmsg].
+        destruct msg as [(cm, vm) jm].
         assert (Hmsg := Hmsgs cm vm jm).
         destruct jm as [jm Hjm]. simpl in Hmsg.
         assert (Hin : in_state (cm, vm, jm) (add_in_sorted_fn (cm, vm, jm) (add_in_sorted_fn (c0, v0, j0) j0)))
@@ -412,7 +375,7 @@ Section Full.
         apply copy_protocol_state; try assumption.
         unfold valid_estimate. unfold estimator. simpl. unfold estimator_proj1. rewrite (make_already_sorted_state j0 Hj0). assumption.
       + inversion Heqsom; subst; clear Heqsom.
-        destruct msg as [[(cm, vm) jm] _Hmsg].
+        destruct msg as [(cm, vm) jm].
         specialize (Hmsgs cm vm jm).
         destruct jm as [jm Hjm]. destruct s as [s Hs]. simpl in Hmsgs.
         simpl in Hv. destruct Hv as [Hincl_jms Hnh].
@@ -509,19 +472,30 @@ Section Full.
   (* 2.5.1 Minimal full client protocol: Client2 *)
   Definition label2 : Type := unit.
 
-  Definition vtransition2 (l : unit) (sm : @sorted_state C V message_type * option message) : @sorted_state C V message_type * option message :=
-    match l with
-    | tt => match (snd sm) with
-           | None => (fst sm, None)
-           | Some msg => (add_message_sorted (proj1_sig msg) (fst sm), None)
-           end
+  Definition vtransition2
+    (l : unit)
+    (sm : @sorted_state C V message_type * option message)
+    : @sorted_state C V message_type * option message
+    :=
+    let (s, om) := sm in
+    match om with
+    | None => (s, None)
+    | Some msg => (add_message_sorted msg s, None)
     end.
 
   Inductive valid_client2 : unit -> (@sorted_state C V message_type) * option message -> Prop :=
-  | client2_none : forall (s : @sorted_state C V message_type), valid_client2 tt (s, None)
-  | client2_receive : forall (s : @sorted_state C V message_type) (m : message),
-      reach (justification (proj1_sig m)) s -> not_heavy (add_in_sorted_fn (proj1_sig m) s) ->
-      valid_client2 tt (add_message_sorted (proj1_sig m) s, Some m).
+  | client2_none
+    : forall
+      (s : @sorted_state C V message_type),
+      valid_client2 tt (s, None)
+  | client2_receive
+    : forall
+      (s : @sorted_state C V message_type)
+      (m : @sorted_message C V message_type)
+      (Hj : reach (justification m) s)
+      (Hlight : not_heavy (add_in_sorted_fn m s)),
+      valid_client2 tt (add_message_sorted m s, Some m)
+      .
 
   Instance VLSM_type_full_client2 : VLSM_type message :=
     { state := @sorted_state C V message_type
@@ -532,7 +506,7 @@ Section Full.
     { initial_state_prop := initial_state_prop
     ; initial_message_prop := initial_message_prop
     ; s0 := state0
-    ; m0 := proto_message0
+    ; m0 := message0
     ; l0 := tt
     }.
 
@@ -548,15 +522,29 @@ Section Full.
     match l with
     | None => match (snd sm) with
              | None => sm
-             | Some msg => (add_message_sorted (proj1_sig msg) (fst sm), None)
+             | Some msg => (add_message_sorted msg (fst sm), None)
            end
-    | Some c => (add_message_sorted (c,v, fst sm) (fst sm), Some (make_proto_message (c,v, fst sm)))
+    | Some c => (add_message_sorted (c,v, fst sm) (fst sm), Some (c,v, fst sm))
     end.
 
   Inductive valid_validator : labelv ->  @sorted_state C V message_type * option message -> Prop :=
-  | validator_none : forall (s : @sorted_state C V message_type), valid_validator None (s, None)
-  | validator_receive : forall (s : @sorted_state C V message_type) (m : message), reach (justification (proj1_sig m)) s -> valid_validator None (s, Some m)
-  | validator_send : forall (c : C) (s : state) (m : option message), (@estimator (@sorted_state C V message_type) C He) s c -> valid_validator (Some c) (s, m).
+  | validator_none
+    : forall
+      (s : @sorted_state C V message_type),
+      valid_validator None (s, None)
+  | validator_receive
+    : forall
+      (s : @sorted_state C V message_type)
+      (m : @sorted_message C V message_type)
+      (Hj : reach (justification m) s),
+      valid_validator None (s, Some m)
+  | validator_send
+    : forall
+      (c : C)
+      (s : state)
+      (m : option message)
+      (He : (@estimator (@sorted_state C V message_type) C He) s c),
+      valid_validator (Some c) (s, m).
 
   Instance VLSM_type_full_validator : VLSM_type message :=
     { state := @sorted_state C V message_type
@@ -567,7 +555,7 @@ Section Full.
     { initial_state_prop := initial_state_prop
     ; initial_message_prop := initial_message_prop
     ; s0 := state0
-    ; m0 := proto_message0
+    ; m0 := message0
     ; l0 := None
     }.
 
