@@ -1,5 +1,6 @@
-Require Import Coq.Bool.Bool Coq.Arith.Lt Coq.Arith.Le Coq.Arith.Minus Coq.Arith.Plus.
+Require Import Coq.Bool.Bool.
 Require Import List.
+Require Import Lia.
 Import ListNotations.
 
 Require Import Coq.Logic.FinFun.
@@ -722,8 +723,8 @@ Proof.
   - inversion Hi.
   - inversion Hi.
   - simpl.
-    apply lt_S_n in Hi.
-    specialize (IHi s n Hi).
+    assert (Hi': i < n) by lia.
+    specialize (IHi s n Hi').
     rewrite IHi.
     reflexivity.
 Qed.
@@ -797,12 +798,13 @@ Lemma list_suffix_last
 Proof.
   generalize dependent l. induction i; intros [|a l] Hlt
   ; try reflexivity.
-  simpl in Hlt. apply lt_S_n in Hlt.
-  specialize (IHi l Hlt).
+  simpl in Hlt.
+  assert (Hlt': i < length l) by lia.
+  specialize (IHi l Hlt').
   rewrite unroll_last. simpl.
   rewrite IHi.
   destruct l.
-  - inversion Hlt.
+  - inversion Hlt; lia.
   - rewrite unroll_last. rewrite unroll_last. reflexivity.
 Qed.
 
@@ -849,7 +851,7 @@ Lemma list_segment_app
   : list_segment l n1 n2 ++ list_segment l n2 n3 = list_segment l n1 n3
   .
 Proof.
-  assert (Hle : n1 <= n3) by (apply le_trans with n2; assumption).
+  assert (Hle : n1 <= n3) by lia.
   specialize (list_prefix_segment_suffix l n1 n3 Hle); intro Hl1.
   specialize (list_prefix_segment_suffix l n2 n3 H23); intro Hl2.
   rewrite <- Hl2 in Hl1 at 4. clear Hl2.
@@ -885,8 +887,8 @@ Proof.
   specialize (list_suffix_length (list_prefix l (S n)) n).
   rewrite list_prefix_length; try assumption.
   intro Hlength.
-  rewrite <- minus_Sn_m in Hlength; try constructor.
-  rewrite <- minus_diag_reverse in Hlength.
+  assert (Hs: S n - n = 1) by lia.
+  rewrite Hs in Hlength.
   remember (list_suffix (list_prefix l (S n)) n) as x.
   clear -Hlength Hlast1.
   destruct x; inversion Hlength.
