@@ -248,8 +248,16 @@ _protocol_ transitions:
       (som' : state * option message)
       :=
       protocol_valid l som
-      /\  transition l som = som'
-      .
+      /\  transition l som = som'.
+      
+    Definition can_emit 
+      (m : message)
+      := 
+      exists 
+      (som : state * option message)
+      (l : label)
+      (s : state),
+      protocol_transition l som (s, Some m).
 
 (* begin hide *)
     Lemma protocol_transition_valid
