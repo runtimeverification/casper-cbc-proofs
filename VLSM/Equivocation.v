@@ -136,41 +136,6 @@ Section Simple.
       receive_capable : has_been_received_capability;
     }.
     
-    (* Old stuff below, sorting them is work in progress. *)
-    
-    (*
-    Definition has_been_sent (msg : message) (s : state) : Prop :=
-      forall (tr : protocol_trace vlsm)
-        (last : transition_item)
-        (prefix : list transition_item)
-        (Hpr : trace_prefix (proj1_sig tr) last prefix)
-        (Hlast : destination last = s),
-        List.Exists (fun (elem : transition_item) => output elem = Some msg) prefix.
-
-    (* Since equality of proto_messages is decidable, this function must exist : *)
-    Definition proto_message_eqb {Eqd : EqDec message}
-               (om1 : option message)
-               (om2 : option message)
-      : bool
-      :=
-        match om1, om2 with
-        | None, None => true
-        | Some m1, Some m2 => if eq_dec m1 m2 then true else false
-        | _, _ => false
-        end.
-
-	    Fixpoint has_been_sentb
-             {Eqd : EqDec message}
-             (msg : message) (ls : list transition_item) : bool
-      :=
-        existsb (fun x => proto_message_eqb (output x) (Some msg)) ls.
-        
-    Definition equivocation_free : composition_constraint :=
-      fun l som => match (snd som) with
-                | None => True
-                | Some msg => equivocation msg (fst som) -> False
-                end.
-     *)
 End Simple.
 
 Section Composite.
@@ -180,6 +145,8 @@ Section Composite.
             (index_listing : list index)
             {finite_index : Listing index_listing}
             {validator : Type}
+            {validator_listing : list validator}
+            {finite_validator : Listing validator_listing}
             {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
             (i0 : index)
@@ -193,8 +160,6 @@ Section Composite.
             (Weight : validator -> R)
             (X := indexed_vlsm_constrained i0 IM constraint).
            
-         
-     Check @has_not_been_sent message (IT i0) (IS i0) (IM i0) (has_been_sent_capabilities i0).  
      
      Definition equivocation(m : message) (s : indexed_state IT) : Prop  := forall (i : index), 
       @has_not_been_sent message (IT i) (IS i) (IM i) (has_been_sent_capabilities i) 
@@ -210,8 +175,6 @@ Section Composite.
         | None => True
         | Some m => ~equivocation m s
         end.
-        
-      Check indexed_vlsm_constrained_projection.
       
       Definition sender_safety_prop : Prop := 
         forall 
@@ -249,38 +212,59 @@ Section Composite.
         @has_not_been_sent message (IT i) (IS i) (IM i) (has_been_sent_capabilities i) sv m = true /\
         @has_been_received message (IT j) (IS j) (IM j) (has_been_received_capabilities j) sj m = true.
         
-        Definition index_mappping : (index -> nat).
-        intros.
-        destruct finite_index as [Hnodup Hfull].
-        unfold Full in Hfull.
-        specialize Hfull with (a := X0).
-        assert (Htarget : exists (n : nat), exists (def : index), nth n index_listing def = X0). {
-          specialize In_nth.
-          intros.
-          apply H with (d := X0) in Hfull.
-          destruct Hfull.
-          exists x0.
-          destruct H0.
-          exists X0.
-          assumption.
-        }
-        destruct Htarget.
-        
-        Fixpoint validator_listing : list index :=
-          match index_listing with
-          | [] => []
-          | h :: tl => 
-        
-        Fixpoint equivocation_fault
-          (s : protocol_state X)
-          : R
-          := match index_listing with
-             | [] => 0%R
-             | h :: tl => match 
+        Definition is_equivocating
+          (s : indexed_state IT)
+          (v : validator)
+          : Prop
+          :=
+          exists (j : index),
+          j <> (A v) /\
+          equivocating_wrt v j (s (A v)) (s j).
           
+        (* This needs some clarification to type check (roughly, has_been_sent should belong to the projection).
+          
+        Definition is_equivocating_alt
+          (v : validator)
+          (s : indexed_state IT)
+          (j := A v)
+          : Prop
+          := 
+          forall (tr : protocol_trace X)
+          (last : transition_item)
+          (prefix : list transition_item)
+          (Hpr : trace_prefix (proj1_sig tr) last prefix)
+          (Hlast : destination last = s),
+          exists (m : message),
+          List.Exists 
+          (fun (elem : transition_item) => 
+          input elem = Some m 
+          /\ @has_been_sent message (IT j) (IS j) (IM j) (has_been_sent_capabilities j) (destination elem) m = false
+          ) prefix.
+          
+          *)
+          
+          
+        (* This is work in progress. To define equivocation fault, we must filter validators
+        by the is_equivocating property. For this, in turn, we need is_equivocating to be decidable 
+          
+         Class equivocation_dec := {
+          is_equivocating_dec (s : state) : 
+           forall (v : validator), 
+           {(is_equivocating s v)} + {~(is_equivocating s v)};
+         }.
          
-        
-        
+         (* This needs to filter the list according to is_equivocating *)
+         
+         Definition equivocating_validators
+          := validator_listing.
+         
+         
+         Fixpoint equivocation_fault 
+          (s : state)
+          : R
+          :=
+          List.fold_left Rplus (List.map Weight equivocating_validators) 0%R.
+         *)
 End Composite.
 
 
