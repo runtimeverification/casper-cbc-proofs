@@ -4,6 +4,7 @@ shortname: casper-cbc-proofs
 opam_name: coq-casper-cbc
 organization: runtimeverification
 community: false
+coqdoc: true
 
 synopsis: >-
   Protocol verification of Casper Correct-By-Construction
@@ -60,4 +61,8 @@ documentation: |-
     specified in https://github.com/ethereum/cbc-casper
   - `VLSM`: Formalization of Vlad Zamfir's new, composable, model
     used for stating and solving consensus problems.
+
+  See also the latest [online documentation][coqdoc-link] of the Coq files.
+
+  [coqdoc-link]: https://runtimeverification.github.io/casper-cbc-proof-docs/docs/latest/coqdoc/toc.html
 ---
