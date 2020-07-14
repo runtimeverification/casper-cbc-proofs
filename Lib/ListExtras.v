@@ -637,7 +637,9 @@ Proof.
         ; inversion Hin1; inversion Hin2; subst.
         lia.
       * inversion Hle.
-      * { destruct in1, in2; try lia.
+      * { destruct in1, in2.
+        - lia.
+        - lia.
         - destruct (nth_error_filter_index f l n2); inversion Hin2.
         - assert (Hle' : n1 <= n2) by lia.
           specialize (IHl n1 n2 Hle').
@@ -736,9 +738,10 @@ Lemma nth_error_length
   .
 Proof.
   generalize dependent a. generalize dependent l.
-  induction n; intros [|a l] b Hnth; simpl; try lia; inversion Hnth.
-  specialize (IHn l b H0).
-  lia.
+  induction n; intros [|a l] b Hnth; simpl; inversion Hnth.
+  - lia.
+  - specialize (IHn l b H0).
+    lia.
 Qed.
 
 Lemma list_prefix_nth_last

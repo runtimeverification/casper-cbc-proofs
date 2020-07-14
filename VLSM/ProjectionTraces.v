@@ -580,9 +580,11 @@ Proof.
         exists (S nX2).
         exists sx.
         exists (destination item).
-        repeat split; try lia.
-        simpl. rewrite nth_error_map. replace (nth_error trx nX2) with (Some item).
-        reflexivity.
+        repeat split.
+        + lia.
+        + simpl. rewrite nth_error_map.
+          replace (nth_error trx nX2) with (Some item).
+          reflexivity.
       - inversion Hle.
       - simpl in Hs1. simpl in Hs2.
         rewrite nth_error_map in Hs1.

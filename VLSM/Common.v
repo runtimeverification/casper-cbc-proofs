@@ -1223,45 +1223,46 @@ This relation is often used in stating safety and liveness properties.*)
       exists (length prefix_tr).
       exists (length prefix_tr + length suffix_tr).
       remember (length prefix_tr) as m.
-      split; try lia.
-      destruct m; simpl.
-      + symmetry in Heqm. apply length_zero_iff_nil in Heqm.
-        subst; simpl in *.
-        split; try (f_equal; assumption).
-        remember (length suffix_tr) as delta.
-        destruct delta; simpl.
-        * symmetry in Heqdelta. apply length_zero_iff_nil in Heqdelta.
-          subst; simpl in *. f_equal.
-        * apply nth_error_last.
-          rewrite map_length. assumption.
-      + rewrite map_app.
-        assert (Hnth_pref : forall suf, nth_error (List.map destination prefix_tr ++ suf) m = Some first).
-        { intro. rewrite nth_error_app1.
-          - specialize (nth_error_last (List.map destination prefix_tr) m); intro Hnth.
-            assert (Hlen : S m = length (List.map destination prefix_tr))
-              by (rewrite map_length; assumption).
-            specialize (Hnth Hlen (proj1_sig prefix_start)).
-            rewrite Hnth. f_equal. subst.
-            rewrite Hprefix_last. reflexivity.
-          - rewrite map_length. rewrite <- Heqm. constructor.
-        }
-        split; try apply Hnth_pref.
-        remember (length suffix_tr) as delta.
-        destruct delta; simpl.
-        * symmetry in Heqdelta. apply length_zero_iff_nil in Heqdelta.
-          subst; simpl in *. rewrite Plus.plus_0_r.
-          apply Hnth_pref.
-        * { rewrite nth_error_app2.
-            - rewrite map_length.
-              rewrite <- Heqm.
-              replace (m + S delta - S m) with  delta by lia.
-              specialize (nth_error_last (List.map destination suffix_tr) delta); intro Hnth.
-              rewrite map_length in Hnth.
-              specialize (Hnth Heqdelta first).
-              assumption.
-            - rewrite map_length. rewrite <- Heqm.
-              lia.
+      split.
+      - lia.
+      - destruct m; simpl.
+        + symmetry in Heqm. apply length_zero_iff_nil in Heqm.
+          subst; simpl in *.
+          split; try (f_equal; assumption).
+          remember (length suffix_tr) as delta.
+          destruct delta; simpl.
+          * symmetry in Heqdelta. apply length_zero_iff_nil in Heqdelta.
+            subst; simpl in *. f_equal.
+          * apply nth_error_last.
+            rewrite map_length. assumption.
+        + rewrite map_app.
+          assert (Hnth_pref : forall suf, nth_error (List.map destination prefix_tr ++ suf) m = Some first).
+          { intro. rewrite nth_error_app1.
+            - specialize (nth_error_last (List.map destination prefix_tr) m); intro Hnth.
+              assert (Hlen : S m = length (List.map destination prefix_tr))
+                by (rewrite map_length; assumption).
+              specialize (Hnth Hlen (proj1_sig prefix_start)).
+              rewrite Hnth. f_equal. subst.
+              rewrite Hprefix_last. reflexivity.
+            - rewrite map_length. rewrite <- Heqm. constructor.
           }
+          split; try apply Hnth_pref.
+          remember (length suffix_tr) as delta.
+          destruct delta; simpl.
+          * symmetry in Heqdelta. apply length_zero_iff_nil in Heqdelta.
+            subst; simpl in *. rewrite Plus.plus_0_r.
+            apply Hnth_pref.
+          * { rewrite nth_error_app2.
+              - rewrite map_length.
+                rewrite <- Heqm.
+                replace (m + S delta - S m) with  delta by lia.
+                specialize (nth_error_last (List.map destination suffix_tr) delta); intro Hnth.
+                rewrite map_length in Hnth.
+                specialize (Hnth Heqdelta first).
+                assumption.
+              - rewrite map_length. rewrite <- Heqm.
+                lia.
+            }
     Qed.
 
     Definition trace_segment
