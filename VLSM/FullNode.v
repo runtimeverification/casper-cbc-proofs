@@ -494,7 +494,7 @@ Section Full.
       (m : @sorted_message C V message_type)
       (Hj : reach (justification m) s)
       (Hlight : not_heavy (add_in_sorted_fn m s)),
-      valid_client2 tt (add_message_sorted m s, Some m)
+      valid_client2 tt (s, Some m)
       .
 
   Instance VLSM_type_full_client2 : VLSM_type message :=
@@ -648,7 +648,50 @@ Section Full.
   specialize (@F1 nlst). rewrite nlst_S. intro; assumption.
   Defined.
 
-  Definition VLSM_full_composed : VLSM (composite_sig f1_n_plus_n' IS_index)
+  Definition VLSM_full_composed_free : VLSM (composite_sig f1_n_plus_n' IS_index)
     := free_composite_vlsm f1_n_plus_n' IM_index.
+
+  Program Definition state_proj
+    (s : @state _ (composite_type IT_index))
+    (i : Fin.t (n + n'))
+    : @sorted_state C V message_type
+    .
+    specialize (s i). unfold state in s. unfold IT_index in s.
+    destruct (proj1_sig (to_nat i) ?= n); exact s.
+  Defined.
+
+  Definition state_union
+    (s : @state _ (composite_type IT_index))
+    : @sorted_state C V message_type
+    :=
+    let state_list := List.map (state_proj s) (fin_listing (n + n')) in
+    fold_right CBC.FullNode.sorted_state_union (sorted_state0 C V) state_list
+    .
+  
+  Definition VLSM_full_constraint
+    (l : composite_label IT_index)
+    (som : composite_state IT_index * option message)
+    : Prop
+    := 
+    let (s', om') := composite_transition IM_index l som in
+    not_heavy (state_union s')
+    .
+  
+  Definition VLSM_full_composed : VLSM (composite_sig f1_n_plus_n' IS_index)
+    := composite_vlsm f1_n_plus_n' IM_index VLSM_full_constraint.
+
+
+  Definition composed_union
+    (s : @state _ (composite_type IT_index))
+    : @state _ (composite_type IT_index)
+    .
+    assert (union := state_union s).
+    intro i.
+    unfold state. unfold IT_index.
+    destruct (proj1_sig (to_nat i) ?= n); exact union.
+  Defined.
+
+
+ 
 
 End Full.
