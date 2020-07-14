@@ -4,14 +4,17 @@ Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition.
 
-Section Simple.
+(** This chapter is dedicated to building the language for discussing equivocation.
+    We begin by giving the basic definitions for individual VLSMs and we then
+    move towards a composite context. **)
 
+Section Simple.
     Context
       {message : Type}
       {vtype : VLSM_type message}
       {Sig : LSM_sig vtype}
       (vlsm : VLSM Sig).
-
+ 
     Definition trace_has_message
       (message_selector : transition_item -> option message)
       (msg : message)
@@ -145,7 +148,7 @@ Section Composite.
             (index_listing : list index)
             {finite_index : Listing index_listing}
             {validator : Type}
-            {validator_listing : list validator}
+            (validator_listing : list validator)
             {finite_validator : Listing validator_listing}
             {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
@@ -245,26 +248,29 @@ Section Composite.
           
           
         (* This is work in progress. To define equivocation fault, we must filter validators
-        by the is_equivocating property. For this, in turn, we need is_equivocating to be decidable 
+        by the is_equivocating property. For this, in turn, we need is_equivocating to be decidable *)
           
+        
          Class equivocation_dec := {
-          is_equivocating_dec (s : state) : 
-           forall (v : validator), 
-           {(is_equivocating s v)} + {~(is_equivocating s v)};
+          is_equivocating_fn (s : indexed_state IT) (v : validator) : bool;
+          
+          is_equivocating_dec : forall (s : indexed_state IT) (v : validator),
+           is_equivocating_fn s v = true <-> is_equivocating s v;
          }.
          
-         (* This needs to filter the list according to is_equivocating *)
-         
          Definition equivocating_validators
-          := validator_listing.
-         
-         
-         Fixpoint equivocation_fault 
-          (s : state)
+         (Dec : equivocation_dec)
+         (s : indexed_state IT)
+         : list validator
+          := List.filter (is_equivocating_fn s) validator_listing.
+
+         Definition equivocation_fault 
+          (Dec : equivocation_dec)
+          (s : indexed_state IT)
           : R
           :=
-          List.fold_left Rplus (List.map Weight equivocating_validators) 0%R.
-         *)
+          List.fold_left Rplus (List.map Weight (equivocating_validators Dec s)) 0%R.
+         
 End Composite.
 
 
