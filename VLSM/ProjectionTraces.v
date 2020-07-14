@@ -1,5 +1,6 @@
 Require Import List Streams Nat Bool.
 Import ListNotations.
+Require Import Lia.
 Require Import Logic.FunctionalExtensionality.
 
 Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
@@ -579,10 +580,9 @@ Proof.
         exists (S nX2).
         exists sx.
         exists (destination item).
-        repeat split; try assumption.
-        + apply le_0_n.
-        + simpl. rewrite nth_error_map. replace (nth_error trx nX2) with (Some item).
-          reflexivity.
+        repeat split; try lia.
+        simpl. rewrite nth_error_map. replace (nth_error trx nX2) with (Some item).
+        reflexivity.
       - inversion Hle.
       - simpl in Hs1. simpl in Hs2.
         rewrite nth_error_map in Hs1.
@@ -640,10 +640,9 @@ Proof.
         exists (destination item1).
         exists (destination item2).
         repeat split; try assumption.
-        + apply le_n_S.
-          apply le_S_n in Hle.
-          specialize (nth_error_filter_index_le _ _ _ _ Hle _ _ Hindex1 Hindex2).
-          intro; assumption.
+        + assert (Hle' : n1 <= n2) by lia.
+          specialize (nth_error_filter_index_le _ _ _ _ Hle' _ _ Hindex1 Hindex2).
+          intro; lia.
         + simpl. rewrite nth_error_map. replace (nth_error trx nX1) with (Some item1).
           reflexivity.
         + simpl. rewrite nth_error_map. replace (nth_error trx nX2) with (Some item2).

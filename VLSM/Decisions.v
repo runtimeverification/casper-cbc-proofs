@@ -1,6 +1,7 @@
 Require Import Coq.Logic.FinFun.
 Require Import Bool List Streams Logic.Epsilon.
-Require Import Coq.Arith.Compare_dec Coq.Arith.Le.
+Require Import Coq.Arith.Compare_dec.
+Require Import Lia.
 Import List Notations.
 From CasperCBC
   Require Import
@@ -152,8 +153,7 @@ Section CommuteIndexed.
       ; intros Hfutures.
       specialize (Hconsistent s1 s2 Hfutures j k Hneq c1 c2 HD1 HD2).
       assumption.
-    - assert (Hle : n2 <= n1)
-        by (apply le_trans with (S n2); try assumption; repeat constructor).
+    - assert (Hle : n2 <= n1) by lia.
       clear l.
       specialize (in_futures_witness_reverse X s2 s1 tr n2 n1 Hle Hs2 Hs1)
       ; intros Hfutures.

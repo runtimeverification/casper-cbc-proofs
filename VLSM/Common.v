@@ -1,3 +1,4 @@
+Require Import Lia.
 Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus.
 Import ListNotations.
 
@@ -1465,7 +1466,8 @@ This relation is often used in stating safety and liveness properties.*)
         intro Hsuf.
         apply finite_ptrace_first_pstate in Hsuf.
         assumption.
-      - specialize (infinite_protocol_trace_from_segment s0 l Htr n n (le_n n))
+      - assert (Hle : n <= n) by lia.
+        specialize (infinite_protocol_trace_from_segment s0 l Htr n n Hle)
         ; simpl; intros Hseg.
         inversion Hnth.
         apply finite_ptrace_first_pstate in Hseg.
@@ -1533,7 +1535,7 @@ This relation is often used in stating safety and liveness properties.*)
         + reflexivity.
       -  exists (trace_segment tr n1 (S m)).
         split.
-        + apply ptrace_segment; try assumption. constructor. assumption.
+        + apply ptrace_segment; try assumption. lia.
         + { destruct tr as [s tr | s tr]; simpl.
           - unfold list_segment.
             rewrite list_suffix_map. rewrite list_prefix_map.
@@ -1543,7 +1545,7 @@ This relation is often used in stating safety and liveness properties.*)
             + apply nth_error_length in Hs2.
               specialize (list_prefix_length (List.map destination tr) (S m) Hs2); intro Hpref_len.
               rewrite Hpref_len.
-              apply le_n_S. assumption.
+              lia.
           - unfold stream_segment.
             rewrite list_suffix_map. rewrite stream_prefix_map.
             simpl in Hs2.
@@ -1554,7 +1556,7 @@ This relation is often used in stating safety and liveness properties.*)
               reflexivity.
             + specialize (stream_prefix_length (Streams.map destination tr) (S m)); intro Hpref_len.
               rewrite Hpref_len.
-              apply le_n_S. assumption.
+              lia.
           }
     Qed.
     (* end hide *)

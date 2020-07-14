@@ -634,21 +634,18 @@ Proof.
       * inversion Hin1; inversion Hin2; subst; assumption.
       * destruct (nth_error_filter_index f l n2)
         ; inversion Hin1; inversion Hin2; subst.
-        apply le_0_n.
+        lia.
       * inversion Hle.
-      * apply le_S_n in Hle.
-        { destruct in1, in2.
-        - destruct (nth_error_filter_index f l n1); inversion Hin1.
-        - apply le_0_n.
+      * { destruct in1, in2; try lia.
         - destruct (nth_error_filter_index f l n2); inversion Hin2.
-        - specialize (IHl n1 n2 Hle).
+        - assert (Hle' : n1 <= n2) by lia.
+          specialize (IHl n1 n2 Hle').
           destruct (nth_error_filter_index f l n1) eqn:Hin1'; inversion Hin1;
           subst; clear Hin1.
           destruct (nth_error_filter_index f l n2) eqn:Hin2'; inversion Hin2
           ; subst; clear Hin2.
           specialize (IHl in1 eq_refl in2 eq_refl).
-          apply le_n_S.
-          assumption.
+          lia.
         }
     + specialize (IHl n1 n2 Hle).
       destruct (nth_error_filter_index f l n1) eqn:Hin1'; inversion Hin1
@@ -656,8 +653,7 @@ Proof.
       destruct (nth_error_filter_index f l n2) eqn:Hin2'; inversion Hin2
       ; subst; clear Hin2.
       specialize (IHl n eq_refl n0 eq_refl).
-      apply le_n_S.
-      assumption.
+      lia.
 Qed.
 
 Lemma nth_error_filter
