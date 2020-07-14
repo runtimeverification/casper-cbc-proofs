@@ -160,14 +160,12 @@ Proof.
   - intros (b, l) a; simpl; intro Hin.
     destruct Hin as [Heq | Hin]; subst.
     + exists 0. split; try reflexivity.
-      apply le_n_S.
-      apply le_0_n.
+      lia.
     + specialize (IHn l a Hin).
       destruct IHn as [k [Hlt Heq]].
       exists (S k).
       split; try assumption.
-      apply le_n_S.
-      assumption.
+      lia.
 Qed.
 
 Lemma stream_prefix_app_l
@@ -181,9 +179,10 @@ Proof.
   generalize dependent n.
   induction l; intros [|n] Hle; try reflexivity.
   - inversion Hle.
-  - simpl in Hle. apply le_S_n in Hle.
-    specialize (IHl n Hle).
-    simpl. f_equal. assumption.
+  - simpl in Hle.
+    simpl. f_equal.
+    apply IHl.
+    lia.
 Qed.
 
 Lemma stream_prefix_app_r
@@ -201,10 +200,10 @@ Proof.
     destruct l as [|a l]; try reflexivity.
     simpl in Hge. inversion Hge.
   - intros s [| a l] Hge; try reflexivity.
+    simpl. f_equal.
+    apply IHn.
     simpl in Hge.
-    apply le_S_n in Hge.
-    specialize (IHn s l Hge).
-    simpl. f_equal. assumption.
+    lia.
 Qed.
 
 Lemma stream_prefix_map
@@ -288,7 +287,7 @@ Proof.
   generalize dependent l.
   induction n1; intros [a l]; intros [|n2] Hn; try reflexivity.
   - inversion Hn.
-  - simpl. f_equal. apply IHn1. apply le_S_n.  assumption.
+  - simpl. f_equal. apply IHn1. lia.
 Qed.
 
 Definition stream_segment
@@ -434,8 +433,7 @@ Proof.
   intros n1 n2 Hlt.
   specialize (Hs (S n1) (S n2)).
   apply Hs.
-  apply le_n_S.
-  assumption.
+  lia.
 Qed.
 
 Definition nat_sequence_suffix
@@ -455,22 +453,19 @@ Proof.
   destruct s as (a, s).
   simpl.
   repeat rewrite Str_nth_map.
-  assert (Hlt1 : 0 < S n1) by (apply le_n_S; apply le_0_n).
-  assert (Ha1 := Hs 0 (S n1) Hlt1).
+  assert (Hlt1 : 0 < S n1) by lia.
+  pose proof (Hs 0 (S n1) Hlt1) as Ha1.
   unfold Str_nth in Ha1.
   simpl in Ha1.
-  apply Minus.le_plus_minus_r in Ha1.
   assert (Hlt2 : 0 < S n2) by lia.
   pose proof (Hs 0 (S n2) Hlt2) as Ha2.
   unfold Str_nth in Ha2.
   simpl in Ha2.
-  apply Minus.le_plus_minus_r in Ha2.
-  apply Plus.plus_lt_reg_l with (S a).
+  assert (HltS : S n1 < S n2) by lia.
+  specialize (Hs (S n1) (S n2) HltS).
+  unfold Str_nth in Hs.
+  simpl in Hs.
   unfold Str_nth.
-  rewrite Ha1.
-  rewrite Ha2.
-  specialize (Hs (S n1) (S n2)).
-  apply Hs.
   lia.
 Qed.
 
@@ -536,11 +531,7 @@ Proof.
       clear kss'.
       specialize (Hseq 0 (S k0) Hlt0).
       unfold Str_nth in Hseq; simpl in Hseq.
-      apply Minus.le_plus_minus_r in Hseq.
-      apply Plus.plus_reg_l  with (S k).
       unfold Str_nth.
-      rewrite Hseq.
-      rewrite Heq.
       lia.
   - apply proj2 in Hfs. apply Hfs. clear Hfs.
     destruct H as [k Heq].
@@ -553,10 +544,6 @@ Proof.
     clear kss'.
     specialize (Hseq 0 (S k) Hlt).
     unfold Str_nth in *; simpl in *.
-    apply Minus.le_plus_minus_r in Hseq.
-    rewrite <- Hseq. rewrite Heq.
-    simpl.
-    f_equal.
     lia.
 Qed.
 
@@ -607,12 +594,11 @@ Proof.
   clear Heq kss'.
   assert (Hlt : 0 < S n') by lia.
   specialize (Hks 0 (S n') Hlt).
-  apply Minus.le_plus_minus_r in Hks.
-  rewrite Plus.plus_comm. simpl.
+  replace (Str_nth n' (tl ks) - S (hd ks) + S (hd ks)) with (Str_nth (S n') ks)
+  ; try reflexivity.
   unfold Str_nth in Hks; simpl in Hks.
-  unfold Str_nth at 4; simpl.
-  rewrite Hks.
-  reflexivity.
+  unfold Str_nth; simpl.
+  lia.
 Qed.
 
 Lemma all_ForAll_hd
@@ -876,16 +862,11 @@ Proof.
   unfold stream_segment; unfold stream_segment_alt; intro Heq.
   remember (S (Str_nth n ks)) as x; simpl in Heq; subst.
   assert  (Heq' : S (Str_nth n ks) - S k = (S (Str_nth n ks - S k))).
-  { assert (Hle : 0 < S n) by (apply le_n_S; apply le_0_n).
+  { assert (Hle : 0 < S n) by lia.
     clear Hfs kn ss_to_kn H0 Hfs' Hsss Hpref.
     specialize (Hseq 0 (S n) Hle).
     unfold Str_nth in Hseq. simpl in Hseq.
-    apply Plus.plus_reg_l  with k.
-    simpl.
-    rewrite <- Plus.plus_Snm_nSm .
-    repeat rewrite Minus.le_plus_minus_r; trivial.
-    unfold lt in Hseq.
-    apply Le.le_trans with (S k); [|assumption].
+    unfold Str_nth. simpl.
     lia.
   }
   rewrite Heq' in Heq.
@@ -901,7 +882,7 @@ Proof.
     simpl.
     f_equal.
   + clear -Hseq. unfold kn. simpl. clear kn.
-    assert (Hlt : 0 < S n) by  (apply le_n_S; apply le_0_n).
+    assert (Hlt : 0 < S n) by lia.
     apply Hseq in Hlt.
     unfold Str_nth in *; simpl in *.
     lia.

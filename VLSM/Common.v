@@ -1,5 +1,5 @@
-Require Import Lia.
-Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus.
+Require Import Nat Lia.
+Require Import List Streams ProofIrrelevance.
 Import ListNotations.
 
 From CasperCBC
@@ -1223,7 +1223,7 @@ This relation is often used in stating safety and liveness properties.*)
       exists (length prefix_tr).
       exists (length prefix_tr + length suffix_tr).
       remember (length prefix_tr) as m.
-      split; try apply le_plus_l.
+      split; try lia.
       destruct m; simpl.
       + symmetry in Heqm. apply length_zero_iff_nil in Heqm.
         subst; simpl in *.
@@ -1249,21 +1249,18 @@ This relation is often used in stating safety and liveness properties.*)
         remember (length suffix_tr) as delta.
         destruct delta; simpl.
         * symmetry in Heqdelta. apply length_zero_iff_nil in Heqdelta.
-          subst; simpl in *. rewrite plus_0_r.
+          subst; simpl in *. rewrite Plus.plus_0_r.
           apply Hnth_pref.
         * { rewrite nth_error_app2.
             - rewrite map_length.
               rewrite <- Heqm.
-              assert (Hdelta : m + S delta - S m = delta)
-                by (rewrite <- plus_Snm_nSm; apply minus_plus).
-              rewrite Hdelta.
+              replace (m + S delta - S m) with  delta by lia.
               specialize (nth_error_last (List.map destination suffix_tr) delta); intro Hnth.
               rewrite map_length in Hnth.
               specialize (Hnth Heqdelta first).
               assumption.
             - rewrite map_length. rewrite <- Heqm.
-              rewrite <- plus_Snm_nSm. simpl.
-              apply le_n_S. apply le_plus_l.
+              lia.
           }
     Qed.
 

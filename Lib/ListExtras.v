@@ -455,8 +455,9 @@ Lemma list_prefix_length
 Proof.
   generalize dependent l. induction n; intros [|a l] Hlen; try reflexivity.
   - inversion Hlen.
-  - simpl in *. f_equal. apply le_S_n in Hlen.
-    apply IHn; assumption.
+  - simpl in *. f_equal.
+    apply IHn.
+    lia.
 Qed.
 
 Lemma list_suffix_length
@@ -481,7 +482,7 @@ Proof.
   generalize dependent n1. generalize dependent n2.
   induction l; intros [|n2] [|n1] Hn; try reflexivity.
   - inversion Hn.
-  - simpl. f_equal. apply IHl. apply le_S_n.  assumption.
+  - simpl. f_equal. apply IHl. lia.
 Qed.
 
 Lemma list_prefix_suffix
@@ -735,12 +736,9 @@ Lemma nth_error_length
   .
 Proof.
   generalize dependent a. generalize dependent l.
-  induction n; intros [|a l] b Hnth; simpl.
-  - inversion Hnth.
-  - apply le_n_S. apply le_0_n.
-  - inversion Hnth.
-  - simpl in Hnth. apply le_n_S.
-    specialize (IHn l b Hnth). assumption.
+  induction n; intros [|a l] b Hnth; simpl; try lia; inversion Hnth.
+  specialize (IHn l b H0).
+  lia.
 Qed.
 
 Lemma list_prefix_nth_last
@@ -776,11 +774,10 @@ Proof.
   generalize dependent n. generalize dependent s.
   induction i; intros [|a s] [|n] Hi; try reflexivity.
   - inversion Hi.
-  - simpl. apply nth_error_None. apply le_0_n.
-  - apply le_S_n in Hi.
-    simpl.
+  - simpl. apply nth_error_None. simpl. lia.
+  - simpl.
     apply IHi.
-    assumption.
+    lia.
 Qed.
 
 Lemma list_suffix_last
