@@ -1,9 +1,28 @@
-
-Require Import List Streams Coq.Arith.Le Coq.Arith.Lt Coq.Arith.Plus Coq.Arith.Minus Coq.Arith.Compare_dec.
+Require Import List Streams Coq.Arith.Compare_dec.
+Require Import Lia.
 Import ListNotations.
 
 From CasperCBC
-     Require Import Lib.ListExtras Preamble.
+Require Import Lib.ListExtras Preamble.
+
+Lemma recons
+  {A : Type}
+  (s : Stream A)
+  : Cons (hd s) (tl s) = s.
+Proof.
+  case s.  reflexivity.
+Qed.
+
+Lemma map_Cons
+  {A B : Type}
+  (f : A -> B)
+  (x : A)
+  (s : Stream A)
+  : map f (Cons x s) = Cons (f x) (map f s).
+Proof.
+  intros. 
+  rewrite <- (recons (map f (Cons x s))). reflexivity.
+Qed.
 
 Definition stream_app
   {A : Type}
@@ -83,8 +102,8 @@ Proof.
   - inversion Hi.
   - inversion Hi.
   - simpl.
-    apply lt_S_n in Hi.
-    specialize (IHi s n Hi).
+    assert (Hi': i < n) by lia.
+    specialize (IHi s n Hi').
     rewrite IHi.
     reflexivity.
 Qed.
@@ -141,14 +160,12 @@ Proof.
   - intros (b, l) a; simpl; intro Hin.
     destruct Hin as [Heq | Hin]; subst.
     + exists 0. split; try reflexivity.
-      apply le_n_S.
-      apply le_0_n.
+      lia.
     + specialize (IHn l a Hin).
       destruct IHn as [k [Hlt Heq]].
       exists (S k).
       split; try assumption.
-      apply le_n_S.
-      assumption.
+      lia.
 Qed.
 
 Lemma stream_prefix_app_l
@@ -162,9 +179,10 @@ Proof.
   generalize dependent n.
   induction l; intros [|n] Hle; try reflexivity.
   - inversion Hle.
-  - simpl in Hle. apply le_S_n in Hle.
-    specialize (IHl n Hle).
-    simpl. f_equal. assumption.
+  - simpl in Hle.
+    simpl. f_equal.
+    apply IHl.
+    lia.
 Qed.
 
 Lemma stream_prefix_app_r
@@ -182,10 +200,10 @@ Proof.
     destruct l as [|a l]; try reflexivity.
     simpl in Hge. inversion Hge.
   - intros s [| a l] Hge; try reflexivity.
+    simpl. f_equal.
+    apply IHn.
     simpl in Hge.
-    apply le_S_n in Hge.
-    specialize (IHn s l Hge).
-    simpl. f_equal. assumption.
+    lia.
 Qed.
 
 Lemma stream_prefix_map
@@ -269,7 +287,7 @@ Proof.
   generalize dependent l.
   induction n1; intros [a l]; intros [|n2] Hn; try reflexivity.
   - inversion Hn.
-  - simpl. f_equal. apply IHn1. apply le_S_n.  assumption.
+  - simpl. f_equal. apply IHn1. lia.
 Qed.
 
 Definition stream_segment
@@ -321,24 +339,16 @@ Proof.
     + rewrite list_suffix_length. rewrite stream_prefix_length. assumption.
   - rewrite stream_prefix_nth; try assumption.
     rewrite stream_suffix_nth.
-    assert (Hle : n1 <= n1 + k) by apply le_plus_l .
+    assert (Hle : n1 <= n1 + k) by lia.
     specialize (list_suffix_nth (stream_prefix l n2) n1 (n1 + k) Hle)
     ; intro Heq.
-    clear Hle.
-    rewrite minus_plus in Heq.
+    clear Hle.    
+    assert (Hs: n1 + k - n1 = k) by lia.
+    rewrite Hs in Heq.
     rewrite Heq.
     rewrite stream_prefix_nth.
-    + rewrite plus_comm. reflexivity.
-    + assert (Hle : n1 <= n2).
-      { destruct (le_dec n1 n2); try assumption.
-        rewrite not_le_minus_0  in l0; try assumption.
-        inversion l0.
-      }
-     apply (plus_lt_compat_l _ _ n1) in l0.
-     apply lt_le_trans with  (n1 + (n2 - n1)); try assumption.
-     apply le_plus_minus_r in Hle.
-     rewrite Hle.
-     constructor.
+    + rewrite Plus.plus_comm; reflexivity.
+    + lia.
 Qed.
 
 Lemma stream_prefix_segment
@@ -379,6 +389,35 @@ Proof.
   assumption.
 Qed.
 
+Lemma stream_segment_app
+  {A : Type}
+  (l : Stream A)
+  (n1 n2 n3 : nat)
+  (H12 : n1 <= n2)
+  (H23 : n2 <= n3)
+  : stream_segment l n1 n2 ++ stream_segment l n2 n3 = stream_segment l n1 n3
+  .
+Proof.
+  assert (Hle : n1 <= n3) by lia.
+  specialize (stream_prefix_segment_suffix l n1 n3 Hle); intro Hl1.
+  specialize (stream_prefix_segment_suffix l n2 n3 H23); intro Hl2.
+  rewrite <- Hl2 in Hl1 at 4. clear Hl2.
+  apply stream_app_inj_l in Hl1.
+  - specialize (list_prefix_suffix (stream_prefix l n2) n1); intro Hl2.
+    specialize (stream_prefix_prefix l n1 n2 H12); intro Hl3.
+    rewrite Hl3 in Hl2.
+    rewrite <- Hl2 in Hl1.
+    rewrite <- app_assoc in Hl1.
+    apply app_inv_head in Hl1.
+    symmetry.
+    assumption.
+  - repeat rewrite app_length.
+    unfold stream_segment.
+    repeat rewrite list_suffix_length.
+    repeat rewrite stream_prefix_length.
+    lia.
+Qed.
+
 Definition monotone_nat_stream_prop
   (s : Stream nat)
   := forall n1 n2 : nat, n1 < n2 -> Str_nth n1 s < Str_nth n2 s.
@@ -394,8 +433,7 @@ Proof.
   intros n1 n2 Hlt.
   specialize (Hs (S n1) (S n2)).
   apply Hs.
-  apply le_n_S.
-  assumption.
+  lia.
 Qed.
 
 Definition nat_sequence_suffix
@@ -415,24 +453,20 @@ Proof.
   destruct s as (a, s).
   simpl.
   repeat rewrite Str_nth_map.
-  assert (Hlt1 : 0 < S n1) by (apply le_n_S; apply le_0_n).
-  assert (Ha1 := Hs 0 (S n1) Hlt1).
+  assert (Hlt1 : 0 < S n1) by lia.
+  pose proof (Hs 0 (S n1) Hlt1) as Ha1.
   unfold Str_nth in Ha1.
   simpl in Ha1.
-  apply le_plus_minus_r in Ha1.
-  assert (Hlt2 : 0 < S n2) by (apply le_n_S; apply le_0_n).
-  assert (Ha2 := Hs 0 (S n2) Hlt2).
+  assert (Hlt2 : 0 < S n2) by lia.
+  pose proof (Hs 0 (S n2) Hlt2) as Ha2.
   unfold Str_nth in Ha2.
   simpl in Ha2.
-  apply le_plus_minus_r in Ha2.
-  apply plus_lt_reg_l with (S a).
+  assert (HltS : S n1 < S n2) by lia.
+  specialize (Hs (S n1) (S n2) HltS).
+  unfold Str_nth in Hs.
+  simpl in Hs.
   unfold Str_nth.
-  rewrite Ha1.
-  rewrite Ha2.
-  specialize (Hs (S n1) (S n2)).
-  apply Hs.
-  apply le_n_S.
-  assumption.
+  lia.
 Qed.
 
 Definition monotone_nat_stream_suffix
@@ -487,24 +521,18 @@ Proof.
     unfold ks in *; clear ks.
     destruct kss as [(k, ks) Hseq]; simpl in *.
     destruct k0.
-    + elim (succ_plus_discr k n).
+    + elim (Plus.succ_plus_discr k n).
       assumption.
     + exists k0. unfold nat_sequence_suffix.
       rewrite Str_nth_map .
       simpl.
       unfold Str_nth in Heq; simpl in Heq.
-      assert (Hlt0 : 0 < (S k0)) by (apply le_n_S; apply le_0_n).
+      assert (Hlt0 : 0 < (S k0)) by lia.
       clear kss'.
       specialize (Hseq 0 (S k0) Hlt0).
       unfold Str_nth in Hseq; simpl in Hseq.
-      apply le_plus_minus_r in Hseq.
-      apply plus_reg_l  with (S k).
       unfold Str_nth.
-      rewrite Hseq.
-      rewrite Heq.
-      simpl.
-      f_equal.
-      apply plus_comm.
+      lia.
   - apply proj2 in Hfs. apply Hfs. clear Hfs.
     destruct H as [k Heq].
     exists (S k).
@@ -512,15 +540,11 @@ Proof.
     rewrite Str_nth_map in Heq.
     unfold ks in *; clear ks.
     destruct kss as [(k0, ks) Hseq]; simpl in *.
-    assert (Hlt : 0 < (S k)) by (apply le_n_S; apply le_0_n).
+    assert (Hlt : 0 < (S k)) by lia.
     clear kss'.
     specialize (Hseq 0 (S k) Hlt).
     unfold Str_nth in *; simpl in *.
-    apply le_plus_minus_r in Hseq.
-    rewrite <- Hseq. rewrite Heq.
-    simpl.
-    f_equal.
-    apply plus_comm.
+    lia.
 Qed.
 
 Definition stream_subsequence
@@ -568,14 +592,13 @@ Proof.
   unfold n in *; clear n.
   simpl in ss'.
   clear Heq kss'.
-  assert (Hlt : 0 < S n') by  (apply le_n_S; apply le_0_n).
+  assert (Hlt : 0 < S n') by lia.
   specialize (Hks 0 (S n') Hlt).
-  apply le_plus_minus_r in Hks.
-  rewrite plus_comm. simpl.
+  replace (Str_nth n' (tl ks) - S (hd ks) + S (hd ks)) with (Str_nth (S n') ks)
+  ; try reflexivity.
   unfold Str_nth in Hks; simpl in Hks.
-  unfold Str_nth at 4; simpl.
-  rewrite Hks.
-  reflexivity.
+  unfold Str_nth; simpl.
+  lia.
 Qed.
 
 Lemma all_ForAll_hd
@@ -728,7 +751,7 @@ Proof.
     apply Hinj.
     rewrite app_length.
     repeat (rewrite stream_prefix_length).
-    rewrite plus_comm.
+    rewrite Plus.plus_comm.
     reflexivity.
 Qed.
 
@@ -780,12 +803,11 @@ Proof.
   specialize (Hfs p).
   destruct Hfs as [i Heqki].
   specialize (Hseq 0 i).
-  specialize (lt_irrefl k0); intro H; elim H.
+  specialize (Lt.lt_irrefl k0); intro H; elim H.
   destruct i; subst; try assumption.
-  apply lt_trans with k; try assumption.
+  apply Lt.lt_trans with k; try assumption.
   apply Hseq.
-  apply le_n_S.
-  apply le_0_n.
+  lia.
 Qed.
 
 
@@ -840,17 +862,12 @@ Proof.
   unfold stream_segment; unfold stream_segment_alt; intro Heq.
   remember (S (Str_nth n ks)) as x; simpl in Heq; subst.
   assert  (Heq' : S (Str_nth n ks) - S k = (S (Str_nth n ks - S k))).
-  { assert (Hle : 0 < S n) by (apply le_n_S; apply le_0_n).
+  { assert (Hle : 0 < S n) by lia.
     clear Hfs kn ss_to_kn H0 Hfs' Hsss Hpref.
     specialize (Hseq 0 (S n) Hle).
     unfold Str_nth in Hseq. simpl in Hseq.
-    apply plus_reg_l  with k.
-    simpl.
-    rewrite <- plus_Snm_nSm .
-    repeat rewrite le_plus_minus_r; trivial.
-    unfold lt in Hseq.
-    apply le_trans with (S k); try assumption.
-    constructor. constructor.
+    unfold Str_nth. simpl.
+    lia.
   }
   rewrite Heq' in Heq.
   rewrite <- Heq.
@@ -865,11 +882,10 @@ Proof.
     simpl.
     f_equal.
   + clear -Hseq. unfold kn. simpl. clear kn.
-    assert (Hlt : 0 < S n) by  (apply le_n_S; apply le_0_n).
+    assert (Hlt : 0 < S n) by lia.
     apply Hseq in Hlt.
     unfold Str_nth in *; simpl in *.
-    apply le_trans with ( hd (Str_nth_tl n ks)); try assumption.
-    constructor. constructor.
+    lia.
 Qed.
 
 Lemma stream_prefix_nth_last
@@ -891,6 +907,33 @@ Proof.
   simpl.
   inversion Hlast.
   reflexivity.
+Qed.
+
+Lemma stream_segment_singleton
+  {A : Type}
+  (l : Stream A)
+  (n : nat)
+  : stream_segment l n (S n) = [Str_nth n l]
+  .
+Proof.
+  remember (Str_nth n l) as a.
+  unfold stream_segment.
+  assert (Hlt : n < length (stream_prefix l (S n)))
+    by (rewrite stream_prefix_length; constructor).
+  specialize (list_suffix_last (stream_prefix l (S n)) n Hlt a); intro Hlast1.
+  specialize (stream_prefix_nth_last l n a); intro Hlast2.
+  rewrite Hlast2 in Hlast1.
+  specialize (list_suffix_length (stream_prefix l (S n)) n).
+  rewrite stream_prefix_length; try assumption.
+  intro Hlength.
+  rewrite <- Minus.minus_Sn_m in Hlength by lia.
+  rewrite <- Minus.minus_diag_reverse in Hlength.
+  remember (list_suffix (stream_prefix l (S n)) n) as x.
+  rewrite <- Heqa in Hlast1.
+  clear -Hlength Hlast1.
+  destruct x; inversion Hlength.
+  destruct x; inversion H0.
+  simpl in Hlast1; subst; reflexivity.
 Qed.
 
 Lemma str_map_tl

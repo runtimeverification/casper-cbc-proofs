@@ -2,12 +2,9 @@ Require Import FinFun Streams.
 From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
 
-(**
-** Byzantine traces.
+(** * Byzantine Traces
 
-*** Definition and basic properties
-
-In this section we introduce two definitions for byzantine traces,
+In this section, we introduce two definitions of Byzantine traces,
 then show them equivalent (Lemma [byzantine_alt_byzantine_iff]),
 and equivalent with traces on the corresponding pre-loaded VLSM
 (Lemmas [byzantine_pre_loaded] and [pre_loaded_alt_eq]).
@@ -19,15 +16,17 @@ Therefore to avoid confusion we will call _proper byzantine traces_,
 or _traces exhibiting byzantine behavior_ the collection of traces with
 the [byzantine_trace_prop]erty but without the [protocol_trace_prop]erty.
 
-In the remainder of this section we fix a (regular) VLSM <<M>> with
+In the remainder of this section, we fix a (regular) VLSM <<M>> with
 signature <<S>> and of type <<T>>.
 *)
+
+(** ** Definition and basic properties *)
 
 Section ByzantineTraces.
 Context
     {message : Type}
     {T : VLSM_type message}
-    {S : LSM_sig T}
+    {S : VLSM_sign T}
     (M : VLSM S)
     .
 
@@ -45,7 +44,7 @@ to <<M>>.
 
 Definition byzantine_trace_prop
     (tr : @Trace _ T) :=
-    exists (T' : VLSM_type message) (S' : LSM_sig T') (M' : VLSM S')
+    exists (T' : VLSM_type message) (S' : VLSM_sign T') (M' : VLSM S')
         (Proj := binary_free_composition_fst M M'),
         protocol_trace_prop Proj tr.
 
@@ -75,9 +74,7 @@ Proof.
     assumption.
 Qed.
 
-(**
-
-*** An alternative definition for byzantine traces
+(** ** An alternative definition
 
 The [alternate_byzantine_trace_prop]erty relies on the composition
 of the VLSM with a special VLSM which can produce all messages.
@@ -104,7 +101,7 @@ messages are both non-empty.
 
 Definition all_messages_sig
     (inhm : message)
-    : LSM_sig all_messages_type
+    : VLSM_sign all_messages_type
     :=
     {| initial_state_prop := fun s => True
      ; initial_message_prop := fun m => False
@@ -182,8 +179,7 @@ Proof.
     assumption.
 Qed.
 
-(**
-*** Equivalence between the two byzantine trace definitions
+(** ** Equivalence between the two Byzantine trace definitions
 
 In this section we prove that the [alternate_byzantine_trace_prop]erty is
 equivalent to the [byzantine_trace_prop]erty.
@@ -202,22 +198,21 @@ Section pre_loaded_byzantine_alt.
 
 Context
     (PreLoaded := pre_loaded_vlsm M)
-    (Proj := binary_free_composition_fst M (all_messages_vlsm m0))
+    (Alt1 := binary_free_composition_fst M (all_messages_vlsm m0))
     (Alt := binary_free_composition M (all_messages_vlsm m0))
     .
 
 (**
 Let <<PreLoaded>> denote the [pre_loaded_vlsm] of <<M>>, <<Alt>> denote
 the free composition of <<M>> with the [all_messages_vlsm],
-and <<Proj>> denote the projection of <<Alt>> to the component of <<M>>.
+and <<Alt1>> denote the projection of <<Alt>> to the component of <<M>>.
 
 First, note that using the results above it is easy to prove the inclusion
-of <<Proj>> into <<Preloaded>>
+of <<Alt1>> into <<Preloaded>>
 *)
 
-(* begin show *)
     Lemma alt_pre_loaded_incl
-        : VLSM_incl Proj PreLoaded
+        : VLSM_incl Alt1 PreLoaded
         .
     Proof.
         intros t Hpt.
@@ -225,10 +220,9 @@ of <<Proj>> into <<Preloaded>>
         apply byzantine_alt_byzantine.
         assumption.
     Qed.
-(* end show *)
 
 (**
-To prove the reverse inclusion (between <<PreLoaded>> and <<Proj>>) we will use the
+To prove the reverse inclusion (between <<PreLoaded>> and <<Alt1>>) we will use the
 [basic_VLSM_incl] meta-result about proving inclusions bewteen
 VLSMs which states that
 - if all [valid] messages in the first are [protocol_message]s in the second, and
@@ -269,13 +263,11 @@ Using the above, it is straight-forward to show that:
 
     Lemma alt_proj_option_protocol_message
         (m : option message)
-        : option_protocol_message_prop Proj m.
-(* begin show *)
+        : option_protocol_message_prop Alt1 m.
     Proof.
         apply protocol_message_projection.
         apply alt_option_protocol_message.
     Qed.
-(* end show *)
 
 (**
 Next we define the "lifing" of a [state] <<s>> from <<M>> to <<Alt>>,
@@ -284,9 +276,10 @@ by simply setting to <<s>> the  corresponding component of the initial
 *)
     Definition lifted_alt_state
         (s : @state _ T)
-        (init := proj1_sig (@s0 _ _ (sign Alt)))
         : @state _ (type Alt)
-        := @state_update _ _ binary_index_dec binary_IT init first s.
+        := lift_to_composite_state
+            first (binary_IS M (all_messages_vlsm m0)) first s
+        .
 
 (**
 Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Alt>>.
@@ -302,7 +295,7 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
       induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom.
       - assert (Hinit : @initial_state_prop _ _ (sign Alt) (lifted_alt_state s)).
         { intros [|]; try exact I.
-          unfold lifted_alt_state.
+          unfold lifted_alt_state. unfold lift_to_composite_state.
           rewrite state_update_eq. unfold s. destruct is. assumption.
         }
         remember (exist (@initial_state_prop _ _ (sign Alt)) (lifted_alt_state s) Hinit) as six.
@@ -311,7 +304,7 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
         apply (protocol_initial_state Alt).
       - assert (Hinit : @initial_state_prop _ _ (sign Alt) (lifted_alt_state s)).
         { intros [|]; try exact I.
-          unfold lifted_alt_state.
+          unfold lifted_alt_state. unfold lift_to_composite_state.
           rewrite state_update_eq. unfold s. destruct s0. assumption.
         }
         remember (exist (@initial_state_prop _ _ (sign Alt)) (lifted_alt_state s) Hinit) as six.
@@ -331,8 +324,9 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
           assumption.
         + simpl in Heqxsom'.
           unfold lifted_alt_state at 1 in Heqxsom'.
+          unfold lift_to_composite_state at 1 in Heqxsom'.
           rewrite state_update_eq in Heqxsom'.
-          rewrite H0 in Heqxsom'.
+          replace (transition l (s, om)) with (sj, om0) in Heqxsom'.
           inversion Heqxsom'; subst.
           unfold lifted_alt_state.
           apply state_update_twice.
@@ -340,14 +334,14 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
 
 (**
 Finally, we can use [basic_VLSM_incl] together with the
-results above to show that <<Preloaded>> is included in <<Proj>>.
+results above to show that <<Preloaded>> is included in <<Alt1>>.
 *)
 
     Lemma pre_loaded_alt_incl
-        : VLSM_incl PreLoaded Proj
+        : VLSM_incl PreLoaded Alt1
         .
     Proof.
-        apply (basic_VLSM_incl PreLoaded Proj)
+        apply (basic_VLSM_incl PreLoaded Alt1)
         ; intros; try (assumption || reflexivity).
         - apply alt_proj_option_protocol_message.
         - exists (lifted_alt_state s).
@@ -359,20 +353,16 @@ results above to show that <<Preloaded>> is included in <<Proj>>.
     Qed.
 
 (**
-Hence, <<Preloaded>> and <<Proj>> are actually trace-equal:
+Hence, <<Preloaded>> and <<Alt1>> are actually trace-equal:
 *)
-(* begin show *)
     Lemma pre_loaded_alt_eq
-        : VLSM_eq PreLoaded Proj
+        : VLSM_eq PreLoaded Alt1
         .
     Proof.
         split.
         - apply pre_loaded_alt_incl.
         - apply alt_pre_loaded_incl.
     Qed.
-
-(* end show *)
-
 
 End pre_loaded_byzantine_alt.
 
@@ -394,8 +384,7 @@ Qed.
 
 End ByzantineTraces.
 
-(**
-** Composite validating byzantine traces are free
+(** ** Composite-validating Byzantine traces are free
 
 In this section we show that if all components of a composite VLSM <<X>> have
 the [validating_projection_prop]erty, then its byzantine traces
@@ -409,12 +398,12 @@ Section composite_validating_byzantine_traces.
             {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
             (i0 : index)
-            {IS : forall i : index, LSM_sig (IT i)}
+            {IS : forall i : index, VLSM_sign (IT i)}
             (IM : forall n : index, VLSM (IS n))
-            (constraint : indexed_label IT -> indexed_state IT  * option message -> Prop)
-            (X := indexed_vlsm_constrained i0 IM constraint)
+            (constraint : composite_label IT -> composite_state IT  * option message -> Prop)
+            (X := composite_vlsm i0 IM constraint)
             (PreLoadedX := pre_loaded_vlsm X)
-            (FreeX := indexed_vlsm_free i0 IM)
+            (FreeX := free_composite_vlsm i0 IM)
             (Hvalidating: forall i : index, validating_projection_prop i0 IM constraint i)
             .
 
@@ -471,7 +460,6 @@ Lemma [pre_loaded_composite_free_protocol_message] above to prove that:
 (**
 Finally,  we can conclude that [composite_validating_byzantine_traces_are_free]:
 *)
-(* begin show *)
     Lemma composite_validating_byzantine_traces_are_free
         (tr : @Trace _ (type X))
         (Hbyz : byzantine_trace_prop X tr)
@@ -482,5 +470,4 @@ Finally,  we can conclude that [composite_validating_byzantine_traces_are_free]:
         apply byzantine_alt_byzantine_iff.
         assumption.
     Qed.
-(* end show *)
 End composite_validating_byzantine_traces.

@@ -29,5 +29,31 @@ pipeline {
         stage('Test') { steps { sh 'eval $(opam env) && opam install ${COQ_PACKAGE} --yes -j 6 --verbose' } }
       }
     }
+    stage('Deploy Docs') {
+      when { branch 'master' }
+      steps {
+        sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
+          sh '''
+            eval $(opam env)
+            make -j 6 coqdoc
+            export COQ_SHA=$(git rev-parse HEAD)
+
+            git clone 'ssh://github.com/runtimeverification/casper-cbc-proof-docs.git'
+            cd casper-cbc-proof-docs
+            git checkout -B gh-pages origin/gh-pages
+
+            mkdir docs/${COQ_SHA}
+            cd docs
+            cp -r ../../docs/coqdoc ${COQ_SHA}
+            ln -sfn ${COQ_SHA} latest
+            cd ..
+
+            git add ./
+            git commit -m 'gh-pages: update content'
+            git push origin gh-pages
+          '''
+        }
+      }
+    }
   }
 }

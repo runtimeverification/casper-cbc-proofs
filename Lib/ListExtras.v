@@ -1,5 +1,6 @@
-Require Import Coq.Bool.Bool Coq.Arith.Lt Coq.Arith.Plus.
+Require Import Coq.Bool.Bool.
 Require Import List.
+Require Import Lia.
 Import ListNotations.
 
 Require Import Coq.Logic.FinFun.
@@ -53,6 +54,36 @@ Proof.
   destruct l; try reflexivity.
   rewrite swap_head_last. rewrite unfold_last_hd. rewrite IHl.
   rewrite unfold_last_hd. reflexivity.
+Qed.
+
+Lemma last_app
+  {A}
+  (l1 l2 : list A)
+  (def : A)
+  : last (l1 ++ l2) def = last l2 (last l1 def)
+  .
+Proof.
+  generalize dependent def.
+  induction l1; try reflexivity; intro def.
+  remember last as lst; simpl; subst lst.
+  repeat rewrite unroll_last.
+  apply IHl1.
+Qed.
+
+Lemma last_map
+  {A B}
+  (f : A -> B)
+  (h : A)
+  (t : list A)
+  (def : B)
+  : last (map f (h :: t)) def = f (last t h)
+  .
+Proof.
+  generalize dependent def. generalize dependent h.
+  induction t; try reflexivity; intros.
+  rewrite map_cons.
+  repeat rewrite unroll_last.
+  apply IHt.
 Qed.
 
 Lemma incl_empty : forall A (l : list A),
@@ -424,8 +455,9 @@ Lemma list_prefix_length
 Proof.
   generalize dependent l. induction n; intros [|a l] Hlen; try reflexivity.
   - inversion Hlen.
-  - simpl in *. f_equal. apply le_S_n in Hlen.
-    apply IHn; assumption.
+  - simpl in *. f_equal.
+    apply IHn.
+    lia.
 Qed.
 
 Lemma list_suffix_length
@@ -450,7 +482,7 @@ Proof.
   generalize dependent n1. generalize dependent n2.
   induction l; intros [|n2] [|n1] Hn; try reflexivity.
   - inversion Hn.
-  - simpl. f_equal. apply IHl. apply le_S_n.  assumption.
+  - simpl. f_equal. apply IHl. lia.
 Qed.
 
 Lemma list_prefix_suffix
@@ -536,6 +568,130 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma nth_error_list_annotate
+  {A : Type}
+  (P : A -> Prop)
+  (l : list A)
+  (Hs : Forall P l)
+  (n : nat)
+  : exists (oa : option (sig P)),
+    nth_error (list_annotate P l Hs) n = oa
+    /\ option_map (@proj1_sig _ _) oa = nth_error l n
+  .
+Proof.
+  generalize dependent l.
+  induction n; intros [| a l] Hs.
+  - exists None. split; reflexivity.
+  - inversion Hs; subst. exists (Some (exist _ a (Forall_hd Hs))).
+    rewrite list_annotate_unroll.
+    split; reflexivity.
+  - exists None. split; reflexivity.
+  - rewrite list_annotate_unroll.
+    specialize (IHn l (Forall_tl Hs)).
+    destruct IHn as [oa [Hoa Hnth]].
+    exists oa.
+    split; assumption.
+Qed.
+
+Fixpoint nth_error_filter_index
+  {A}
+  (f : A -> bool)
+  (l : list A)
+  (n : nat)
+  :=
+  match l with 
+  | [] => None
+  | a :: l =>
+    match f a with
+    | false => option_map S (nth_error_filter_index f l n)
+    | true =>
+      match n with
+      | 0 => Some 0
+      | S n => option_map S (nth_error_filter_index f l n)
+      end
+    end
+  end.
+
+Lemma nth_error_filter_index_le
+  {A}
+  (f : A -> bool)
+  (l : list A)
+  (n1 n2 : nat)
+  (Hle : n1 <= n2)
+  (in1 in2 : nat)
+  (Hin1 : nth_error_filter_index f l n1 = Some in1)
+  (Hin2 : nth_error_filter_index f l n2 = Some in2)
+  : in1 <= in2.
+Proof.
+  generalize dependent in2. 
+  generalize dependent in1. 
+  generalize dependent n2. 
+  generalize dependent n1. 
+  induction l; intros.
+  - inversion Hin1.
+  - simpl in Hin1. simpl in Hin2.
+    destruct (f a) eqn:fa.
+    + destruct n1; destruct n2.
+      * inversion Hin1; inversion Hin2; subst; assumption.
+      * destruct (nth_error_filter_index f l n2)
+        ; inversion Hin1; inversion Hin2; subst.
+        lia.
+      * inversion Hle.
+      * { destruct in1, in2.
+        - lia.
+        - lia.
+        - destruct (nth_error_filter_index f l n2); inversion Hin2.
+        - assert (Hle' : n1 <= n2) by lia.
+          specialize (IHl n1 n2 Hle').
+          destruct (nth_error_filter_index f l n1) eqn:Hin1'; inversion Hin1;
+          subst; clear Hin1.
+          destruct (nth_error_filter_index f l n2) eqn:Hin2'; inversion Hin2
+          ; subst; clear Hin2.
+          specialize (IHl in1 eq_refl in2 eq_refl).
+          lia.
+        }
+    + specialize (IHl n1 n2 Hle).
+      destruct (nth_error_filter_index f l n1) eqn:Hin1'; inversion Hin1
+      ; subst; clear Hin1.
+      destruct (nth_error_filter_index f l n2) eqn:Hin2'; inversion Hin2
+      ; subst; clear Hin2.
+      specialize (IHl n eq_refl n0 eq_refl).
+      lia.
+Qed.
+
+Lemma nth_error_filter
+  {A}
+  (f : A -> bool)
+  (l : list A)
+  (n : nat)
+  (a : A)
+  (Hnth : nth_error (filter f l) n = Some a)
+  : exists (nth : nat), 
+    nth_error_filter_index f l n = Some nth 
+    /\ nth_error l nth = Some a
+  .
+Proof.
+  generalize dependent a. generalize dependent n.
+  induction l.
+  - intros; simpl in Hnth. destruct n; inversion Hnth.
+  - intros. simpl in Hnth. simpl . destruct (f a).
+    + destruct n.
+      * inversion Hnth; subst. exists 0; split; reflexivity.
+      * simpl in Hnth.
+        specialize (IHl n a0 Hnth).
+        destruct IHl as [nth [Hnth' Ha0]].
+        exists (S nth).
+        split; try assumption.
+        rewrite Hnth'.
+        reflexivity.
+    + specialize (IHl n a0 Hnth).
+      destruct IHl as [nth [Hnth' Ha0]].
+      exists (S nth).
+      split; try assumption.
+      rewrite Hnth'.
+      reflexivity.
+Qed.
+
 Fixpoint filter_Forall
   {A : Type}
   (P : A -> Prop)
@@ -566,8 +722,8 @@ Proof.
   - inversion Hi.
   - inversion Hi.
   - simpl.
-    apply lt_S_n in Hi.
-    specialize (IHi s n Hi).
+    assert (Hi': i < n) by lia.
+    specialize (IHi s n Hi').
     rewrite IHi.
     reflexivity.
 Qed.
@@ -582,12 +738,10 @@ Lemma nth_error_length
   .
 Proof.
   generalize dependent a. generalize dependent l.
-  induction n; intros [|a l] b Hnth; simpl.
-  - inversion Hnth.
-  - apply le_n_S. apply le_0_n.
-  - inversion Hnth.
-  - simpl in Hnth. apply le_n_S.
-    specialize (IHn l b Hnth). assumption.
+  induction n; intros [|a l] b Hnth; simpl; inversion Hnth.
+  - lia.
+  - specialize (IHn l b H0).
+    lia.
 Qed.
 
 Lemma list_prefix_nth_last
@@ -623,11 +777,10 @@ Proof.
   generalize dependent n. generalize dependent s.
   induction i; intros [|a s] [|n] Hi; try reflexivity.
   - inversion Hi.
-  - simpl. apply nth_error_None. apply le_0_n.
-  - apply le_S_n in Hi.
-    simpl.
+  - simpl. apply nth_error_None. simpl. lia.
+  - simpl.
     apply IHi.
-    assumption.
+    lia.
 Qed.
 
 Lemma list_suffix_last
@@ -641,12 +794,13 @@ Lemma list_suffix_last
 Proof.
   generalize dependent l. induction i; intros [|a l] Hlt
   ; try reflexivity.
-  simpl in Hlt. apply lt_S_n in Hlt.
-  specialize (IHi l Hlt).
+  simpl in Hlt.
+  assert (Hlt': i < length l) by lia.
+  specialize (IHi l Hlt').
   rewrite unroll_last. simpl.
   rewrite IHi.
   destruct l.
-  - inversion Hlt.
+  - inversion Hlt; lia.
   - rewrite unroll_last. rewrite unroll_last. reflexivity.
 Qed.
 
@@ -682,6 +836,60 @@ Proof.
   rewrite list_suffix_nth; try assumption.
   apply list_prefix_nth.
   assumption.
+Qed.
+
+Lemma list_segment_app
+  {A : Type}
+  (l : list A)
+  (n1 n2 n3 : nat)
+  (H12 : n1 <= n2)
+  (H23 : n2 <= n3)
+  : list_segment l n1 n2 ++ list_segment l n2 n3 = list_segment l n1 n3
+  .
+Proof.
+  assert (Hle : n1 <= n3) by lia.
+  specialize (list_prefix_segment_suffix l n1 n3 Hle); intro Hl1.
+  specialize (list_prefix_segment_suffix l n2 n3 H23); intro Hl2.
+  rewrite <- Hl2 in Hl1 at 4. clear Hl2.
+  repeat rewrite app_assoc in Hl1.
+  apply app_inv_tail in Hl1.
+  specialize (list_prefix_suffix (list_prefix l n2) n1); intro Hl2.
+  specialize (list_prefix_prefix l n1 n2 H12); intro Hl3.
+  rewrite Hl3 in Hl2.
+  rewrite <- Hl2 in Hl1.
+  rewrite <- app_assoc in Hl1.
+  apply app_inv_head in Hl1.
+  symmetry.
+  assumption.
+Qed.
+
+Lemma list_segment_singleton
+  {A : Type}
+  (l : list A)
+  (n : nat)
+  (a : A)
+  (Hnth : nth_error l n = Some a)
+  : list_segment l n (S n) = [a]
+  .
+Proof.
+  unfold list_segment.
+  assert (Hle : S n <= length l)
+    by (apply nth_error_length in Hnth; assumption).
+  assert (Hlt : n < length (list_prefix l (S n)))
+    by (rewrite list_prefix_length; try constructor; assumption).
+  specialize (list_suffix_last (list_prefix l (S n)) n Hlt a); intro Hlast1.
+  specialize (list_prefix_nth_last l n a Hnth a); intro Hlast2.
+  rewrite <- Hlast2 in Hlast1.
+  specialize (list_suffix_length (list_prefix l (S n)) n).
+  rewrite list_prefix_length; try assumption.
+  intro Hlength.
+  assert (Hs: S n - n = 1) by lia.
+  rewrite Hs in Hlength.
+  remember (list_suffix (list_prefix l (S n)) n) as x.
+  clear -Hlength Hlast1.
+  destruct x; inversion Hlength.
+  destruct x; inversion H0.
+  simpl in Hlast1; subst; reflexivity.
 Qed.
 
 Lemma nth_error_map

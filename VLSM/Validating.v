@@ -3,7 +3,7 @@ From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition.
 
 (**
-** Validating projections
+* Validating projections
 
 In the sequel we fix a composite VLSM <<X>> obtained from an indexed family
 of VLSMs <<IM>> and a <<constraint>>, and an index <<i>>, corresponding to
@@ -18,12 +18,12 @@ Context
     {IndEqDec : EqDec index}
     (i0 : index)
     {IT : index -> VLSM_type message}
-    {IS : forall i : index, LSM_sig (IT i)}
+    {IS : forall i : index, VLSM_sign (IT i)}
     (IM : forall n : index, VLSM (IS n))
-    (T := indexed_type IT)
-    (S := indexed_sig i0 IS)
+    (T := composite_type IT)
+    (S := composite_sig i0 IS)
     (constraint : @label _ T -> @state _ T * option message -> Prop)
-    (X := indexed_vlsm_constrained i0 IM constraint)
+    (X := composite_vlsm i0 IM constraint)
     (i : index)
     (valid_i := @valid _ _ _ (IM i))
     (projection_valid_i := projection_valid i0 IM constraint i)
@@ -127,31 +127,31 @@ Proof.
 Qed.
 
 (**
-*** Validating projections and Byzantine behavior
+** Validating projections and Byzantine behavior
 
 In the sequel we assume that <<X>> has the [validating_projection_prop]erty for
-component <<i>>.  Let <<Proj>> be the projection of <<X>> to component <<i>>
+component <<i>>.  Let <<Xi>> be the projection of <<X>> to component <<i>>
 and <<Preloaded>> be the [pre_loaded_vlsm] associated to component <<i>>.
 *)
 
 Section pre_loaded_validating_proj.
     Context
         (Hvalidating : validating_projection_prop)
-        (Proj := indexed_vlsm_constrained_projection i0 IM constraint i)
+        (Xi := composite_vlsm_constrained_projection i0 IM constraint i)
         (PreLoaded := pre_loaded_vlsm (IM i))
         .
 
 (**
-We can show that <<Preloaded>> is included in <<Proj>> by applying the
+We can show that <<Preloaded>> is included in <<Xi>> by applying the
 meta-lemma [basic_VLSM_incl], using the [validating_projection_prop]erty and
 Lemma [protocol_message_projection] to show that its conditions are fulfilled.
 *)
 
     Lemma pre_loaded_validating_proj_incl
-        : VLSM_incl PreLoaded Proj
+        : VLSM_incl PreLoaded Xi
         .
     Proof.
-        apply (basic_VLSM_incl PreLoaded Proj)
+        apply (basic_VLSM_incl PreLoaded Xi)
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
         - apply Hvalidating in H. destruct H as [_ [_ [_ [Hopm _]]]].
           apply protocol_message_projection. assumption.
@@ -160,12 +160,12 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
 
 (**
 Given that any projection is included in the [pre_loaded_vlsm] of its component
-(Lemma [proj_pre_loaded_incl]), we conclude that <<Preloaded>> and <<Proj>> are
+(Lemma [proj_pre_loaded_incl]), we conclude that <<Preloaded>> and <<Xi>> are
 trace-equal.  This means that all the byzantine behavior of a
 validating component is exhibited by its corresponding projection.
 *)
     Lemma pre_loaded_validating_proj_eq
-        : VLSM_eq PreLoaded Proj
+        : VLSM_eq PreLoaded Xi
         .
     Proof.
         split.
@@ -178,7 +178,7 @@ End pre_loaded_validating_proj.
 End validating_projection.
 
 (**
-** VLSM self-validation
+* VLSM self-validation
 *)
 
 Section validating_vlsm.
@@ -186,7 +186,7 @@ Section validating_vlsm.
 Context
     {message : Type}
     {T : VLSM_type message}
-    {S : LSM_sig T}
+    {S : VLSM_sign T}
     (X : VLSM S)
     .
 

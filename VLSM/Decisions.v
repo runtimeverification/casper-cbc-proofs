@@ -1,8 +1,13 @@
 Require Import Coq.Logic.FinFun.
 Require Import Bool List Streams Logic.Epsilon.
+Require Import Coq.Arith.Compare_dec.
+Require Import Lia.
 Import List Notations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Protocol CBC.Common CBC.Definitions VLSM.Common VLSM.Composition.
+  Require Import
+    Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras
+    CBC.Protocol CBC.Common CBC.Definitions
+    VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
 (* 3.1 Decisions on consensus values *)
 
@@ -20,18 +25,11 @@ Section CommuteSingleton.
   Context
     {message : Type}
     {T : VLSM_type message}
-    {S : LSM_sig T}
+    {S : VLSM_sign T}
     {CV : consensus_values}
     (V : VLSM S).
 
   (* 3.2.1 Decision finality *)
-  (* Program Definition prot_state0 {VLSM} : protocol_state :=
-    exist protocol_state_prop (proj1_sig s0) _.
-  Next Obligation.
-    red.
-    exists None.
-    constructor.
-  Defined. *)
 
   (* Definition of finality per document. *)
   Definition final_original : decision T -> Prop :=
@@ -45,10 +43,10 @@ Section CommuteSingleton.
 
   (* Definition of finality using in_futures, which plays better with the estimator property *)
   Definition final: decision T -> Prop :=
-  fun (D : decision T) => forall (s1 s2 : protocol_state V) (c1 c2 : C),
+  fun (D : decision T) => forall (s1 s2 : @state _ T) (c1 c2 : C),
         in_futures V s1 s2 ->
-        (D (proj1_sig s1) = (Some c1)) ->
-        (D (proj1_sig s2) = (Some c2)) ->
+        (D s1 = (Some c1)) ->
+        (D s2 = (Some c2)) ->
         c1 = c2.
 
   (* 3.3.1 Initial protocol state bivalence *)
@@ -94,24 +92,28 @@ Section CommuteIndexed.
 
   Context
     {CV : consensus_values}
-    {index : Set}
+    {index : Type}
     {Heqd : EqDec index}
     {message : Type}
     {IT : index -> VLSM_type message}
-    {IS : forall i : index, LSM_sig (IT i)}
+    {IS : forall i : index, VLSM_sign (IT i)}
     (Hi : index)
     (IM : forall i : index, VLSM (IS i))
-    (constraint : indexed_label IT -> indexed_state IT * option message -> Prop)
-    (X := indexed_vlsm_constrained Hi IM constraint)
+    (constraint : composite_label IT -> composite_state IT * option message -> Prop)
+    (X := composite_vlsm Hi IM constraint)
     (ID : forall i : index, decision (IT i)).
 
-  (* 3.2.2 Decision consistency *)
+  (* ** Decision consistency
+  
+  First, let us introduce a definition of consistency which
+  looks at states as belonging to a trace.
+  *)
 
-  Definition consistent :=
+  Definition consistent_original :=
       forall (tr : protocol_trace X),
       forall (n1 n2 : nat),
       forall (j k : index),
-      forall (s1 s2 : @state _ (indexed_type IT)),
+      forall (s1 s2 : @state _ (composite_type IT)),
       forall (c1 c2 : C),
       j <> k ->
       trace_nth (proj1_sig tr) n1 = (Some s1) ->
@@ -120,36 +122,98 @@ Section CommuteIndexed.
       (ID k) (s2 k) = (Some c2) ->
       c1 = c2.
 
+  (**
+
+  Now let us give an alternative definition based on [in_futures]:
+  *)
+  
+  Definition consistent :=
+      forall
+        (s1 s2 : @state _ (composite_type IT))
+        (Hfuture : in_futures X s1 s2)
+        (j k : index)
+        (Hneq : j <> k)
+        (c1 c2 : C)
+        (HDecided1 : (ID j) (s1 j) = Some c1)
+        (HDecided2 : (ID k) (s2 k) = Some c2)
+        , c1 = c2.
+
+
+  (**
+  Next two results show that the two definitions above are equivalent.
+  *)
+
+  Lemma consistent_to_original
+    (Hconsistent : consistent)
+    : consistent_original.
+  Proof.
+    intros tr n1 n2 j k s1 s2 c1 c2 Hneq Hs1 Hs2 HD1 HD2.
+    destruct (le_lt_dec n1 n2).
+    - specialize (in_futures_witness_reverse X s1 s2 tr n1 n2 l Hs1 Hs2)
+      ; intros Hfutures.
+      specialize (Hconsistent s1 s2 Hfutures j k Hneq c1 c2 HD1 HD2).
+      assumption.
+    - assert (Hle : n2 <= n1) by lia.
+      clear l.
+      specialize (in_futures_witness_reverse X s2 s1 tr n2 n1 Hle Hs2 Hs1)
+      ; intros Hfutures.
+      assert (Hneq' : k <> j)
+        by (intro Heq; elim Hneq; symmetry; assumption).
+      specialize (Hconsistent s2 s1 Hfutures k j Hneq' c2 c1 HD2 HD1).
+      symmetry.
+      assumption.
+    Qed.
+
+  Lemma original_to_consistent
+    (Horiginal : consistent_original)
+    : consistent.
+  Proof.
+    unfold consistent; intros.
+    specialize (in_futures_witness X s1 s2 Hfuture)
+    ; intros [tr [n1 [n2 [Hle [Hs1 Hs2]]]]].
+    specialize (Horiginal tr n1 n2 j k s1 s2 c1 c2 Hneq Hs1 Hs2 HDecided1 HDecided2).
+    assumption.
+  Qed.
+
   (** The following is an attempt to include finality in the definition of consistency by dropping the requirement
       that (j <> k). **)
 
-  Definition final_and_consistent : Prop :=
-      forall (tr : protocol_trace X),
-      forall (n1 n2 : nat),
-      forall (j k : index),
-      forall (s1 s2 : @state _ (indexed_type IT)),
-      forall (c1 c2 : C),
-      trace_nth (proj1_sig tr) n1 = (Some s1) ->
-      trace_nth (proj1_sig tr) n2 = (Some s2) ->
-      (ID j) (s1 j) = (Some c1) ->
-      (ID k) (s2 k) = (Some c2) ->
-      c1 = c2.
+  Definition final_and_consistent :=
+      forall
+        (s1 s2 : @state _ (composite_type IT))
+        (Hfuture : in_futures X s1 s2)
+        (j k : index)
+        (c1 c2 : C)
+        (HDecided1 : (ID j) (s1 j) = Some c1)
+        (HDecided2 : (ID k) (s2 k) = Some c2)
+        , c1 = c2.
 
-  Lemma final_and_consistent_implies_final :
-      final_and_consistent ->
-      forall i : index, final (indexed_vlsm_constrained_projection Hi IM constraint i) (ID i).
-
+  Lemma final_and_consistent_implies_final
+      (Hcons : final_and_consistent)
+      (i : index)
+      (Hfr : finite_projection_friendly Hi IM constraint i)
+      : final (composite_vlsm_constrained_projection Hi IM constraint i) (ID i)
+      .
   Proof.
-    unfold final_and_consistent.
-    intros.
-    unfold final.
-    intros.
-    Admitted.
+    intros s1 s2 c1 c2 Hfuturesi HD1 HD2.
+    specialize (projection_friendly_in_futures Hi IM constraint i Hfr s1 s2 Hfuturesi)
+    ; intros [sX1 [sX2 [Hs1 [Hs2 HfuturesX]]]].
+    subst.
+    apply (Hcons sX1 sX2 HfuturesX i i c1 c2 HD1 HD2).
+  Qed.
+
+  Lemma final_and_consistent_implies_consistent
+      (Hcons : final_and_consistent)
+      : consistent.
+  Proof.
+    unfold consistent; intros.
+    apply (Hcons s1 s2 Hfuture j k c1 c2 HDecided1 HDecided2).
+  Qed.
 
   Definition live :=
     forall (tr : @Trace _ (type X)),
       complete_trace_prop X tr ->
-      exists (s : @state _ (indexed_type IT)) (n : nat) (i : index) (c : C),
+      exists (s : @state _ (composite_type IT)) (n : nat) (i : index) (c : C),
         trace_nth tr n = Some s /\
         (ID i) (s i) = Some c.
 
@@ -160,39 +224,35 @@ End CommuteIndexed.
 Section Estimators.
   Context
     {CV : consensus_values}
-    {index : Set}
-    {index_listing : list index}
-    (finite_index : Listing index_listing)
-    {Heqd : EqDec index}
     {message : Type}
-    {IT : index -> VLSM_type message}
-    (IS : forall i : index, LSM_sig (IT i))
-    (IM : forall i : index, VLSM (IS i))
+    {index : Type}
+    {Heqd : EqDec index}
     (Hi : index)
-    (constraint : indexed_label IT -> indexed_state IT * option message -> Prop)
-    (X := indexed_vlsm_constrained Hi IM constraint)
+    {IT : index -> VLSM_type message}
+    {IS : forall i : index, VLSM_sign (IT i)}
+    (IM : forall i : index, VLSM (IS i))
+    (constraint : composite_label IT -> composite_state IT * option message -> Prop)
+    (X := composite_vlsm Hi IM constraint)
     (ID : forall i : index, decision (IT i))
     (IE : forall i : index, Estimator (@state _ (IT i)) C).
 
   Definition decision_estimator_property
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+    (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
     (Ei := @estimator _ _ (IE i))
     := forall
-      (psigma : protocol_state Xi)
-      (sigma := proj1_sig psigma)
+      (sigma : @state _ (IT i))
       (c : C)
       (HD : ID i sigma = Some c)
-      (psigma' : protocol_state Xi)
-      (sigma' := proj1_sig psigma')
-      (Hreach : in_futures Xi psigma psigma')
+      (sigma' : @state _ (IT i))
+      (Hreach : in_futures Xi sigma sigma')
       (c' : C),
       Ei sigma' c'
       -> c' = c.
 
   Lemma estimator_only_has_decision
      (i : index)
-     (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+     (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
      (Ei := @estimator _ _ (IE i))
       : decision_estimator_property i ->
       forall (s : protocol_state Xi) (c c_other : C), (ID i (proj1_sig s)) = (Some c) ->
@@ -200,16 +260,16 @@ Section Estimators.
       c_other = c.
   Proof.
     intros.
+    destruct s as [s Hs].
     unfold decision_estimator_property in H.
-    apply H with (psigma := s) (psigma':= s).
-    assumption.
-    apply in_futures_reflexive.
+    apply H with (sigma := s) (sigma':= s); try assumption.
+    apply in_futures_refl.
     assumption.
   Qed.
 
   Lemma estimator_surely_has_decision
      (i : index)
-     (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+     (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
      (Ei := @estimator _ _ (IE i))
       : decision_estimator_property i ->
       forall (s : protocol_state Xi) (c : C), (ID i (proj1_sig s)) = (Some c) ->
@@ -221,12 +281,12 @@ Section Estimators.
       apply estimator_total.
     }
     destruct H1.
+    destruct s as [s Hs].
     assert (x = c). {
-      apply H with (psigma := s) (psigma' := s).
+      apply H with (sigma := s) (sigma' := s); try assumption.
+      apply in_futures_refl.
       assumption.
-      apply in_futures_reflexive.
-      auto.
-   }
+    }
     rewrite <- H2.
     assumption.
    Qed.
@@ -244,22 +304,22 @@ Section Estimators.
 
   Theorem decision_estimator_finality
     (i : index)
-    (Xi := indexed_vlsm_constrained_projection Hi IM constraint i)
+    (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
     : decision_estimator_property i -> final Xi (ID i).
   Proof.
     intros.
     unfold final.
     intros.
-    apply estimator_only_has_decision with (i := i) (s := s2).
+    specialize (in_futures_protocol_snd Xi s1 s2 H0); intro Hps2.
+    apply estimator_only_has_decision with (i := i) (s := (exist _ s2 Hps2)).
     assumption.
     assumption.
     unfold decision_estimator_property in H.
     assert(c2 = c1). {
-      apply H with (psigma := s1) (psigma' := s2).
+      apply H with (sigma := s1) (sigma' := s2).
       assumption.
       assumption.
-      apply estimator_surely_has_decision.
-      assumption.
+      apply (estimator_surely_has_decision i H (exist _ s2 Hps2)).
       assumption.
     }
     rewrite <- H3.
