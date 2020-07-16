@@ -36,9 +36,6 @@ Section Simple.
           /\  input last = Some msg
           /\  ~ In (Some msg) (List.map output prefix)
     .
-
-    (* Definition equivocation (msg : message) (s : state) : Prop :=
-      exists (tr : protocol_trace vlsm), trace_last (proj1_sig tr) = Some s /\ equivocation_in_trace msg tr. *)
       
     Definition message_oracle (x : VLSM Sig)
       := (state) -> (message) -> bool.
@@ -55,7 +52,7 @@ Section Simple.
       := 
       oracle s m = true <-> 
         forall 
-        (tr : protocol_trace vlsm)
+        (tr : protocol_trace (pre_loaded_vlsm vlsm))
         (last : transition_item)
         (prefix : list transition_item)
         (Hpr : trace_prefix (proj1_sig tr) last prefix)
@@ -77,7 +74,7 @@ Section Simple.
         (prefix : list transition_item)
         (Hpr : trace_prefix (proj1_sig tr) last prefix)
         (Hlast : destination last = s),
-        List.Exists (fun (elem : transition_item) => message_selector elem = Some m) prefix -> False.
+        ~ List.Exists (fun (elem : transition_item) => message_selector elem = Some m) prefix.
       
     
     Definition has_been_sent_prop : message_oracle vlsm -> state -> message -> Prop
@@ -131,14 +128,7 @@ Section Simple.
                (m : message),
                has_been_received s m = true <-> has_not_been_received s m = false;
     }.
-    
-    
-    Class StrongVLSM := {
-      x : VLSM Sig;
-      send_capable : has_been_sent_capability;
-      receive_capable : has_been_received_capability;
-    }.
-    
+
 End Simple.
 
 Section Composite.
@@ -161,6 +151,7 @@ Section Composite.
             (sender : message -> option validator)
             (A : validator -> index)
             (Weight : validator -> R)
+            (T : R)
             (X := indexed_vlsm_constrained i0 IM constraint).
            
      
@@ -215,7 +206,7 @@ Section Composite.
         @has_not_been_sent message (IT i) (IS i) (IM i) (has_been_sent_capabilities i) sv m = true /\
         @has_been_received message (IT j) (IS j) (IM j) (has_been_received_capabilities j) sj m = true.
         
-        Definition is_equivocating
+        Definition is_equivocating_statewise
           (s : indexed_state IT)
           (v : validator)
           : Prop
@@ -223,10 +214,8 @@ Section Composite.
           exists (j : index),
           j <> (A v) /\
           equivocating_wrt v j (s (A v)) (s j).
-          
-        (* This needs some clarification to type check (roughly, has_been_sent should belong to the projection).
-          
-        Definition is_equivocating_alt
+
+        Definition is_equivocating_tracewise
           (v : validator)
           (s : indexed_state IT)
           (j := A v)
@@ -239,38 +228,40 @@ Section Composite.
           (Hlast : destination last = s),
           exists (m : message),
           List.Exists 
-          (fun (elem : transition_item) => 
+          (fun (elem : @transition_item _ (type X)) => 
           input elem = Some m 
-          /\ @has_been_sent message (IT j) (IS j) (IM j) (has_been_sent_capabilities j) (destination elem) m = false
+          /\ @has_been_sent message (IT j) (IS j) (IM j) (has_been_sent_capabilities j) ((destination elem) j) m = false
           ) prefix.
-          
-          *)
-          
-          
-        (* This is work in progress. To define equivocation fault, we must filter validators
-        by the is_equivocating property. For this, in turn, we need is_equivocating to be decidable *)
-          
-        
-         Class equivocation_dec := {
+
+         Class equivocation_dec_statewise := {
           is_equivocating_fn (s : indexed_state IT) (v : validator) : bool;
           
           is_equivocating_dec : forall (s : indexed_state IT) (v : validator),
-           is_equivocating_fn s v = true <-> is_equivocating s v;
+           is_equivocating_fn s v = true <-> is_equivocating_statewise s v;
          }.
          
          Definition equivocating_validators
-         (Dec : equivocation_dec)
+         (Dec : equivocation_dec_statewise)
          (s : indexed_state IT)
          : list validator
           := List.filter (is_equivocating_fn s) validator_listing.
 
          Definition equivocation_fault 
-          (Dec : equivocation_dec)
+          (Dec : equivocation_dec_statewise)
           (s : indexed_state IT)
           : R
           :=
           List.fold_left Rplus (List.map Weight (equivocating_validators Dec s)) 0%R.
-         
+
+         Definition equivocation_fault_constraint
+          (Dec : equivocation_dec_statewise)
+          (l : indexed_label IT)
+          (som : indexed_state IT * option message)
+          : Prop
+          := 
+          let (s', om') := (@transition _ _ _ X l som) in
+          Rle (equivocation_fault Dec s') T.
+          
 End Composite.
 
 
