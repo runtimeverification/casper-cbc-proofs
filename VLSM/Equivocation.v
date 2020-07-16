@@ -36,7 +36,7 @@ Section Simple.
     Context
       {message : Type}
       {vtype : VLSM_type message}
-      {Sig : LSM_sig vtype}
+      {Sig : VLSM_sign vtype}
       (vlsm : VLSM Sig).
   
 (** We begin with a basic utility function. **)
@@ -210,28 +210,28 @@ Section Composite.
             {IndEqDec : EqDec index}
             {IT : index -> VLSM_type message}
             (i0 : index)
-            {IS : forall i : index, LSM_sig (IT i)}
+            {IS : forall i : index, VLSM_sign (IT i)}
             (IM : forall n : index, VLSM (IS n))
-            (constraint : indexed_label IT -> indexed_state IT  * option message -> Prop)
+            (constraint : _composite_label IT -> _composite_state IT  * option message -> Prop)
             (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
             (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
             (sender : message -> option validator)
             (A : validator -> index)
             (Weight : validator -> R)
             (T : R)
-            (X := indexed_vlsm_constrained i0 IM constraint).
+            (X := composite_vlsm i0 IM constraint).
             
      (** It is now straightforward to define a [no_equivocations] composition constraint.
          An equivocating transition can be detected by calling the [has_been_sent] 
          oracle on its arguments and we simply forbid them **)
          
-     Definition equivocation(m : message) (s : indexed_state IT) : Prop  := forall (i : index), 
+     Definition equivocation(m : message) (s : _composite_state IT) : Prop  := forall (i : index), 
       @has_not_been_sent message (IT i) (IS i) (IM i) (has_been_sent_capabilities i) 
       (s i) m = true.
       
       Definition no_equivocations
-        (l : indexed_label IT)
-        (som : indexed_state IT * option message)
+        (l : _composite_label IT)
+        (som : _composite_state IT * option message)
         : Prop
         := 
         let (s, om) := som in
@@ -258,21 +258,21 @@ Section Composite.
         (v : validator)
         (Hid : A v = i)
         (Hsender : sender m = Some v),
-        can_emit (indexed_vlsm_constrained_projection i0 IM constraint i) m /\
+        can_emit (composite_vlsm_constrained_projection i0 IM constraint i) m /\
         forall (j : index)
                (Hdif : i <> j),
-               ~can_emit (indexed_vlsm_constrained_projection i0 IM constraint j) m.
+               ~can_emit (composite_vlsm_constrained_projection i0 IM constraint j) m.
                
        Definition sender_weak_nontriviality_prop : Prop :=
         forall (v : validator),
         exists (m : protocol_message (IM (A v))),
-        can_emit (indexed_vlsm_constrained_projection i0 IM constraint (A v)) (proj1_sig m) /\
+        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) (proj1_sig m) /\
         sender (proj1_sig m) = Some v.
         
        Definition sender_strong_nontriviality_prop : Prop :=
         forall (v : validator),
         forall (m : protocol_message (IM (A v))),
-        can_emit (indexed_vlsm_constrained_projection i0 IM constraint (A v)) (proj1_sig m) ->
+        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) (proj1_sig m) ->
         sender (proj1_sig m) = Some v.
         
         
@@ -295,7 +295,7 @@ Section Composite.
         (** We can now decide whether a validator is equivocating in a certain state. **)
         
         Definition is_equivocating_statewise
-          (s : indexed_state IT)
+          (s : _composite_state IT)
           (v : validator)
           : Prop
           :=
@@ -313,7 +313,7 @@ Section Composite.
         
         Definition is_equivocating_tracewise
           (v : validator)
-          (s : indexed_state IT)
+          (s : _composite_state IT)
           (j := A v)
           : Prop
           := 
@@ -335,9 +335,9 @@ Section Composite.
             in the future **)
             
          Class equivocation_dec_statewise := {
-          is_equivocating_fn (s : indexed_state IT) (v : validator) : bool;
+          is_equivocating_fn (s : _composite_state IT) (v : validator) : bool;
           
-          is_equivocating_dec : forall (s : indexed_state IT) (v : validator),
+          is_equivocating_dec : forall (s : _composite_state IT) (v : validator),
            is_equivocating_fn s v = true <-> is_equivocating_statewise s v;
          }.
          
@@ -346,7 +346,7 @@ Section Composite.
          
          Definition equivocating_validators
          (Dec : equivocation_dec_statewise)
-         (s : indexed_state IT)
+         (s : _composite_state IT)
          : list validator
           := List.filter (is_equivocating_fn s) validator_listing.
           (** The equivocation fault sum: the sum of the weights of equivocating
@@ -354,7 +354,7 @@ Section Composite.
           
          Definition equivocation_fault 
           (Dec : equivocation_dec_statewise)
-          (s : indexed_state IT)
+          (s : _composite_state IT)
           : R
           :=
           List.fold_left Rplus (List.map Weight (equivocating_validators Dec s)) 0%R.
@@ -364,8 +364,8 @@ Section Composite.
         
          Definition equivocation_fault_constraint
           (Dec : equivocation_dec_statewise)
-          (l : indexed_label IT)
-          (som : indexed_state IT * option message)
+          (l : _composite_label IT)
+          (som : _composite_state IT * option message)
           : Prop
           := 
           let (s', om') := (@transition _ _ _ X l som) in
