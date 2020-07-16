@@ -4,9 +4,9 @@ Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble VLSM.Common VLSM.Composition.
 
-(*** Summary ***)
-
-(** This chapter is dedicated to building the language for discussing equivocation.
+(** 
+*** Summary
+This chapter is dedicated to building the language for discussing equivocation.
     Equivocation occurs on the receipt of a message which has not been previously sent.
     The designated sender (validator) of the message is then said to be equivocating.
     Our main purpose is to keep track of equivocating senders in a composite context
@@ -16,7 +16,7 @@ Require Import Lib.Preamble VLSM.Common VLSM.Composition.
 (** **)
 
 (**
-(*** State-message oracles. Endowing states with history. ***)
+*** State-message oracles. Endowing states with history.
 
     Our first step is to define some useful concepts in the context of a single VLSM.
     
@@ -181,9 +181,11 @@ Section Simple.
     }.
 
 End Simple.
-(*** Equivocation in compositions. ***)
 
-(** We now move on to a composite context. Each component of our composition
+(**
+*** Equivocation in compositions.
+
+ We now move on to a composite context. Each component of our composition
     will have [has_been_sent] and [has_been_received] capabilities.
     
     We introduce [validator]s along with their respective [Weight]s, the
