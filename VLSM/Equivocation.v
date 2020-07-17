@@ -225,7 +225,6 @@ Section Composite.
          An equivocating transition can be detected by calling the [has_been_sent] 
          oracle on its arguments and we simply forbid them **)
          
-     Check has_not_been_sent.
      Definition equivocation 
       (m : message) 
       (s : _composite_state IT) 
@@ -350,6 +349,9 @@ Section Composite.
           /\ has_been_sent (IM j) ((destination elem) j) m = false
           ) prefix.
           
+          
+        
+          
         (** A possibly friendlier version using a previously defined primitive. **)
         Definition is_equivocating_tracewise_alt
           (v : validator)
@@ -364,7 +366,7 @@ Section Composite.
           (Hlast : destination last = s),
           exists (m : message),
           (sender m = Some v) /\
-          equivocation_in_trace X m tr.
+          equivocation_in_trace X m (build_trace_prefix_protocol X Hpr).
         
         (** For the equivocation sum fault to be computable, we require that
             our is_equivocating property is decidable. The current implementation

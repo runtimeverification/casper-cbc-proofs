@@ -1410,6 +1410,16 @@ This relation is often used in stating safety and liveness properties.*)
           simpl.
           rewrite map_app. simpl. rewrite last_is_last. tauto.
     Qed.
+    
+    
+    Definition build_trace_prefix_protocol
+          {tr : protocol_trace}
+          {last : transition_item}
+          {prefix : list transition_item}
+          (Hprefix : trace_prefix (proj1_sig tr) last prefix)
+          : protocol_trace
+      := exist _ (Finite (trace_first (proj1_sig tr)) (prefix ++ [last]))
+               (trace_prefix_protocol tr last prefix Hprefix).
 
     Lemma trace_prefix_fn_protocol
           (tr : Trace)
