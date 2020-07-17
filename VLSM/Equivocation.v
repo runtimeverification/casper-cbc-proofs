@@ -51,7 +51,7 @@ Section Simple.
           trace_prefix (proj1_sig tr) last prefix
           /\ message_selector last = Some msg.
           
-(** The following property detects equivocation in a given trace. **)
+(** The following property detects equivocation in a given trace for a given message. **)
 
     Definition equivocation_in_trace
                (msg : message)
@@ -225,9 +225,16 @@ Section Composite.
          An equivocating transition can be detected by calling the [has_been_sent] 
          oracle on its arguments and we simply forbid them **)
          
-     Definition equivocation(m : message) (s : _composite_state IT) : Prop  := forall (i : index), 
-      @has_not_been_sent message (IT i) (IS i) (IM i) (has_been_sent_capabilities i) 
-      (s i) m = true.
+     Check has_not_been_sent.
+     Definition equivocation 
+      (m : message) 
+      (s : _composite_state IT) 
+      : Prop  
+      := 
+      forall (i : index), 
+      has_not_been_sent (IM i) (s i) m = true.
+      
+      (* TODO: Reevaluate if this looks better in a positive form *)
       
       Definition no_equivocations
         (l : _composite_label IT)
@@ -262,18 +269,31 @@ Section Composite.
         forall (j : index)
                (Hdif : i <> j),
                ~can_emit (composite_vlsm_constrained_projection i0 IM constraint j) m.
+       
+       (** An alternative, possibly friendlier, formulation. Note that it is
+           slightly weaker, in that it does not require that the sender
+           is able to send the message. **)
+       
+       Definition sender_safety_alt_prop : Prop :=
+        forall 
+        (i : index)
+        (m : message)
+        (v : validator)
+        (Hsender : sender m = Some v),
+        can_emit (composite_vlsm_constrained_projection i0 IM constraint i) m ->
+        A v = i.
                
        Definition sender_weak_nontriviality_prop : Prop :=
         forall (v : validator),
-        exists (m : protocol_message (IM (A v))),
-        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) (proj1_sig m) /\
-        sender (proj1_sig m) = Some v.
+        exists (m : message),
+        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) m /\
+        sender m = Some v.
         
        Definition sender_strong_nontriviality_prop : Prop :=
         forall (v : validator),
-        forall (m : protocol_message (IM (A v))),
-        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) (proj1_sig m) ->
-        sender (proj1_sig m) = Some v.
+        forall (m : message),
+        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) m ->
+        sender m = Some v.
         
         
        (** We say that a validator <v> (with associated component <i>) is equivocating wrt. 
@@ -289,8 +309,8 @@ Section Composite.
         := 
         exists (m : message),
         sender(m) = Some v /\
-        @has_not_been_sent message (IT i) (IS i) (IM i) (has_been_sent_capabilities i) sv m = true /\
-        @has_been_received message (IT j) (IS j) (IM j) (has_been_received_capabilities j) sj m = true.
+        has_not_been_sent  (IM i) sv m = true /\
+        has_been_received  (IM j) sj m = true.
         
         (** We can now decide whether a validator is equivocating in a certain state. **)
         
@@ -323,11 +343,24 @@ Section Composite.
           (Hpr : trace_prefix (proj1_sig tr) last prefix)
           (Hlast : destination last = s),
           exists (m : message),
+          (sender m = Some v) /\
           List.Exists 
           (fun (elem : @transition_item _ (type X)) => 
           input elem = Some m 
-          /\ @has_been_sent message (IT j) (IS j) (IM j) (has_been_sent_capabilities j) ((destination elem) j) m = false
+          /\ has_been_sent (IM j) ((destination elem) j) m = false
           ) prefix.
+          
+        (** A possibly friendlier version using a previously defined primitive. **)
+        Definition is_equivocating_tracewise_alt
+          (v : validator)
+          (s : _composite_state IT)
+          (j := A v)
+          : Prop
+          := 
+          forall (tr : protocol_trace X),
+          exists (m : message),
+          (sender m = Some v) /\
+          equivocation_in_trace X m tr.
         
         (** For the equivocation sum fault to be computable, we require that
             our is_equivocating property is decidable. The current implementation
@@ -341,7 +374,6 @@ Section Composite.
            is_equivocating_fn s v = true <-> is_equivocating_statewise s v;
          }.
          
-         
          (** All validators which are equivocating in a given composite state **)
          
          Definition equivocating_validators
@@ -349,6 +381,7 @@ Section Composite.
          (s : _composite_state IT)
          : list validator
           := List.filter (is_equivocating_fn s) validator_listing.
+          
           (** The equivocation fault sum: the sum of the weights of equivocating
           validators **)
           
