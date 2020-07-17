@@ -357,7 +357,11 @@ Section Composite.
           (j := A v)
           : Prop
           := 
-          forall (tr : protocol_trace X),
+          forall (tr : protocol_trace X)
+          (last : transition_item)
+          (prefix : list transition_item)
+          (Hpr : trace_prefix (proj1_sig tr) last prefix)
+          (Hlast : destination last = s),
           exists (m : message),
           (sender m = Some v) /\
           equivocation_in_trace X m tr.
