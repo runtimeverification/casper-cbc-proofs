@@ -8,7 +8,8 @@ VLSM/CommonFutures.v
 VLSM/Validating.v
 VLSM/ByzantineTraces.v
 VLSM/Equivocation.v
-VLSM/FullNode.v
+VLSM/FullNodeSimple.v
+VLSM/FullNodeComposite.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
