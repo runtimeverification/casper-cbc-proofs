@@ -246,7 +246,7 @@ Section CompositeFullNode.
     (s : @state _ (composite_type IT_validators))
     : @sorted_state C V message_type
     :=
-    let state_list := List.map (fun i => s i) validators in
+    let state_list := List.map s validators in
     fold_right CBC.FullNode.sorted_state_union (sorted_state0 C V) state_list
     .
 
@@ -271,6 +271,14 @@ Section CompositeFullNode.
     :=
     state_union s
     .
+
+  Definition indexed_union
+    (s : @state _ (composite_type IT_validators))
+    : list (V * message)
+    := 
+    flat_map (fun i => List.map (fun x => (i,x)) (get_sorted_messages (s i))) validators
+    .
+
 
   End ValidatorsOnly.
 
