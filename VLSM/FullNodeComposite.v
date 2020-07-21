@@ -56,8 +56,8 @@ Section CompositeFullNode.
     exist _ (@sorted_state0 C V message_type) eq_refl.
 
   Definition message0 : message := 
-    let (c,_) := @Lib.Preamble.inhabited _ about_C in
-    let (v,_) := @Lib.Preamble.inhabited _ about_V in
+    let c := @Lib.Preamble.inhabited _ about_C in
+    let v := @Lib.Preamble.inhabited _ about_V in
     (c,v,@sorted_state0 C V message_type)
     .
 

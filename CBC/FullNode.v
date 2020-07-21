@@ -81,8 +81,8 @@ Definition sorted_state0
 
 Lemma sorted_state_inhabited
   {C V} `{about_M : StrictlyComparable (message C V)}
-  : { s : sorted_state C V | True }.
-Proof. split; try exact I. exact (sorted_state0 C V). Qed.
+  : sorted_state C V.
+Proof. exact (sorted_state0 C V). Qed.
 
 
 Instance state_strictly_comparable

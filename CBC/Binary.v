@@ -12,10 +12,7 @@ Section States.
   | zero : C
   | one : C.
 
-  Lemma C_inhabited : {c : C | True}.
-  Proof.
-    exists one. reflexivity.
-  Qed.
+  Definition C_inhabited : C := one.
 
   Definition C_compare (c1 c2 : C) : comparison :=
     match c1 with
@@ -65,8 +62,7 @@ Section States.
   (* Additional types for defining light node states *)
   Definition justification_type : Type := list H.
 
-  Lemma justification_type_inhabited : { j : justification_type | True}.
-  Proof. exists []. auto. Qed.
+  Definition justification_type_inhabited : justification_type := [].
 
   Definition justification_compare : (justification_type -> justification_type -> comparison) := list_compare compare.
 

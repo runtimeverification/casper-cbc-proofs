@@ -17,12 +17,9 @@ Notation "'add' ( c , v , j ) 'to' sigma" :=
 (* Constructing a StrictlyComparable state type *)
 Lemma state_inhabited
   {C} {V} `{about_C : StrictlyComparable C} `{about_V : StrictlyComparable V}
-  : { s : @state C V | True}.
+  : @state C V.
 Proof.
-  destruct about_C, about_V.
-  destruct inhabited, inhabited0.
-  split; try exact I.
-  exact (Next x x0 Empty Empty).
+  exact (state0 C V).
 Qed.
 
 Fixpoint state_compare
@@ -122,13 +119,11 @@ Definition message (C V : Type) : Type := (C * V * @state C V).
 
 Lemma message_inhabited
   {C} `{about_C : StrictlyComparable C} {V} `{about_V : StrictlyComparable V}
-  : { m : message C V | True}.
+  : message C V.
 Proof.
-  assert (inhabitedC := about_C); destruct inhabitedC as [inhabitedC _ _ ]; destruct inhabitedC.
-  assert (inhabitedV := about_V); destruct inhabitedV as [inhabitedV _ _ ]; destruct inhabitedV.
-  destruct (@state_inhabited C V about_C about_V).
-  split; try exact I.
-  exact (x,x0,x1).
+  assert (inhabitedC := about_C); destruct inhabitedC as [inhabitedC _ _ ].
+  assert (inhabitedV := about_V); destruct inhabitedV as [inhabitedV _ _ ].
+  exact (inhabitedC,inhabitedV,state0 C V).
 Qed.
 
 Definition estimate {C V} (msg : message C V ) : C :=
