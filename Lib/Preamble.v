@@ -369,6 +369,61 @@ Next Obligation.
   exact (compare X0 X1).
 Defined.
 
+(* StrictlyComparable option type *)
+Definition option_compare
+  {X : Type}
+  (compare : X -> X -> comparison)
+  (ox oy : option X)
+  : comparison
+  :=
+  match ox, oy with
+  | None, None => Eq
+  | None, _ => Lt
+  | _, None => Gt
+  | Some x, Some y => compare x y
+  end.
+
+Lemma option_compare_reflexive
+  (X : Type)
+  {Xsc : StrictlyComparable X}
+  : CompareReflexive (option_compare compare)
+  .
+Proof.
+  intros [x|] [y|]; simpl; split; intro H; inversion H; try reflexivity.
+  - f_equal. apply StrictOrder_Reflexive in H. assumption.
+  - apply StrictOrder_Reflexive. reflexivity.
+Qed.
+
+Lemma option_compare_transitive
+  (X : Type)
+  {Xsc : StrictlyComparable X}
+  : CompareTransitive (option_compare compare)
+  .
+Proof.
+  intros [x|] [y|] [z|] [| |]; simpl; intros Hxy Hyz; try discriminate; try reflexivity.
+  - apply (StrictOrder_Transitive x y z _); assumption.
+  - apply (StrictOrder_Transitive x y z _); assumption.
+  - apply (StrictOrder_Transitive x y z _); assumption.
+Qed.
+
+Lemma strictorder_option
+  {X: Type}
+  (Xsc : StrictlyComparable X)
+  : CompareStrictOrder (option_compare compare).
+Proof.
+  split; exact (option_compare_reflexive X) || exact (option_compare_transitive X).
+Qed.
+
+(* Now we can have the following for free : *)
+Instance OptionStrictlyComparable
+  (X : Type) 
+  {Xsc : StrictlyComparable X}
+  : StrictlyComparable (option X) :=
+  { inhabited := None;
+    compare := option_compare compare;
+    compare_strictorder := strictorder_option Xsc;
+  }.
+
 (* Composing StrictlyComparable types *)
 (* Constructing the compare function *)
 Definition compare_compose (X Y : Type) `{StrictlyComparable X} `{StrictlyComparable Y} : (X * Y) -> (X * Y) -> comparison :=

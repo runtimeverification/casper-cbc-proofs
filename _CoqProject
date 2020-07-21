@@ -9,6 +9,7 @@ VLSM/CommonFutures.v
 VLSM/Validating.v
 VLSM/ByzantineTraces.v
 VLSM/Equivocation.v
+VLSM/FullNodePointed.v
 VLSM/FullNodeSimple.v
 VLSM/FullNodeComposite.v
 CBC/Binary.v
