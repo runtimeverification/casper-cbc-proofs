@@ -353,8 +353,8 @@ apply compare_lt_transitive.
 Defined.
 
 Fixpoint message_set_add
-  (s : message_set C V)
   (m : message C V)
+  (s : message_set C V)
   : message_set C V
   :=
   match s with
@@ -363,8 +363,21 @@ Fixpoint message_set_add
     match message_compare m m' with
     | Eq => s
     | Lt => add _ _ m s
-    | Gt => add _ _ m' (message_set_add s' m)
+    | Gt => add _ _ m' (message_set_add m s')
     end
   end.
+
+Definition make_justification
+  (s : state C V)
+  : justification C V
+  :=
+  let (msgs, last) := s in
+  let msg_set := fold_right message_set_add (Empty C V) msgs in
+  match last with
+  | None => NoSent C V msg_set
+  | Some m => LastSent C V msg_set m
+  end.
+
+
 
 End justification_compare_strict_order.
