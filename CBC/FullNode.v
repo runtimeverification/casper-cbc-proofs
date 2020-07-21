@@ -50,6 +50,25 @@ Definition sorted_message_proj1
   end.
 Coercion sorted_message_proj1 : sorted_message >-> message.
 
+Definition make_sorted_message
+  {C V : Type} `{about_M : StrictlyComparable (message C V)}
+  (m : sig locally_sorted_msg)
+  : sorted_message C V.
+  destruct m as [((c,v), j) Hs].
+  apply locally_sorted_message_justification in Hs.
+  exact (c, v, exist _ j Hs).
+Defined.
+
+Definition get_sorted_messages
+  {C V : Type} `{about_M : StrictlyComparable (message C V)}
+  (s : sorted_state C V)
+  :  list (sorted_message C V)
+  := 
+  let (sigma, Hsigma) := s in
+  let msgs := get_messages sigma in
+  map make_sorted_message
+    (list_annotate locally_sorted_msg msgs (locally_sorted_all sigma Hsigma)).
+
 Definition add_message_sorted
   {C V : Type} `{about_M : StrictlyComparable (message C V)}
   (sm : sorted_message C V)
