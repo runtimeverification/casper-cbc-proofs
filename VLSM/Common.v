@@ -228,8 +228,16 @@ _protocol_ transitions:
       (som' : state * option message)
       :=
       protocol_valid l som
-      /\  transition l som = som'
-      .
+      /\  transition l som = som'.
+      
+    Definition can_emit 
+      (m : message)
+      := 
+      exists 
+      (som : state * option message)
+      (l : label)
+      (s : state),
+      protocol_transition l som (s, Some m).
 
 (**
   Next three lemmas show the two definitions above are strongly related.
@@ -1402,6 +1410,16 @@ This relation is often used in stating safety and liveness properties.*)
           simpl.
           rewrite map_app. simpl. rewrite last_is_last. tauto.
     Qed.
+    
+    
+    Definition build_trace_prefix_protocol
+          {tr : protocol_trace}
+          {last : transition_item}
+          {prefix : list transition_item}
+          (Hprefix : trace_prefix (proj1_sig tr) last prefix)
+          : protocol_trace
+      := exist _ (Finite (trace_first (proj1_sig tr)) (prefix ++ [last]))
+               (trace_prefix_protocol tr last prefix Hprefix).
 
     Lemma trace_prefix_fn_protocol
           (tr : Trace)
@@ -1601,60 +1619,15 @@ that contains it as a prefix.
        in that trace
     *)
 
-
-    Definition equivocation_in_trace
-               (msg : message)
-               (tr : protocol_trace)
-      : Prop
-      :=
-        exists (last : transition_item),
-        exists (prefix : list transition_item),
-          trace_prefix (proj1_sig tr) last prefix
-          /\  input last = Some msg
-          /\  ~ In (Some msg) (List.map output prefix)
-    .
-
-    Definition equivocation (msg : message) (s : state) : Prop :=
-      exists (tr : protocol_trace), trace_last (proj1_sig tr) = Some s /\ equivocation_in_trace msg tr.
-
-    (* Now we can have decidable equivocations! *)
-    (* 6.2.1 Identifying equivocations *)
-    Definition has_been_sent (msg : message) (s : state) : Prop :=
-      forall (tr : protocol_trace)
-        (last : transition_item)
-        (prefix : list transition_item)
-        (Hpr : trace_prefix (proj1_sig tr) last prefix)
-        (Hlast : destination last = s),
-        List.Exists (fun (elem : transition_item) => output elem = Some msg) prefix.
-
-    (* Since equality of proto_messages is decidable, this function must exist : *)
-    Definition proto_message_eqb {Eqd : EqDec message}
-               (om1 : option message)
-               (om2 : option message)
-      : bool
-      :=
-        match om1, om2 with
-        | None, None => true
-        | Some m1, Some m2 => if eq_dec m1 m2 then true else false
-        | _, _ => false
-        end.
-
-    Fixpoint has_been_sentb
-             {Eqd : EqDec message}
-             (msg : message) (ls : list transition_item) : bool
-      :=
-        existsb (fun x => proto_message_eqb (output x) (Some msg)) ls.
-
     (* 6.2.2 Equivocation-free as a composition constraint *)
     Definition composition_constraint : Type :=
       label -> state * option message -> Prop.
 
-    Definition equivocation_free : composition_constraint :=
-      fun l som => match (snd som) with
-                | None => True
-                | Some msg => equivocation msg (fst som) -> False
-                end.
+    (* Decidable VLSMs *)
 
+    Class VLSM_vdecidable :=
+      { valid_decidable : forall l som, {valid l som} + {~valid l som}
+      }.
 (* end hide *)
   End VLSM.
 
