@@ -9,7 +9,7 @@ VLSM/CommonFutures.v
 VLSM/Validating.v
 VLSM/ByzantineTraces.v
 VLSM/Equivocation.v
-VLSM/FullNodePointed.v
+VLSM/PreceedsEquivocation.v
 VLSM/FullNodeSimple.v
 VLSM/FullNodeComposite.v
 CBC/Binary.v
@@ -19,6 +19,9 @@ CBC/Definitions.v
 CBC/FullNode.v
 CBC/LightNode.v
 CBC/Protocol.v
+CBC/Equivocation.v
+CBC/FullNode/Validator/State.v
+CBC/FullNode/Validator/Equivocation.v
 Lib/StreamExtras.v
 Lib/RealsExtras.v
 Lib/ListSetExtras.v
