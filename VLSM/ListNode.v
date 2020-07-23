@@ -13,9 +13,47 @@ Context
   {dec : EqDec index}
   {temp_dec : EqDec (option bool)}.
 
-Inductive state_list := 
-| Bottom : state_list
-| Something : (bool -> (index -> state_list) -> state_list).
+Inductive state_list : Type := 
+| Bottom
+| Something
+  : forall (b : bool) (is : indexed_state_list index_listing),
+  state_list
+with indexed_state_list : list index -> Type :=
+| Empty
+  : indexed_state_list []
+| Add
+  : forall (v : index) (l : list index)
+      (s : state_list) (is : indexed_state_list l),
+  indexed_state_list (v :: l)
+.
+
+Fixpoint project_indexed
+  (l : list index)
+  (is : indexed_state_list l)
+  : forall
+    (v : index)
+    (Hin : In v l),
+    state_list.
+  intros.
+  inversion is; subst; try inversion Hin.
+  destruct (eq_dec v v0).
+  + exact s.
+  + assert (Hin0 : In v l0).
+    { destruct Hin as [Heq | Hin] ; try assumption.
+      subst. elim n. reflexivity.
+    }
+    exact (project_indexed l0 is0 v Hin0).
+Defined.
+
+Definition project
+  (s : state_list)
+  (v : index)
+  : option state_list
+  :=
+  match s with 
+  | Bottom => None
+  | Something b is => Some (project_indexed index_listing is v (proj2 Hfinite v))
+  end.
 
 Definition state_list00 := Bottom.
 
