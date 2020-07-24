@@ -20,13 +20,7 @@ Class HasEquivocation (message : Type) :=
     ; measurable_V : Measurable V
     ; reachable_threshold : ReachableThreshold V
     ; sender : message -> V
-    ; message_preceeds : message -> message -> Prop
-    ; message_preceeds_dec
-      : forall m1 m2,
-        {message_preceeds m1 m2} + {~message_preceeds m1 m2}
     ; message_preceeds_fn (m1 m2 : message) : bool
-        :=
-        if message_preceeds_dec m1 m2 then true else false
     ; equivocating_messages
         (msg1 msg2 : message)  : bool
         :=

@@ -117,18 +117,12 @@ Proof.
   apply justification_incl_refl.
 Qed.
 
-Definition validator_message_preceeds_dec
-  (m1 m2 : State.message C V)
-  : {validator_message_preceeds m1 m2} + {~validator_message_preceeds m1 m2}
-  := bool_dec (validator_message_preceeds_fn m1 m2) true.
-
 Global Instance full_node_equivocation
   : HasEquivocation (State.message C V)
   := 
     {| about_message := message_type
     ; sender := State.sender
-    ; message_preceeds := validator_message_preceeds
-    ; message_preceeds_dec := validator_message_preceeds_dec
+    ; message_preceeds_fn := validator_message_preceeds_fn
     |}.
 
 End Equivocation.

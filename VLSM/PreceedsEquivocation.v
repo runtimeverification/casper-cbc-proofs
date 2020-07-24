@@ -22,7 +22,7 @@ Section PreceedsEquivocation.
     { protocol_message_preceeds
         (pm1 pm2 : protocol_message X)
         : Prop
-        := message_preceeds (proj1_sig pm1) (proj1_sig pm2)
+        := message_preceeds_fn (proj1_sig pm1) (proj1_sig pm2) = true
     ; protocol_message_preceeds_strict_order
       : StrictOrder protocol_message_preceeds
     }.
