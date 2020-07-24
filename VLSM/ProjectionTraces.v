@@ -233,8 +233,7 @@ Qed.
 Lemma protocol_state_projection
   (s : state)
   (Hps : protocol_state_prop X s)
-  : protocol_state_prop Xj (s j)
-  .
+  : protocol_state_prop Xj (s j).
 Proof.
   destruct Hps as [om Hps].
   specialize (protocol_is_run X (s, om) Hps); intros [run Heqfinal].
@@ -290,8 +289,7 @@ Qed.
 Lemma in_futures_projection
   (s1 s2 : state)
   (Hfutures : in_futures X s1 s2)
-  : in_futures Xj (s1 j) (s2 j)
-  .
+  : in_futures Xj (s1 j) (s2 j).
 Proof.
   specialize (in_futures_protocol_fst X s1 s2 Hfutures)
   ; intros HpsX1.
@@ -309,8 +307,7 @@ Qed.
 Definition in_projection
    (tr : Stream (@transition_item _ (type X)))
    (n : nat)
-   := from_projection (Str_nth n tr)
-   .
+   := from_projection (Str_nth n tr).
 
 Definition in_projection_dec
   := forall (tr : Stream (@transition_item _ (type X))),
@@ -344,8 +341,7 @@ Lemma finite_trace_projection_stream
   (kn := Str_nth n (proj1_sig ks))
   (ss_to_kn := stream_prefix ss (succ kn))
   (sproj := infinite_trace_projection_stream ss ks Hfilter)
-  : stream_prefix sproj (succ n) = finite_trace_projection_list ss_to_kn
-  .
+  : stream_prefix sproj (succ n) = finite_trace_projection_list ss_to_kn.
 Proof.
   unfold sproj. unfold infinite_trace_projection_stream.
   rewrite <- stream_prefix_map.
@@ -399,20 +395,20 @@ Definition trace_projection
   (Hproj_dec : in_projection_dec)
   (tr : @Trace _ (type X))
   : @Trace _ (IT j).
-destruct tr as [s ls | s ss].
-- exact (Finite (s j) (finite_trace_projection_list ls)).
-- specialize (Hproj_dec ss).
-  destruct Hproj_dec as [[n1 _] | [ks Hfilter]].
-  + exact (Finite (s j) (finite_trace_projection_list (stream_prefix ss n1))).
-  + exact (Infinite (s j) (infinite_trace_projection_stream ss ks Hfilter)).
+Proof.
+  destruct tr as [s ls | s ss].
+  - exact (Finite (s j) (finite_trace_projection_list ls)).
+  - specialize (Hproj_dec ss).
+    destruct Hproj_dec as [[n1 _] | [ks Hfilter]].
+    + exact (Finite (s j) (finite_trace_projection_list (stream_prefix ss n1))).
+    + exact (Infinite (s j) (infinite_trace_projection_stream ss ks Hfilter)).
 Defined.
 
 Lemma trace_projection_initial_state
   (Hproj_dec : in_projection_dec)
   (tr : @Trace _ (type X))
   : trace_first (trace_projection Hproj_dec tr)
-  = trace_first tr j
-  .
+  = trace_first tr j.
 Proof.
   destruct tr; try reflexivity.
   simpl.
@@ -428,8 +424,7 @@ Lemma infinite_ptrace_projection
   (Htr: infinite_protocol_trace_from X s ss)
   (fs : monotone_nat_stream)
   (Hfs: filtering_subsequence from_projection ss fs)
-  : infinite_protocol_trace_from Xj (s j) (infinite_trace_projection_stream ss fs Hfs)
-  .
+  : infinite_protocol_trace_from Xj (s j) (infinite_trace_projection_stream ss fs Hfs).
 Proof.
   apply infinite_protocol_trace_from_prefix_rev.
   specialize (infinite_protocol_trace_from_prefix X s ss Htr); intro Hftr.
@@ -502,8 +497,7 @@ Definition projection_friendly
 Lemma projection_friendly_finite
   (Hproj_dec : in_projection_dec)
   (Hfr : projection_friendly Hproj_dec)
-  : finite_projection_friendly
-  .
+  : finite_projection_friendly.
 Proof.
   unfold finite_projection_friendly;  intros.
   specialize (Hfr (Finite sj trj) Htrj).
@@ -542,8 +536,7 @@ Lemma projection_friendly_in_futures'
         (sj
          :: List.map destination (finite_trace_projection_list_alt trx Hall))
         n2 = Some s2)
-  : exists sX1 sX2 : @state _ (type X), sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2
-  .
+  : exists sX1 sX2 : @state _ (type X), sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2.
 Proof.
     assert (HsX1 : exists (nX1 nX2 : nat) (sX1 sX2 : @state _ (type X)), nX1 <= nX2 /\ sX1 j = s1 /\ sX2 j = s2 /\ nth_error (sx :: List.map destination trx) nX1 = Some sX1 /\ nth_error (sx :: List.map destination trx) nX2 = Some sX2).
     {
@@ -661,8 +654,7 @@ Lemma projection_friendly_in_futures
   (s1 s2 : @state _ (IT j))
   (Hfuture : in_futures Xj s1 s2)
   : exists (sX1 sX2 : @state _ (type X)),
-    sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2
-  .
+    sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2.
 Proof.
   specialize (in_futures_witness Xj s1 s2 Hfuture)
   ; intros [trj [n1 [n2 [Hle [Hs1 Hs2]]]]].

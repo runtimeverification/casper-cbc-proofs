@@ -62,8 +62,8 @@ Section Simple.
         exists (prefix : list transition_item),
           trace_prefix (proj1_sig tr) last prefix
           /\  input last = Some msg
-          /\  ~ In (Some msg) (List.map output prefix)
-    .
+          /\  ~ In (Some msg) (List.map output prefix).
+
 (** We intend to give define several message oracles: [has_been_sent], [has_not_been_sent],
     [has_been_received] and [has_not_been_received]. To avoid repetition, we give
     build some generic definitions first. **)

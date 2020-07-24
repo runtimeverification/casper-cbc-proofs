@@ -60,8 +60,7 @@ Lemma last_app
   {A}
   (l1 l2 : list A)
   (def : A)
-  : last (l1 ++ l2) def = last l2 (last l1 def)
-  .
+  : last (l1 ++ l2) def = last l2 (last l1 def).
 Proof.
   generalize dependent def.
   induction l1; try reflexivity; intro def.
@@ -76,8 +75,7 @@ Lemma last_map
   (h : A)
   (t : list A)
   (def : B)
-  : last (map f (h :: t)) def = f (last t h)
-  .
+  : last (map f (h :: t)) def = f (last t h).
 Proof.
   generalize dependent def. generalize dependent h.
   induction t; try reflexivity; intros.
@@ -167,8 +165,7 @@ Lemma filter_nil
   (f : A -> bool)
   (l : list A)
   (Hnone : forall a : A, In a l -> f a = false)
-  : filter f l = []
-  .
+  : filter f l = [].
 Proof.
   induction l; try reflexivity.
   assert (Hno_a := Hnone a).
@@ -380,8 +377,7 @@ Lemma nth_error_last
   (n : nat)
   (Hlast: S n = length l)
   (_last : A)
-  : nth_error l n = Some (last l _last)
-  .
+  : nth_error l n = Some (last l _last).
 Proof.
   generalize dependent _last.
   generalize dependent l.
@@ -412,8 +408,7 @@ Lemma list_suffix_map
   (f : A -> B)
   (l : list A)
   (n : nat)
-  : List.map f (list_suffix l n) = list_suffix (List.map f l) n
-  .
+  : List.map f (list_suffix l n) = list_suffix (List.map f l) n.
 Proof.
   generalize dependent l. induction n; intros [|a l]; try reflexivity.
   simpl.
@@ -436,8 +431,7 @@ Lemma list_prefix_map
   (f : A -> B)
   (l : list A)
   (n : nat)
-  : List.map f (list_prefix l n) = list_prefix (List.map f l) n
-  .
+  : List.map f (list_prefix l n) = list_prefix (List.map f l) n.
 Proof.
   generalize dependent l. induction n; intros [|a l]; try reflexivity.
   simpl.
@@ -450,8 +444,7 @@ Lemma list_prefix_length
   (l : list A)
   (n : nat)
   (Hlen : n <= length l)
-  : length (list_prefix l n) = n
-  .
+  : length (list_prefix l n) = n.
 Proof.
   generalize dependent l. induction n; intros [|a l] Hlen; try reflexivity.
   - inversion Hlen.
@@ -464,8 +457,7 @@ Lemma list_suffix_length
   {A : Type}
   (l : list A)
   (n : nat)
-  : length (list_suffix l n) = length l - n
-  .
+  : length (list_suffix l n) = length l - n.
 Proof.
   generalize dependent l. induction n; intros [|a l]; try reflexivity.
   simpl. apply IHn.
@@ -476,8 +468,7 @@ Lemma list_prefix_prefix
   (l : list A)
   (n1 n2 : nat)
   (Hn: n1 <= n2)
-  : list_prefix (list_prefix l n2) n1 = list_prefix l n1
-  .
+  : list_prefix (list_prefix l n2) n1 = list_prefix l n1.
 Proof.
   generalize dependent n1. generalize dependent n2.
   induction l; intros [|n2] [|n1] Hn; try reflexivity.
@@ -489,8 +480,7 @@ Lemma list_prefix_suffix
   {A : Type}
   (l : list A)
   (n : nat)
-  : list_prefix l n ++ list_suffix l n = l
-  .
+  : list_prefix l n ++ list_suffix l n = l.
   Proof.
    generalize dependent n. induction l; intros [|n]; try reflexivity.
    simpl.
@@ -508,8 +498,7 @@ Lemma list_prefix_segment_suffix
   (l : list A)
   (n1 n2 : nat)
   (Hn : n1 <= n2)
-  : list_prefix l n1 ++ list_segment l n1 n2 ++ list_suffix l n2 = l
-  .
+  : list_prefix l n1 ++ list_segment l n1 n2 ++ list_suffix l n2 = l.
 Proof.
   rewrite <- (list_prefix_suffix l n2) at 4.
   rewrite app_assoc.
@@ -528,8 +517,8 @@ Definition Forall_hd
   {a : A}
   {l : list A}
   (Hs : Forall P (a :: l))
-  : P a
-  .
+  : P a.
+Proof.
   inversion Hs. subst. exact H1.
 Defined.
 
@@ -539,8 +528,8 @@ Definition Forall_tl
   {a : A}
   {l : list A}
   (Hs : Forall P (a :: l))
-  : Forall P l
-  .
+  : Forall P l.
+Proof.
   inversion Hs. subst. exact H2.
 Defined.
 
@@ -549,8 +538,8 @@ Fixpoint list_annotate
   (P : A -> Prop)
   (l : list A)
   (Hs : Forall P l)
-  : list (sig P)
-  .
+  : list (sig P). 
+Proof.
   destruct l as [| a l].
   - exact [].
   -
@@ -576,8 +565,7 @@ Lemma nth_error_list_annotate
   (n : nat)
   : exists (oa : option (sig P)),
     nth_error (list_annotate P l Hs) n = oa
-    /\ option_map (@proj1_sig _ _) oa = nth_error l n
-  .
+    /\ option_map (@proj1_sig _ _) oa = nth_error l n.
 Proof.
   generalize dependent l.
   induction n; intros [| a l] Hs.
@@ -668,8 +656,7 @@ Lemma nth_error_filter
   (Hnth : nth_error (filter f l) n = Some a)
   : exists (nth : nat), 
     nth_error_filter_index f l n = Some nth 
-    /\ nth_error l nth = Some a
-  .
+    /\ nth_error l nth = Some a.
 Proof.
   generalize dependent a. generalize dependent n.
   induction l.
@@ -697,15 +684,15 @@ Fixpoint filter_Forall
   (P : A -> Prop)
   (decP : forall a:A, {P a} + {~P a})
   (l : list A)
-  : Forall P (filter (predicate_to_function decP) l)
-  .
-destruct l; simpl.
-- exact (Forall_nil P).
-- unfold predicate_to_function.
-  specialize (filter_Forall A P decP l).
-  destruct (decP a); simpl.
-  + constructor; assumption.
-  + assumption.
+  : Forall P (filter (predicate_to_function decP) l).
+Proof.
+  destruct l; simpl.
+  - exact (Forall_nil P).
+  - unfold predicate_to_function.
+    specialize (filter_Forall A P decP l).
+    destruct (decP a); simpl.
+    + constructor; assumption.
+    + assumption.
 Defined.
 
 Lemma list_prefix_nth
@@ -714,8 +701,7 @@ Lemma list_prefix_nth
   (n : nat)
   (i : nat)
   (Hi : i < n)
-  : nth_error (list_prefix s n) i = nth_error s i
-  .
+  : nth_error (list_prefix s n) i = nth_error s i.
 Proof.
   generalize dependent n. generalize dependent s.
   induction i; intros [|a s] [|n] Hi; try reflexivity.
@@ -734,8 +720,7 @@ Lemma nth_error_length
   (n : nat)
   (a : A)
   (Hnth : nth_error l n = Some a)
-  : S n <= length l
-  .
+  : S n <= length l.
 Proof.
   generalize dependent a. generalize dependent l.
   induction n; intros [|a l] b Hnth; simpl; inversion Hnth.
@@ -751,8 +736,7 @@ Lemma list_prefix_nth_last
   (nth : A)
   (Hnth : nth_error l n = Some nth)
   (_last : A)
-  : nth = last (list_prefix l (S n)) _last
-  .
+  : nth = last (list_prefix l (S n)) _last.
 Proof.
   specialize (nth_error_length l n nth Hnth); intro Hlen.
   specialize (list_prefix_length l (S n) Hlen); intro Hpref_len.
@@ -771,8 +755,7 @@ Lemma list_suffix_nth
   (n : nat)
   (i : nat)
   (Hi : n <= i)
-  : nth_error (list_suffix s n) (i - n) = nth_error s i
-  .
+  : nth_error (list_suffix s n) (i - n) = nth_error s i.
 Proof.
   generalize dependent n. generalize dependent s.
   induction i; intros [|a s] [|n] Hi; try reflexivity.
@@ -789,8 +772,7 @@ Lemma list_suffix_last
   (i : nat)
   (Hlt : i < length l)
   (_default : A)
-  : last (list_suffix l i) _default  = last l _default
-  .
+  : last (list_suffix l i) _default  = last l _default.
 Proof.
   generalize dependent l. induction i; intros [|a l] Hlt
   ; try reflexivity.
@@ -810,8 +792,7 @@ Lemma list_suffix_last_default
   (i : nat)
   (Hlast : i = length l)
   (_default : A)
-  : last (list_suffix l i) _default  = _default
-  .
+  : last (list_suffix l i) _default  = _default.
 Proof.
   generalize dependent l. induction i; intros [|a l] Hlast
   ; try reflexivity.
@@ -844,8 +825,7 @@ Lemma list_segment_app
   (n1 n2 n3 : nat)
   (H12 : n1 <= n2)
   (H23 : n2 <= n3)
-  : list_segment l n1 n2 ++ list_segment l n2 n3 = list_segment l n1 n3
-  .
+  : list_segment l n1 n2 ++ list_segment l n2 n3 = list_segment l n1 n3.
 Proof.
   assert (Hle : n1 <= n3) by lia.
   specialize (list_prefix_segment_suffix l n1 n3 Hle); intro Hl1.
@@ -869,8 +849,7 @@ Lemma list_segment_singleton
   (n : nat)
   (a : A)
   (Hnth : nth_error l n = Some a)
-  : list_segment l n (S n) = [a]
-  .
+  : list_segment l n (S n) = [a].
 Proof.
   unfold list_segment.
   assert (Hle : S n <= length l)
@@ -940,8 +919,7 @@ Lemma Exists_dec
   (P : A -> Prop)
   (l : list A)
   (P_dec : forall a : A, {P a} + {~ P a})
-  : {List.Exists P l} + {~ List.Exists P l}
-  .
+  : {List.Exists P l} + {~ List.Exists P l}.
 Proof.
   induction l.
   - right. intro. inversion H.
@@ -958,8 +936,7 @@ Lemma Forall_dec
   (P : A -> Prop)
   (l : list A)
   (P_dec : forall a : A, {P a} + {~ P a})
-  : {List.Forall P l} + {~ List.Forall P l}
-  .
+  : {List.Forall P l} + {~ List.Forall P l}.
 Proof.
   induction l.
   - left. constructor.
@@ -975,15 +952,15 @@ Definition map_option
   {A B : Type}
   (f : A -> option B)
   : list A -> list B
-  := fold_right
-      (fun x lb =>
-        match f x with
-        | None => lb
-        | Some b => b :: lb
-        end
-      )
-      []
-  .
+  :=
+  fold_right
+    (fun x lb =>
+      match f x with
+      | None => lb
+      | Some b => b :: lb
+      end
+    )
+    [].
 
 Lemma in_map_option
   {A B : Type}

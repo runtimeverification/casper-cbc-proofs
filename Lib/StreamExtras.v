@@ -55,8 +55,7 @@ Lemma stream_app_f_equal
   (s1 s2 : Stream A)
   (Hl : l1 = l2)
   (Hs : EqSt s1 s2)
-  : EqSt (stream_app l1 s1) (stream_app l2 s2)
-  .
+  : EqSt (stream_app l1 s1) (stream_app l2 s2).
 Proof.
   subst. induction l2; try assumption.
   simpl. constructor; try reflexivity. assumption.
@@ -94,8 +93,7 @@ Lemma stream_prefix_nth
   (n : nat)
   (i : nat)
   (Hi : i < n)
-  : nth_error (stream_prefix s n) i = Some (Str_nth i s)
-  .
+  : nth_error (stream_prefix s n) i = Some (Str_nth i s).
 Proof.
   generalize dependent n. generalize dependent s.
   induction i; intros [a s] [|n] Hi; try reflexivity.
@@ -128,8 +126,7 @@ Lemma EqSt_stream_prefix
   {A : Type}
   (s1 s2 : Stream A)
   (Hpref : forall n : nat, stream_prefix s1 n = stream_prefix s2 n)
-  : EqSt s1 s2
-  .
+  : EqSt s1 s2.
 Proof.
   apply ntheq_eqst.
   intro n.
@@ -151,8 +148,7 @@ Lemma stream_prefix_in
   (n : nat)
   (a : A)
   (Hin : In a (stream_prefix l n))
-  : exists k : nat, k < n /\ Str_nth k l = a
-  .
+  : exists k : nat, k < n /\ Str_nth k l = a.
 Proof.
   generalize dependent a. generalize dependent l.
   induction n.
@@ -211,8 +207,7 @@ Lemma stream_prefix_map
   (f : A -> B)
   (l : Stream A)
   (n : nat)
-  : List.map f (stream_prefix l n) = stream_prefix (Streams.map f l) n
-  .
+  : List.map f (stream_prefix l n) = stream_prefix (Streams.map f l) n.
 Proof.
   generalize dependent l. induction n; intros [a l]; try reflexivity.
   simpl.
@@ -224,8 +219,7 @@ Lemma stream_prefix_length
   {A : Type}
   (l : Stream A)
   (n : nat)
-  : length (stream_prefix l n) = n
-  .
+  : length (stream_prefix l n) = n.
 Proof.
   generalize dependent l. induction n; intros [a l]; try reflexivity.
   simpl in *. f_equal.
@@ -243,8 +237,7 @@ Lemma stream_suffix_S
   {A : Type}
   (l : Stream A)
   (n : nat)
-  : stream_suffix l n = Cons (Str_nth n l) (stream_suffix l (S n))
-  .
+  : stream_suffix l n = Cons (Str_nth n l) (stream_suffix l (S n)).
 Proof.
   generalize dependent l. induction n; intros.
   - destruct l; reflexivity.
@@ -257,8 +250,7 @@ Lemma stream_suffix_nth
   (s : Stream A)
   (n : nat)
   (i : nat)
-  : Str_nth i (stream_suffix s n) = Str_nth (i + n) s
-  .
+  : Str_nth i (stream_suffix s n) = Str_nth (i + n) s.
 Proof.
   apply Str_nth_plus.
 Qed.
@@ -267,8 +259,7 @@ Lemma stream_prefix_suffix
   {A : Type}
   (l : Stream A)
   (n : nat)
-  : stream_app (stream_prefix l n) (stream_suffix l n) = l
-  .
+  : stream_app (stream_prefix l n) (stream_suffix l n) = l.
 Proof.
   generalize dependent l. unfold stream_suffix.
   induction n; try reflexivity; intros [a l]; simpl.
@@ -280,8 +271,7 @@ Lemma stream_prefix_prefix
   (l : Stream A)
   (n1 n2 : nat)
   (Hn: n1 <= n2)
-  : list_prefix (stream_prefix l n2) n1 = stream_prefix l n1
-  .
+  : list_prefix (stream_prefix l n2) n1 = stream_prefix l n1.
 Proof.
   generalize dependent n2.
   generalize dependent l.
@@ -295,8 +285,7 @@ Definition stream_segment
   (l : Stream A)
   (n1 n2 : nat)
   : list A
-  := list_suffix (stream_prefix l n2) n1
-  .
+  := list_suffix (stream_prefix l n2) n1.
 
 Lemma stream_segment_nth
   {A : Type}
@@ -319,8 +308,7 @@ Definition stream_segment_alt
   (l : Stream A)
   (n1 n2 : nat)
   : list A
-  := stream_prefix (stream_suffix l n1) (n2 - n1)
-  .
+  := stream_prefix (stream_suffix l n1) (n2 - n1).
 
 Lemma stream_segment_alt_iff
   {A : Type}
@@ -371,17 +359,13 @@ Lemma stream_prefix_segment_suffix
   (l : Stream A)
   (n1 n2 : nat)
   (Hn : n1 <= n2)
-  :
-   (stream_app
-   ((stream_prefix l n1)
-     ++
-    (stream_segment l n1 n2)
-   )
-    (stream_suffix l n2)
-    )
-  =
-    l
-  .
+  : stream_app
+      ((stream_prefix l n1)
+        ++
+       (stream_segment l n1 n2)
+      )
+      (stream_suffix l n2)
+  = l.
 Proof.
   rewrite <- (stream_prefix_suffix l n2) at 4.
   f_equal.
@@ -395,8 +379,7 @@ Lemma stream_segment_app
   (n1 n2 n3 : nat)
   (H12 : n1 <= n2)
   (H23 : n2 <= n3)
-  : stream_segment l n1 n2 ++ stream_segment l n2 n3 = stream_segment l n1 n3
-  .
+  : stream_segment l n1 n2 ++ stream_segment l n2 n3 = stream_segment l n1 n3.
 Proof.
   assert (Hle : n1 <= n3) by lia.
   specialize (stream_prefix_segment_suffix l n1 n3 Hle); intro Hl1.
@@ -439,13 +422,11 @@ Qed.
 Definition nat_sequence_suffix
   (s : Stream nat)
   :=
-  Streams.map (fun i => i - (S (hd s))) (tl s)
-  .
+  Streams.map (fun i => i - (S (hd s))) (tl s).
 
 Lemma monotone_nat_prop_suffix
   (ss : monotone_nat_stream)
-  : monotone_nat_stream_prop (nat_sequence_suffix (proj1_sig ss))
-  .
+  : monotone_nat_stream_prop (nat_sequence_suffix (proj1_sig ss)).
 Proof.
   destruct ss as [s Hs].
   intros n1 n2 Hlt.
@@ -476,8 +457,7 @@ Definition monotone_nat_stream_suffix
   exist
     monotone_nat_stream_prop
     (nat_sequence_suffix (proj1_sig ss))
-    (monotone_nat_prop_suffix ss)
-  .
+    (monotone_nat_prop_suffix ss).
 
 Definition filtering_subsequence
   {A : Type}
@@ -565,8 +545,7 @@ Lemma stream_subsequence_suffix
   (kss' := monotone_nat_stream_suffix kss)
   : EqSt
     (stream_subsequence ss kss)
-    (Cons n (stream_subsequence ss' kss'))
-  .
+    (Cons n (stream_subsequence ss' kss')).
 Proof.
   apply ntheq_eqst.
   intros [|n']; try reflexivity.
@@ -649,8 +628,7 @@ Lemma stream_prefix_Forall
   (P : A -> Prop)
   (s : Stream A)
   (Hs : ForAll (fun str => P (hd str)) s)
-  : forall n : nat, Forall P (stream_prefix s n)
-  .
+  : forall n : nat, Forall P (stream_prefix s n).
 Proof.
   intros n. generalize dependent s.
   induction n; intros.
@@ -668,8 +646,7 @@ Lemma stream_prefix_Forall_rev
   (P : A -> Prop)
   (s : Stream A)
   (Hpref: forall n : nat, Forall P (stream_prefix s n))
-  : ForAll (fun str => P (hd str)) s
-  .
+  : ForAll (fun str => P (hd str)) s.
 Proof.
   generalize dependent s.
   cofix H.
@@ -692,8 +669,7 @@ Lemma stream_prefix_annotate
   (Hs : ForAll (fun str => P (hd str)) s)
   (n : nat)
   : exists Hs', stream_prefix (stream_annotate P s Hs) n
-  = list_annotate P (stream_prefix s n) Hs'
-  .
+  = list_annotate P (stream_prefix s n) Hs'.
 Proof.
   generalize dependent s.
   induction n.
@@ -765,8 +741,7 @@ Lemma stream_filter_prefix_0
   (kn := Str_nth 0 (proj1_sig ks))
   (ss_to_kn := stream_prefix ss (S kn))
   : stream_prefix (stream_subsequence ss ks) (S 0)
-    = filter (predicate_to_function decP) ss_to_kn
-  .
+    = filter (predicate_to_function decP) ss_to_kn.
 Proof.
   generalize dependent ks.
   intros [(k, ks) Hseq]; intros.
@@ -822,8 +797,7 @@ Lemma stream_filter_prefix
   (kn := Str_nth n (proj1_sig ks))
   (ss_to_kn := stream_prefix ss (S kn))
   : stream_prefix (stream_subsequence ss ks) (S n)
-    = filter (predicate_to_function decP) ss_to_kn
-  .
+    = filter (predicate_to_function decP) ss_to_kn.
 Proof.
   generalize dependent ks. generalize dependent ss.
   induction n; try apply stream_filter_prefix_0.
@@ -893,8 +867,7 @@ Lemma stream_prefix_nth_last
   (l : Stream A)
   (n : nat)
   (_last : A)
-  : last (stream_prefix l (S n)) _last = Str_nth n l
-  .
+  : last (stream_prefix l (S n)) _last = Str_nth n l.
 Proof.
   specialize (nth_error_last (stream_prefix l (S n)) n); intro Hlast.
   specialize (stream_prefix_length l (S n)); intro Hpref_len.
@@ -913,8 +886,7 @@ Lemma stream_segment_singleton
   {A : Type}
   (l : Stream A)
   (n : nat)
-  : stream_segment l n (S n) = [Str_nth n l]
-  .
+  : stream_segment l n (S n) = [Str_nth n l].
 Proof.
   remember (Str_nth n l) as a.
   unfold stream_segment.
@@ -940,8 +912,7 @@ Lemma str_map_tl
   {A B : Type}
   (f : A -> B)
   (s : Stream A)
-  : EqSt (tl (map f s)) (map f (tl s))
-  .
+  : EqSt (tl (map f s)) (map f (tl s)).
 Proof.
   generalize dependent s.
   cofix IH.
@@ -955,8 +926,7 @@ Lemma str_map_cons
   {A B : Type}
   (f : A -> B)
   (s : Stream A)
-  : EqSt (map f s) (Cons (f (hd s)) (map f (tl s)))
-  .
+  : EqSt (map f s) (Cons (f (hd s)) (map f (tl s))).
 Proof.
   destruct s as  (a,s).
   constructor; try reflexivity.

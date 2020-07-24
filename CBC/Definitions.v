@@ -200,7 +200,8 @@ Qed.
 Instance message_strictorder
   {C} `{about_C : StrictlyComparable C} {V} `{about_V : StrictlyComparable V}
   : CompareStrictOrder (@message_compare C about_C V about_V).
-split.
+Proof.
+  split.
   - intros msg1 msg2. unfold message_compare.
     rewrite (state_compare_reflexive (next msg1 Empty) (next msg2 Empty)).
     split; intros; subst; try reflexivity.
@@ -227,8 +228,9 @@ Definition message_lt
 Instance message_lt_strictorder
   {C V} `{about_M : StrictlyComparable (message C V)}
   : StrictOrder (@message_lt C V about_M).
-split. apply compare_lt_irreflexive.
-apply compare_lt_transitive.
+Proof.
+  split. apply compare_lt_irreflexive.
+  apply compare_lt_transitive.
 Defined.
 
 (* Defining state_union using messages *)
@@ -665,8 +667,7 @@ Lemma add_preserves_inclusion
   (sigma sigma' : @state C V)
   (msg' : message C V)
   (Hincl : syntactic_state_inclusion sigma sigma')
-  : syntactic_state_inclusion sigma (add_in_sorted_fn msg' sigma')
-  .
+  : syntactic_state_inclusion sigma (add_in_sorted_fn msg' sigma').
 Proof.
   apply incl_tran with (msg' :: get_messages sigma'); try apply set_eq_add_in_sorted.
   apply incl_tl. assumption.

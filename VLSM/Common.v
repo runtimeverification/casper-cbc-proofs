@@ -196,8 +196,7 @@ to define a protocol message property for optional messages:
     Lemma option_protocol_message_Some
       (m : message)
       (Hpm : protocol_message_prop m)
-      : option_protocol_message_prop (Some m)
-      .
+      : option_protocol_message_prop (Some m).
     Proof.
       destruct Hpm as [s Hpm]. exists s. assumption.
     Qed.
@@ -218,8 +217,7 @@ _protocol_ transitions:
       let (s, om) := som in
          protocol_state_prop s
       /\ option_protocol_message_prop om
-      /\ valid l (s,om)
-      .
+      /\ valid l (s,om).
 
 
     Definition protocol_transition
@@ -259,8 +257,7 @@ _protocol_ transitions:
       (som : state * option message)
       (Hv : protocol_valid l som)
       : exists (som' : state * option message),
-        protocol_transition l som som'
-      .
+        protocol_transition l som som'.
     Proof.
       exists (transition l som).
       repeat split; assumption.
@@ -271,8 +268,7 @@ _protocol_ transitions:
       (som : state * option message)
       : protocol_valid l som
       <-> exists (som' : state * option message),
-            protocol_transition l som som'
-      .
+            protocol_transition l som som'.
     Proof.
       split.
       - apply protocol_valid_transition.
@@ -296,8 +292,7 @@ pre-existing concepts.
       (Hps : protocol_prop (s, _om))
       (Hpm : protocol_prop (_s, om))
       (Hv : valid l (s, om))
-      : protocol_valid l (s, om)
-      .
+      : protocol_valid l (s, om).
     Proof.
       repeat split; try assumption.
       - exists _om. assumption.
@@ -309,8 +304,7 @@ pre-existing concepts.
           {s s' : state}
           {om om' : option message}
           (Ht : protocol_transition l (s, om) (s',om'))
-      : protocol_state_prop s
-    .
+      : protocol_state_prop s.
     Proof.
       destruct Ht as [[[_om Hp] _] _]. exists _om. assumption.
     Qed.
@@ -320,8 +314,7 @@ pre-existing concepts.
           {s s' : state}
           {om om' : option message}
           (Ht : protocol_transition l (s, om) (s', om'))
-      : protocol_state_prop s'
-    .
+      : protocol_state_prop s'.
     Proof.
       exists om'.
       destruct Ht as [[[_om Hs] [[_s Hom] Hv]] Ht].
@@ -334,8 +327,7 @@ pre-existing concepts.
           {m : message}
           {om' : option message}
           (Ht : protocol_transition l (s, (Some m)) (s', om'))
-      : protocol_message_prop m
-    .
+      : protocol_message_prop m.
     Proof.
       destruct Ht as [[_ [[_s Hom] _]] _].
       exists _s. assumption.
@@ -359,8 +351,7 @@ pre-existing concepts.
           {s s' : state}
           {om om' : option message}
           (Ht : protocol_transition l (s, om) (s', om'))
-        : protocol_prop (s', om')
-        .
+        : protocol_prop (s', om').
     Proof.
       destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
       rewrite <- Ht.
@@ -383,8 +374,7 @@ pre-existing concepts.
           {s s' : state}
           {om om' : option message}
           (Ht : protocol_transition l (s, om) (s', om'))
-        :  transition l (s, om) = (s', om')
-      .
+        :  transition l (s, om) = (s', om').
      Proof.
       destruct Ht as [_ Ht]. assumption.
      Qed.
@@ -394,8 +384,7 @@ pre-existing concepts.
       (s : state)
       (om : option message)
       (Hv : protocol_valid l (s, om))
-      : protocol_prop (transition l (s, om))
-      .
+      : protocol_prop (transition l (s, om)).
     Proof.
       apply protocol_valid_transition in Hv.
       destruct Hv as [[s' om'] Ht].
@@ -548,8 +537,7 @@ decompose the above properties in proofs.
       (s : state)
       (tr : list transition_item)
       (Htr : finite_protocol_trace_from s tr)
-      : protocol_state_prop s
-      .
+      : protocol_state_prop s.
     Proof.
       inversion Htr; subst; try assumption.
       destruct H0 as [[Hs _] _]. assumption.
@@ -669,8 +657,7 @@ traces.
       (n : nat)
       (nth : state)
       (Hnth : nth_error (s :: List.map destination ls) n = Some nth)
-      : finite_protocol_trace_from nth (list_suffix ls n)
-      .
+      : finite_protocol_trace_from nth (list_suffix ls n).
     Proof.
       specialize (list_prefix_suffix ls n); intro Hdecompose.
       rewrite <- Hdecompose in Htr.
@@ -800,8 +787,7 @@ definitions, mostly reducing them to properties about their finite segments.
       (s : state)
       (ls : Stream transition_item)
       (Hpref: forall n : nat, finite_protocol_trace_from s (stream_prefix ls n))
-      : infinite_protocol_trace_from s ls
-      .
+      : infinite_protocol_trace_from s ls.
     Proof.
       generalize dependent Hpref. generalize dependent s. generalize dependent ls.
       cofix H.
@@ -880,8 +866,7 @@ It inherits some previously introduced definitions, culminating with the
     Lemma protocol_trace_from
       (tr : Trace)
       (Htr : protocol_trace_prop tr)
-      : ptrace_from_prop tr
-      .
+      : ptrace_from_prop tr.
     Proof.
       destruct tr; simpl; destruct Htr as [Htr Hinit]; assumption.
     Qed.
@@ -889,8 +874,7 @@ It inherits some previously introduced definitions, culminating with the
     Lemma protocol_trace_initial
       (tr : Trace)
       (Htr : protocol_trace_prop tr)
-      : initial_state_prop (trace_first tr)
-      .
+      : initial_state_prop (trace_first tr).
     Proof.
       destruct tr; simpl; destruct Htr as [Htr Hinit]; assumption.
     Qed.
@@ -898,8 +882,7 @@ It inherits some previously introduced definitions, culminating with the
     Lemma protocol_trace_from_iff
       (tr : Trace)
       : protocol_trace_prop tr
-      <-> ptrace_from_prop tr /\ initial_state_prop (trace_first tr)
-      .
+      <-> ptrace_from_prop tr /\ initial_state_prop (trace_first tr).
     Proof.
       split.
       - intro Htr; split.
@@ -1034,8 +1017,7 @@ It inherits some previously introduced definitions, culminating with the
       (Htr : finite_protocol_trace_from (proj1_sig is) tr)
       : exists r : proto_run,
         vlsm_run_prop r /\
-        start r = is /\ transitions r = tr
-      .
+        start r = is /\ transitions r = tr.
     Proof.
       generalize dependent tr.
       apply (rev_ind (fun tr => (finite_protocol_trace_from (proj1_sig is) tr ->
@@ -1075,8 +1057,7 @@ It inherits some previously introduced definitions, culminating with the
       (is : initial_state)
       (tr : list transition_item)
       (Htr : finite_protocol_trace_from (proj1_sig is) tr)
-      : protocol_state_prop (last (List.map destination tr) (proj1_sig is))
-      .
+      : protocol_state_prop (last (List.map destination tr) (proj1_sig is)).
     Proof.
       specialize (trace_is_run is tr Htr); simpl; intro Hrun.
       destruct Hrun as [run [Hrun [Hstart Htrans]]].
@@ -1180,8 +1161,7 @@ This relation is often used in stating safety and liveness properties.*)
       (first second third : state)
       (H12: in_futures first second)
       (H23 : in_futures second third)
-      : in_futures first third
-      .
+      : in_futures first third.
     Proof.
       destruct H12 as [tr12 [Htr12 Hsnd]].
       destruct H23 as [tr23 [Htr23 Hthird]].
@@ -1425,8 +1405,7 @@ This relation is often used in stating safety and liveness properties.*)
           (tr : Trace)
           (Htr : protocol_trace_prop tr)
           (n : nat)
-      : protocol_trace_prop (trace_prefix_fn tr n)
-      .
+      : protocol_trace_prop (trace_prefix_fn tr n).
     Proof.
       specialize (trace_prefix_protocol (exist _ tr Htr)); simpl; intro Hpref.
       remember (trace_prefix_fn tr n) as pref_tr.
@@ -1474,8 +1453,7 @@ This relation is often used in stating safety and liveness properties.*)
       (n : nat)
       (s : state)
       (Hnth : trace_nth tr n = Some s)
-      : protocol_state_prop s
-      .
+      : protocol_state_prop s.
     Proof.
       destruct tr as [s0 l | s0 l]; destruct Htr as [Htr Hinit].
       - specialize (finite_protocol_trace_from_suffix s0 l Htr n s Hnth).
@@ -1651,24 +1629,21 @@ is also available to Y.
       (X : VLSM SigX) (Y : VLSM SigY)
       :=
       forall t : Trace,
-        protocol_trace_prop X t <-> protocol_trace_prop Y t
-      .
+        protocol_trace_prop X t <-> protocol_trace_prop Y t.
 
     Definition VLSM_incl
       {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
       :=
       forall t : Trace,
-        protocol_trace_prop X t -> protocol_trace_prop Y t
-      .
+        protocol_trace_prop X t -> protocol_trace_prop Y t.
 
     (* begin hide *)
 
     Lemma VLSM_eq_incl_l
       {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
-      : VLSM_eq X Y -> VLSM_incl X Y
-      .
+      : VLSM_eq X Y -> VLSM_incl X Y.
     Proof.
       intro Heq.
       intros t Hxt.
@@ -1679,8 +1654,7 @@ is also available to Y.
     Lemma VLSM_eq_incl_r
       {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
-      : VLSM_eq X Y -> VLSM_incl Y X
-      .
+      : VLSM_eq X Y -> VLSM_incl Y X.
     Proof.
       intro Heq.
       intros t Hyt.
@@ -1691,8 +1665,7 @@ is also available to Y.
     Lemma VLSM_eq_incl_iff
       {SigX SigY: VLSM_sign vtype}
       (X : VLSM SigX) (Y : VLSM SigY)
-      : VLSM_eq X Y <-> VLSM_incl X Y /\ VLSM_incl Y X
-      .
+      : VLSM_eq X Y <-> VLSM_incl X Y /\ VLSM_incl Y X.
     Proof.
       split.
       - intro Heq.
@@ -1789,8 +1762,7 @@ Lemma VLSM_incl_protocol_transition
   (is os : state)
   (iom oom : option message)
   (Ht : protocol_transition X l (is, iom) (os, oom))
-  : protocol_transition Y l (is, iom) (os, oom)
-  .
+  : protocol_transition Y l (is, iom) (os, oom).
 Proof.
   destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
   specialize (protocol_generated_valid X Hps Hpm Hv); intros Hpv.
@@ -1806,8 +1778,7 @@ Qed.
     (s : state)
     (ls : list transition_item)
     (Hpxt : finite_protocol_trace_from X s ls)
-    : finite_protocol_trace_from Y s ls
-    .
+    : finite_protocol_trace_from Y s ls.
   Proof.
     induction Hpxt.
     - constructor.
@@ -1821,8 +1792,7 @@ Qed.
     (s : state)
     (ls : Stream transition_item)
     (Hpxt : infinite_protocol_trace_from X s ls)
-    : infinite_protocol_trace_from Y s ls
-    .
+    : infinite_protocol_trace_from Y s ls.
   Proof.
     generalize dependent ls. generalize dependent s.
     cofix H.
@@ -1837,8 +1807,7 @@ Qed.
   (* end hide *)
 
   Lemma basic_VLSM_incl
-    : VLSM_incl X Y
-    .
+    : VLSM_incl X Y.
   Proof.
     intros [s ls| s ss]; simpl; intros [Hxt Hinit].
     - apply VLSM_incl_finite_ptrace in Hxt.
@@ -1909,8 +1878,7 @@ Byzantine fault tolerance analysis. *)
   (* end hide *)
 
   Lemma vlsm_incl_pre_loaded_vlsm
-    : VLSM_incl X pre_loaded_vlsm
-    .
+    : VLSM_incl X pre_loaded_vlsm.
   Proof.
     apply (basic_VLSM_incl X pre_loaded_vlsm)
     ; intros; try (assumption || reflexivity)

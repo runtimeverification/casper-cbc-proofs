@@ -224,8 +224,7 @@ Qed.
 
 Lemma set_union_empty {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s1 s2,
   set_union Aeq_dec s1 s2 = nil ->
-  s1 = nil /\ s2 = nil
-  .
+  s1 = nil /\ s2 = nil.
 Proof.
   intros.
   destruct s2.
@@ -466,8 +465,7 @@ Lemma incl_remove_union  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : fora
   NoDup s2 ->
   incl
     (set_remove Aeq_dec x (set_union Aeq_dec s1 s2))
-    (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-  .
+    (set_union Aeq_dec s1 (set_remove Aeq_dec x s2)).
 Proof.
   intros. intros y Hin. apply set_remove_iff in Hin.
   - apply set_union_intro. destruct Hin. apply set_union_elim in H1.
@@ -482,8 +480,7 @@ Lemma set_eq_remove_union_in  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) :
   In x s1 ->
   set_eq
     (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-    (set_union Aeq_dec s1 s2)
-  .
+    (set_union Aeq_dec s1 s2).
 Proof.
   split; intros msg Hin; apply set_union_iff; apply set_union_iff in Hin
   ; destruct Hin; try (left; assumption)
@@ -500,8 +497,7 @@ Lemma set_eq_remove_union_not_in  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y
   ~ In x s1 ->
   set_eq
     (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-    (set_remove Aeq_dec x (set_union Aeq_dec s1 s2))
-  .
+    (set_remove Aeq_dec x (set_union Aeq_dec s1 s2)).
 Proof.
   intros.
   assert (HnodupUs1s2 := H0).

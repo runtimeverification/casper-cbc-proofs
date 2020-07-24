@@ -192,8 +192,7 @@ Section CommuteIndexed.
       (Hcons : final_and_consistent)
       (i : index)
       (Hfr : finite_projection_friendly Hi IM constraint i)
-      : final (composite_vlsm_constrained_projection Hi IM constraint i) (ID i)
-      .
+      : final (composite_vlsm_constrained_projection Hi IM constraint i) (ID i).
   Proof.
     intros s1 s2 c1 c2 Hfuturesi HD1 HD2.
     specialize (projection_friendly_in_futures Hi IM constraint i Hfr s1 s2 Hfuturesi)

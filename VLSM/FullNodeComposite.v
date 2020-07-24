@@ -59,8 +59,7 @@ Section CompositeFullNode.
 
   Definition not_heavy
     :=
-    @CBC.Equivocation.not_heavy_set _ (full_node_equivocation C V )
-    .
+    @CBC.Equivocation.not_heavy_set _ (full_node_equivocation C V ).
   
   Definition valid_client2
     (_ : unit)
@@ -184,21 +183,23 @@ Section CompositeFullNode.
       end.
 
   Definition IS_index : forall i : Fin.t (n + n'), VLSM_sign (IT_index i).
-  intros. unfold IT_index.
-  destruct (proj1_sig (Fin.to_nat i) ?= n) eqn:Hi.
-  - exact LSM_full_validator.
-  - exact LSM_full_validator.
-  - exact LSM_full_client2.
+  Proof.
+    intros. unfold IT_index.
+    destruct (proj1_sig (Fin.to_nat i) ?= n) eqn:Hi.
+    - exact LSM_full_validator.
+    - exact LSM_full_validator.
+    - exact LSM_full_client2.
   Defined.
 
   Definition IM_index : forall i : Fin.t (n + n'), VLSM (IS_index i).
-  intros.
-  unfold IT_index. unfold IS_index.
-  remember (proj1_sig (Fin.to_nat i)) as ni.
-  destruct (ni ?= n) eqn:Hi.
-  - exact (VLSM_full_validator (nth (ni - 1) validators v0)).
-  - exact (VLSM_full_validator (nth (ni - 1) validators v0)).
-  - exact VLSM_full_client2.
+  Proof.
+    intros.
+    unfold IT_index. unfold IS_index.
+    remember (proj1_sig (Fin.to_nat i)) as ni.
+    destruct (ni ?= n) eqn:Hi.
+    - exact (VLSM_full_validator (nth (ni - 1) validators v0)).
+    - exact (VLSM_full_validator (nth (ni - 1) validators v0)).
+    - exact VLSM_full_client2.
   Defined.
 
   Fixpoint fin_listing (m : nat) : list (Fin.t m) :=
@@ -239,7 +240,8 @@ Section CompositeFullNode.
   Qed.
 
   Definition f1_n_plus_n' : Fin.t (n + n').
-  specialize (@F1 nlst). rewrite nlst_S. intro; assumption.
+  Proof.
+    specialize (@F1 nlst). rewrite nlst_S. intro; assumption.
   Defined.
 
   Definition VLSM_full_composed_free : VLSM (composite_sig f1_n_plus_n' IS_index)
@@ -255,22 +257,19 @@ Section CompositeFullNode.
     (i : V)
     : VLSM_type message
     :=
-    VLSM_type_full_validator
-    .
+    VLSM_type_full_validator.
 
   Definition IS_validators
     (i : V)
     : VLSM_sign (IT_validators i)
     :=
-    LSM_full_validator
-    .
+    LSM_full_validator.
 
   Definition IM_validators
     (i : V)
     : VLSM (IS_validators i)
     :=
-    VLSM_full_validator i
-    .
+    VLSM_full_validator i.
 
   Definition state_union
     (s : @VLSM.Common.state _ (composite_type IT_validators))
@@ -278,8 +277,7 @@ Section CompositeFullNode.
     :=
     let state_list := List.map s validators in
     fold_right (set_union compare_eq_dec) []
-      (List.map fst state_list)
-    .
+      (List.map fst state_list).
 
   Existing Instance v_eq_dec.
   
@@ -289,8 +287,7 @@ Section CompositeFullNode.
     : Prop
     := 
     let (s', om') := composite_transition IM_validators l som in
-    not_heavy (state_union s')
-    .
+    not_heavy (state_union s').
   
   Definition VLSM_full_composed : VLSM (composite_sig v0 IS_validators)
     := composite_vlsm v0 IM_validators VLSM_full_constraint.
@@ -298,12 +295,10 @@ Section CompositeFullNode.
   Definition  validator_protocol_message_preceeds
     (pm1 pm2 : protocol_message VLSM_full_composed)
     : Prop
-    := validator_message_preceeds _ _ (proj1_sig pm1) (proj1_sig pm2)
-    .
+    := validator_message_preceeds _ _ (proj1_sig pm1) (proj1_sig pm2).
   
   Lemma validator_protocol_message_preceeds_irreflexive
-    : Irreflexive validator_protocol_message_preceeds
-    .
+    : Irreflexive validator_protocol_message_preceeds.
   Proof.
     intros (x, Hx).
     unfold complement; unfold validator_protocol_message_preceeds; simpl.
@@ -318,8 +313,7 @@ Section CompositeFullNode.
       (s : @VLSM.Common.state _ (composite_type IT_validators))
       (Hs : protocol_state_prop VLSM_full_composed s)
       (v : V),
-      make_justification (s v) = j
-    .
+      make_justification (s v) = j.
   Proof.
     destruct Hm as [_s Hm].
     inversion Hm; subst.
@@ -347,8 +341,7 @@ Section CompositeFullNode.
     (m : message)
     (v : V)
     (Hm : In m (fst (s v)))
-    : protocol_message_prop VLSM_full_composed m
-    .
+    : protocol_message_prop VLSM_full_composed m.
   Proof.
     destruct  Hs as [om Hsom].
     remember (s, om) as som.
@@ -411,8 +404,7 @@ Section CompositeFullNode.
     (m : message)
     (v : V)
     (Hm : In m (fst (s v)))
-    : incl (fst (unmake_justification (get_justification m))) (fst (s v))
-    .
+    : incl (fst (unmake_justification (get_justification m))) (fst (s v)).
   Proof.
     destruct  Hs as [om Hsom].
     remember (s, om) as som.
@@ -493,8 +485,7 @@ Section CompositeFullNode.
     (Hyz : validator_protocol_message_preceeds y z)
     (jy := get_justification (proj1_sig y))
     (jz := get_justification (proj1_sig z))
-    : justification_incl jy jz
-    .
+    : justification_incl jy jz.
   Proof.
     unfold jy; clear jy. unfold jz; clear jz.
     destruct y as (y, Hy).
@@ -525,8 +516,7 @@ Section CompositeFullNode.
   Qed.
 
   Lemma validator_protocol_message_preceeds_transitive
-    : Transitive validator_protocol_message_preceeds
-    .
+    : Transitive validator_protocol_message_preceeds.
   Proof.
     intros x y z Hxy Hyz.
     specialize
@@ -560,16 +550,16 @@ Section CompositeFullNode.
   Qed.
 
   Definition validator_protocol_message_preceeds_stict_order
-    : StrictOrder validator_protocol_message_preceeds
-    .
+    : StrictOrder validator_protocol_message_preceeds.
+  Proof.
     split.
     apply validator_protocol_message_preceeds_irreflexive.
     apply validator_protocol_message_preceeds_transitive.
   Defined.
 
   Global Instance validators_preceeds_equivocation
-    : HasPreceedsEquivocation VLSM_full_composed
-    .
+    : HasPreceedsEquivocation VLSM_full_composed.
+  Proof.
     split.
     apply validator_protocol_message_preceeds_stict_order.
   Defined.
@@ -580,23 +570,20 @@ Section CompositeFullNode.
     : @VLSM.Common.state _ (IT_validators i)
     :=
     let (_, last) := s i in
-    pair (state_union s) last
-    .
+    pair (state_union s) last.
   
   Definition union_state
     (s : @VLSM.Common.state _ (composite_type IT_validators))
     : @VLSM.Common.state _ (composite_type IT_validators)
     :=
-    composed_union s
-    .
+    composed_union s.
 
   Definition indexed_union
     (s : @VLSM.Common.state _ (composite_type IT_validators))
     : list (V * message)
     := 
     flat_map
-      (fun i => List.map (fun x => pair i x) (fst (s i))) validators
-    .
+      (fun i => List.map (fun x => pair i x) (fst (s i))) validators.
 
 
   End ValidatorsOnly.

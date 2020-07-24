@@ -38,16 +38,14 @@ Definition validator_message_preceeds
   (m1 m2 : State.message C V)
   : Prop
   :=
-  validator_message_preceeds_fn m1 m2 = true
-  .
+  validator_message_preceeds_fn m1 m2 = true.
 
 Lemma  validator_message_preceeds_irreflexive'
   (c : C)
   (v : V)
   (j1 j2 : justification C V)
   (Hincl : justification_incl j2 j1)
-  : ~inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) = true
-  .
+  : ~inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) = true.
 Proof.
   generalize dependent j1.
   generalize dependent v.

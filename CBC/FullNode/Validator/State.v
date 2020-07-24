@@ -336,8 +336,7 @@ Definition message0
 
 Definition message_compare
   : message C V -> message C V -> comparison
-  := message_compare_helper justification_compare
-  .
+  := message_compare_helper justification_compare.
 
 Lemma message_compare_strict_order
   : CompareStrictOrder message_compare.
@@ -366,8 +365,9 @@ Definition message_lt
 
 Global Instance message_lt_strictorder
   : StrictOrder message_lt.
-split. apply compare_lt_irreflexive.
-apply compare_lt_transitive.
+Proof.
+  split. apply compare_lt_irreflexive.
+  apply compare_lt_transitive.
 Defined.
 
 Fixpoint in_message_set
@@ -383,20 +383,17 @@ Fixpoint in_message_set
 Definition message_set_incl
   (msgs1 msgs2 : message_set C V)
   : Prop
-  := forall (m : message C V), in_message_set m msgs1 -> in_message_set m msgs2
-  .
+  := forall (m : message C V), in_message_set m msgs1 -> in_message_set m msgs2.
 
 Definition message_set_eq
   (msgs1 msgs2 : message_set C V)
   : Prop
-  := message_set_incl msgs1 msgs2 /\ message_set_incl msgs2 msgs1
-  .
+  := message_set_incl msgs1 msgs2 /\ message_set_incl msgs2 msgs1.
 
 Definition justification_incl
   (j1 j2 : justification C V)
   :=
-  message_set_incl (get_message_set j1) (get_message_set j2)
-  .
+  message_set_incl (get_message_set j1) (get_message_set j2).
 
 Fixpoint message_set_add
   (m : message C V)
@@ -416,8 +413,7 @@ Fixpoint message_set_add
 Lemma in_message_set_add
   (m m' : message C V)
   (s : message_set C V)
-  : in_message_set m (message_set_add m' s) <-> m' = m \/ in_message_set m s
-  .
+  : in_message_set m (message_set_add m' s) <-> m' = m \/ in_message_set m s.
 Proof.
   induction s; simpl. try (split; intros; assumption).
   destruct (message_compare m' m0) eqn:Hcmp; simpl.
@@ -443,8 +439,7 @@ Definition make_message_set
 Lemma in_make_message_set
   (msgs : set (message C V))
   (m : message C V)
-  : In m msgs <-> in_message_set m (make_message_set msgs)
-  .
+  : In m msgs <-> in_message_set m (make_message_set msgs).
 Proof.
   induction msgs; simpl; split; intros; try assumption.
   - apply in_message_set_add.
@@ -462,8 +457,7 @@ Qed.
 Lemma make_message_set_incl
   (msgs1 msgs2 : set (message C V))
   : incl msgs1 msgs2
-  <-> message_set_incl (make_message_set msgs1) (make_message_set msgs2)
-  .
+  <-> message_set_incl (make_message_set msgs1) (make_message_set msgs2).
 Proof.
   split; intros Hincl m Hm
   ; apply in_make_message_set; apply in_make_message_set in Hm
@@ -474,8 +468,7 @@ Qed.
 Lemma make_message_set_eq
   (msgs1 msgs2 : set (message C V))
   : set_eq msgs1 msgs2
-  <-> message_set_eq (make_message_set msgs1) (make_message_set msgs2)
-  .
+  <-> message_set_eq (make_message_set msgs1) (make_message_set msgs2).
 Proof.
   split; intros [Heq1 Heq2]; split; apply make_message_set_incl; assumption.
 Qed.
@@ -492,8 +485,7 @@ Fixpoint unmake_message_set
 Lemma in_unmake_message_set
   (msgs : message_set C V)
   (m : message C V)
-  : in_message_set m msgs <-> In m (unmake_message_set msgs)
-  .
+  : in_message_set m msgs <-> In m (unmake_message_set msgs).
 Proof.
   induction msgs; simpl; split; intros; try assumption.
   - apply set_add_iff.
@@ -510,8 +502,7 @@ Qed.
 Lemma unmake_message_set_incl
   (msgs1 msgs2 : message_set C V)
   : message_set_incl msgs1 msgs2
-  <-> incl (unmake_message_set msgs1) (unmake_message_set msgs2)
-  .
+  <-> incl (unmake_message_set msgs1) (unmake_message_set msgs2).
 Proof.
   split; intros Hincl m Hm
   ; apply in_unmake_message_set; apply in_unmake_message_set in Hm
@@ -521,8 +512,7 @@ Qed.
 
 Lemma message_set_incl_refl
   (msgs : message_set C V)
-  : message_set_incl msgs msgs 
-  .
+  : message_set_incl msgs msgs.
 Proof.
   apply unmake_message_set_incl.
   apply incl_refl.
@@ -532,8 +522,7 @@ Lemma message_set_incl_trans
   (msgs1 msgs2 msgs3 : message_set C V)
   (H12 : message_set_incl msgs1 msgs2)
   (H23 : message_set_incl msgs2 msgs3)
-  : message_set_incl msgs1 msgs3 
-  .
+  : message_set_incl msgs1 msgs3.
 Proof.
   apply unmake_message_set_incl.
   apply incl_tran with (unmake_message_set msgs2)
@@ -543,8 +532,7 @@ Qed.
 
 Lemma justification_incl_refl
   (j : justification C V)
-  : justification_incl j j
-  .
+  : justification_incl j j.
 Proof.
   destruct j; unfold justification_incl; simpl; apply message_set_incl_refl.
 Qed.
@@ -552,16 +540,14 @@ Qed.
 Lemma unmake_message_set_eq
   (msgs1 msgs2 : message_set C V)
   : message_set_eq msgs1 msgs2
-  <-> set_eq (unmake_message_set msgs1) (unmake_message_set msgs2)
-  .
+  <-> set_eq (unmake_message_set msgs1) (unmake_message_set msgs2).
 Proof.
   split; intros [Heq1 Heq2]; split; apply unmake_message_set_incl; assumption.
 Qed.
 
 Lemma make_unmake_message_set_eq
   (msgs : set (message C V))
-  : set_eq (unmake_message_set (make_message_set msgs)) msgs
-  .
+  : set_eq (unmake_message_set (make_message_set msgs)) msgs.
 Proof.
   split; intros m Hm.
   - apply in_unmake_message_set in Hm.
@@ -574,8 +560,7 @@ Qed.
 
 Lemma unmake_make_message_set_eq
   (msgs : message_set C V)
-  : message_set_eq (make_message_set (unmake_message_set msgs)) msgs
-  .
+  : message_set_eq (make_message_set (unmake_message_set msgs)) msgs.
 Proof.
   split; intros m Hm.
   - apply in_make_message_set in Hm.
@@ -603,8 +588,7 @@ Lemma message_set_locally_sorted_strong
   (Hls : message_set_locally_sorted (add _ _ msg msgs))
   (msg' : message C V)
   (Hmsg' : in_message_set msg' msgs)
-  : message_lt msg msg'
-  .
+  : message_lt msg msg'.
 Proof.
   remember (add _ _ msg msgs) as msgs'.
   generalize dependent msg'. generalize dependent msgs. generalize dependent msg.
@@ -620,8 +604,7 @@ Lemma message_set_locally_sorted_tail
   (msg : message C V)
   (msgs : message_set C V)
   (Hls : message_set_locally_sorted (add _ _ msg msgs))
-  : message_set_locally_sorted msgs
-  .
+  : message_set_locally_sorted msgs.
 Proof.
   inversion Hls; subst; try constructor.
   assumption.
@@ -632,8 +615,7 @@ Lemma message_set_locally_sorted_eq
   (Hmsgs1 : message_set_locally_sorted msgs1)
   (Hmsgs2 : message_set_locally_sorted msgs2)
   (Heq : message_set_eq msgs1 msgs2)
-  : msgs1 = msgs2
-  .
+  : msgs1 = msgs2.
 Proof.
   generalize dependent msgs2.
   induction msgs1; destruct msgs2; intros; try reflexivity.
@@ -697,8 +679,7 @@ Lemma message_set_add_locally_sorted
   (m : message C V)
   (s : message_set C V)
   (Hs : message_set_locally_sorted s)
-  : message_set_locally_sorted (message_set_add m s)
-  .
+  : message_set_locally_sorted (message_set_add m s).
 Proof.
   induction Hs.
   - simpl. constructor.
@@ -721,8 +702,7 @@ Qed.
 
 Lemma make_message_set_locally_sorted
   (msgs : set (message C V))
-  : message_set_locally_sorted (make_message_set msgs)
-  .
+  : message_set_locally_sorted (make_message_set msgs).
 Proof.
   induction msgs; try constructor.
   simpl.
@@ -732,8 +712,7 @@ Qed.
 Lemma make_message_set_equal
   (s1 s2 : set (message C V))
   (Heq : set_eq s1 s2)
-  : make_message_set s1 = make_message_set s2
-  .
+  : make_message_set s1 = make_message_set s2.
 Proof.
   apply message_set_locally_sorted_eq
   ; try apply make_message_set_locally_sorted.
@@ -783,17 +762,16 @@ Definition sorted_state_property
   :=
   let (msgs, last) := s in
   Forall message_recursively_sorted msgs
-  /\ match last with
-    | None => True
-    | Some msg => In msg msgs
-    end
-  .
+  /\
+  match last with
+  | None => True
+  | Some msg => In msg msgs
+  end.
 
 Lemma message_set_recursively_sorted_local
   (msgs : message_set C V)
   (Hrs : message_set_recursively_sorted msgs)
-  : message_set_locally_sorted msgs
-  .
+  : message_set_locally_sorted msgs.
 Proof.
   induction Hrs; constructor; assumption.
 Qed.
@@ -803,8 +781,7 @@ Lemma message_set_add_recursively_sorted
   (s : message_set C V)
   (Hm : message_recursively_sorted m)
   (Hs : message_set_recursively_sorted s)
-  : message_set_recursively_sorted (message_set_add m s)
-  .
+  : message_set_recursively_sorted (message_set_add m s).
 Proof.
   induction Hs.
   - simpl. constructor. assumption.
@@ -829,8 +806,7 @@ Lemma message_set_add_recursively_sorted_iff
   (m : message C V)
   (s : message_set C V)
   : message_set_recursively_sorted (message_set_add m s)
-  <-> message_recursively_sorted m /\ message_set_recursively_sorted s
-  .
+  <-> message_recursively_sorted m /\ message_set_recursively_sorted s.
 Proof.
   split.
   - intros Hrs.
@@ -874,8 +850,7 @@ Qed.
 Lemma make_message_set_recursively_sorted
   (msgs : set (message C V))
   : Forall message_recursively_sorted msgs
-  <-> message_set_recursively_sorted (make_message_set msgs)
-  .
+  <-> message_set_recursively_sorted (make_message_set msgs).
 Proof.
   induction msgs; split; intros Hmsgs; try constructor.
   - specialize (Forall_inv Hmsgs); intro Ha.
@@ -906,8 +881,7 @@ Definition make_justification
 Lemma make_justification_sorted
   (s : state C V)
   : sorted_state_property s
-  <-> justification_recursively_sorted (make_justification s)
-  .
+  <-> justification_recursively_sorted (make_justification s).
 Proof.
   destruct s as (msgs, [msg|]); simpl in *; split; try constructor
   ; (destruct H as [Hall Hmsg] || (inversion H; subst))
@@ -921,8 +895,7 @@ Lemma in_make_justification
   (m : message C V)
   (s : state C V)
   : in_message_set m (get_message_set (make_justification s))
-  <-> In m (fst s)
-  .
+  <-> In m (fst s).
 Proof.
   destruct s as [msgs [final|]]; simpl
   ; rewrite <- in_make_message_set
@@ -932,8 +905,7 @@ Qed.
 Lemma unmake_message_set_recursively_sorted
   (msgs : message_set C V)
   (Hrs : message_set_recursively_sorted  msgs)
-  : Forall message_recursively_sorted (unmake_message_set msgs)
-  .
+  : Forall message_recursively_sorted (unmake_message_set msgs).
 Proof.
   induction msgs; simpl; intros; try constructor.
   apply Forall_forall. intros msg Hmsg.
@@ -950,15 +922,13 @@ Definition unmake_justification
   (j : justification C V)
   : state C V
   :=
-  pair (unmake_message_set (get_message_set j)) (get_last_sent j)
-  .
+  pair (unmake_message_set (get_message_set j)) (get_last_sent j).
 
 Lemma in_unmake_justification
   (m : message C V)
   (j : justification C V)
   : in_message_set m (get_message_set j)
-  <-> In m (fst (unmake_justification j))
-  .
+  <-> In m (fst (unmake_justification j)).
 Proof.
   destruct j; simpl
   ; rewrite <- in_unmake_message_set
@@ -968,8 +938,7 @@ Qed.
 Lemma unmake_justification_sorted
   (j : justification C V)
   (Hj : justification_recursively_sorted j)
-  : sorted_state_property (unmake_justification j)
-  .
+  : sorted_state_property (unmake_justification j).
 Proof.
   destruct j; simpl in *; inversion Hj; subst; split; try exact I
   ; try (apply unmake_message_set_recursively_sorted; assumption).

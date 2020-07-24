@@ -38,8 +38,7 @@ Definition validating_projection_received_messages_prop
     :=
     forall (li : @label _ (IT i)) (si : @state _ (IT i)) (mi : message),
         ~ projection_valid_i li (si, Some mi)
-        -> ~ valid_i li (si, Some mi)
-   .
+        -> ~ valid_i li (si, Some mi).
 
 (**
 We can slightly generalize the definition above to also include empty messages
@@ -87,8 +86,7 @@ Definition validating_transitions :=
             si = s i
             /\
             protocol_transition X (existT _ i li) (s, omi) (s', om')
-        )
-        .
+        ).
 
 (**
 Next two results show that the (simpler) [validating_projection_prop]erty
@@ -148,8 +146,7 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
 *)
 
     Lemma pre_loaded_validating_proj_incl
-        : VLSM_incl PreLoaded Xi
-        .
+        : VLSM_incl PreLoaded Xi.
     Proof.
         apply (basic_VLSM_incl PreLoaded Xi)
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
@@ -165,8 +162,7 @@ trace-equal.  This means that all the byzantine behavior of a
 validating component is exhibited by its corresponding projection.
 *)
     Lemma pre_loaded_validating_proj_eq
-        : VLSM_eq PreLoaded Xi
-        .
+        : VLSM_eq PreLoaded Xi.
     Proof.
         split.
         - apply pre_loaded_validating_proj_incl.
@@ -200,8 +196,7 @@ Definition validating_vlsm_prop
     :=
     forall (l : label) (s : state) (om : option message),
         valid l (s, om) ->
-        protocol_state_prop X s /\ option_protocol_message_prop X om
-    .
+        protocol_state_prop X s /\ option_protocol_message_prop X om.
 
 (**
 In the sequel we will show that a VLSM with the [validating_vlsm_prop]erty
@@ -227,8 +222,7 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
 *)
 
     Lemma pre_loaded_validating_vlsm_incl
-        : VLSM_incl PreLoaded X
-        .
+        : VLSM_incl PreLoaded X.
     Proof.
         apply (basic_VLSM_incl PreLoaded X)
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
@@ -242,8 +236,7 @@ We conclude that <<X>> and <<Preloaded>> are trace-equal.
 *)
 
     Lemma pre_loaded_validating_vlsm_eq
-        : VLSM_eq PreLoaded X
-        .
+        : VLSM_eq PreLoaded X.
     Proof.
         split.
         - apply pre_loaded_validating_vlsm_incl.

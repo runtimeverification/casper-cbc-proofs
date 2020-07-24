@@ -120,8 +120,7 @@ Definition all_messages_transition
     (l : @label _ all_messages_type)
     (som : @state _ all_messages_type * option message)
     : @state _ all_messages_type * option message
-    := (tt, Some l)
-    .
+    := (tt, Some l).
 
 
 (**
@@ -141,8 +140,7 @@ Definition all_messages_vlsm
     :=
     {| transition := all_messages_transition
      ; valid := all_messages_valid
-    |}
-    .
+    |}.
 
 (**
 
@@ -212,8 +210,7 @@ of <<Alt1>> into <<Preloaded>>
 *)
 
     Lemma alt_pre_loaded_incl
-        : VLSM_incl Alt1 PreLoaded
-        .
+        : VLSM_incl Alt1 PreLoaded.
     Proof.
         intros t Hpt.
         apply byzantine_pre_loaded.
@@ -278,8 +275,7 @@ by simply setting to <<s>> the  corresponding component of the initial
         (s : @state _ T)
         : @state _ (type Alt)
         := lift_to_composite_state
-            first (binary_IS M (all_messages_vlsm m0)) first s
-        .
+            first (binary_IS M (all_messages_vlsm m0)) first s.
 
 (**
 Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Alt>>.
@@ -338,8 +334,7 @@ results above to show that <<Preloaded>> is included in <<Alt1>>.
 *)
 
     Lemma pre_loaded_alt_incl
-        : VLSM_incl PreLoaded Alt1
-        .
+        : VLSM_incl PreLoaded Alt1.
     Proof.
         apply (basic_VLSM_incl PreLoaded Alt1)
         ; intros; try (assumption || reflexivity).
@@ -445,8 +440,7 @@ We can now apply the meta-lemma [basic_VLSM_incl], using
 Lemma [pre_loaded_composite_free_protocol_message] above to prove that:
 *)
     Lemma pre_loaded_composite_free_incl
-        : VLSM_incl PreLoadedX FreeX
-        .
+        : VLSM_incl PreLoadedX FreeX.
     Proof.
         apply basic_VLSM_incl
         ; intros; try (assumption || reflexivity).
