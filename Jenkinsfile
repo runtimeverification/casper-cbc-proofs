@@ -12,12 +12,13 @@ pipeline {
       when { changeRequest() }
       steps { script { currentBuild.displayName = "PR ${env.CHANGE_ID}: ${env.CHANGE_TITLE}" } }
     }
-    stage('Build and Test') {
+    stage('Prepare and Check') {
       stages {
-        stage('Build') {
+        stage('Prepare') {
           steps {
             sh '''
               eval $(opam env)
+              opam update -y
               opam pin add ${COQ_PACKAGE} . --yes --no-action --kind path
               opam config list
               opam repo list
@@ -26,7 +27,7 @@ pipeline {
             '''
           }
         }
-        stage('Test') { steps { sh 'eval $(opam env) && opam install ${COQ_PACKAGE} --yes -j 6 --verbose' } }
+        stage('Check') { steps { sh 'eval $(opam env) && opam install ${COQ_PACKAGE} --yes -j 6 --verbose' } }
       }
     }
     stage('Deploy Docs') {
