@@ -71,4 +71,66 @@ apply infinite_ptrace_extend => //.
 by apply CIH.
 Qed.
 
+Fixpoint transition_items_list_protocol_trace (s : state) (ls : list transition_item) : trace :=
+match ls with
+| [] => Tnil s
+| ti :: ls' =>
+  Tcons s {| tr_label := l ti; tr_input := input ti; tr_output := output ti |}
+   (transition_items_list_protocol_trace (destination ti) ls')
+end.
+
+CoFixpoint transition_items_stream_protocol_trace (s : state) (st : Stream transition_item) : trace :=
+match st with
+| Cons ti st' =>
+  Tcons s {| tr_label := l ti; tr_input := input ti; tr_output := output ti |}
+   (transition_items_stream_protocol_trace (destination ti) st')
+end.
+
+Lemma transition_items_list_protocol_trace_hd_nil : forall l s0 s1,
+ Tnil s0 = transition_items_list_protocol_trace s1 l ->
+ s0 = s1.
+Proof.
+case => //=.
+move => s0 s1 Hs.
+by inversion Hs.
+Qed.
+
+Lemma transition_items_list_protocol_trace_hd_cons : forall l s0 s1 d tr,
+ Tcons s0 d tr = transition_items_list_protocol_trace s1 l ->
+ s0 = s1.
+Proof.
+case => //=.
+move => a l s0 s1 d tr Hs.
+by inversion Hs.
+Qed.
+
+Lemma finite_protocol_trace_from_protocol_trace : forall ls s, finite_protocol_trace_from vlsm s ls ->
+ protocol_trace (transition_items_list_protocol_trace s ls).
+Proof.
+elim => //=.
+- move => s Hf.
+  inversion Hf; subst.
+  by apply protocol_trace_nil.
+- move => a l IH s Hf.
+  inversion Hf; subst => /=.
+  apply protocol_trace_further => /=; last first.
+  * have IH' := IH _ H2.
+    inversion IH'; subst.
+    + by rewrite /= (transition_items_list_protocol_trace_hd_nil _ _ _ H).
+    + by rewrite /= (transition_items_list_protocol_trace_hd_cons _ _ _ _ _ H).
+  * by apply IH.
+Qed.
+
+Lemma infinite_protocol_trace_from_protocol_trace : forall st s, infinite_protocol_trace_from vlsm s st ->
+ protocol_trace (transition_items_stream_protocol_trace s st).
+Proof.
+cofix CIH.
+case => ti st' s Hif.
+inversion Hif; subst.
+rewrite [transition_items_stream_protocol_trace _ _]trace_destr /=.
+apply protocol_trace_further.
+- by apply CIH.
+- by inversion H2; subst.
+Qed.
+
 End VLSM.
