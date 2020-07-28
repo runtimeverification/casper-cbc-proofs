@@ -1,6 +1,7 @@
 -Q . CasperCBC
 
 VLSM/Common.v
+VLSM/CommonTraces.v
 VLSM/Composition.v
 VLSM/Decisions.v
 VLSM/ProjectionTraces.v
@@ -23,5 +24,6 @@ Lib/ListSetExtras.v
 Lib/SortedLists.v
 Lib/ListExtras.v
 Lib/Preamble.v
+Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
