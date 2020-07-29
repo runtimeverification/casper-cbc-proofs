@@ -5,8 +5,10 @@ Require Import Logic.FunctionalExtensionality.
 Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
 
 From CasperCBC
-     Require Import Lib.StreamExtras Lib.ListExtras Lib.Preamble VLSM.Common.
-
+  Require Import
+    StreamExtras ListExtras Preamble
+    VLSM.Common
+    .
 (**
 
 This module provides Coq definitions for composite VLSMs and their projections
@@ -384,6 +386,70 @@ Lemma [basic_VLSM_inclusion]
         apply protocol_generated_valid with _om _s; assumption.
     Qed.
 
+    Lemma constraint_subsumption_can_emit
+      (m : message)
+      (Hm : can_emit X1 m)
+      : can_emit X2 m.
+    Proof.
+      destruct Hm as [(s0,om0) [l [s [Hv1 Ht]]]].
+      assert (Hv2 := constraint_subsumption_protocol_valid _ _ _ Hv1).
+      destruct Hv1 as [[_om0 Hs0] [[_s0 Hom0] Hv1]].
+      apply constraint_subsumption_protocol_prop in Hs0.
+      apply constraint_subsumption_protocol_prop in Hom0.
+      exists (s0, om0). exists l. exists s.
+      destruct Hv2 as [Hv2 Hc2].
+      repeat split; try assumption.
+      - exists _om0. assumption.
+      - exists _s0. assumption.
+    Qed.
+
+    Lemma constraint_subsumption_preloaded_protocol_valid
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : protocol_valid (pre_loaded_vlsm X1) l (s, om))
+      : @valid _ _ _ (pre_loaded_vlsm X2) l (s, om).
+    Proof.
+      destruct Hv as [Hps [Hopm [Hv Hctr]]].
+      split; try assumption.
+      apply Hsubsumption.
+      assumption.
+    Qed.
+
+    Lemma constraint_subsumption_preloaded_protocol_prop
+      (s : state)
+      (om : option message)
+      (Hps : protocol_prop (pre_loaded_vlsm X1) (s, om))
+      : protocol_prop (pre_loaded_vlsm X2) (s, om).
+    Proof.
+      induction Hps.
+      - apply (protocol_initial_state _ is).
+      - apply (protocol_initial_message _).
+      - apply (protocol_generated (pre_loaded_vlsm X2)) with _om _s; try assumption.
+        apply constraint_subsumption_preloaded_protocol_valid.
+        destruct Hv as [Hv Hc1].
+        repeat split; try assumption.
+        + exists _om. assumption.
+        + exists _s. assumption.
+    Qed.
+
+    Lemma constraint_subsumption_byzantine_message_prop
+      (m : message)
+      (Hm : byzantine_message_prop X1 m)
+      : byzantine_message_prop X2 m.
+    Proof.
+      destruct Hm as [(s0,om0) [l [s [Hv1 Ht]]]].
+      assert (Hv2 := constraint_subsumption_preloaded_protocol_valid _ _ _ Hv1).
+      destruct Hv1 as [[_om0 Hs0] [[_s0 Hom0] Hv1]].
+      apply constraint_subsumption_preloaded_protocol_prop in Hs0.
+      apply constraint_subsumption_preloaded_protocol_prop in Hom0.
+      exists (s0, om0). exists l. exists s.
+      destruct Hv2 as [Hv2 Hc2].
+      repeat split; try assumption.
+      - exists _om0. assumption.
+      - exists _s0. assumption.
+    Qed.
+
 (* end hide *)
 
 (**
@@ -423,6 +489,29 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
     Definition free_composite_vlsm : VLSM (composite_sig i0 IS)
       := composite_vlsm free_constraint.
 
+    (** Next two lemmas are corrolaries of the above, instantiates on the
+      free composition whose constraint ([True]) subsumes any constraint.
+    *)
+
+    Lemma constraint_free_incl
+      (constraint : composite_label IT -> composite_state IT  * option message -> Prop)
+      : VLSM_incl (composite_vlsm constraint) free_composite_vlsm.
+    Proof.
+      apply constraint_subsumption_incl.
+      intro l; intros. exact I.
+    Qed.
+
+    Lemma constraint_free_protocol_prop
+      (constraint : composite_label IT -> composite_state IT  * option message -> Prop)
+      (som : state * option message)
+      (Hsom : protocol_prop (composite_vlsm constraint) som)
+      : protocol_prop free_composite_vlsm som.
+    Proof.
+      destruct som as (s, om).
+      apply constraint_subsumption_protocol_prop with constraint
+      ; try assumption.
+      intro l; intros. exact I.
+    Qed.
 
 (**
 A component [protocol_state]'s [lift_to_composite_state] is a [protocol_state]

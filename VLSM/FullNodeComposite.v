@@ -59,7 +59,7 @@ Section CompositeFullNode.
 
   Definition not_heavy
     :=
-    @CBC.Equivocation.not_heavy_set _ (full_node_equivocation C V ).
+    @CBC.Equivocation.set_not_heavy _ (full_node_equivocation C V ).
   
   Definition valid_client2
     (_ : unit)
@@ -253,6 +253,8 @@ Section CompositeFullNode.
   Section ValidatorsOnly.
   Parameter v_eq_dec : EqDec V.
 
+  Existing Instance v_eq_dec.
+
   Definition IT_validators
     (i : V)
     : VLSM_type message
@@ -270,137 +272,56 @@ Section CompositeFullNode.
     : VLSM (IS_validators i)
     :=
     VLSM_full_validator i.
-
-  Definition state_union
-    (s : @VLSM.Common.state _ (composite_type IT_validators))
-    : set message
-    :=
-    let state_list := List.map s validators in
-    fold_right (set_union compare_eq_dec) []
-      (List.map fst state_list).
-
-  Existing Instance v_eq_dec.
   
-  Definition VLSM_full_constraint
-    (l : composite_label IT_validators)
-    (som : composite_state IT_validators * option message)
-    : Prop
-    := 
-    let (s', om') := composite_transition IM_validators l som in
-    not_heavy (state_union s').
-  
-  Definition VLSM_full_composed : VLSM (composite_sig v0 IS_validators)
-    := composite_vlsm v0 IM_validators VLSM_full_constraint.
+  Section validators_free_composition.
+ 
+  Definition validators_free_composition : VLSM (composite_sig v0 IS_validators)
+    := free_composite_vlsm v0 IM_validators.
 
-  Definition  validator_protocol_message_preceeds
-    (pm1 pm2 : protocol_message VLSM_full_composed)
+  Definition  free_validator_byzantine_message_preceeds
+    (pm1 pm2 : byzantine_message validators_free_composition)
     : Prop
     := validator_message_preceeds _ _ (proj1_sig pm1) (proj1_sig pm2).
   
-  Lemma validator_protocol_message_preceeds_irreflexive
-    : Irreflexive validator_protocol_message_preceeds.
+  Lemma free_validator_byzantine_message_preceeds_irreflexive
+    : Irreflexive free_validator_byzantine_message_preceeds.
   Proof.
     intros (x, Hx).
-    unfold complement; unfold validator_protocol_message_preceeds; simpl.
+    unfold complement; unfold free_validator_byzantine_message_preceeds; simpl.
     apply validator_message_preceeds_irreflexive.
   Qed.
 
-  Lemma protocol_justification
+  Lemma free_byzantine_message_justification
     (m : message)
-    (Hm : protocol_message_prop VLSM_full_composed m)
+    (Hm : byzantine_message_prop validators_free_composition m)
     (j := get_justification m)
     : exists
       (s : @VLSM.Common.state _ (composite_type IT_validators))
-      (Hs : protocol_state_prop VLSM_full_composed s)
+      (Hs : protocol_state_prop (pre_loaded_vlsm validators_free_composition) s)
       (v : V),
       make_justification (s v) = j.
   Proof.
-    destruct Hm as [_s Hm].
-    inversion Hm; subst.
-    - destruct im as [im [v [[miv Him] Hmiv]]].
-      inversion Him.
-    - exists s.
-      assert (Hpsp : protocol_state_prop VLSM_full_composed s)
-        by (exists _om; assumption).
-      exists Hpsp.
-      destruct l as (v, lv).
-      exists v.
-      destruct (s v) as (msgs, final) eqn: Hsv.
-      destruct lv as [c|].
-      + apply pair_equal_spec in H0. destruct H0 as [Hs Hom]; subst.
-        unfold j.
-        replace m with ((c, v, make_justification (msgs, final)))
-        ; try reflexivity.
-        inversion Hom; reflexivity.
-      + destruct om; inversion H0.
+    destruct Hm as [(s0, om0) [l [s [[[_om0 Hs0] [[_s0 Hom0] Hv]] Ht]]]].
+    exists s0.
+    assert (Hpsp : protocol_state_prop (pre_loaded_vlsm validators_free_composition) s0)
+      by (exists _om0; assumption).
+    exists Hpsp.
+    simpl in Ht.
+    destruct l as (v, lv).
+    exists v.
+    destruct (s0 v) as (msgs, final) eqn: Hsv.
+    destruct lv as [c|].
+    + apply pair_equal_spec in Ht. destruct Ht as [Hs Hom]; subst.
+      unfold j.
+      replace m with ((c, v, make_justification (msgs, final)))
+      ; try reflexivity.
+      inversion Hom; reflexivity.
+    + destruct om0; inversion Ht.
   Qed.
 
-  Lemma in_protocol_state
+  Lemma in_free_byzantine_state_justification
     (s : @VLSM.Common.state _ (composite_type IT_validators))
-    (Hs : protocol_state_prop VLSM_full_composed s)
-    (m : message)
-    (v : V)
-    (Hm : In m (fst (s v)))
-    : protocol_message_prop VLSM_full_composed m.
-  Proof.
-    destruct  Hs as [om Hsom].
-    remember (s, om) as som.
-    generalize dependent v.
-    generalize dependent m.
-    generalize dependent om.
-    generalize dependent s.
-    induction Hsom; intros; inversion Heqsom; subst; clear Heqsom.
-    - unfold s in *; clear s. destruct is as [is His]. simpl in *.
-      specialize (His v).
-      inversion His.
-      rewrite H0 in Hm.
-      inversion H0.
-      inversion Hm.
-    - unfold s in *; clear s. destruct s0 as [is His]. simpl in *.
-      specialize (His v).
-      inversion His.
-      rewrite H0 in Hm.
-      inversion H0.
-      inversion Hm.
-    - assert (Hpsom0 : option_protocol_message_prop VLSM_full_composed om0).
-      { exists s0. replace (s0, om0) with (@transition _ _ _ VLSM_full_composed l (s, om)).
-        apply protocol_generated with _om _s; assumption.
-      }
-      destruct l as (v', lv').
-      destruct (s v') as (msgsv', finalv') eqn:Hsv'.
-      destruct lv' as [c|].
-      + apply pair_equal_spec in H0. destruct H0 as [Hs Hom]; subst.
-        destruct (eq_dec v v'); subst.
-        * rewrite state_update_eq in Hm.
-          apply set_add_iff in Hm.
-          destruct Hm as [Heqm | Hinm]; subst; try assumption.
-          apply (IHHsom1  s _om eq_refl m v').
-          rewrite Hsv'. assumption.
-        * rewrite state_update_neq in Hm; try assumption.
-          apply (IHHsom1  s _om eq_refl m v).
-          assumption.
-      + destruct om as [m'|].
-        * apply pair_equal_spec in H0.  destruct H0 as [Hs Hom]; subst.
-          { destruct (eq_dec v v'); subst.
-          - rewrite state_update_eq in Hm.
-            apply set_add_iff in Hm.
-            destruct Hm as [Heqm | Hinm]; subst.
-            + exists _s. assumption.
-            + apply (IHHsom1  s _om eq_refl m v').
-              rewrite Hsv'. assumption.
-          - rewrite state_update_neq in Hm; try assumption.
-            apply (IHHsom1  s _om eq_refl m v).
-            assumption.
-          }
-        * apply pair_equal_spec in H0.  destruct H0 as [Hs Hom]; subst.
-          rewrite state_update_id in Hm; try assumption.
-          apply (IHHsom1  s _om eq_refl m v).
-          assumption.
-  Qed.
-
-  Lemma in_protocol_state_justification
-    (s : @VLSM.Common.state _ (composite_type IT_validators))
-    (Hs : protocol_state_prop VLSM_full_composed s)
+    (Hs : protocol_state_prop (pre_loaded_vlsm validators_free_composition) s)
     (m : message)
     (v : V)
     (Hm : In m (fst (s v)))
@@ -480,9 +401,9 @@ Section CompositeFullNode.
           assumption.
   Qed.
 
-  Lemma validator_protocol_message_preceeds_justification_incl
-    (y z : protocol_message VLSM_full_composed)
-    (Hyz : validator_protocol_message_preceeds y z)
+  Lemma free_validator_byzantine_message_preceeds_justification_incl
+    (y z : byzantine_message validators_free_composition)
+    (Hyz : free_validator_byzantine_message_preceeds y z)
     (jy := get_justification (proj1_sig y))
     (jz := get_justification (proj1_sig z))
     : justification_incl jy jz.
@@ -490,9 +411,9 @@ Section CompositeFullNode.
     unfold jy; clear jy. unfold jz; clear jz.
     destruct y as (y, Hy).
     destruct z as (z, Hz).
-    unfold validator_protocol_message_preceeds in Hyz.
+    unfold free_validator_byzantine_message_preceeds in Hyz.
     simpl in *.
-    specialize (protocol_justification z Hz); intros [jz [Hpjz [v Hjz]]].
+    specialize (free_byzantine_message_justification z Hz); intros [jz [Hpjz [v Hjz]]].
     unfold validator_message_preceeds in Hyz.
     destruct z as (cz, vz, jz'); simpl in Hyz.
     simpl in Hjz; subst.
@@ -505,7 +426,7 @@ Section CompositeFullNode.
     ; apply Hin_in in Hyz; clear Hin_in.
     apply in_unmake_message_set in Hyz.
     apply in_make_justification in Hyz.
-    specialize (in_protocol_state_justification jz Hpjz y v Hyz)
+    specialize (in_free_byzantine_state_justification jz Hpjz y v Hyz)
     ; intro Hincljyjz.
     simpl.
     intros m Hm.
@@ -515,18 +436,18 @@ Section CompositeFullNode.
     assumption.
   Qed.
 
-  Lemma validator_protocol_message_preceeds_transitive
-    : Transitive validator_protocol_message_preceeds.
+  Lemma free_validator_byzantine_message_preceeds_transitive
+    : Transitive free_validator_byzantine_message_preceeds.
   Proof.
     intros x y z Hxy Hyz.
     specialize
-      (validator_protocol_message_preceeds_justification_incl
+      (free_validator_byzantine_message_preceeds_justification_incl
         y z Hyz
       ); simpl; intro Hinclyz.
     destruct x as ((cx, vx, jx), Hx).
     destruct y as ((cy, vy, jy), Hy).
     destruct z as ((cz, vz, jz), Hz).
-    unfold validator_protocol_message_preceeds in *; simpl in *.
+    unfold free_validator_byzantine_message_preceeds in *; simpl in *.
     unfold validator_message_preceeds in *.
     unfold validator_message_preceeds_fn in *.
     specialize
@@ -549,20 +470,147 @@ Section CompositeFullNode.
     assumption.
   Qed.
 
-  Definition validator_protocol_message_preceeds_stict_order
-    : StrictOrder validator_protocol_message_preceeds.
+  Definition free_validator_byzantine_message_preceeds_stict_order
+    : StrictOrder free_validator_byzantine_message_preceeds.
   Proof.
     split.
-    apply validator_protocol_message_preceeds_irreflexive.
-    apply validator_protocol_message_preceeds_transitive.
+    apply free_validator_byzantine_message_preceeds_irreflexive.
+    apply free_validator_byzantine_message_preceeds_transitive.
   Defined.
 
-  Global Instance validators_preceeds_equivocation
-    : HasPreceedsEquivocation VLSM_full_composed.
+  Global Instance validators_free_composition_preceeds_equivocation
+    : HasPreceedsEquivocation validators_free_composition.
   Proof.
     split.
-    apply validator_protocol_message_preceeds_stict_order.
+    apply free_validator_byzantine_message_preceeds_stict_order.
   Defined.
+
+  End validators_free_composition.
+
+  Definition state_union
+    (s : @VLSM.Common.state _ (composite_type IT_validators))
+    : set message
+    :=
+    let state_list := List.map s validators in
+    fold_right (set_union compare_eq_dec) []
+      (List.map fst state_list).
+
+  Definition validators_composition_constraint
+    (l : composite_label IT_validators)
+    (som : composite_state IT_validators * option message)
+    : Prop
+    := 
+    let (s', om') := composite_transition IM_validators l som in
+    not_heavy (state_union s').
+
+  Definition validators_constrained_composition : VLSM (composite_sig v0 IS_validators)
+    := composite_vlsm v0 IM_validators validators_composition_constraint.
+
+  Global Instance validators_constrained_composition_preceeds_equivocation
+    : HasPreceedsEquivocation validators_constrained_composition.
+  Proof.
+    apply
+      (preceeds_equivocation_constrained
+        v0 IM_validators validators_composition_constraint free_constraint
+      ).
+    - intro l; intros. exact I.
+    - apply validators_free_composition_preceeds_equivocation.
+  Qed.
+
+  Lemma in_protocol_state
+    (s : @VLSM.Common.state _ (composite_type IT_validators))
+    (Hs : protocol_state_prop validators_constrained_composition s)
+    (m : message)
+    (v : V)
+    (Hm : In m (fst (s v)))
+    : protocol_message_prop validators_constrained_composition m.
+  Proof.
+    destruct  Hs as [om Hsom].
+    remember (s, om) as som.
+    generalize dependent v.
+    generalize dependent m.
+    generalize dependent om.
+    generalize dependent s.
+    induction Hsom; intros; inversion Heqsom; subst; clear Heqsom.
+    - unfold s in *; clear s. destruct is as [is His]. simpl in *.
+      specialize (His v).
+      inversion His.
+      rewrite H0 in Hm.
+      inversion H0.
+      inversion Hm.
+    - unfold s in *; clear s. destruct s0 as [is His]. simpl in *.
+      specialize (His v).
+      inversion His.
+      rewrite H0 in Hm.
+      inversion H0.
+      inversion Hm.
+    - assert (Hpsom0 : option_protocol_message_prop validators_constrained_composition om0).
+      { exists s0. replace (s0, om0) with (@transition _ _ _ validators_constrained_composition l (s, om)).
+        apply protocol_generated with _om _s; assumption.
+      }
+      destruct l as (v', lv').
+      destruct (s v') as (msgsv', finalv') eqn:Hsv'.
+      destruct lv' as [c|].
+      + apply pair_equal_spec in H0. destruct H0 as [Hs Hom]; subst.
+        destruct (eq_dec v v'); subst.
+        * rewrite state_update_eq in Hm.
+          apply set_add_iff in Hm.
+          destruct Hm as [Heqm | Hinm]; subst; try assumption.
+          apply (IHHsom1  s _om eq_refl m v').
+          rewrite Hsv'. assumption.
+        * rewrite state_update_neq in Hm; try assumption.
+          apply (IHHsom1  s _om eq_refl m v).
+          assumption.
+      + destruct om as [m'|].
+        * apply pair_equal_spec in H0.  destruct H0 as [Hs Hom]; subst.
+          { destruct (eq_dec v v'); subst.
+          - rewrite state_update_eq in Hm.
+            apply set_add_iff in Hm.
+            destruct Hm as [Heqm | Hinm]; subst.
+            + exists _s. assumption.
+            + apply (IHHsom1  s _om eq_refl m v').
+              rewrite Hsv'. assumption.
+          - rewrite state_update_neq in Hm; try assumption.
+            apply (IHHsom1  s _om eq_refl m v).
+            assumption.
+          }
+        * apply pair_equal_spec in H0.  destruct H0 as [Hs Hom]; subst.
+          rewrite state_update_id in Hm; try assumption.
+          apply (IHHsom1  s _om eq_refl m v).
+          assumption.
+  Qed.
+
+  Lemma state_union_protocol_message
+    (s : @VLSM.Common.state _ (composite_type IT_validators))
+    (Hs : protocol_state_prop validators_constrained_composition s)
+    : Forall (protocol_message_prop validators_constrained_composition) (state_union s).
+  Proof.
+    apply Forall_forall.
+    intros m Hm.
+    apply set_union_in_iterated in Hm.
+    apply Exists_exists in Hm.
+    destruct Hm as [msgv [Hinv Hinsv]].
+    apply in_map_iff in Hinv.
+    destruct Hinv as [sv [Heq Hinv]]; subst.
+    apply in_map_iff in Hinv.
+    destruct Hinv as [v [Heq Hinv]]; subst.
+    apply in_protocol_state with s v; assumption.
+  Qed.
+
+  Lemma state_union_byzantine_message
+    (s : @VLSM.Common.state _ (composite_type IT_validators))
+    (Hs : protocol_state_prop validators_constrained_composition s)
+    : Forall (byzantine_message_prop validators_constrained_composition) (state_union s).
+  Proof.
+    apply state_union_protocol_message in Hs.
+    rewrite Forall_forall in *.
+    intros m Hm.
+    specialize (Hs m Hm). clear -Hs.
+    apply can_emit_protocol_iff in Hs.
+    destruct Hs as [[v [[miv Hmiv] _]] | Hem]; try inversion Hmiv.
+    apply pre_loaded_can_emit.
+    assumption.
+  Qed.
 
   Definition composed_union
     (s : @VLSM.Common.state _ (composite_type IT_validators))
@@ -577,14 +625,6 @@ Section CompositeFullNode.
     : @VLSM.Common.state _ (composite_type IT_validators)
     :=
     composed_union s.
-
-  Definition indexed_union
-    (s : @VLSM.Common.state _ (composite_type IT_validators))
-    : list (V * message)
-    := 
-    flat_map
-      (fun i => List.map (fun x => pair i x) (fst (s i))) validators.
-
 
   End ValidatorsOnly.
 

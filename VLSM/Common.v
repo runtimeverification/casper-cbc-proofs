@@ -227,15 +227,6 @@ _protocol_ transitions:
       :=
       protocol_valid l som
       /\  transition l som = som'.
-      
-    Definition can_emit 
-      (m : message)
-      := 
-      exists 
-      (som : state * option message)
-      (l : label)
-      (s : state),
-      protocol_transition l som (s, Some m).
 
 (**
   Next three lemmas show the two definitions above are strongly related.
@@ -391,6 +382,59 @@ pre-existing concepts.
       specialize (protocol_transition_transition  Ht); intro Hteq.
       rewrite Hteq.
       apply (protocol_prop_transition_out Ht).
+    Qed.
+
+    (** For VLSMs initialized with many initial messages such as
+    the [composite_vlsm_constrained_projection] or the [pre_loaded_vlsm],
+    the question of whether a [VLSM] [can_emit] a message <<m>> becomes more
+    useful than that whether <<m>> is a [protocol_message].
+    *)
+
+    Definition can_emit
+      (m : message)
+      :=
+      exists
+      (som : state * option message)
+      (l : label)
+      (s : state),
+      protocol_transition l som (s, Some m).
+
+    (** Of course, if a VLSM [can_emit] a message <<m>>, then <<m>> is
+    a protocol message.
+    *)
+
+    Lemma can_emit_protocol
+      (m : message)
+      (Hm : can_emit m)
+      : protocol_message_prop m .
+    Proof.
+      destruct Hm as [(s0, om0) [l [s [[[_om0 Hs0] [[_s0 Hom0] Hv]] Ht]]]].
+      exists s.
+      rewrite <- Ht.
+      apply protocol_generated with _om0 _s0; assumption.
+    Qed.
+
+    (** A characterization of protocol messages in terms of [can_emit]
+    *)
+
+    Lemma can_emit_protocol_iff
+      (m : message)
+      : protocol_message_prop m <-> initial_message_prop m \/ can_emit m.
+    Proof.
+      split.
+      - intros [s Hm]; inversion Hm; subst.
+        + destruct im as [m Him]. simpl. left. assumption.
+        + right.
+          exists (s1, om). exists l. exists s.
+          repeat split; try assumption.
+          * exists _om. assumption.
+          * exists _s. assumption.
+      - intros [Him | Hem].
+        + replace m with (proj1_sig (exist _ m Him))
+            by reflexivity.
+          exists (proj1_sig s0).
+          apply protocol_initial_message.
+        + apply can_emit_protocol. assumption.
     Qed.
 
 (**
@@ -1859,6 +1903,23 @@ Byzantine fault tolerance analysis. *)
      ; valid := @valid _ _ _ X
     |}.
 
+  (**
+    A message which can be emitted during a protocol run of
+    the [pre_loaded_vlsm] is called a [byzantine_message], because
+    as shown by Lemmas [byzantine_pre_loaded] and [pre_loaded_alt_eq],
+    byzantine traces for a [VLSM] are precisely the protocol traces
+    of the [pre_loaded_vlsm], hence a byzantine message is any message
+    which a byzantine trace [can_emit].
+  *)
+
+  Definition byzantine_message_prop
+    (m : message)
+    : Prop
+    := can_emit pre_loaded_vlsm m.
+
+  Definition byzantine_message : Type
+    := sig byzantine_message_prop.
+
   (* begin hide *)
   Lemma pre_loaded_protocol_prop
     (s : state)
@@ -1873,6 +1934,20 @@ Byzantine fault tolerance analysis. *)
         by exact I.
       apply (protocol_initial_message pre_loaded_vlsm (exist _ m Him)).
     - apply (protocol_generated pre_loaded_vlsm) with _om _s; assumption.
+  Qed.
+
+  Lemma pre_loaded_can_emit
+    (m : message)
+    (Hm : can_emit X m)
+    : can_emit pre_loaded_vlsm m.
+  Proof.
+    destruct Hm as [(s0, om0) [l [s [[[_om0 Hs0] [[_s0 Hom0] Hv]] Ht]]]].
+    apply pre_loaded_protocol_prop in Hs0.
+    apply pre_loaded_protocol_prop in Hom0.
+    exists (s0, om0). exists l. exists s.
+    repeat split; try assumption.
+    - exists _om0. assumption.
+    - exists _s0. assumption.  
   Qed.
 
   (* end hide *)

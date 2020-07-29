@@ -261,6 +261,31 @@ Proof.
       apply set_union_incl_right.
 Qed.
 
+Lemma set_union_in_iterated
+  {A : Type}
+  (Aeq_dec : forall x y:A, {x = y} + {x <> y})
+  (ss : list (set A))
+  (a : A)
+  : In a (fold_right (set_union Aeq_dec) nil ss)
+  <-> Exists (fun s => In a s) ss.
+Proof.
+  rewrite Exists_exists. 
+  induction ss; split; simpl.
+  - intro H; inversion H.
+  - intros [x [Hin _]]; inversion Hin.
+  - intro Hin. apply set_union_iff in Hin.
+    destruct Hin as [Hina0 | Hinss].
+    + exists a0. split; try assumption. left. reflexivity.
+    + apply IHss in Hinss. destruct Hinss as [x [Hinss Hinx]].
+      exists x. split; try assumption.
+      right. assumption.
+  - rewrite set_union_iff.
+    intros [x [[Heqa0 | Hinss] Hinx]]; subst.
+    + left. assumption.
+    + right. apply IHss.
+      exists x. split; assumption.
+Qed.
+
 Lemma set_union_empty_left {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s,
   NoDup s ->
   set_eq (set_union Aeq_dec nil s) s.
