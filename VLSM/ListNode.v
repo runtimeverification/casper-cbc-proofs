@@ -208,9 +208,8 @@ Definition transition (l : label_list) (som : state * option message) : state * 
 (** Validity:
     - Update <c> => <c> must be in the estimator of the given state.
     - Receive => A message must be received, sent by a _different_ node.
-                 The state reflected in the message should be equal
-                 to the current representation of the respective node
-                 in the receiving node's state list **)
+                 The sender's state in his own state list
+                 should match our view of it in our state list. **)
 
 Definition valid
   (l : label_list)
