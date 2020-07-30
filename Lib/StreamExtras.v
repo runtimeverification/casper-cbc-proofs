@@ -767,6 +767,7 @@ Proof.
   ; try reflexivity.
   symmetry.
   apply filter_nil.
+  rewrite Forall_forall.
   intros a Hin.
   unfold predicate_to_function.
   destruct (decP a); try reflexivity.
