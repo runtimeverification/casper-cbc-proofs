@@ -5,17 +5,25 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+(** * Core properties of possibly-infinite traces *)
+
 Section TraceProperties.
 
 Context {A B : Type}.
 
 Local Notation trace := (@trace A B).
 
+(**
+We want to reason about trace properties that do not distinguish
+bisimilar traces; these are called _setoid_ properties.
+*)
+
 Definition setoidT (p : trace -> Prop) :=
 forall tr0, p tr0 -> forall tr1, bisim tr0 tr1 -> p tr1.
 
 Definition propT := { p : trace -> Prop | setoidT p }.
-Definition propA := A -> Prop.
+
+(** ** Finiteness property *)
 
 Inductive finiteT : trace -> Prop :=
 | finiteT_nil: forall a, finiteT (Tnil a)
@@ -42,14 +50,20 @@ Proof.
  by inversion h.
 Defined.
 
-(* pattern for Fixpoint using finiteT *)
+(**
+Pattern for defining <<Fixpoint>>s using [finiteT].
+*)
+
 Fixpoint id_finiteT (tr : trace) (h : finiteT tr) {struct h} : trace :=
   match tr as tr' return (finiteT tr' -> trace) with
   | Tnil a => fun _ => Tnil a
   | Tcons a b tr => fun h => id_finiteT (invert_finiteT_delay h)
   end h.
 
-(* pattern for inductive proofs using finiteT *)
+(**
+Pattern for performing inductive proofs using [finiteT].
+*)
+
 Lemma id_finiteT_eq : forall tr (h h':finiteT tr),
  id_finiteT h = id_finiteT h'.
 Proof.
@@ -58,6 +72,8 @@ case: tr h => [a|a b tr] h.
 - by dependent inversion h; move => h'; depelim h'; simpl; reflexivity.
 - by dependent inversion h; move => h'; depelim h'; simpl; apply IH.
 Qed.
+
+(** ** Infiniteness property *)
 
 CoInductive infiniteT : trace -> Prop :=
 | infiniteT_delay: forall a b tr,
@@ -105,6 +121,10 @@ apply infiniteT_delay.
 exact: CIH.
 Qed.
 
+(**
+Basic connections between [finiteT] and [infiniteT].
+*)
+
 Lemma finiteT_infiniteT_False : forall tr,
  finiteT tr -> infiniteT tr -> False.
 Proof.
@@ -122,6 +142,14 @@ apply CIH => Hinf.
 case: Hfin.
 exact: finiteT_delay.
 Qed.
+
+(** ** Basic trace properties and connectives *)
+
+Definition ttT : trace -> Prop := fun tr => True.
+
+Definition TtT : propT.
+exists ttT. by move => tr0 h0 tr1 h1.
+Defined.
 
 Definition satisfyT (p:propT) : trace -> Prop := 
 fun tr => let: exist f0 h0 := p in f0 tr.
@@ -179,12 +207,6 @@ simpl in h2. simpl. split.
 - by apply h1.
 Qed.
 
-Definition ttT : trace -> Prop := fun tr => True.
-
-Definition TtT : propT.
-exists ttT. by move => tr0 h0 tr1 h1.
-Defined.
-
 Lemma propT_imp_refl: forall p, p =>> p.
 Proof. by move => p tr0 h0. Qed.
 
@@ -214,6 +236,14 @@ move => p1 p2 tr h1. simpl. destruct p1 as [f1 hf1].
 destruct p2 as [f2 hf2]. simpl. simpl in h1. by right. 
 Qed.
 
+(** ** Basic trace element properties and connectives *)
+
+Definition propA := A -> Prop.
+
+Definition ttA : propA := fun a => True.
+
+Definition ffA : propA := fun a => False.
+
 Definition propA_imp (u1 u2: propA) : Prop := forall a, u1 a -> u2 a.
 
 Local Infix "->>" := propA_imp (at level 60, right associativity).
@@ -222,8 +252,7 @@ Definition andA (u1 u2: propA) : propA := fun a => u1 a /\ u2 a.
 
 Local Infix "andA" := andA (at level 60, right associativity).
 
-Definition ttA : propA := fun a => True.
-Definition ffA : propA := fun a => False.
+(** ** Singleton property *)
 
 Definition singletonT (u : propA) : trace -> Prop :=
 fun tr => exists a, u a /\ bisim tr (Tnil a).
@@ -253,13 +282,20 @@ exists (singletonT u).
 exact: singletonT_setoidT.
 Defined.
 
-Notation "[| p |]" := (SingletonT p) (at level 80).
+Local Notation "[| p |]" := (SingletonT p) (at level 80).
 
 Lemma SingletonT_cont: forall u v, u ->> v -> [|u|] =>> [|v|].
 Proof.
 move => u v h0 tr0 h1. move: h1 => [st0 [h1 h2]]. 
 invs h2. exists st0. split; [ apply (h0 _ h1) | apply bisim_refl].
 Qed.
+
+(** ** Follows property *)
+
+(**
+The [followsT] property holds for two traces when the first is a
+prefix of the second, and <<p>> holds for the suffix.
+*)
 
 CoInductive followsT (p : trace -> Prop) : trace -> trace -> Prop :=
 | followsT_nil: forall a tr, hd tr = a -> p tr -> followsT p (Tnil a) tr
@@ -360,6 +396,13 @@ move => u v. cofix CIH. move => tr h0 h1. inversion h0; subst.
 - subst. invs h0. invs h1.
   exact: (followsT_delay a b (CIH _ H1 H2)).
 Qed.
+
+(** ** Append property *)
+
+(**
+The [appendT] property holds for a trace whenever it has
+a prefix for which <<p1>> holds, and <<p2>> holds for the suffix.
+*)
 
 Definition appendT (p1 p2: trace -> Prop) : trace -> Prop :=
 fun tr => exists tr', p1 tr' /\ followsT p2 tr' tr.
@@ -489,13 +532,13 @@ move => v [p hp] tr0. simpl. move => [tr1 [h0 h1]].
 destruct h0 as [a [h0 h2]]. invs h2. by invs h1.
 Qed.
 
-Lemma ttA_chop: forall p, ([|ttA|] *** p) =>> p.
+Lemma ttA_AppendT_implies : forall p, ([|ttA|] *** p) =>> p.
 Proof.
 move => p.
 exact: SingletonT_AppendT.
 Qed.
 
-Lemma ttA_chop_2: forall p, p =>> [|ttA|] *** p.
+Lemma implies_ttA_AppendT: forall p, p =>> [|ttA|] *** p.
 Proof.
 move => [p hp] tr0; simpl => htr0. exists (Tnil (hd tr0)). split.
 exists (hd tr0). by split; last apply bisim_refl.
@@ -515,22 +558,22 @@ Proof.
 move => [p hp] v tr0. simpl. by apply appendT_singletonT.
 Qed.
 
-Lemma chop_ttA : forall p, (p *** [|ttA|]) =>> p.
+Lemma AppendT_ttA_implies : forall p, (p *** [|ttA|]) =>> p.
 Proof. move => p. by apply AppendT_Singleton. Qed.
 
-Lemma chop_ttA_2: forall p, p =>> p *** [|ttA|].
+Lemma implies_AppendT_ttA: forall p, p =>> p *** [|ttA|].
 Proof. move => [p hp] tr0; simpl => htr0. exists tr0; split; first done. 
 clear hp htr0. move: tr0. cofix hcoind. case. 
 - move => a. apply followsT_nil => //. exists a. by split; last apply bisim_refl. 
 - move => a b tr0. exact: (followsT_delay _ _ (hcoind _)).
 Qed.
 
-Lemma TtT_idem_comp: (TtT *** TtT) =>> TtT.
+Lemma TtT_AppendT_idem: (TtT *** TtT) =>> TtT.
 Proof.
 by move => tr _.
 Qed.
 
-Lemma FiniteT_idem_1: (FiniteT *** FiniteT) =>> FiniteT.
+Lemma AppendT_FiniteT_idem : (FiniteT *** FiniteT) =>> FiniteT.
 Proof.
 move => tr0 [tr1 [h0 h1]]. move: tr1 h0 tr0 h1. induction 1. 
 - move => tr0 h0. invs h0. done. 
@@ -538,13 +581,13 @@ move => tr0 [tr1 [h0 h1]]. move: tr1 h0 tr0 h1. induction 1.
   have := finiteT_delay _ _ h1. by apply.
 Qed.
 
-Lemma FiniteT_idem_2: FiniteT =>> FiniteT *** FiniteT.
+Lemma FiniteT_AppendT_idem : FiniteT =>> FiniteT *** FiniteT.
 Proof.
 move => tr0 h0. simpl. exists (Tnil (hd tr0)). split. 
 apply finiteT_nil. apply followsT_nil => //.
 Qed.
 
-Lemma FiniteT_singleton: forall u, (FiniteT *** [|u|]) =>> FiniteT.
+Lemma FiniteT_SingletonT: forall u, (FiniteT *** [|u|]) =>> FiniteT.
 Proof. 
 move => u tr h0. simpl in h0. simpl. 
 move: h0 => [tr1 [h0 h1]]. 
@@ -552,28 +595,30 @@ have h2 := followsT_singletonT h1 => {h1}.
 exact: (finiteT_setoidT h0 h2).
 Qed.
 
-Lemma InfiniteT_implies_chop : InfiniteT =>> (TtT *** [|ffA|]).
+Lemma InfiniteT_implies_AppendT : InfiniteT =>> (TtT *** [|ffA|]).
 Proof.
 move => tr0 [a b tr1] hinfiniteT. simpl. exists (Tcons a b tr1). split => //. clear tr0.  
 move: a b tr1 hinfiniteT. cofix hcofix.
 move => a b tr0 h. apply followsT_delay. inversion h. subst. apply hcofix. apply H.
 Qed.
 
-Lemma chop_implies_InfiniteT: (TtT *** [|ffA|]) =>> InfiniteT. 
-Proof. 
+Lemma AppendT_implies_InfiniteT: (TtT *** [|ffA|]) =>> InfiniteT.
+Proof.
 move => tr0 [tr1 [_ h1]]. simpl. move: tr0 tr1 h1. cofix h0. move => tr0 tr1 h1. 
 inversion h1; subst; clear h1. 
 - destruct H0 as [st0 [h1 h2]]. inversion h1. 
 - apply infiniteT_delay. apply (h0 _ _ H). 
 Qed.
 
+(** ** Midpoint property *)
+
 CoInductive midpointT (p0 p1: trace -> Prop) (tr0 tr1: trace) (h: followsT (appendT p0 p1) tr0 tr1) : trace -> Prop :=
-| midpointT_nil :
-   forall tr, tr0 = Tnil (hd tr1) -> p0 tr -> followsT p1 tr tr1 -> midpointT h tr
-| midpointT_delay :
-  forall (tr2 tr3 :trace) (h1: followsT (appendT p0 p1) tr2 tr3) (a : A) (b: B) tr',
-  tr0 = Tcons a b tr2 -> tr1 = Tcons a b tr3 -> @midpointT p0 p1 tr2 tr3 h1 tr' ->
-  midpointT h (Tcons a b tr').
+| midpointT_nil : forall tr,
+   tr0 = Tnil (hd tr1) -> p0 tr ->
+   followsT p1 tr tr1 -> midpointT h tr
+| midpointT_delay : forall tr2 tr3 (h1: followsT (appendT p0 p1) tr2 tr3) (a : A) (b: B) tr',
+   tr0 = Tcons a b tr2 -> tr1 = Tcons a b tr3 -> @midpointT p0 p1 tr2 tr3 h1 tr' ->
+   midpointT h (Tcons a b tr').
 
 Lemma midpointT_before: forall p0 p1 tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) tr',
  midpointT h tr' -> followsT p0 tr0 tr'.
@@ -621,6 +666,8 @@ cofix COINDHYP. dependent inversion h. move => {tr H0}.
  exact: (COINDHYP _ _ _ _ h1).
 Qed.
 
+(** ** Utility definitions *)
+
 Definition followsT_dec : forall p tr0 tr1 (h: followsT p tr0 tr1),
  { tr & { a | tr0 = Tnil a /\ hd tr = a /\ p tr } } +
  { tr & { tr' & { a & { b | tr0 = Tcons a b tr /\ tr1 = Tcons a b tr' /\ followsT p tr tr'} } } }.
@@ -640,5 +687,6 @@ Infix "orT" := OrT (at level 60, right associativity).
 Infix "=>>" := propT_imp (at level 60, right associativity).
 Infix "->>" := propA_imp (at level 60, right associativity).
 Infix "andA" := andA (at level 60, right associativity).
+Notation "[| p |]" := (SingletonT p) (at level 80).
 Infix "*+*" := appendT (at level 60, right associativity).
 Infix "***" := AppendT (at level 60, right associativity).

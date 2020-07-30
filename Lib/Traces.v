@@ -4,15 +4,25 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+(** * Definition of possibly-infinite traces *)
+
 Ltac invs h := inversion h; subst => {h}.
 
 Section Traces.
 
 Context {A B : Type}.
 
-CoInductive trace : Type  :=
+(** ** Core trace definition and decomposition *)
+
+CoInductive trace : Type :=
 | Tnil : A -> trace
 | Tcons : A -> B -> trace -> trace.
+
+Definition hd tr :=
+match tr with
+| Tnil a => a
+| Tcons a b tr0 => a
+end.
 
 Definition trace_decompose (tr: trace): trace :=
 match tr with
@@ -23,14 +33,16 @@ end.
 Lemma trace_destr: forall tr, tr = trace_decompose tr.
 Proof. case => //=. Qed.
 
-CoInductive bisim: trace -> trace -> Prop :=
-| bisim_nil: forall a,
-  bisim (Tnil a) (Tnil a)
-| bisim_cons: forall a b tr tr',
-  bisim tr tr' ->
-  bisim (Tcons a b tr) (Tcons a b tr').
+(** ** Bisimulations between traces *)
 
-Lemma bisim_refl : forall tr, bisim tr tr. 
+CoInductive bisim : trace -> trace -> Prop :=
+| bisim_nil : forall a,
+   bisim (Tnil a) (Tnil a)
+| bisim_cons : forall a b tr tr',
+   bisim tr tr' ->
+   bisim (Tcons a b tr) (Tcons a b tr').
+
+Lemma bisim_refl : forall tr, bisim tr tr.
 Proof.
 cofix CIH.
 case => [a|a b tr]; first exact: bisim_nil.
@@ -38,7 +50,7 @@ apply bisim_cons.
 exact: CIH.
 Qed.
 
-Lemma bisim_sym : forall tr1 tr2, bisim tr1 tr2 -> bisim tr2 tr1. 
+Lemma bisim_sym : forall tr1 tr2, bisim tr1 tr2 -> bisim tr2 tr1.
 Proof.
 cofix CIH.
 case => [a|a b tr1] tr2 Hbs; invs Hbs; first exact: bisim_nil.
@@ -48,11 +60,16 @@ Qed.
 Lemma bisim_trans : forall tr1 tr2 tr3,
  bisim tr1 tr2 -> bisim tr2 tr3 -> bisim tr1 tr3.
 Proof.
-cofix CIH. 
+cofix CIH.
 case => [a|a b tr1] tr2 tr0 Hbs Hbs'; invs Hbs; invs Hbs'; first exact: bisim_nil.
 apply: bisim_cons.
 exact: CIH _ _ _ H3 H4.
 Qed.
+
+Lemma bisim_hd: forall tr0 tr1, bisim tr0 tr1 -> hd tr0 = hd tr1.
+Proof. by move => tr0 tr1 h0; invs h0. Qed.
+
+(** ** Appending traces to one another *)
 
 CoFixpoint trace_append (tr tr': trace): trace :=
 match tr with
@@ -88,11 +105,6 @@ case => [a|a b tr1] tr2 tr3 tr4 Hbs1 Hbs2; invs Hbs1.
   apply: bisim_cons.
   exact: CIH.
 Qed.
-
-Definition hd tr := match tr with Tnil a => a | Tcons a b tr0 => a end.
-
-Lemma bisim_hd: forall tr0 tr1, bisim tr0 tr1 -> hd tr0 = hd tr1. 
-Proof. by move => tr0 tr1 h0; invs h0. Qed.
 
 End Traces.
 
