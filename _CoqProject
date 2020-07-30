@@ -9,6 +9,7 @@ VLSM/Validating.v
 VLSM/ByzantineTraces.v
 VLSM/FullNodeSimple.v
 VLSM/FullNodeComposite.v
+VLSM/ListNode.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
