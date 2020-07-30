@@ -57,7 +57,7 @@ Fixpoint project_indexed
     state.
   intros.
   inversion is; subst;try inversion Hin.
-  destruct (eq_dec v v0).
+  destruct (eq_dec v0 v).
   + exact s.
   + assert (Hin0 : In v l0).
     { destruct Hin as [Heq | Hin] ; try assumption.
@@ -90,6 +90,52 @@ Fixpoint update_indexed
     + exact (Append v l0 s (update_indexed l0 is0 i new_s)).
 Defined.
 
+Lemma update_indexed_eq
+  (l : list index)
+  (is : indexed_state l)
+  (i : index)
+  (news : state)
+  (Hin : In i l)
+  (Heq : project_indexed l is i Hin = news) :
+  (update_indexed l is i news = is).
+Proof.
+  induction is.
+  - simpl. 
+    reflexivity.
+  - simpl.
+    destruct (eq_dec v i) eqn : eq.
+    + assert (Hsame : s = news). {
+        simpl in Heq.
+        rewrite eq in Heq.
+        assumption.
+      }
+      rewrite Hsame.
+      reflexivity.
+    + assert (Hin' : In i l). {
+        destruct Hin.
+        * subst. 
+          elim n. 
+          reflexivity.
+        * assumption.
+      }
+      assert (Hstep : project_indexed (v :: l) (Append v l s is) i Hin = project_indexed l is i Hin'). {
+        unfold project_indexed.
+        rewrite eq.
+        simpl.
+        admit.
+      }
+      
+      assert (update_indexed l is i news = is). {
+        apply IHis with (Hin := Hin').
+        rewrite Hstep in Heq.
+        assumption.
+      }
+      
+      rewrite H.
+      reflexivity.
+Admitted.
+  
+
 Fixpoint all_bottom_f (l : list index) : indexed_state l :=
   match l with
   | [] => Empty
@@ -98,11 +144,48 @@ Fixpoint all_bottom_f (l : list index) : indexed_state l :=
   
 Definition all_bottom := all_bottom_f index_listing.
 
-Definition update_state (big : state) (news : state) (i : index) (value : bool): state :=
+Definition update_consensus (big : state) (value : bool) :=
   match big with
-  | Bottom => Something value (update_indexed index_listing all_bottom i news)
-  | Something cv f => Something value (update_indexed index_listing f i news)
+  | Bottom => Bottom
+  | Something cv f => Something value f
   end.
+
+Definition update_state (big : state) (news : state) (i : index) : state :=
+  match big with
+  | Bottom => Bottom
+  | Something cv f => Something cv (update_indexed index_listing f i news)
+  end.
+  
+Lemma update_state_eq
+      (big : state)
+      (news : state)
+      (i : index)
+      (Hin : In i index_listing)
+      (Heq : project big i = Some news)
+      : update_state big news i = big.
+
+Proof.
+  intros.
+  unfold update_state.
+  destruct big.
+  -reflexivity.
+  - assert (Heqis : (update_indexed index_listing is i news) = is). {
+    apply update_indexed_eq with (Hin := proj2 Hfinite i).
+    unfold project in Heq.
+    inversion Heq.
+    reflexivity.
+    }
+    rewrite Heqis.
+    reflexivity.
+Qed.
+
+Lemma update_state_idempotent 
+      (big : state)
+      (news : state)
+      (i : index)
+      : update_state (update_state big news i) news i = update_state big news i.
+Proof.
+Admitted.
 
 Fixpoint get_all_states
   (l : list index)
@@ -198,9 +281,9 @@ Inductive label_list : Type :=
 Definition transition (l : label_list) (som : state * option message) : state * option message :=
   let (s, om) := som in
      match l with
-     | update c => (update_state s s index_self c, Some (index_self, s)) 
+     | update c => ((update_consensus (update_state s s index_self) c), Some (index_self, s)) 
      | receive => match om with 
-                  | Some m => ((update_state s (snd m) (fst m) false), None)
+                  | Some m => ((update_state s (snd m) (fst m)), None)
                   | None => (s, None)
                   end
      end.
