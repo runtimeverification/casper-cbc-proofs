@@ -1639,7 +1639,7 @@ that contains it as a prefix.
         | _, _ => false
         end.
 
-    Fixpoint has_been_sentb
+    Definition has_been_sentb
              {Eqd : EqDec message}
              (msg : message) (ls : list transition_item) : bool
       :=
