@@ -24,6 +24,7 @@ Lib/ListSetExtras.v
 Lib/SortedLists.v
 Lib/ListExtras.v
 Lib/Preamble.v
+Lib/TraceClassicalProperties.v
 Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
