@@ -13,29 +13,30 @@ Context
   {dec : EqDec index}
   {temp_dec : EqDec (option bool)}.
 
-Inductive state_list : Type := 
+Inductive state : Type := 
 | Bottom
 | Something
-  : forall (b : bool) (is : indexed_state_list index_listing),
-  state_list
-with indexed_state_list : list index -> Type :=
+  : forall (b : bool) (is : indexed_state index_listing),
+  state
+with indexed_state : list index -> Type :=
 | Empty
-  : indexed_state_list []
-| Add
+  : indexed_state []
+| Append
   : forall (v : index) (l : list index)
-      (s : state_list) (is : indexed_state_list l),
-  indexed_state_list (v :: l)
+      (s : state) (is : indexed_state l),
+  indexed_state (v :: l)
 .
 
 Fixpoint project_indexed
   (l : list index)
-  (is : indexed_state_list l)
+  (is : indexed_state l)
   : forall
     (v : index)
-    (Hin : In v l),
-    state_list.
+    (Hin : In v l)
+,
+    state.
   intros.
-  inversion is; subst; try inversion Hin.
+  inversion is; subst;try inversion Hin.
   destruct (eq_dec v v0).
   + exact s.
   + assert (Hin0 : In v l0).
@@ -43,54 +44,62 @@ Fixpoint project_indexed
       subst. elim n. reflexivity.
     }
     exact (project_indexed l0 is0 v Hin0).
-Defined.
+Defined. 
 
 Definition project
-  (s : state_list)
+  (s : state)
   (v : index)
-  : option state_list
+  : option state
   :=
   match s with 
   | Bottom => None
   | Something b is => Some (project_indexed index_listing is v (proj2 Hfinite v))
   end.
 
-Definition state_list00 := Bottom.
+Fixpoint get_all_states
+  (l : list index)
+  (is : indexed_state l)
+  : list state.
+  intros.
+  destruct is eqn:is_eqn.
+  - exact [].
+  - exact (s :: get_all_states l i).
+  Defined.
 
-Definition message : Type := (index * state_list).
+Definition state00 := Bottom.
 
-Definition message00 := (index_self, state_list00).
+Definition message : Type := (index * state).
 
-Definition initial_state_prop_list (s : state_list) : Prop := True.
+Definition message00 := (index_self, state00).
+
+Definition initial_state_prop_list (s : state) : Prop := (s = Bottom).
 
 Definition initial_message_prop_list (m : message) : Prop := False.
 
 Lemma bottom_good : initial_state_prop_list Bottom.
-Proof.
-unfold initial_state_prop_list.
-auto.
-Qed.
+  Proof.
+    unfold initial_state_prop_list.
+    auto.
+  Qed.
 
-Definition state_list0 : {s | initial_state_prop_list s} := 
+Definition state0 : {s | initial_state_prop_list s} := 
   exist _ Bottom bottom_good.
-  
-Definition all_bottom (i : index) := Bottom.
 
-Definition decision_list (s : state_list) : option bool :=
+Definition decision (s : state) : option bool :=
   match s with
   | Bottom => None
   | Something c some => Some c
   end.
   
-Definition global_decisions (s : state_list) : list (option bool) :=
-  match s with 
+Definition global_decisions (s : state) : list (option bool) :=
+  match s with
   | Bottom => []
-  | Something c some => List.map decision_list (List.map some index_listing)
+  | Something c some => List.map decision (get_all_states index_listing some)
   end.
 
 (* Introduce some tie-breaking here? *)
 
-Definition estimator_list (s : state_list) (b : bool) : Prop :=
+Definition estimator_list (s : state) (b : bool) : Prop :=
   let our_count := List.count_occ temp_dec (global_decisions s) (Some b) in
   match s with 
   | Bottom => True
@@ -101,21 +110,37 @@ Inductive label_list : Type :=
 | update (c : bool)
 | receive.
 
-Definition update_f (f : index -> state_list) (i : index) (s : state_list) : (index -> state_list) :=
-  (fun (j : index) => 
-    match eq_dec i j with
-    | left e => s
-    | _ => f j
-    end
-  ).
+Fixpoint update_indexed 
+  (l : list index)
+  (is : indexed_state l) 
+  (i : index) 
+  (new_s : state) : 
+  indexed_state l.
+  intros.
+  inversion is.
+  - exact Empty.
+  - destruct (eq_dec v i).
+    + exact (Append v l0 new_s is0).
+    + exact (Append v l0 s (update_indexed l0 is0 i new_s)).
+Defined.
 
-Definition update_list (big : state_list) (news : state_list) (i : index) (value : bool) : state_list :=
+(* Definition all_bottom : indexed_state index_listing := *)
+
+Fixpoint all_bottom_f (l : list index) : indexed_state l :=
+  match l with
+  | [] => Empty
+  | (h :: t) => Append h t Bottom (all_bottom_f t)
+  end.
+  
+Definition all_bottom := all_bottom_f index_listing.
+
+Definition update_list (big : state) (news : state) (i : index) (value : bool): state :=
   match big with
-  | Bottom => Something value (update_f all_bottom i news)
-  | Something cv f => Something value (update_f f i news)
+  | Bottom => Something value (update_indexed index_listing all_bottom i news)
+  | Something cv f => Something value (update_indexed index_listing f i news)
   end.
 
-Definition transition_list (l : label_list) (som : state_list * option message) : state_list * option message :=
+Definition transition_list (l : label_list) (som : state * option message) : state * option message :=
     let (s, om) := som in
        match l with
        | update c => (update_list s s index_self c, Some (index_self, s)) 
@@ -127,26 +152,27 @@ Definition transition_list (l : label_list) (som : state_list * option message) 
 
 Definition valid_list
     (l : label_list)
-    (som : state_list * option message)
+    (som : state * option message)
     := 
     let (s, om) := som in
     match l with
     | update c => estimator_list s c
-    (* Not actually true, must compare states *)
-    | receive => True
-    end. 
+    | receive => match om with 
+                 | None => False
+                 | Some m => project s (fst m) = project (snd m) (fst m) /\ index_self <> (fst m)
+                 end
+    end.
       
 
-
 Instance VLSM_list_protocol : VLSM_type message :=
-    { state := state_list
+    { state := state
     ; label := label_list
     }.
     
 Instance LSM_list : VLSM_sign VLSM_list_protocol :=
     { initial_state_prop := initial_state_prop_list
     ; initial_message_prop := initial_message_prop_list
-    ; s0 := state_list0
+    ; s0 := state0
     ; m0 := message00
     ; l0 := receive
     }.
