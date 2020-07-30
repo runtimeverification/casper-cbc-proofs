@@ -5,6 +5,22 @@ Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC
 
 Section ListNode.
 
+(** 
+
+*** Minimal List Validator Protocol 
+
+We introduce here the "minimal list validator protocol", by quoting the official 
+documentation: 
+
+In this section, we propose a protocol where each validator keeps a list of states of other validators. Each validator broadcasts its view of the other validators’
+states. We claim that the protocol is nontrivial and safe: when equivocations are limited, it is possible to reach either outcome, and if the protocol reaches
+a decision, all the validators agree on what it is.
+
+**) 
+
+(** Our context includes a finite [index] type with decidable equality and an instance of it, [index_self] which
+    designates the chosen index of the current machine **)
+
 Context 
   {index : Type}
   {index_self : index}
@@ -12,6 +28,8 @@ Context
   {Hfinite : Listing index_listing}
   {dec : EqDec index}
   {temp_dec : EqDec (option bool)}.
+
+(** Each state contains a binary value and a list of all the states of the other validators. **)
 
 Inductive state : Type := 
 | Bottom
@@ -26,6 +44,8 @@ with indexed_state : list index -> Type :=
       (s : state) (is : indexed_state l),
   indexed_state (v :: l)
 .
+
+(** Some utility functions. **)
 
 Fixpoint project_indexed
   (l : list index)
@@ -55,61 +75,7 @@ Definition project
   | Bottom => None
   | Something b is => Some (project_indexed index_listing is v (proj2 Hfinite v))
   end.
-
-Fixpoint get_all_states
-  (l : list index)
-  (is : indexed_state l)
-  : list state.
-  intros.
-  destruct is eqn:is_eqn.
-  - exact [].
-  - exact (s :: get_all_states l i).
-  Defined.
-
-Definition state00 := Bottom.
-
-Definition message : Type := (index * state).
-
-Definition message00 := (index_self, state00).
-
-Definition initial_state_prop_list (s : state) : Prop := (s = Bottom).
-
-Definition initial_message_prop_list (m : message) : Prop := False.
-
-Lemma bottom_good : initial_state_prop_list Bottom.
-  Proof.
-    unfold initial_state_prop_list.
-    auto.
-  Qed.
-
-Definition state0 : {s | initial_state_prop_list s} := 
-  exist _ Bottom bottom_good.
-
-Definition decision (s : state) : option bool :=
-  match s with
-  | Bottom => None
-  | Something c some => Some c
-  end.
   
-Definition global_decisions (s : state) : list (option bool) :=
-  match s with
-  | Bottom => []
-  | Something c some => List.map decision (get_all_states index_listing some)
-  end.
-
-(* Introduce some tie-breaking here? *)
-
-Definition estimator_list (s : state) (b : bool) : Prop :=
-  let our_count := List.count_occ temp_dec (global_decisions s) (Some b) in
-  match s with 
-  | Bottom => True
-  | Something c some => our_count >= List.count_occ temp_dec (global_decisions s) (Some (negb b))
-  end.
-
-Inductive label_list : Type :=
-| update (c : bool)
-| receive.
-
 Fixpoint update_indexed 
   (l : list index)
   (is : indexed_state l) 
@@ -124,8 +90,6 @@ Fixpoint update_indexed
     + exact (Append v l0 s (update_indexed l0 is0 i new_s)).
 Defined.
 
-(* Definition all_bottom : indexed_state index_listing := *)
-
 Fixpoint all_bottom_f (l : list index) : indexed_state l :=
   match l with
   | [] => Empty
@@ -134,53 +98,154 @@ Fixpoint all_bottom_f (l : list index) : indexed_state l :=
   
 Definition all_bottom := all_bottom_f index_listing.
 
-Definition update_list (big : state) (news : state) (i : index) (value : bool): state :=
+Definition update_state (big : state) (news : state) (i : index) (value : bool): state :=
   match big with
   | Bottom => Something value (update_indexed index_listing all_bottom i news)
   | Something cv f => Something value (update_indexed index_listing f i news)
   end.
 
-Definition transition_list (l : label_list) (som : state * option message) : state * option message :=
-    let (s, om) := som in
-       match l with
-       | update c => (update_list s s index_self c, Some (index_self, s)) 
-       | receive => match om with 
-                    | Some m => ((update_list s (snd m) (fst m) false), None)
-                    | None => (s, None)
-                    end
-       end.
+Fixpoint get_all_states
+  (l : list index)
+  (is : indexed_state l)
+  : list state.
+  intros.
+  destruct is eqn:is_eqn.
+  - exact [].
+  - exact (s :: get_all_states l i).
+  Defined.
 
-Definition valid_list
-    (l : label_list)
-    (som : state * option message)
-    := 
-    let (s, om) := som in
-    match l with
-    | update c => estimator_list s c
-    | receive => match om with 
-                 | None => False
-                 | Some m => project s (fst m) = project (snd m) (fst m) /\ index_self <> (fst m)
-                 end
+(** Our only initial state will be Bottom. **)
+
+Definition state00 := Bottom.
+
+Definition initial_state_prop (s : state) : Prop := (s = Bottom).
+
+Lemma bottom_good : initial_state_prop Bottom.
+  Proof.
+    unfold initial_state_prop.
+    auto.
+  Qed.
+
+Definition state0 : {s | initial_state_prop s} := 
+  exist _ Bottom bottom_good.
+
+(** Messages are pairs of indices and states.
+    There are no initial messages.
+    The type is trivially inhabitated by
+    the pair of [index_self] and Bottom]. **)
+
+Definition message : Type := (index * state).
+
+Definition initial_message_prop (m : message) : Prop := False.
+
+Definition message00 := (index_self, state00).
+
+(** The decision function extracts the consensus value
+    from a state. It is possible that a state is undecided.
+    We choose to encode this by making consensus values
+    options of bool. In this way [None] signifies the 
+    absence of decision. **)
+
+Definition decision (s : state) : option bool :=
+  match s with
+  | Bottom => None
+  | Something c some => Some c
+  end.
+
+(** Get a list of everyone's decisions from the view
+    of a given state **)
+
+Definition global_decisions (s : state) : list (option bool) :=
+  match s with
+  | Bottom => []
+  | Something c some => List.map decision (get_all_states index_listing some)
+  end.
+
+(** The value of the estimator is defined as the mode of all decisions,
+    where possible decisions are <0>, <1> or <{0, 1}> (no decision).
+    We choose to define the estimator as a relation between state and bool.
+    If the mode value is a decisive one, the estimator will only relate
+    to the chosen value, otherwise it will relate to both values.
+    
+    Currently, ties resolve generously (everyone equal to the mode is
+    taken into account).
+**)
+
+Definition estimator (s : state) (b : bool) : Prop :=
+  let none_count := List.count_occ temp_dec (global_decisions s) None in
+  let our_count := List.count_occ temp_dec (global_decisions s) (Some b) in
+  let other_count := List.count_occ temp_dec (global_decisions s) (Some (negb b)) in
+  match s with 
+  | Bottom => True
+  | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
+  end.
+
+(** Labels describe the type of transitions: either updates (with boolean values) or receiving of messages. **)
+
+Inductive label_list : Type :=
+| update (c : bool)
+| receive.
+
+(** Transitions:
+    - Update <c> => updates the state at [index_self] with a new state which
+                    contains <c> as a consensus value. A message is emitted to broadcast
+                    this update: it contains the machine's index and its _previous state_.
+    - Receive => Updates the view of global states with new information
+                 about the node which sent the received message.
+                 No message is emitted.
+**)
+
+Definition transition (l : label_list) (som : state * option message) : state * option message :=
+  let (s, om) := som in
+     match l with
+     | update c => (update_state s s index_self c, Some (index_self, s)) 
+     | receive => match om with 
+                  | Some m => ((update_state s (snd m) (fst m) false), None)
+                  | None => (s, None)
+                  end
+     end.
+
+(** Validity:
+    - Update <c> => <c> must be in the estimator of the given state.
+    - Receive => A message must be received, sent by a _different_ node.
+                 The state reflected in the message should be equal
+                 to the current representation of the respective node
+                 in the receiving node's state list **)
+
+Definition valid
+  (l : label_list)
+  (som : state * option message)
+  := 
+  let (s, om) := som in
+  match l with
+  | update c => estimator s c
+  | receive => match om with 
+               | None => False
+               | Some m => project s (fst m) = project (snd m) (fst m) /\ index_self <> (fst m)
+               end
     end.
-      
+
+(** Finally, we are ready to instantiate the protocol as a VLSM **)
 
 Instance VLSM_list_protocol : VLSM_type message :=
-    { state := state
-    ; label := label_list
-    }.
+  { state := state
+  ; label := label_list
+  }.
     
 Instance LSM_list : VLSM_sign VLSM_list_protocol :=
-    { initial_state_prop := initial_state_prop_list
-    ; initial_message_prop := initial_message_prop_list
-    ; s0 := state0
-    ; m0 := message00
-    ; l0 := receive
-    }.
+  { initial_state_prop := initial_state_prop
+  ; initial_message_prop := initial_message_prop
+  ; s0 := state0
+  ; m0 := message00
+  ; l0 := receive
+  }.
 
-Instance VLSM_list : VLSM LSM_list :=
-    { transition := transition_list
-      ; valid := valid_list
-    }.
+Instance VLSM_list_machine : VLSM_class LSM_list :=
+  { transition := transition
+    ; valid := valid
+  }.
 
+Definition VLSM_list : VLSM message := mk_vlsm VLSM_list_machine.
 
+End ListNode.
 
