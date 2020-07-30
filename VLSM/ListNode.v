@@ -50,45 +50,42 @@ with indexed_state : list index -> Type :=
 Fixpoint project_indexed
   (l : list index)
   (is : indexed_state l)
-  : forall
-    (v : index)
-    (Hin : In v l)
-,
-    state.
-  intros.
-  inversion is; subst;try inversion Hin.
-  destruct (eq_dec v0 v).
-  + exact s.
-  + assert (Hin0 : In v l0).
-    { destruct Hin as [Heq | Hin] ; try assumption.
-      subst. elim n. reflexivity.
-    }
-    exact (project_indexed l0 is0 v Hin0).
-Defined. 
+  (v : index)
+  : state
+  :=
+  match is with
+  | Empty =>
+    Bottom
+  | Append v' l' s is' =>
+    if eq_dec v' v
+    then s
+    else project_indexed l' is' v
+  end.
 
 Definition project
   (s : state)
   (v : index)
-  : option state
+  : state
   :=
   match s with 
-  | Bottom => None
-  | Something b is => Some (project_indexed index_listing is v (proj2 Hfinite v))
+  | Bottom => Bottom
+  | Something b is => project_indexed index_listing is v
   end.
-  
+
 Fixpoint update_indexed 
   (l : list index)
   (is : indexed_state l) 
-  (i : index) 
-  (new_s : state) : 
-  indexed_state l.
-  intros.
-  inversion is.
-  - exact Empty.
-  - destruct (eq_dec v i).
-    + exact (Append v l0 new_s is0).
-    + exact (Append v l0 s (update_indexed l0 is0 i new_s)).
-Defined.
+  (v : index) 
+  (new_s : state)
+  : indexed_state l
+  :=
+  match is with
+  | Empty => Empty
+  | Append v' l' s is' =>
+    if eq_dec v' v
+    then Append v' l' new_s is'
+    else Append v' l' s (update_indexed l' is' v new_s)
+  end.
 
 Lemma update_indexed_eq
   (l : list index)
@@ -122,6 +119,7 @@ Proof.
         unfold project_indexed.
         rewrite eq.
         simpl.
+        
         admit.
       }
       
