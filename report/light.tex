@@ -36,7 +36,7 @@ We assume an injective function from messages to hashes:
 \begin{coq}
 Parameters (hash_message : message -> hash)
            (hash_message_injective : Injective hash_message).
-\end{coq}   
+\end{coq}
 This allows us to recursively define a function \verb"hash_state" taking
 states and returning sorted lists of hashes, i.e., justifications, with the
 property that two justifications are equal iff they belong to
@@ -47,7 +47,7 @@ Lemma hash_state_injective : forall sigma1 sigma2,
   hash_state sigma1 = hash_state sigma2
   <->
   set_eq sigma1 sigma2.
-\end{coq}   
+\end{coq}
 
 This allows for the following inductive definition of protocol states:
 

@@ -429,7 +429,7 @@ Proof.
     rewrite or_assoc.
     split; intros; assumption.
 Qed.
- 
+
 Definition make_message_set
   (msgs : set (message C V))
   : message_set C V
@@ -739,7 +739,7 @@ with message_recursively_sorted
   | RSorted_msg : forall c v j
     (Hj : justification_recursively_sorted j),
     message_recursively_sorted (Msg _ _ c v j)
- 
+
 with justification_recursively_sorted
   : justification C V -> Prop :=
   | RSorted_NoSent

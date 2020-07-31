@@ -220,10 +220,10 @@ Further, we define a reachability relation on abstract states. We require of thi
 	reach_trans : forall s1 s2 s3, reach s1 s2 ->
 	reach s2 s3 ->
 	reach s1 s3;
-	reach_union : forall s1 s2, reach s1 (state_union s1 s2); 
+	reach_union : forall s1 s2, reach s1 (state_union s1 s2);
 	reach_morphism : forall s1 s2 s3, reach s1 s2 ->
 	state_eq s2 s3 ->
-	reach s1 s3; 
+	reach s1 s3;
 \end{coq}
 
 \subsubsection{Protocol states}
@@ -452,7 +452,7 @@ Lemma equivocation_adds_fault_weight :
 	protocol_state j ->
 	forall (v v' : definitions.V),
 	~ In v (equivocating_senders j) ->
-	v <> v' -> 
+	v <> v' ->
 	fault_weight_state (next_equivocation_state j v v') =
 	(fault_weight_state j + proj1_sig (weight v))%R.
 \end{coq}
@@ -587,7 +587,7 @@ The two equivocating messages are \verb|(get_estimate j, v, j)| and \verb|(get_e
 \begin{coq}
 Lemma about_equivocating_messages :
 	forall j v v',
-	v <> v' -> 
+	v <> v' ->
 	equivocating_messages_prop (get_estimate j, v, j)
 	(get_estimate (add_in_sorted_fn (get_estimate j, v', j) j), v,
 	add_in_sorted_fn (get_estimate j, v', j) j).

@@ -29,7 +29,7 @@ such that equality on <<index>> is decidable.
           {index : Type}
           {IndEqDec : EqDec index}
           .
-         
+
   Section composite_type.
 
 (**
@@ -208,7 +208,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       (s0X := proj1_sig (@s0 _ _ composite_sig))
       : composite_state IT
       := state_update IT s0X j sj.
-   
+
     Lemma lift_to_composite_state_initial
       (j : index)
       (sj : @state _ (IT j))
@@ -668,7 +668,7 @@ In particular this ensures that the byzantine traces of <<IM j>> include all
 [protocol_trace]s of <<Xj>> (see Lemma [pre_loaded_alt_eq]).
 
 *)
- 
+
     Context
       (j : index)
       (Xj := composite_vlsm_constrained_projection j)
@@ -708,7 +708,7 @@ following result is not surprising.
         assumption.
       - apply (protocol_initial_state Xj).
     Qed.
- 
+
 (**
 Interestingly enough, <<Xj>> cannot produce any additional messages than
 the initial ones available from <<X>>.

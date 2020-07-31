@@ -55,17 +55,17 @@ Proof.
       (fun j2 =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl j2 j1 ->
-        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) <> true     
+        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) <> true
       )
       (fun m =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl (get_justification m) j1 ->
-        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification (get_justification m))) <> true     
+        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification (get_justification m))) <> true
       )
       (fun msgs =>
         forall (c : C) (v : V) (j1 : justification C V),
         message_set_incl msgs (get_message_set j1) ->
-        inb compare_eq_dec ((c, v, j1)) (unmake_message_set msgs) <> true     
+        inb compare_eq_dec ((c, v, j1)) (unmake_message_set msgs) <> true
       )
     ); simpl; intros; intro Hin; try discriminate.
   - specialize (H c v j1 H0).

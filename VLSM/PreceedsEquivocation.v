@@ -55,7 +55,7 @@ Section composite_preceeds_equivocation.
     (X1 := composite_vlsm i0 IM constraint1)
     (X2 := composite_vlsm i0 IM constraint2)
     .
- 
+
   Lemma preceeds_equivocation_constrained
     (Heqv : HasPreceedsEquivocation X2)
     : HasPreceedsEquivocation X1.
@@ -93,5 +93,5 @@ Section composite_preceeds_equivocation.
         ).
       assumption.
   Qed.
-     
+
 End composite_preceeds_equivocation.

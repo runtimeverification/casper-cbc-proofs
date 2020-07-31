@@ -74,8 +74,8 @@ state_union_comm : forall s1 s2, state_eq (state_union s1 s2) (state_union s2 s1
 reach : state -> state -> Prop;
 reach_refl : forall s, reach s s;
 reach_trans : forall s1 s2 s3, reach s1 s2 -> reach s2 s3 -> reach s1 s3;
-reach_union : forall s1 s2, reach s1 (state_union s1 s2); 
-reach_morphism : forall s1 s2 s3, reach s1 s2 -> state_eq s2 s3 -> reach s1 s3; 
+reach_union : forall s1 s2, reach s1 (state_union s1 s2);
+reach_morphism : forall s1 s2 s3, reach s1 s2 -> state_eq s2 s3 -> reach s1 s3;
 E : state -> consensus_values -> Prop;
 estimator_total : forall s, exists c, E s c;
 prot_state : state -> Prop;

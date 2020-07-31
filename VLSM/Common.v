@@ -762,7 +762,7 @@ stored as a stream, as opposed to a list.
 (**
 As for the finite case, the following lemmas help decompose teh above
 definitions, mostly reducing them to properties about their finite segments.
-*)     
+*)
     Lemma infinite_ptrace_consecutive_valid_transition
           (is : state)
           (tr tr2 : Stream transition_item)
@@ -1175,7 +1175,7 @@ This relation is often used in stating safety and liveness properties.*)
       exists (tr : list transition_item),
         finite_protocol_trace_from first tr /\
         last (List.map destination tr) first = second.
-   
+
     Lemma in_futures_protocol_fst
       (first second : state)
       (Hfuture: in_futures first second)
@@ -1354,7 +1354,7 @@ This relation is often used in stating safety and liveness properties.*)
       | Finite s ls => Finite s (list_prefix ls n)
       | Infinite s st => Finite s (stream_prefix st n)
       end.
-   
+
     Lemma trace_prefix_protocol
           (tr : protocol_trace)
           (last : transition_item)
@@ -1434,8 +1434,8 @@ This relation is often used in stating safety and liveness properties.*)
           simpl.
           rewrite map_app. simpl. rewrite last_is_last. tauto.
     Qed.
-   
-   
+
+
     Definition build_trace_prefix_protocol
           {tr : protocol_trace}
           {last : transition_item}
@@ -1947,7 +1947,7 @@ Byzantine fault tolerance analysis. *)
     exists (s0, om0). exists l. exists s.
     repeat split; try assumption.
     - exists _om0. assumption.
-    - exists _s0. assumption. 
+    - exists _s0. assumption.
   Qed.
 
   (* end hide *)

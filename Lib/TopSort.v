@@ -146,7 +146,7 @@ Context
   .
 
 (** Next we derive easier to work with formulations for the [StrictOrder]
-properties associated with [preceeds_P]. *) 
+properties associated with [preceeds_P]. *)
 Lemma preceeds_irreflexive
   (a : A)
   (Ha : P a)
@@ -257,7 +257,7 @@ Qed.
 End min_predecessors.
 
 Section top_sort.
-(** ** The topological sorting algorithm 
+(** ** The topological sorting algorithm
 *)
 
 Context

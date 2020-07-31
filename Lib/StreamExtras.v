@@ -330,7 +330,7 @@ Proof.
     assert (Hle : n1 <= n1 + k) by lia.
     specialize (list_suffix_nth (stream_prefix l n2) n1 (n1 + k) Hle)
     ; intro Heq.
-    clear Hle.   
+    clear Hle.
     assert (Hs: n1 + k - n1 = k) by lia.
     rewrite Hs in Heq.
     rewrite Heq.
