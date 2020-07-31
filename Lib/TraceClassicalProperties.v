@@ -40,7 +40,7 @@ match excluded_middle_informative (finiteT tr) with
 | right Hfin => right (not_finiteT_infiniteT Hfin)
 end.
 
-(** ** Finding and using midpoints *)
+(** ** Using midpoints to show the right associativity of the append property *)
 
 CoFixpoint midp (p0 p1: trace -> Prop) tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) : trace.
 case (followsT_dec h).

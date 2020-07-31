@@ -7,6 +7,12 @@ Import Prenex Implicits.
 
 (** * Core properties of possibly-infinite traces *)
 
+(**
+The property encodings and many specific properties take inspiration from the paper
+#<a href="https://arxiv.org/abs/1412.6579">A Hoare logic for the coinductive trace-based
+big-step semantics of While</a>#.
+*)
+
 Section TraceProperties.
 
 Context {A B : Type}.
@@ -39,9 +45,9 @@ induction 1.
 Qed.
 
 Definition FiniteT : propT.
- exists (fun tr => finiteT tr).
- move => tr0 h0 tr1 h1.
- exact: (finiteT_setoidT h0 h1).
+exists (fun tr => finiteT tr).
+move => tr0 h0 tr1 h1.
+exact: (finiteT_setoidT h0 h1).
 Defined.
 
 Lemma invert_finiteT_delay (a : A) (b : B) (tr : trace)
@@ -55,10 +61,10 @@ Pattern for defining <<Fixpoint>>s using [finiteT].
 *)
 
 Fixpoint id_finiteT (tr : trace) (h : finiteT tr) {struct h} : trace :=
-  match tr as tr' return (finiteT tr' -> trace) with
-  | Tnil a => fun _ => Tnil a
-  | Tcons a b tr => fun h => id_finiteT (invert_finiteT_delay h)
-  end h.
+match tr as tr' return (finiteT tr' -> trace) with
+| Tnil a => fun _ => Tnil a
+| Tcons a b tr => fun h => id_finiteT (invert_finiteT_delay h)
+end h.
 
 (**
 Pattern for performing inductive proofs using [finiteT].
@@ -71,6 +77,21 @@ refine (fix IH tr h {struct h} := _).
 case: tr h => [a|a b tr] h.
 - by dependent inversion h; move => h'; depelim h'; simpl; reflexivity.
 - by dependent inversion h; move => h'; depelim h'; simpl; apply IH.
+Qed.
+
+(**
+Equality coincides with bisimilarity for finite traces.
+*)
+
+Lemma finiteT_bisim_eq : forall tr,
+ finiteT tr -> forall tr', bisim tr tr' -> tr = tr'.
+Proof.
+move => tr.
+elim; first by move => a tr' Hbis; inversion Hbis.
+move => a b tr0 Hfin IH tr' Hbis.
+invs Hbis.
+apply IH in H3.
+by rewrite H3.
 Qed.
 
 (** ** Infiniteness property *)
@@ -304,6 +325,18 @@ CoInductive followsT (p : trace -> Prop) : trace -> trace -> Prop :=
 
 Lemma followsT_hd: forall p tr0 tr1, followsT p tr0 tr1 -> hd tr0 = hd tr1.
 Proof. move => p tr0 tr1 h0. by invs h0. Qed.
+
+Definition followsT_dec : forall p tr0 tr1 (h: followsT p tr0 tr1),
+ { tr & { a | tr0 = Tnil a /\ hd tr = a /\ p tr } } +
+ { tr & { tr' & { a & { b | tr0 = Tcons a b tr /\ tr1 = Tcons a b tr' /\ followsT p tr tr'} } } }.
+Proof.
+intros.
+destruct tr0.
+- left; exists tr1; exists a. by inversion h; subst.
+- destruct tr1.
+  * left; exists (Tnil a); exists a. by inversion h; subst.
+  * right; exists tr0; exists tr1; exists a; exists b; by inversion h; subst.
+Defined.
 
 Lemma followsT_setoidT : forall (p : trace -> Prop) (hp: forall tr0, p tr0 -> forall tr1, bisim tr0 tr1 -> p tr1), 
  forall tr0 tr1, followsT p tr0 tr1 ->
@@ -612,6 +645,11 @@ Qed.
 
 (** ** Midpoint property *)
 
+(**
+This property identifies a trace that is both a suffix of <<tr0>> and a prefix of <<tr1>>,
+and is the stepping stone to showing the right associativity of the append property.
+*)
+
 CoInductive midpointT (p0 p1: trace -> Prop) (tr0 tr1: trace) (h: followsT (appendT p0 p1) tr0 tr1) : trace -> Prop :=
 | midpointT_nil : forall tr,
    tr0 = Tnil (hd tr1) -> p0 tr ->
@@ -665,20 +703,6 @@ cofix COINDHYP. dependent inversion h. move => {tr H0}.
  apply followsT_delay.
  exact: (COINDHYP _ _ _ _ h1).
 Qed.
-
-(** ** Utility definitions *)
-
-Definition followsT_dec : forall p tr0 tr1 (h: followsT p tr0 tr1),
- { tr & { a | tr0 = Tnil a /\ hd tr = a /\ p tr } } +
- { tr & { tr' & { a & { b | tr0 = Tcons a b tr /\ tr1 = Tcons a b tr' /\ followsT p tr tr'} } } }.
-Proof.
-intros.
-destruct tr0.
-- left; exists tr1; exists a. by inversion h; subst.
-- destruct tr1.
-  * left; exists (Tnil a); exists a. by inversion h; subst.
-  * right; exists tr0; exists tr1; exists a; exists b; by inversion h; subst.
-Defined.
 
 End TraceProperties.
 
