@@ -324,11 +324,13 @@ Proof.
       right. subst. apply set_remove_1 in Hinx. assumption.
 Qed.
 
-(** *** Order presevation properties *)
+(** *** [top_sort] corectness *)
 
-(** Next results assume <<preceeds>> induces a [StrictOrder] on a subset
-including all elements of <<l>> and studies how two elements of <<l>>
-ordered by <<preceeds>> are positioned in [top_sort] <<l>>.
+(** We can prove the corectness of [top_sort] under the assumption that
+<<preceeds>> induces a [StrictOrder] on a subset of <<A>> including all
+elements of <<l>>.
+
+Let <<a>> and <<b>> be two elements of <<l>> such that <<a preceeds b>>.
 *)
 
 Context
@@ -343,13 +345,16 @@ Context
   (Hab : preceeds a b = true)
   .
 
-(** First lemma says that all predecessors of <<b>> occur before
-<<b>> in the sorted list.
+(** The main result of this section states that for any occurrence of <<b>>
+in [top_sort] <<l>>, <<a>> must occur before it and cannot occur after it.
+
+Quantifying over all occurrences of <<b>> guarantees that all occurrences
+of <<a>> must be before all occurrences of <<b>> in [top_sort] <<l>>.
 *)
-Lemma top_sort_preceeds_before
+Lemma top_sort_correct
   (l1 l2 : list A)
   (Heq : top_sort l = l1 ++ [b] ++ l2)
-  : In a l1.
+  : In a l1 /\ ~In a l2.
 Proof.
   unfold top_sort in Heq.
   remember (length l) as n.
@@ -405,42 +410,33 @@ Proof.
     ; try (subst b; elim Hminb; reflexivity).
     subst _min.
     replace (if eq_dec min a0 then l0 else a0 :: set_remove eq_dec min l0) with l' in H4.
-    destruct (eq_dec min a).
-    + subst a. left. reflexivity.
-    + assert (Hina : In a l').
-      { destruct (eq_dec min a0).
-        - subst a0 l'.
-          inversion Ha; try assumption.
-          elim n0. assumption.
-        - subst l'.
-          destruct Ha as [Heqa | Ha'].
-          + subst a0. left. reflexivity.
-          + right. apply set_remove_3; try assumption.
-            intro n2. apply n0. symmetry. assumption.
-      }
-      specialize (IHn Hina l1 l2 H4).
+    destruct (in_dec eq_dec a l').
+    + specialize (IHn i l1 l2 H4).
+      destruct IHn as [Hin Hnin].
+      split; try assumption.
       right.
       assumption.
-Qed.
-
-(** The second result says that if <<a preceeds b>> then <<a>>
-can be found before <<b>> in [top_sort l].
-
-This result is equivalent with the one above when there are no duplicate
-elements in <<l>>; however it is weaker in the general case.
-*)
-Lemma top_sort_preceeds
-  : exists l1 l2 l3, top_sort l = l1 ++ [a] ++ l2 ++ [b] ++ l3.
-Proof.
-  apply top_sort_set_eq in Hb.
-  apply in_split in Hb.
-  destruct Hb as [l12 [l3 Hb']].
-  specialize (top_sort_preceeds_before l12 l3 Hb').
-  intro Ha12. apply in_split in Ha12.
-  destruct Ha12 as [l1 [l2 Ha12]].
-  subst l12.
-  exists l1. exists l2. exists l3. rewrite Hb'. rewrite <- app_assoc.
-  reflexivity.
+    + assert (Hmina : min = a).
+      { destruct (eq_dec min a0).
+      - subst a0 l'.
+        inversion Ha; try assumption.
+        elim n0. assumption.
+      - subst l'.
+        destruct Ha as [Heqa | Ha'].
+        + subst a0. elim n0. left. reflexivity.
+        + destruct (eq_dec a min); try (symmetry; assumption).
+          apply (set_remove_3 eq_dec _ Ha') in n2.
+          elim n0. right. assumption.
+      }
+      subst a.
+      split; try (left; reflexivity).
+      intro Hl2.
+      apply n0.
+      apply top_sort_set_eq.
+      unfold top_sort. rewrite <- Hlenl'.
+      rewrite H4.
+      apply in_app_iff.
+      right. right. assumption.
 Qed.
 
 End top_sort.
