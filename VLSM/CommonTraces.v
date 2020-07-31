@@ -64,7 +64,7 @@ Lemma protocol_trace_infinite_infinite_protocol_trace_from : forall tr (h:infini
  infinite_protocol_trace_from vlsm (hd tr) (protocol_trace_infinite_transition_items tr h).
 Proof.
 cofix CIH.
-destruct tr; first by move => h; inversion h. 
+destruct tr; first by move => h; inversion h.
 move => h Htr /=.
 inversion Htr; subst.
 dependent inversion h; subst.

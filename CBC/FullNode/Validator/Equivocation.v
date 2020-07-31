@@ -52,20 +52,20 @@ Proof.
   generalize dependent c.
   apply
     (justification_mut_ind C V
-      (fun j2 => 
+      (fun j2 =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl j2 j1 ->
-        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) <> true      
+        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) <> true     
       )
       (fun m =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl (get_justification m) j1 ->
-        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification (get_justification m))) <> true      
+        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification (get_justification m))) <> true     
       )
       (fun msgs =>
         forall (c : C) (v : V) (j1 : justification C V),
         message_set_incl msgs (get_message_set j1) ->
-        inb compare_eq_dec ((c, v, j1)) (unmake_message_set msgs) <> true      
+        inb compare_eq_dec ((c, v, j1)) (unmake_message_set msgs) <> true     
       )
     ); simpl; intros; intro Hin; try discriminate.
   - specialize (H c v j1 H0).
@@ -117,7 +117,7 @@ Qed.
 
 Global Instance full_node_equivocation
   : HasEquivocation (State.message C V)
-  := 
+  :=
     {| about_message := message_type
     ; sender := State.sender
     ; message_preceeds_fn := validator_message_preceeds_fn

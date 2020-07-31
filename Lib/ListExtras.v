@@ -147,7 +147,7 @@ Lemma filter_length_fn
 Proof.
   induction s; simpl.
   - lia.
-  - inversion Hfg; subst. specialize (IHs H2). 
+  - inversion Hfg; subst. specialize (IHs H2).
   destruct (f a) eqn:Hfa.
     + rewrite H1; try reflexivity. simpl. lia.
     + destruct (g a); simpl; lia.
@@ -193,7 +193,7 @@ Proof.
     ; simpl in Hnone.
     + destruct (f x) eqn:Hx; try reflexivity. inversion Hnone.
     + destruct (f a) eqn:Ha.
-      * inversion Hnone. 
+      * inversion Hnone.
       * apply IHl; assumption.
 Qed.
 
@@ -556,7 +556,7 @@ Fixpoint list_annotate
   (P : A -> Prop)
   (l : list A)
   (Hs : Forall P l)
-  : list (sig P). 
+  : list (sig P).
 Proof.
   destruct l as [| a l].
   - exact [].
@@ -605,7 +605,7 @@ Fixpoint nth_error_filter_index
   (l : list A)
   (n : nat)
   :=
-  match l with 
+  match l with
   | [] => None
   | a :: l =>
     match f a with
@@ -629,10 +629,10 @@ Lemma nth_error_filter_index_le
   (Hin2 : nth_error_filter_index f l n2 = Some in2)
   : in1 <= in2.
 Proof.
-  generalize dependent in2. 
-  generalize dependent in1. 
-  generalize dependent n2. 
-  generalize dependent n1. 
+  generalize dependent in2.
+  generalize dependent in1.
+  generalize dependent n2.
+  generalize dependent n1.
   induction l; intros.
   - inversion Hin1.
   - simpl in Hin1. simpl in Hin2.
@@ -672,8 +672,8 @@ Lemma nth_error_filter
   (n : nat)
   (a : A)
   (Hnth : nth_error (filter f l) n = Some a)
-  : exists (nth : nat), 
-    nth_error_filter_index f l n = Some nth 
+  : exists (nth : nat),
+    nth_error_filter_index f l n = Some nth
     /\ nth_error l nth = Some a.
 Proof.
   generalize dependent a. generalize dependent n.

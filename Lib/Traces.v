@@ -30,7 +30,7 @@ CoInductive bisim: trace -> trace -> Prop :=
   bisim tr tr' ->
   bisim (Tcons a b tr) (Tcons a b tr').
 
-Lemma bisim_refl : forall tr, bisim tr tr. 
+Lemma bisim_refl : forall tr, bisim tr tr.
 Proof.
 cofix CIH.
 case => [a|a b tr]; first exact: bisim_nil.
@@ -38,7 +38,7 @@ apply bisim_cons.
 exact: CIH.
 Qed.
 
-Lemma bisim_sym : forall tr1 tr2, bisim tr1 tr2 -> bisim tr2 tr1. 
+Lemma bisim_sym : forall tr1 tr2, bisim tr1 tr2 -> bisim tr2 tr1.
 Proof.
 cofix CIH.
 case => [a|a b tr1] tr2 Hbs; invs Hbs; first exact: bisim_nil.
@@ -48,7 +48,7 @@ Qed.
 Lemma bisim_trans : forall tr1 tr2 tr3,
  bisim tr1 tr2 -> bisim tr2 tr3 -> bisim tr1 tr3.
 Proof.
-cofix CIH. 
+cofix CIH.
 case => [a|a b tr1] tr2 tr0 Hbs Hbs'; invs Hbs; invs Hbs'; first exact: bisim_nil.
 apply: bisim_cons.
 exact: CIH _ _ _ H3 H4.
@@ -63,7 +63,7 @@ end.
 Local Infix "+++" := trace_append (at level 60, right associativity).
 
 Lemma trace_append_nil: forall a tr, (Tnil a) +++ tr = tr.
-Proof. 
+Proof.
 move => a tr.
 rewrite [Tnil a +++ tr]trace_destr.
 by case tr.
@@ -77,10 +77,10 @@ rewrite [Tcons a b tr +++ tr']trace_destr.
 by case tr.
 Qed.
 
-Lemma trace_eq_append: forall tr1 tr2 tr3 tr4, 
+Lemma trace_eq_append: forall tr1 tr2 tr3 tr4,
  bisim tr1 tr2 -> bisim tr3 tr4 -> bisim (tr1 +++ tr3) (tr2 +++ tr4).
-Proof. 
-cofix CIH. 
+Proof.
+cofix CIH.
 case => [a|a b tr1] tr2 tr3 tr4 Hbs1 Hbs2; invs Hbs1.
 - do 2 rewrite trace_append_nil.
   exact: Hbs2.
@@ -91,7 +91,7 @@ Qed.
 
 Definition hd tr := match tr with Tnil a => a | Tcons a b tr0 => a end.
 
-Lemma bisim_hd: forall tr0 tr1, bisim tr0 tr1 -> hd tr0 = hd tr1. 
+Lemma bisim_hd: forall tr0 tr1, bisim tr0 tr1 -> hd tr0 = hd tr1.
 Proof. by move => tr0 tr1 h0; invs h0. Qed.
 
 End Traces.

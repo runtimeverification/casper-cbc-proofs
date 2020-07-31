@@ -94,7 +94,7 @@ Definition message_compare_helper
   (justification_compare : justification C V -> justification C V -> comparison)
   (msg1 msg2 : message C V)
   : comparison
-  := 
+  :=
   match msg1, msg2 with
     (c1, v1, j1), (c2, v2, j2) =>
     match compare c1 c2 with
@@ -429,7 +429,7 @@ Proof.
     rewrite or_assoc.
     split; intros; assumption.
 Qed.
-  
+ 
 Definition make_message_set
   (msgs : set (message C V))
   : message_set C V
@@ -629,11 +629,11 @@ Proof.
     elim Hincl.
     left.
     reflexivity.
-  - assert (Htl1 := message_set_locally_sorted_tail _ _ Hmsgs1). 
-    assert (Htl2 := message_set_locally_sorted_tail _ _ Hmsgs2). 
+  - assert (Htl1 := message_set_locally_sorted_tail _ _ Hmsgs1).
+    assert (Htl2 := message_set_locally_sorted_tail _ _ Hmsgs2).
     specialize (IHmsgs1 Htl1 msgs2 Htl2). destruct Heq as [Hincl12 Hincl21].
     assert (Heqm : m = m0).
-    { 
+    {
       specialize (Hincl12 m). simpl in Hincl12.
       assert (Hm :  m0 = m \/ in_message_set m msgs2)
         by (apply Hincl12; left; reflexivity).
@@ -739,7 +739,7 @@ with message_recursively_sorted
   | RSorted_msg : forall c v j
     (Hj : justification_recursively_sorted j),
     message_recursively_sorted (Msg _ _ c v j)
-  
+ 
 with justification_recursively_sorted
   : justification C V -> Prop :=
   | RSorted_NoSent
@@ -756,7 +756,7 @@ with justification_recursively_sorted
     justification_recursively_sorted (LastSent _ _ msgs msg)
   .
 
-Definition sorted_state_property 
+Definition sorted_state_property
   (s : state C V)
   : Prop
   :=

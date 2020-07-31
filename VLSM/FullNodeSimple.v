@@ -21,10 +21,10 @@ Section Full.
     :=
     s = @sorted_state0 C V message_type.
 
-  Definition state0 : {s | initial_state_prop s} := 
+  Definition state0 : {s | initial_state_prop s} :=
     exist _ (@sorted_state0 C V message_type) eq_refl.
 
-  Definition message0 : message := 
+  Definition message0 : message :=
     let c := @Lib.Preamble.inhabited _ about_C in
     let v := @Lib.Preamble.inhabited _ about_V in
     (c,v,@sorted_state0 C V message_type).
@@ -469,6 +469,6 @@ Section Full.
 
  *)
 
- 
+
 
 End Full.

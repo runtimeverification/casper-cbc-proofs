@@ -416,7 +416,7 @@ Qed.
 
 (* Now we can have the following for free : *)
 Instance OptionStrictlyComparable
-  (X : Type) 
+  (X : Type)
   {Xsc : StrictlyComparable X}
   : StrictlyComparable (option X) :=
   { inhabited := None;

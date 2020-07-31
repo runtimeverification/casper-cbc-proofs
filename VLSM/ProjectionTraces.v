@@ -267,7 +267,7 @@ Proof.
   ; simpl; intro Hlast.
   clear - Hlast Hps.
   simpl in Hlast.
-  replace 
+  replace
     (@last (@_composite_state message index IT)
       (@List.map
          (@transition_item message (@composite_type message index IT))
@@ -280,7 +280,7 @@ Proof.
     (@last (@state message (IT j))
               (@List.map (@transition_item message (IT j))
                  (@state message (IT j)) (@destination message (IT j))
-                 (finite_trace_projection_list transitions)) 
+                 (finite_trace_projection_list transitions))
               (start j))
     .
   assumption.

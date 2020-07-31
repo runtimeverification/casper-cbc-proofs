@@ -104,7 +104,7 @@ Section CommuteIndexed.
     (ID : forall i : index, decision (IT i)).
 
   (* ** Decision consistency
-  
+ 
   First, let us introduce a definition of consistency which
   looks at states as belonging to a trace.
   *)
@@ -126,7 +126,7 @@ Section CommuteIndexed.
 
   Now let us give an alternative definition based on [in_futures]:
   *)
-  
+ 
   Definition consistent :=
       forall
         (s1 s2 : @state _ (composite_type IT))

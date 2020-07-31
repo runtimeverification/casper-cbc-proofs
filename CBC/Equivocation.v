@@ -44,7 +44,7 @@ for a restricted set, e.g., [protocol_messsage]s
 (please see class [HasPreceedsEquivocation] for more details).
 *)
 
-Class HasEquivocation (message : Type) := 
+Class HasEquivocation (message : Type) :=
     { V : Type
     ; about_message : StrictlyComparable message
     ; about_V : StrictlyComparable V
@@ -75,7 +75,7 @@ Class HasEquivocation (message : Type) :=
             (filter (fun msg => equivocating_in_set msg msgs) msgs)
     ; set_fault_weight
         (msgs : set message)
-        := 
+        :=
         sum_weights (equivocating_senders_set msgs)
     ; set_not_heavy
         (msgs : set message)

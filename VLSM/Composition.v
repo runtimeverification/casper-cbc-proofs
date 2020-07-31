@@ -29,7 +29,7 @@ such that equality on <<index>> is decidable.
           {index : Type}
           {IndEqDec : EqDec index}
           .
-          
+         
   Section composite_type.
 
 (**
@@ -37,7 +37,7 @@ such that equality on <<index>> is decidable.
 ** The type of a composite VLSM
 
 Let IM be a family of VLSMs indexed by <<index>> and for each index <<i>>,
-let <<IT i>> be the [VLSM_type] of VLSM <<IM i>>.  Note that all 
+let <<IT i>> be the [VLSM_type] of VLSM <<IM i>>.  Note that all
 [VLSM_type]s share the same type of <<message>>s.
 
 *)
@@ -48,7 +48,7 @@ let <<IT i>> be the [VLSM_type] of VLSM <<IM i>>.  Note that all
 A [composite_state] is an indexed family of [state]s, yielding for each
 index <<n>> a [state] of <<IT n>>, the [VLSM_type] corresponding to <<n>>.
 
-Note that the [composite_state] type is the dependent product type of the 
+Note that the [composite_state] type is the dependent product type of the
 family of types <<[@state _ (IT n) | n <- index]>>.
 *)
     Definition _composite_state : Type :=
@@ -199,7 +199,7 @@ iff it has the [initial_message_prop]erty in any of the component signatures.
         |}.
 
 (**
-We can always "lift" state <<sj>> from component <<j>> to a composite state by 
+We can always "lift" state <<sj>> from component <<j>> to a composite state by
 updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
 *)
     Definition lift_to_composite_state
@@ -208,7 +208,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       (s0X := proj1_sig (@s0 _ _ composite_sig))
       : composite_state IT
       := state_update IT s0X j sj.
-    
+   
     Lemma lift_to_composite_state_initial
       (j : index)
       (sj : @state _ (IT j))
@@ -220,7 +220,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       destruct (eq_dec i j).
       - subst. rewrite state_update_eq. assumption.
       - rewrite state_update_neq; try assumption.
-        simpl. 
+        simpl.
         destruct s0 as [s Hs].
         assumption.
     Qed.
@@ -285,7 +285,7 @@ component:
 
 (**
 Given a [composite_label] <<(i, li)>> and a [composite_state]-message
-pair <<(s, om)>>, [free_composite_valid]ity is defined as [valid]ity in 
+pair <<(s, om)>>, [free_composite_valid]ity is defined as [valid]ity in
 the <<i>>th component <<IM i>>.
 *)
     Definition free_composite_valid
@@ -350,11 +350,11 @@ than <<constraint2>> for any input.
       .
 
 (**
-Let <<X1>>, <<X2>> be two compositions of the same family of VLSMs but with 
-constraints <<constraint1>> and <<constraint2>, respectively. Further assume 
+Let <<X1>>, <<X2>> be two compositions of the same family of VLSMs but with
+constraints <<constraint1>> and <<constraint2>, respectively. Further assume
 that <<constraint1>> is subssumed by <<constraint2>>.
 
-We will show that <<X1>> is trace-included into <<X2>> by applying 
+We will show that <<X1>> is trace-included into <<X2>> by applying
 Lemma [basic_VLSM_inclusion]
 *)
 
@@ -474,7 +474,7 @@ Then <<X1>> is trace-included into <<X2>>.
 
 ** Free VLSM composition
 
-The [free_constraint] is defined to be [True] for all inputs. 
+The [free_constraint] is defined to be [True] for all inputs.
 Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
 [free_constraint].
 *)
@@ -642,7 +642,7 @@ depends on [valid]ity in the component, it is easy to see that
 (**
 We define the projection of <<X>> to index <<i>> as the [VLSM] whose signature
 is the [composite_vlsm_constrained_projection_sig]nature corresponding to <<i>>,
-having the same transition function as <<IM i>>, the <<i>>th component of 
+having the same transition function as <<IM i>>, the <<i>>th component of
 *)
   Definition composite_vlsm_constrained_projection
              (i : index)
@@ -668,7 +668,7 @@ In particular this ensures that the byzantine traces of <<IM j>> include all
 [protocol_trace]s of <<Xj>> (see Lemma [pre_loaded_alt_eq]).
 
 *)
-  
+ 
     Context
       (j : index)
       (Xj := composite_vlsm_constrained_projection j)
@@ -708,7 +708,7 @@ following result is not surprising.
         assumption.
       - apply (protocol_initial_state Xj).
     Qed.
-  
+ 
 (**
 Interestingly enough, <<Xj>> cannot produce any additional messages than
 the initial ones available from <<X>>.
@@ -801,7 +801,7 @@ We can now finally prove the main result for this section:
   *)
 
   Definition projection_friendliness_sufficient_condition
-    := forall 
+    := forall
       (lj : @label _ (IT j))
       (sj : @state _ (IT j))
       (om : option message)
@@ -849,7 +849,7 @@ We can now finally prove the main result for this section:
       replace
         (lift_to_composite_state i0 IS j s0, om0)
         with (@transition _ _ _ X (existT _ j l) (lift_to_composite_state i0 IS j s, om)).
-      + 
+      +
         specialize (protocol_generated_valid Xj Hp1 Hp2 Hv); intros Hpvj.
         specialize (Hfr l s om Hpvj _ IHHp1).
         unfold lift_to_composite_state at 1 in Hfr.

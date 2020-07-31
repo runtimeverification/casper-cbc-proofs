@@ -60,7 +60,7 @@ Section CompositeFullNode.
   Definition not_heavy
     :=
     @CBC.Equivocation.set_not_heavy _ (full_node_equivocation C V ).
-  
+ 
   Definition valid_client2
     (_ : unit)
     (som : state C V * option message)
@@ -84,7 +84,7 @@ Section CompositeFullNode.
     :=
     s = pair [] None.
 
-  Definition state0 : {s | initial_state_prop s} := 
+  Definition state0 : {s | initial_state_prop s} :=
     exist _ (pair [] None) eq_refl.
 
   Definition initial_message_prop (m : message) : Prop := False.
@@ -118,7 +118,7 @@ Section CompositeFullNode.
              | None => som
              | Some msg => pair (pair (set_add compare_eq_dec msg msgs) final) None
            end
-    | Some c => 
+    | Some c =>
       let msg := (c, v, make_justification s) in
       pair (pair (set_add compare_eq_dec msg msgs) (Some msg)) (Some msg)
     end.
@@ -272,9 +272,9 @@ Section CompositeFullNode.
     : VLSM (IS_validators i)
     :=
     VLSM_full_validator i.
-  
-  Section validators_free_composition.
  
+  Section validators_free_composition.
+
   Definition validators_free_composition : VLSM (composite_sig v0 IS_validators)
     := free_composite_vlsm v0 IM_validators.
 
@@ -282,7 +282,7 @@ Section CompositeFullNode.
     (pm1 pm2 : byzantine_message validators_free_composition)
     : Prop
     := validator_message_preceeds _ _ (proj1_sig pm1) (proj1_sig pm2).
-  
+ 
   Lemma free_validator_byzantine_message_preceeds_irreflexive
     : Irreflexive free_validator_byzantine_message_preceeds.
   Proof.
@@ -499,7 +499,7 @@ Section CompositeFullNode.
     (l : composite_label IT_validators)
     (som : composite_state IT_validators * option message)
     : Prop
-    := 
+    :=
     let (s', om') := composite_transition IM_validators l som in
     not_heavy (state_union s').
 
@@ -619,7 +619,7 @@ Section CompositeFullNode.
     :=
     let (_, last) := s i in
     pair (state_union s) last.
-  
+ 
   Definition union_state
     (s : @VLSM.Common.state _ (composite_type IT_validators))
     : @VLSM.Common.state _ (composite_type IT_validators)

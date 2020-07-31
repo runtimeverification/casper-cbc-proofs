@@ -5,7 +5,28 @@ Import ListNotations.
 From CasperCBC
   Require Import Preamble ListExtras ListSetExtras.
 
-Section min_successors.
+(** * Topological sorting algorithm *)
+
+(**
+This module describes an algorithm producing a linear extension for a
+given partial order using an algorithm similar to Kahn's topological
+sorting algorithm.
+
+The algorithm extracts an element with a minimal number of predecessors
+among the current elements, then recurses on the remaining elements.
+
+To begin with we assume an unconstrained <<preceeds>> function to say
+whether an element preceeds another.  The proofs will show that if
+<<preceeds>> determines a strict order on the set of elements in the list,
+then the [top_sort] algoritm produces a linear extension of that ordering
+(Lemmas [top_sort_preceeds] and [top_sort_preceeds_before]).
+*)
+
+Section min_predecessors.
+(** ** Finding an element with a minimal number of predecessors *)
+
+(** For this section we will fix a list <<l>> and count the predecessors
+occurring in that list. *)
 
 Context
   {A : Type}
@@ -13,12 +34,26 @@ Context
   (l : list A)
   .
 
-Definition count_successors
+Definition count_predecessors
   (a : A)
   : nat
   := length (filter (fun b => preceeds b a) l).
 
-Fixpoint min_successors
+Lemma zero_predecessors
+  (a : A)
+  (Ha : count_predecessors a = 0)
+  : Forall (fun b => preceeds b a = false) l.
+Proof.
+  apply filter_nil.
+  apply length_zero_iff_nil.
+  assumption.
+Qed.
+
+(**
+Finds an element minimizing [count_predecessesors] in <<min :: remainder>>
+*)
+
+Fixpoint min_predecessors
   (remainder : list A)
   (min : A)
   : A
@@ -26,21 +61,21 @@ Fixpoint min_successors
   match remainder with
   | [] => min
   | h::t =>
-    if (lt_dec (count_successors h) (count_successors min))
-    then min_successors t h
-    else min_successors t min
+    if (lt_dec (count_predecessors h) (count_predecessors min))
+    then min_predecessors t h
+    else min_predecessors t min
   end.
 
-Lemma min_successors_in
+Lemma min_predecessors_in
   (l' : list A)
   (a : A)
-  (min := min_successors l' a)
+  (min := min_predecessors l' a)
   : min = a \/ In min l'.
 Proof.
   unfold min; clear min. generalize dependent a.
   induction l'; try (left; reflexivity).
   intro a0. simpl.
-  destruct (lt_dec (count_successors a) (count_successors a0)).
+  destruct (lt_dec (count_predecessors a) (count_predecessors a0)).
   - right.
     specialize (IHl' a). destruct IHl' as [Heq | Hin].
     + left. symmetry. assumption.
@@ -50,19 +85,19 @@ Proof.
     + right. right. assumption.
 Qed.
 
-Lemma min_successors_count
+Lemma min_predecessors_correct
   (l' : list A)
   (a : A)
-  (min := min_successors l' a)
-  (mins := count_successors min)
-  : Forall (fun b => mins <= count_successors b) (a :: l').
+  (min := min_predecessors l' a)
+  (mins := count_predecessors min)
+  : Forall (fun b => mins <= count_predecessors b) (a :: l').
 Proof.
   unfold mins; clear mins. unfold min; clear min. generalize dependent a.
   induction l'; intros; rewrite Forall_forall; intros.
   - simpl in H. inversion H; try contradiction. subst; clear H.
     simpl. lia.
   - apply in_inv in H. destruct H as [Heq | Hin]; subst.
-    + simpl. destruct (lt_dec (count_successors a) (count_successors x)).
+    + simpl. destruct (lt_dec (count_predecessors a) (count_predecessors x)).
       * specialize (IHl' a). rewrite Forall_forall in IHl'.
         assert (Ha : In a (a :: l')) by (left; reflexivity).
         specialize (IHl' a Ha).
@@ -71,7 +106,7 @@ Proof.
         assert (Hx : In x (x :: l')) by (left; reflexivity).
         specialize (IHl' x Hx).
         assumption.
-    + simpl. destruct (lt_dec (count_successors a) (count_successors a0)).
+    + simpl. destruct (lt_dec (count_predecessors a) (count_predecessors a0)).
       * specialize (IHl' a). rewrite Forall_forall in IHl'.
         specialize (IHl' x Hin).
         assumption.
@@ -88,26 +123,37 @@ Proof.
         }
 Qed.
 
+(** Given <<P>> a property on <<A>>, [preceeds_P] is the relation
+induced by <<preceeds>> on the subset of <<A>> determined by <<P>>. *)
+
 Definition preceeds_P
   (P : A -> Prop)
   (x y : sig P)
   : Prop
   := preceeds (proj1_sig x) (proj1_sig y) = true.
 
+(** In what follows, let us fix a property <<P>> satisfied by all elements
+of <<l>>, such that [preceeds_P] <<P>> is a [StrictOrder].
+
+Consequently, this means that <<preceeds>> is a [StrictOrder] on the
+elements of <<l>>.
+*)
+
 Context
   (P : A -> Prop)
   (HPl : Forall P l)
-  (preceeds_lt := preceeds_P P)
-  {Hpreceeds_lt : StrictOrder preceeds_lt}
+  {Hso : StrictOrder (preceeds_P P)}
   .
 
+(** Next we derive easier to work with formulations for the [StrictOrder]
+properties associated with [preceeds_P]. *) 
 Lemma preceeds_irreflexive
   (a : A)
   (Ha : P a)
   : preceeds a a = false.
 Proof.
   specialize (StrictOrder_Irreflexive (exist P a Ha)).
-  unfold complement; unfold preceeds_lt; unfold preceeds_P; simpl; intro Hirr.
+  unfold complement; unfold preceeds_P; simpl; intro Hirr.
   destruct (preceeds a a); try reflexivity.
   elim Hirr.
   reflexivity.
@@ -122,7 +168,7 @@ Lemma preceeds_asymmetric
 Proof.
   destruct (preceeds b a) eqn:Hba; try reflexivity.
   specialize
-    (StrictOrder_Asymmetric Hpreceeds_lt
+    (StrictOrder_Asymmetric Hso
       (exist P a Ha) (exist P b Hb)
       Hab Hba
     ); intro H; inversion H.
@@ -146,11 +192,14 @@ Proof.
   assumption.
 Qed.
 
-Lemma count_successors_zero
+(** If <<preceeds>> is a [StrictOrder] on <<l>>, then there must exist an
+element of <<l>> with no predecessors in <<l>>.
+*)
+Lemma count_predecessors_zero
   (Hl : l <> [])
-  : Exists (fun a => count_successors a = 0) l.
+  : Exists (fun a => count_predecessors a = 0) l.
 Proof.
-  unfold count_successors.
+  unfold count_predecessors.
   induction l.
   - elim Hl. reflexivity.
   - inversion HPl; subst.
@@ -183,17 +232,21 @@ Proof.
         simpl in *. rewrite Hxa. assumption.
 Qed.
 
-Lemma min_successors_zero
+(**
+Hence, computing [min_predecessors] on <<l>> yields an element with
+no predecessors.
+*)
+Lemma min_predecessors_zero
   (l' : list A)
   (a : A)
   (Hl : l = a :: l')
-  (min := min_successors l' a)
-  : count_successors min = 0.
+  (min := min_predecessors l' a)
+  : count_predecessors min = 0.
 Proof.
   assert (Hl' : l <> []) by (intro H; rewrite Hl in H; inversion H).
-  specialize (count_successors_zero Hl'); intro Hx.
+  specialize (count_predecessors_zero Hl'); intro Hx.
   apply Exists_exists in Hx. destruct Hx as [x [Hinx Hcountx]].
-  specialize (min_successors_count l' a); simpl; intro Hall.
+  specialize (min_predecessors_correct l' a); simpl; intro Hall.
   rewrite Forall_forall in Hall.
   rewrite Hl in Hinx.
   specialize (Hall x Hinx).
@@ -201,19 +254,11 @@ Proof.
   lia.
 Qed.
 
-Lemma zero_successors
-  (a : A)
-  (Ha : count_successors a = 0)
-  : Forall (fun b => preceeds b a = false) l.
-Proof.
-  apply filter_nil.
-  apply length_zero_iff_nil.
-  assumption.
-Qed.
-
-End min_successors.
+End min_predecessors.
 
 Section top_sort.
+(** ** The topological sorting algorithm 
+*)
 
 Context
   {A : Type}
@@ -221,6 +266,9 @@ Context
   (preceeds : A -> A -> bool)
   .
 
+(** Iteratively extracts <<n>> elements with minimal number of precessors
+from a given list.
+*)
 Fixpoint top_sort_n
   (n : nat)
   (l : list A)
@@ -230,16 +278,20 @@ Fixpoint top_sort_n
   | 0, _ => []
   | _, [] => []
   | S n', a :: l' =>
-    let min := min_successors preceeds l l' a in
+    let min := min_predecessors preceeds l l' a in
     let l'' := set_remove eq_dec min l in
     min :: top_sort_n n' l''
   end.
 
+(** Repeats the procedure above to order all elements from the input list.
+*)
 Definition top_sort
   (l : list A)
   : list A
   := top_sort_n (length l) l.
 
+(** The result of [top_sort] and its input are equal as sets.
+*)
 Lemma top_sort_set_eq
   (l : list A)
   : set_eq l (top_sort l).
@@ -249,11 +301,11 @@ Proof.
   induction n; intros; destruct l; try apply set_eq_refl
   ; inversion Heqn.
   simpl.
-  remember (min_successors preceeds (a :: l) l a) as min.
+  remember (min_predecessors preceeds (a :: l) l a) as min.
   remember (set_remove eq_dec min l) as l'.
   destruct (eq_dec min a); try rewrite e.
   - apply set_eq_cons. specialize (IHn l H0). subst. assumption.
-  - specialize (min_successors_in preceeds (a :: l) l a).
+  - specialize (min_predecessors_in preceeds (a :: l) l a).
     rewrite <- Heqmin. simpl. intros [Heq | Hin]; try (elim n0; assumption).
     specialize (IHn (a :: l')).
     specialize (set_remove_length eq_dec min l Hin).
@@ -272,21 +324,31 @@ Proof.
       right. subst. apply set_remove_1 in Hinx. assumption.
 Qed.
 
+(** *** Order presevation properties *)
+
+(** Next results assume <<preceeds>> induces a [StrictOrder] on a subset
+including all elements of <<l>> and studies how two elements of <<l>>
+ordered by <<preceeds>> are positioned in [top_sort] <<l>>.
+*)
+
 Context
   (P : A -> Prop)
-  (preceeds_lt := preceeds_P preceeds P)
-  {Hpreceeds_lt : StrictOrder preceeds_lt}
-  .
-
-Lemma top_sort_preceeds_before
+  {Hso : StrictOrder (preceeds_P preceeds P)}
   (l : list A)
   (Hl : Forall P l)
+  (a : A)
   (b : A)
+  (Ha : In a l)
+  (Hb : In b l)
+  (Hab : preceeds a b = true)
+  .
+
+(** First lemma says that all predecessors of <<b>> occur before
+<<b>> in the sorted list.
+*)
+Lemma top_sort_preceeds_before
   (l1 l2 : list A)
   (Heq : top_sort l = l1 ++ [b] ++ l2)
-  (a : A)
-  (Ha : In a l)
-  (Hab : preceeds a b = true)
   : In a l1.
 Proof.
   unfold top_sort in Heq.
@@ -294,25 +356,26 @@ Proof.
   generalize dependent Heq.
   generalize dependent l2.
   generalize dependent l1.
-  generalize dependent Ha.
-  generalize dependent Hab.
-  generalize dependent b.
-  generalize dependent a.
-  generalize dependent l.
+  clear Hb.
+  generalize dependent Ha. clear Ha.
+  generalize dependent Hab. clear Hab.
+  generalize dependent b. clear b.
+  generalize dependent a. clear a.
+  generalize dependent l. clear Hl l.
   induction n; intros
   ; try (symmetry in Heqn;  apply length_zero_iff_nil in Heqn; subst l; inversion Ha).
-  destruct l; inversion Hl; subst.
+  destruct l as [| a0 l0]; inversion Hl; subst.
   - inversion Ha.
   - simpl in Heq.
-    remember (min_successors preceeds (a0 :: l) l a0) as min.
-    remember (if eq_dec min a0 then l else a0 :: set_remove eq_dec min l) as l'.
+    remember (min_predecessors preceeds (a0 :: l0) l0 a0) as min.
+    remember (if eq_dec min a0 then l0 else a0 :: set_remove eq_dec min l0) as l'.
     inversion Heqn.
     assert (Hall' : Forall P l').
     { rewrite Forall_forall. intros x Hx.
       rewrite Forall_forall in H2.
       destruct (eq_dec min a0).
       - subst a0 l'. apply H2. assumption.
-      - subst l'. 
+      - subst l'.
         destruct Hx as [Heqx | Hx]; try (subst; assumption).
         apply set_remove_1 in Hx.
         apply H2. assumption.
@@ -323,7 +386,7 @@ Proof.
         subst l'. assumption.
       - subst l'. simpl.
         rewrite <- set_remove_length; try assumption.
-        specialize (min_successors_in preceeds (a0 :: l) l a0).
+        specialize (min_predecessors_in preceeds (a0 :: l0) l0 a0).
         rewrite <- Heqmin. simpl.
         intros [Heq' | Hin]; try assumption.
         elim n0. assumption.
@@ -332,16 +395,16 @@ Proof.
     assert (Hminb : b <> min).
     { destruct (eq_dec b min); try assumption.
       subst b.
-      specialize (min_successors_zero preceeds (a0 :: l) P Hl l a0 eq_refl).
+      specialize (min_predecessors_zero preceeds (a0 :: l0) P Hl l0 a0 eq_refl).
       rewrite <- Heqmin. simpl. intro Hmin.
-      apply zero_successors in Hmin.
+      apply zero_predecessors in Hmin.
       rewrite Forall_forall in Hmin. apply Hmin in Ha.
       rewrite Ha in Hab. discriminate Hab.
     }
     destruct l1 as [| _min l1]; inversion Heq
     ; try (subst b; elim Hminb; reflexivity).
     subst _min.
-    replace (if eq_dec min a0 then l else a0 :: set_remove eq_dec min l) with l' in H4.
+    replace (if eq_dec min a0 then l0 else a0 :: set_remove eq_dec min l0) with l' in H4.
     destruct (eq_dec min a).
     + subst a. left. reflexivity.
     + assert (Hina : In a l').
@@ -350,7 +413,7 @@ Proof.
           inversion Ha; try assumption.
           elim n0. assumption.
         - subst l'.
-          destruct Ha as [Heqa | Ha].
+          destruct Ha as [Heqa | Ha'].
           + subst a0. left. reflexivity.
           + right. apply set_remove_3; try assumption.
             intro n2. apply n0. symmetry. assumption.
@@ -360,23 +423,23 @@ Proof.
       assumption.
 Qed.
 
+(** The second result says that if <<a preceeds b>> then <<a>>
+can be found before <<b>> in [top_sort l].
+
+This result is equivalent with the one above when there are no duplicate
+elements in <<l>>; however it is weaker in the general case.
+*)
 Lemma top_sort_preceeds
-  (l : list A)
-  (Hl : Forall P l)
-  (a b : A)
-  (Ha : In a l)
-  (Hb : In b l)
-  (Hab : preceeds a b = true)
   : exists l1 l2 l3, top_sort l = l1 ++ [a] ++ l2 ++ [b] ++ l3.
 Proof.
   apply top_sort_set_eq in Hb.
   apply in_split in Hb.
-  destruct Hb as [l12 [l3 Hb]].
-  specialize (top_sort_preceeds_before l Hl b l12 l3 Hb a Ha Hab).
+  destruct Hb as [l12 [l3 Hb']].
+  specialize (top_sort_preceeds_before l12 l3 Hb').
   intro Ha12. apply in_split in Ha12.
   destruct Ha12 as [l1 [l2 Ha12]].
   subst l12.
-  exists l1. exists l2. exists l3. rewrite Hb. rewrite <- app_assoc.
+  exists l1. exists l2. exists l3. rewrite Hb'. rewrite <- app_assoc.
   reflexivity.
 Qed.
 

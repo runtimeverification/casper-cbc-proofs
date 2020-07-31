@@ -64,7 +64,7 @@ Definition get_sorted_messages
   {C V : Type} `{about_M : StrictlyComparable (message C V)}
   (s : sorted_state C V)
   :  list (sorted_message C V)
-  := 
+  :=
   let (sigma, Hsigma) := s in
   let msgs := get_messages sigma in
   map make_sorted_message

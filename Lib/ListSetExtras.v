@@ -281,7 +281,7 @@ Lemma set_union_in_iterated
   : In a (fold_right (set_union Aeq_dec) nil ss)
   <-> Exists (fun s => In a s) ss.
 Proof.
-  rewrite Exists_exists. 
+  rewrite Exists_exists.
   induction ss; split; simpl.
   - intro H; inversion H.
   - intros [x [Hin _]]; inversion Hin.
@@ -483,7 +483,7 @@ Qed.
 
 Lemma set_remove_length
   {A : Type}
-  (Aeq_dec : forall x y:A, {x = y} + {x <> y}) 
+  (Aeq_dec : forall x y:A, {x = y} + {x <> y})
   (x : A)
   (s : set A)
   (Hx : In x s)

@@ -52,10 +52,10 @@ Section composite_preceeds_equivocation.
     (constraint1 : @label _ T -> @state _ T * option message -> Prop)
     (constraint2 : @label _ T -> @state _ T * option message -> Prop)
     (Hsubsumption : constraint_subsumption constraint1 constraint2)
-    (X1 := composite_vlsm i0 IM constraint1) 
-    (X2 := composite_vlsm i0 IM constraint2) 
+    (X1 := composite_vlsm i0 IM constraint1)
+    (X2 := composite_vlsm i0 IM constraint2)
     .
-  
+ 
   Lemma preceeds_equivocation_constrained
     (Heqv : HasPreceedsEquivocation X2)
     : HasPreceedsEquivocation X1.
@@ -69,7 +69,7 @@ Section composite_preceeds_equivocation.
     specialize
       (constraint_subsumption_byzantine_message_prop
         i0 IM constraint1 constraint2 Hsubsumption
-      ); intro Hem. 
+      ); intro Hem.
     repeat split.
     - intros [m1 Hem1].
       unfold complement. simpl.
@@ -93,5 +93,5 @@ Section composite_preceeds_equivocation.
         ).
       assumption.
   Qed.
-      
+     
 End composite_preceeds_equivocation.
