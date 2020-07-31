@@ -92,8 +92,7 @@ Lemma update_indexed_eq
   (is : indexed_state l)
   (i : index)
   (news : state)
-  (Hin : In i l)
-  (Heq : project_indexed l is i Hin = news) :
+  (Heq : project_indexed l is i = news) :
   (update_indexed l is i news = is).
 Proof.
   induction is.
@@ -108,31 +107,115 @@ Proof.
       }
       rewrite Hsame.
       reflexivity.
-    + assert (Hin' : In i l). {
-        destruct Hin.
-        * subst. 
-          elim n. 
-          reflexivity.
-        * assumption.
-      }
-      assert (Hstep : project_indexed (v :: l) (Append v l s is) i Hin = project_indexed l is i Hin'). {
+    + 
+      assert (Hstep : project_indexed (v :: l) (Append v l s is) i = project_indexed l is i). {
         unfold project_indexed.
         rewrite eq.
         simpl.
-        
-        admit.
+        reflexivity.
       }
       
       assert (update_indexed l is i news = is). {
-        apply IHis with (Hin := Hin').
+        apply IHis.
         rewrite Hstep in Heq.
         assumption.
       }
       
       rewrite H.
       reflexivity.
-Admitted.
-  
+Qed.
+
+Lemma in_fast
+  (l : list index)
+  (a : index)
+  (b : index)
+  (Hin : In a (b :: l))
+  (Hneq : b <> a) :
+  In a l.
+Proof.
+  destruct Hin.
+  - subst. elim Hneq. reflexivity.
+  - assumption.
+Qed.
+
+Lemma update_indexed_same
+  (l : list index)
+  (is : indexed_state l)
+  (i : index)
+  (j : index)
+  (Heq : i = j)
+  (Hin : In i l)
+  (news : state) :
+  project_indexed l (update_indexed l is i news) j = news.
+Proof.
+  induction is.
+  - unfold In in Hin. 
+    exfalso. 
+    assumption.
+  - simpl. 
+    destruct (eq_dec v i) eqn : dec_eq; simpl; rewrite <- Heq; rewrite dec_eq; 
+    simpl.
+    + reflexivity.
+    + assert (Hin' : In i l). {
+        apply (in_fast l i v Hin n).
+      }
+      rewrite Heq in IHis.
+      rewrite Heq.
+      apply IHis.
+      rewrite <- Heq.
+      assumption.
+Qed.
+
+Lemma update_indexed_different
+  (l : list index)
+  (is : indexed_state l)
+  (i : index)
+  (j : index)
+  (Heq : i <> j)
+  (Hin : In i l /\ In j l)
+  (news : state) :
+  project_indexed l (update_indexed l is i news) j = project_indexed l is j.
+Proof.
+  induction is.
+  - simpl. 
+    reflexivity.
+  - simpl.
+    destruct (eq_dec v i).
+    + simpl.
+      destruct (eq_dec v j).
+      * rewrite e in e0. subst. elim Heq. reflexivity.
+      * reflexivity.
+    + simpl.
+      destruct (eq_dec v j).
+      * reflexivity.
+      * apply IHis.
+        destruct Hin.
+        split.
+        apply (in_fast l i v H n).
+        apply (in_fast l j v H0 n0).
+Qed.
+
+Lemma update_indexed_idempotent
+  (l : list index)
+  (is : indexed_state l)
+  (i : index)
+  (Hin : In i l)
+  (news : state) :
+  update_indexed l (update_indexed l is i news) i news = update_indexed l is i news.
+
+Proof.
+  induction is.
+  - simpl. reflexivity.
+  - simpl.
+    destruct (eq_dec v i) eqn : eq.
+    + simpl. rewrite eq. reflexivity.
+    + simpl. rewrite eq. 
+      assert (update_indexed l (update_indexed l is i news) i news = update_indexed l is i news). {
+        apply IHis.
+        apply (in_fast l i v Hin n).
+      }
+      rewrite H. reflexivity. 
+Qed.
 
 Fixpoint all_bottom_f (l : list index) : indexed_state l :=
   match l with
@@ -159,7 +242,7 @@ Lemma update_state_eq
       (news : state)
       (i : index)
       (Hin : In i index_listing)
-      (Heq : project big i = Some news)
+      (Heq : project big i = news)
       : update_state big news i = big.
 
 Proof.
@@ -168,10 +251,10 @@ Proof.
   destruct big.
   -reflexivity.
   - assert (Heqis : (update_indexed index_listing is i news) = is). {
-    apply update_indexed_eq with (Hin := proj2 Hfinite i).
-    unfold project in Heq.
-    inversion Heq.
-    reflexivity.
+      apply update_indexed_eq.
+      unfold project in Heq.
+      inversion Heq.
+      reflexivity.
     }
     rewrite Heqis.
     reflexivity.
@@ -183,7 +266,15 @@ Lemma update_state_idempotent
       (i : index)
       : update_state (update_state big news i) news i = update_state big news i.
 Proof.
-Admitted.
+  unfold update_state.
+  destruct big.
+  - reflexivity.
+  - specialize update_indexed_idempotent.
+    intros.
+    rewrite H.
+    reflexivity.
+    apply (proj2 Hfinite i).
+Qed.
 
 Fixpoint get_all_states
   (l : list index)
