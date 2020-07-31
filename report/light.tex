@@ -17,8 +17,8 @@ a message is a triple:
 
 \begin{coq}
 Variable hash : Type.
-Variable (about_H : `{StrictlyComparable hash}). 
-Definition justification_type : Type := list hash. 
+Variable (about_H : `{StrictlyComparable hash}).
+Definition justification_type : Type := list hash.
 Definition message : Type := C * V * justification_type.
 \end{coq}
 
@@ -32,14 +32,14 @@ syntactic equality.
 We define state equality set equality, that is,
 double inclusion between the sets of messages representing states.
 
-We assume an injective function from messages to hashes: 
+We assume an injective function from messages to hashes:
 \begin{coq}
 Parameters (hash_message : message -> hash)
            (hash_message_injective : Injective hash_message).
-\end{coq}    
+\end{coq}
 This allows us to recursively define a function \verb"hash_state" taking
 states and returning sorted lists of hashes, i.e., justifications, with the
-property that two justifications are equal iff they belong to 
+property that two justifications are equal iff they belong to
 states which are equal as sets:
 
 \begin{coq}
@@ -47,7 +47,7 @@ Lemma hash_state_injective : forall sigma1 sigma2,
   hash_state sigma1 = hash_state sigma2
   <->
   set_eq sigma1 sigma2.
-\end{coq}    
+\end{coq}
 
 This allows for the following inductive definition of protocol states:
 
@@ -60,7 +60,7 @@ Inductive protocol_state : state -> Prop :=
       valid_estimate c j ->
       forall (v : V) (s : state),
         In (c, v, hash_state j) s ->
-        protocol_state (set_remove compare_eq_dec 
+        protocol_state (set_remove compare_eq_dec
         													(c, v, hash_state j) s) ->
         NoDup s ->
         not_heavy s ->

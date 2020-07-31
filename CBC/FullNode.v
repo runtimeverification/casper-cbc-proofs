@@ -54,6 +54,7 @@ Definition make_sorted_message
   {C V : Type} `{about_M : StrictlyComparable (message C V)}
   (m : sig locally_sorted_msg)
   : sorted_message C V.
+Proof.
   destruct m as [((c,v), j) Hs].
   apply locally_sorted_message_justification in Hs.
   exact (c, v, exist _ j Hs).
@@ -63,7 +64,7 @@ Definition get_sorted_messages
   {C V : Type} `{about_M : StrictlyComparable (message C V)}
   (s : sorted_state C V)
   :  list (sorted_message C V)
-  := 
+  :=
   let (sigma, Hsigma) := s in
   let msgs := get_messages sigma in
   map make_sorted_message
@@ -74,11 +75,12 @@ Definition add_message_sorted
   (sm : sorted_message C V)
   (ss : sorted_state C V)
   :  sorted_state C V.
-destruct sm as [(c,v) [j Hj]].
-destruct ss as [s Hs].
-exists (add_in_sorted_fn (c, v, j) s).
-apply add_in_sorted_sorted; try assumption.
-constructor; assumption.
+Proof.
+  destruct sm as [(c,v) [j Hj]].
+  destruct ss as [s Hs].
+  exists (add_in_sorted_fn (c, v, j) s).
+  apply add_in_sorted_sorted; try assumption.
+  constructor; assumption.
 Defined.
 
 Lemma state0_neutral

@@ -9,7 +9,7 @@ From CasperCBC
 
 (**
 In this section we provide a definition for the [HasCommonFuturesEstimates]
-property and then we show that a VLSM equiped with this property 
+property and then we show that a VLSM equiped with this property
 has [final_and_consistent] decisions.
 *)
 
@@ -35,7 +35,7 @@ Context
 
 (**
 Let us fix an indexed set of VLSMs <<IM>> and their composition <<X>> using <<constraint>>.
-For each component of index i, let <<IE i>> be an [Estimator] for Xi and let 
+For each component of index i, let <<IE i>> be an [Estimator] for Xi and let
 <<ID i>> be a [decision] function for Xi, linked together by the
 [decision_estimator_property].
 
@@ -51,7 +51,7 @@ and the [union_has_consistent_estimators]; i.e.,
 all components yields the same estimates.
 *)
 
-Class HasCommonFutureEstimates := 
+Class HasCommonFutureEstimates :=
   { union : @state _ T -> @state _ T
   ; union_is_reachable
     : forall

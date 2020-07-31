@@ -104,7 +104,7 @@ Section CommuteIndexed.
     (ID : forall i : index, decision (IT i)).
 
   (* ** Decision consistency
-  
+
   First, let us introduce a definition of consistency which
   looks at states as belonging to a trace.
   *)
@@ -126,7 +126,7 @@ Section CommuteIndexed.
 
   Now let us give an alternative definition based on [in_futures]:
   *)
-  
+
   Definition consistent :=
       forall
         (s1 s2 : @state _ (composite_type IT))
@@ -192,8 +192,7 @@ Section CommuteIndexed.
       (Hcons : final_and_consistent)
       (i : index)
       (Hfr : finite_projection_friendly Hi IM constraint i)
-      : final (composite_vlsm_constrained_projection Hi IM constraint i) (ID i)
-      .
+      : final (composite_vlsm_constrained_projection Hi IM constraint i) (ID i).
   Proof.
     intros s1 s2 c1 c2 Hfuturesi HD1 HD2.
     specialize (projection_friendly_in_futures Hi IM constraint i Hfr s1 s2 Hfuturesi)

@@ -262,7 +262,8 @@ Proof.
 Qed.
 
 Instance CompareStrictOrder_Asymmetric {A} (compare : A -> A -> comparison) `{CompareStrictOrder A compare} : CompareAsymmetric compare.
-apply compare_asymmetric_intro.
+Proof.
+  apply compare_asymmetric_intro.
 Defined.
 
 (* Defining a compare_lt predicate from a compare operator *)
@@ -317,7 +318,8 @@ Qed.
 
 (* We can easily obtain inhabitants of above Typeclasses using Program Definitions, for instance : *)
 Program Definition make_compare_lt_asymmetric {A} `{CompareStrictOrder A} : Asymmetric (compare_lt compare).
-exact compare_lt_asymmetric.
+Proof.
+  exact compare_lt_asymmetric.
 Defined.
 
 (* A generic type class for inhabited types with a strictly ordered comparison operator *)
@@ -368,6 +370,59 @@ Program Definition sigify_compare {X} `{StrictlyComparable X} (P : X -> Prop) : 
 Next Obligation.
   exact (compare X0 X1).
 Defined.
+
+(* StrictlyComparable option type *)
+Definition option_compare
+  {X : Type}
+  (compare : X -> X -> comparison)
+  (ox oy : option X)
+  : comparison
+  :=
+  match ox, oy with
+  | None, None => Eq
+  | None, _ => Lt
+  | _, None => Gt
+  | Some x, Some y => compare x y
+  end.
+
+Lemma option_compare_reflexive
+  (X : Type)
+  {Xsc : StrictlyComparable X}
+  : CompareReflexive (option_compare compare).
+Proof.
+  intros [x|] [y|]; simpl; split; intro H; inversion H; try reflexivity.
+  - f_equal. apply StrictOrder_Reflexive in H. assumption.
+  - apply StrictOrder_Reflexive. reflexivity.
+Qed.
+
+Lemma option_compare_transitive
+  (X : Type)
+  {Xsc : StrictlyComparable X}
+  : CompareTransitive (option_compare compare).
+Proof.
+  intros [x|] [y|] [z|] [| |]; simpl; intros Hxy Hyz; try discriminate; try reflexivity.
+  - apply (StrictOrder_Transitive x y z _); assumption.
+  - apply (StrictOrder_Transitive x y z _); assumption.
+  - apply (StrictOrder_Transitive x y z _); assumption.
+Qed.
+
+Lemma strictorder_option
+  {X: Type}
+  (Xsc : StrictlyComparable X)
+  : CompareStrictOrder (option_compare compare).
+Proof.
+  split; exact (option_compare_reflexive X) || exact (option_compare_transitive X).
+Qed.
+
+(* Now we can have the following for free : *)
+Instance OptionStrictlyComparable
+  (X : Type)
+  {Xsc : StrictlyComparable X}
+  : StrictlyComparable (option X) :=
+  { inhabited := None;
+    compare := option_compare compare;
+    compare_strictorder := strictorder_option Xsc;
+  }.
 
 (* Composing StrictlyComparable types *)
 (* Constructing the compare function *)
@@ -479,7 +534,7 @@ Instance TripleStrictlyComparable (X Y Z : Type) `{StrictlyComparable X} `{Stric
 Definition triple_strictly_comparable_proj1_inhabited
   {X Y Z} `{HscXYZ : StrictlyComparable (X * Y * Z)}
   : X.
-
+Proof.
   destruct HscXYZ as [((x, y), z) _ _].
   exact x.
 Defined.
@@ -487,7 +542,7 @@ Defined.
 Definition triple_strictly_comparable_proj1_compare
   {X Y Z} `{HscXYZ : StrictlyComparable (X * Y * Z)}
   (x1 x2 : X) : comparison.
-
+Proof.
   destruct HscXYZ as [((x, y), z) compare _].
   exact (compare (x1, y, z) (x2, y, z)).
 Defined.
@@ -523,7 +578,7 @@ Definition triple_strictly_comparable_proj1
 Definition triple_strictly_comparable_proj2_inhabited
   {X Y Z} `{HscXYZ : StrictlyComparable (X * Y * Z)}
   : Y.
-
+Proof.
   destruct HscXYZ as [[(x, y) z] _ _].
   exact y.
 Defined.
@@ -531,7 +586,7 @@ Defined.
 Definition triple_strictly_comparable_proj2_compare
   {X Y Z} `{HscXYZ : StrictlyComparable (X * Y * Z)}
   (y1 y2 : Y) : comparison.
-
+Proof.
   destruct HscXYZ as [[(x, y) z] compare _].
   exact (compare (x, y1, z) (x, y2, z)).
 Defined.
@@ -567,7 +622,7 @@ Definition triple_strictly_comparable_proj2
 Definition triple_strictly_comparable_proj3_inhabited
   {X Y Z} `{HscXYZ : StrictlyComparable (X * Y * Z)}
   : Z.
-
+Proof.
   destruct HscXYZ as [[(x, y) z] _ _].
   exact z.
 Defined.
@@ -575,7 +630,7 @@ Defined.
 Definition triple_strictly_comparable_proj3_compare
   {X Y Z} `{HscXYZ : StrictlyComparable (X * Y * Z)}
   (z1 z2 : Z) : comparison.
-
+Proof.
   destruct HscXYZ as [[(x, y) z] compare _].
   exact (compare (x, y, z1) (x, y, z2)).
 Defined.
