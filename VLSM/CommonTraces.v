@@ -1,6 +1,7 @@
 From Coq Require Import List Streams.
 From Coq Require Import Program.Equality.
-From CasperCBC Require Import Lib.SsrExport Lib.Traces Lib.TraceProperties Lib.StreamExtras Lib.Preamble VLSM.Common.
+From CasperCBC Require Import Lib.SsrExport Lib.Traces Lib.TraceProperties Lib.TraceClassicalProperties.
+From CasperCBC Require Import Lib.StreamExtras Lib.Preamble VLSM.Common.
 Import ListNotations.
 
 Section VLSM.
@@ -21,15 +22,15 @@ CoInductive protocol_trace : trace -> Prop :=
 Definition protocol_ptrace tr :=
   protocol_trace tr /\ initial_state_prop (hd tr).
 
-Fixpoint protocol_trace_finite_transition_items (tr : trace) (h: finite tr) {struct h} : list transition_item :=
-  match tr as tr' return (finite tr' -> _) with
+Fixpoint protocol_trace_finite_transition_items (tr : trace) (h: finiteT tr) {struct h} : list transition_item :=
+  match tr as tr' return (finiteT tr' -> _) with
   | Tnil s => fun _ => []
   | Tcons s d tr => fun h =>
      {| l := tr_label d; input := tr_input d; destination := hd tr; output := tr_output d |} ::
-      protocol_trace_finite_transition_items tr (invert_finite_delay h)
+      protocol_trace_finite_transition_items tr (invert_finiteT_delay h)
   end h.
 
-Program CoFixpoint protocol_trace_infinite_transition_items (tr : trace) (h: infinite tr) : Stream transition_item :=
+Program CoFixpoint protocol_trace_infinite_transition_items (tr : trace) (h: infiniteT tr) : Stream transition_item :=
 match tr with
 | Tnil _ => False_rect _ _
 | Tcons s d tr =>
@@ -43,7 +44,8 @@ Next Obligation.
 by inversion h; subst.
 Defined.
 
-Lemma protocol_trace_finite_finite_protocol_trace_from : forall tr (h:finite tr), protocol_trace tr ->
+Lemma protocol_trace_finite_finite_protocol_trace_from : forall tr (h:finiteT tr),
+ protocol_trace tr ->
  finite_protocol_trace_from vlsm (hd tr) (protocol_trace_finite_transition_items tr h).
 Proof.
 refine (fix IH tr h {struct h} := _).
@@ -57,7 +59,8 @@ case: tr h => [s|s d tr] h Htr /=.
   by apply IH.
 Qed.
 
-Lemma protocol_trace_infinite_infinite_protocol_trace_from : forall tr (h:infinite tr), protocol_trace tr ->
+Lemma protocol_trace_infinite_infinite_protocol_trace_from : forall tr (h:infiniteT tr),
+ protocol_trace tr ->
  infinite_protocol_trace_from vlsm (hd tr) (protocol_trace_infinite_transition_items tr h).
 Proof.
 cofix CIH.
@@ -104,7 +107,8 @@ move => a l s0 s1 d tr Hs.
 by inversion Hs.
 Qed.
 
-Lemma finite_protocol_trace_from_protocol_trace : forall ls s, finite_protocol_trace_from vlsm s ls ->
+Lemma finite_protocol_trace_from_protocol_trace : forall ls s,
+ finite_protocol_trace_from vlsm s ls ->
  protocol_trace (transition_items_list_protocol_trace s ls).
 Proof.
 elim => //=.
@@ -113,15 +117,15 @@ elim => //=.
   by apply protocol_trace_nil.
 - move => a l IH s Hf.
   inversion Hf; subst => /=.
-  apply protocol_trace_further => /=; last first.
-  * have IH' := IH _ H2.
-    inversion IH'; subst.
-    + by rewrite /= (transition_items_list_protocol_trace_hd_nil _ _ _ H).
-    + by rewrite /= (transition_items_list_protocol_trace_hd_cons _ _ _ _ _ H).
-  * by apply IH.
+  apply protocol_trace_further => /=; first by apply IH.
+  have IH' := IH _ H2.
+  inversion IH'; subst.
+  * by rewrite /= (transition_items_list_protocol_trace_hd_nil _ _ _ H).
+  * by rewrite /= (transition_items_list_protocol_trace_hd_cons _ _ _ _ _ H).
 Qed.
 
-Lemma infinite_protocol_trace_from_protocol_trace : forall st s, infinite_protocol_trace_from vlsm s st ->
+Lemma infinite_protocol_trace_from_protocol_trace : forall st s,
+ infinite_protocol_trace_from vlsm s st ->
  protocol_trace (transition_items_stream_protocol_trace s st).
 Proof.
 cofix CIH.
@@ -131,6 +135,40 @@ rewrite [transition_items_stream_protocol_trace _ _]trace_destr /=.
 apply protocol_trace_further.
 - by apply CIH.
 - by inversion H2; subst.
+Qed.
+
+Definition Trace_from_trace (tr : trace) : Trace :=
+match finiteT_infiniteT_dec tr with
+| left Hfin =>
+  Finite (hd tr) (protocol_trace_finite_transition_items tr Hfin)
+| right Hinf =>
+  Infinite (hd tr) (protocol_trace_infinite_transition_items tr Hinf)
+end.
+
+Lemma Trace_from_trace_ptrace_from_prop : forall tr,
+ protocol_trace tr ->
+ ptrace_from_prop vlsm (Trace_from_trace tr).
+Proof.
+move => tr Hptr.
+rewrite /Trace_from_trace.
+case (finiteT_infiniteT_dec _) => [Hfin|Hinf] /=.
+- exact: protocol_trace_finite_finite_protocol_trace_from.
+- exact: protocol_trace_infinite_infinite_protocol_trace_from.
+Qed.
+
+Definition trace_from_Trace (Tr : Trace) : trace :=
+match Tr with
+| Finite s ls => transition_items_list_protocol_trace s ls
+| Infinite s sm => transition_items_stream_protocol_trace s sm
+end.
+
+Lemma trace_from_Trace_ptrace_from_prop : forall Tr,
+ ptrace_from_prop vlsm Tr ->
+ protocol_trace (trace_from_Trace Tr).
+Proof.
+case => [s ls|s sm] /=.
+- exact: finite_protocol_trace_from_protocol_trace.
+- exact: infinite_protocol_trace_from_protocol_trace.
 Qed.
 
 End VLSM.
