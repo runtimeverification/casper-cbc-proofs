@@ -439,4 +439,24 @@ Proof.
       right. right. assumption.
 Qed.
 
+(** As a corollary of the above, <<a>> can be found before <<b>> in
+[top_sort l].
+
+This result is equivalent with the one above when there are no duplicate
+elements in <<l>>; however it is strictly weaker in the general case.
+*)
+Corollary top_sort_preceeds
+  : exists l1 l2 l3, top_sort l = l1 ++ [a] ++ l2 ++ [b] ++ l3.
+Proof.
+  apply top_sort_set_eq in Hb.
+  apply in_split in Hb.
+  destruct Hb as [l12 [l3 Hb']].
+  specialize (top_sort_correct l12 l3 Hb').
+  intros [Ha12 _]. apply in_split in Ha12.
+  destruct Ha12 as [l1 [l2 Ha12]].
+  subst l12.
+  exists l1. exists l2. exists l3. rewrite Hb'. rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
 End top_sort.
