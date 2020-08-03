@@ -420,3 +420,17 @@ Definition VLSM_list : VLSM message := mk_vlsm VLSM_list_machine.
 
 End ListNode.
 
+Section Equivocation.
+
+Context 
+  {index : Type}
+  {index_self : index}
+  {index_listing : list index}
+  {Hfinite : Listing index_listing}
+  {dec : EqDec index}
+  {temp_dec : EqDec (option bool)}.
+  
+  
+  
+
+
