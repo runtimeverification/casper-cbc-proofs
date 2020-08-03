@@ -1,16 +1,16 @@
 The properties desired of CBC Casper broadly fall into two categories: 1) safety and 2) non-triviality. Definition of what these two things are. Some intuition on why these two things are important. We show below our incremental approach to proving these properties, starting from a definition of CBC Casper in terms of a state transition system with a reflexive and transitive reachability relation, also known in rewrite logic literature as a partial order and in modal logic literature as a KT4 Kripke model.
-\subsection{Partial order} 
+\subsection{Partial order}
 \begin{lstlisting}
 Class PartialOrder :=
 { A : Type;
 	A_eq_dec : forall (a1 a2 : A), {a1 = a2} + {a1 <> a2};
-	A_inhabited : exists (a0 : A), True; 
+	A_inhabited : exists (a0 : A), True;
 	A_rel : A -> A -> Prop;
 	A_rel_refl :> Reflexive A_rel;
 	A_rel_trans :> Transitive A_rel;
 }.
 \end{lstlisting}
-At this level, we are able to derive all of the safety properties desired of CBC Casper, namely: 
+At this level, we are able to derive all of the safety properties desired of CBC Casper, namely:
 \begin{lstlisting}
 Theorem pair_common_futures '{CBC_protocol_eq}:
 forall s1 s2 : pstate,
@@ -25,7 +25,7 @@ exists ps : pstate, Forall (fun ps' => pstate_rel ps' ps) ls.
 Theorem pair_consistency_prot '{CBC_protocol_eq} :
 forall s1 s2 : pstate,
 (equivocation_weight (state_union s1 s2) <= proj1_sig t)%R ->
-forall P, 
+forall P,
 ~ (decided P s1 /\ decided (not P) s2).
 
 Theorem n_consistency_prot '{CBC_protocol_eq} :
@@ -36,34 +36,34 @@ state_consistency ls.
 Theorem n_consistency_consensus '{CBC_protocol_eq} :
 forall ls : list pstate,
 (equivocation_weight (fold_right state_union state0 (map (fun ps => proj1_sig ps) ls)) <= proj1_sig t)%R ->
-consensus_value_consistency ls. 
+consensus_value_consistency ls.
 \end{lstlisting}
-These results correspond to Theorems X - Y in \cite{CBCfull}. 
+These results correspond to Theorems X - Y in \cite{CBCfull}.
 \newline
 
 
-\subsection{Partial order with non-local confluence} 
-In order to prove non-triviality properties, we additionally require  that our partial order possess certain confluence properties. In fact, we find that non-triviality as defined in \cite{CBCfull} directly captures the notion of non-local confluence in state transition systems, defined abstractly as follows: 
+\subsection{Partial order with non-local confluence}
+In order to prove non-triviality properties, we additionally require  that our partial order possess certain confluence properties. In fact, we find that non-triviality as defined in \cite{CBCfull} directly captures the notion of non-local confluence in state transition systems, defined abstractly as follows:
 
 \begin{lstlisting}
 Class PartialOrderNonLCish '{PartialOrder} :=
 { no_local_confluence_ish : exists (a a1 a2 : A),
 														A_rel a a1 /\ A_rel a a2 /\
 														~ exists (a' : A), A_rel a1 a' /\ A_rel a2 a';
-}. 
+}.
 \end{lstlisting}
 
-\subsection{Abstract protocol} 
-To provide a richer, protocol-specific language to describe our desired properties, we give an abstract type class from which we can generalize a partial order, but which contains information specific to consensus protocols, including types for validators, consensus values, states, and an abstract, total estimator function. 
+\subsection{Abstract protocol}
+To provide a richer, protocol-specific language to describe our desired properties, we give an abstract type class from which we can generalize a partial order, but which contains information specific to consensus protocols, including types for validators, consensus values, states, and an abstract, total estimator function.
 \begin{lstlisting}
 Class CBC_protocol_eq :=
 {
-consensus_values : Type; 
-about_consensus_values : StrictlyComparable consensus_values; 
-validators : Type; 
+consensus_values : Type;
+about_consensus_values : StrictlyComparable consensus_values;
+validators : Type;
 about_validators : StrictlyComparable validators;
-weight : validators -> {r | (r > 0)%R}; 
-t : {r | (r >= 0)%R}; 
+weight : validators -> {r | (r > 0)%R};
+t : {r | (r >= 0)%R};
 suff_val : exists vs, NoDup vs /\ ((fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R) vs > (proj1_sig t))%R;
 state : Type;
 about_state : StrictlyComparable state;
@@ -72,16 +72,16 @@ state_eq : state -> state -> Prop;
 state_union : state -> state -> state;
 state_union_comm : forall s1 s2, state_eq (state_union s1 s2) (state_union s2 s1);
 reach : state -> state -> Prop;
-reach_refl : forall s, reach s s; 
-reach_trans : forall s1 s2 s3, reach s1 s2 -> reach s2 s3 -> reach s1 s3; 
-reach_union : forall s1 s2, reach s1 (state_union s1 s2);  
-reach_morphism : forall s1 s2 s3, reach s1 s2 -> state_eq s2 s3 -> reach s1 s3;  
-E : state -> consensus_values -> Prop; 
-estimator_total : forall s, exists c, E s c; 
-prot_state : state -> Prop; 
-about_state0 : prot_state state0; 
-equivocation_weight : state -> R; 
-equivocation_weight_compat : forall s1 s2, (equivocation_weight s1 <= equivocation_weight (state_union s2 s1))%R; 
+reach_refl : forall s, reach s s;
+reach_trans : forall s1 s2 s3, reach s1 s2 -> reach s2 s3 -> reach s1 s3;
+reach_union : forall s1 s2, reach s1 (state_union s1 s2);
+reach_morphism : forall s1 s2 s3, reach s1 s2 -> state_eq s2 s3 -> reach s1 s3;
+E : state -> consensus_values -> Prop;
+estimator_total : forall s, exists c, E s c;
+prot_state : state -> Prop;
+about_state0 : prot_state state0;
+equivocation_weight : state -> R;
+equivocation_weight_compat : forall s1 s2, (equivocation_weight s1 <= equivocation_weight (state_union s2 s1))%R;
 about_prot_state : forall s1 s2, prot_state s1 -> prot_state s2 ->
 (equivocation_weight (state_union s1 s2) <= proj1_sig t)%R -> prot_state (state_union s1 s2);
 }.
@@ -89,4 +89,4 @@ about_prot_state : forall s1 s2, prot_state s1 -> prot_state s2 ->
 
 The plan here is to 1) say that our t
 
-We prove that \verb|CBC_protocol_eq| can derive \verb|PartialOrder|. 
+We prove that \verb|CBC_protocol_eq| can derive \verb|PartialOrder|.

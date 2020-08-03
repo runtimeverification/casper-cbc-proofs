@@ -17,12 +17,9 @@ Notation "'add' ( c , v , j ) 'to' sigma" :=
 (* Constructing a StrictlyComparable state type *)
 Lemma state_inhabited
   {C} {V} `{about_C : StrictlyComparable C} `{about_V : StrictlyComparable V}
-  : { s : @state C V | True}.
+  : @state C V.
 Proof.
-  destruct about_C, about_V.
-  destruct inhabited, inhabited0.
-  split; try exact I.
-  exact (Next x x0 Empty Empty).
+  exact (state0 C V).
 Qed.
 
 Fixpoint state_compare
@@ -122,13 +119,11 @@ Definition message (C V : Type) : Type := (C * V * @state C V).
 
 Lemma message_inhabited
   {C} `{about_C : StrictlyComparable C} {V} `{about_V : StrictlyComparable V}
-  : { m : message C V | True}.
+  : message C V.
 Proof.
-  assert (inhabitedC := about_C); destruct inhabitedC as [inhabitedC _ _ ]; destruct inhabitedC.
-  assert (inhabitedV := about_V); destruct inhabitedV as [inhabitedV _ _ ]; destruct inhabitedV.
-  destruct (@state_inhabited C V about_C about_V).
-  split; try exact I.
-  exact (x,x0,x1).
+  assert (inhabitedC := about_C); destruct inhabitedC as [inhabitedC _ _ ].
+  assert (inhabitedV := about_V); destruct inhabitedV as [inhabitedV _ _ ].
+  exact (inhabitedC,inhabitedV,state0 C V).
 Qed.
 
 Definition estimate {C V} (msg : message C V ) : C :=
@@ -205,7 +200,8 @@ Qed.
 Instance message_strictorder
   {C} `{about_C : StrictlyComparable C} {V} `{about_V : StrictlyComparable V}
   : CompareStrictOrder (@message_compare C about_C V about_V).
-split.
+Proof.
+  split.
   - intros msg1 msg2. unfold message_compare.
     rewrite (state_compare_reflexive (next msg1 Empty) (next msg2 Empty)).
     split; intros; subst; try reflexivity.
@@ -232,8 +228,9 @@ Definition message_lt
 Instance message_lt_strictorder
   {C V} `{about_M : StrictlyComparable (message C V)}
   : StrictOrder (@message_lt C V about_M).
-split. apply compare_lt_irreflexive.
-apply compare_lt_transitive.
+Proof.
+  split. apply compare_lt_irreflexive.
+  apply compare_lt_transitive.
 Defined.
 
 (* Defining state_union using messages *)
@@ -670,8 +667,7 @@ Lemma add_preserves_inclusion
   (sigma sigma' : @state C V)
   (msg' : message C V)
   (Hincl : syntactic_state_inclusion sigma sigma')
-  : syntactic_state_inclusion sigma (add_in_sorted_fn msg' sigma')
-  .
+  : syntactic_state_inclusion sigma (add_in_sorted_fn msg' sigma').
 Proof.
   apply incl_tran with (msg' :: get_messages sigma'); try apply set_eq_add_in_sorted.
   apply incl_tl. assumption.

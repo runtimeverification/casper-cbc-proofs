@@ -21,14 +21,13 @@ Section Full.
     :=
     s = @sorted_state0 C V message_type.
 
-  Definition state0 : {s | initial_state_prop s} := 
+  Definition state0 : {s | initial_state_prop s} :=
     exist _ (@sorted_state0 C V message_type) eq_refl.
 
-  Definition message0 : message := 
-    let (c,_) := @Lib.Preamble.inhabited _ about_C in
-    let (v,_) := @Lib.Preamble.inhabited _ about_V in
-    (c,v,@sorted_state0 C V message_type)
-    .
+  Definition message0 : message :=
+    let c := @Lib.Preamble.inhabited _ about_C in
+    let v := @Lib.Preamble.inhabited _ about_V in
+    (c,v,@sorted_state0 C V message_type).
 
   Definition initial_message_prop (m : message) : Prop := False.
 
@@ -36,7 +35,7 @@ Section Full.
   Proof.
     destruct (@message_type C about_C V about_V).
     assert (inhabited_copy := inhabited).
-    destruct inhabited_copy as [[(c, v) _] _].
+    destruct inhabited_copy as [(c, v) _].
     exists (c, v, exist _ Empty LSorted_Empty); auto.
   Qed.
 
@@ -124,7 +123,8 @@ Section Full.
     |}.
 
   Definition PS_proj1 : @ProtocolState C V message_type Hm Hrt He_proj1.
-  constructor.
+  Proof.
+    constructor.
   Defined.
 
   (* Protocol state *)
@@ -192,8 +192,7 @@ Section Full.
     (j : @state _ VLSM_type_full_client1)
     (Hin : in_state (c, v, (proj1_sig j)) (proj1_sig s))
     , (protocol_prop VLSM_full_client1) (add_message_sorted (c, v, j) j, Some (c, v, j))
-      /\ syntactic_state_inclusion (proj1_sig j) (proj1_sig s)
-    .
+      /\ syntactic_state_inclusion (proj1_sig j) (proj1_sig s).
   Proof.
     remember (s, om) as som.
     generalize dependent om. generalize dependent s.
@@ -470,6 +469,6 @@ Section Full.
 
  *)
 
- 
+
 
 End Full.

@@ -81,6 +81,18 @@ Proof.
   ; (left; reflexivity) || (right; apply H; assumption).
 Qed.
 
+Lemma set_eq_Forall
+  {A : Type}
+  (s1 s2 : set A)
+  (H12 : set_eq s1 s2)
+  (P : A -> Prop)
+  : Forall P s1 <-> Forall P s2.
+Proof.
+  split; intros H; rewrite Forall_forall in *; intros x Hx
+  ; apply H; apply H12; assumption
+  .
+Qed.
+
 
 Fixpoint set_eq_fn_rec {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (s1 s2 : list A) : bool :=
   match s1 with
@@ -224,8 +236,7 @@ Qed.
 
 Lemma set_union_empty {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s1 s2,
   set_union Aeq_dec s1 s2 = nil ->
-  s1 = nil /\ s2 = nil
-  .
+  s1 = nil /\ s2 = nil.
 Proof.
   intros.
   destruct s2.
@@ -260,6 +271,31 @@ Proof.
     + subst. apply set_union_incl_left.
     + apply IHss in H. apply incl_tran with (fold_right (set_union Aeq_dec) [] ss); try assumption.
       apply set_union_incl_right.
+Qed.
+
+Lemma set_union_in_iterated
+  {A : Type}
+  (Aeq_dec : forall x y:A, {x = y} + {x <> y})
+  (ss : list (set A))
+  (a : A)
+  : In a (fold_right (set_union Aeq_dec) nil ss)
+  <-> Exists (fun s => In a s) ss.
+Proof.
+  rewrite Exists_exists.
+  induction ss; split; simpl.
+  - intro H; inversion H.
+  - intros [x [Hin _]]; inversion Hin.
+  - intro Hin. apply set_union_iff in Hin.
+    destruct Hin as [Hina0 | Hinss].
+    + exists a0. split; try assumption. left. reflexivity.
+    + apply IHss in Hinss. destruct Hinss as [x [Hinss Hinx]].
+      exists x. split; try assumption.
+      right. assumption.
+  - rewrite set_union_iff.
+    intros [x [[Heqa0 | Hinss] Hinx]]; subst.
+    + left. assumption.
+    + right. apply IHss.
+      exists x. split; assumption.
 Qed.
 
 Lemma set_union_empty_left {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s,
@@ -445,6 +481,21 @@ Proof.
     + apply set_remove_1 in Hin. assumption.
 Qed.
 
+Lemma set_remove_length
+  {A : Type}
+  (Aeq_dec : forall x y:A, {x = y} + {x <> y})
+  (x : A)
+  (s : set A)
+  (Hx : In x s)
+  : length s = S (length (set_remove Aeq_dec x s)).
+Proof.
+  generalize dependent x. induction s; intros; inversion Hx; subst.
+  - rewrite set_remove_first;  reflexivity.
+  - simpl. f_equal.
+    destruct (Aeq_dec x a); try reflexivity.
+    apply IHs. assumption.
+Qed.
+
 Lemma set_eq_remove {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s1 s2,
   NoDup s1 ->
   NoDup s2 ->
@@ -466,8 +517,7 @@ Lemma incl_remove_union  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : fora
   NoDup s2 ->
   incl
     (set_remove Aeq_dec x (set_union Aeq_dec s1 s2))
-    (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-  .
+    (set_union Aeq_dec s1 (set_remove Aeq_dec x s2)).
 Proof.
   intros. intros y Hin. apply set_remove_iff in Hin.
   - apply set_union_intro. destruct Hin. apply set_union_elim in H1.
@@ -482,8 +532,7 @@ Lemma set_eq_remove_union_in  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) :
   In x s1 ->
   set_eq
     (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-    (set_union Aeq_dec s1 s2)
-  .
+    (set_union Aeq_dec s1 s2).
 Proof.
   split; intros msg Hin; apply set_union_iff; apply set_union_iff in Hin
   ; destruct Hin; try (left; assumption)
@@ -500,8 +549,7 @@ Lemma set_eq_remove_union_not_in  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y
   ~ In x s1 ->
   set_eq
     (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-    (set_remove Aeq_dec x (set_union Aeq_dec s1 s2))
-  .
+    (set_remove Aeq_dec x (set_union Aeq_dec s1 s2)).
 Proof.
   intros.
   assert (HnodupUs1s2 := H0).

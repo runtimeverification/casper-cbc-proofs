@@ -6,10 +6,10 @@ each message being a triple $(c, v, j)$, where:
     \item $c$ is a (proposed) consensus value;
     \item $v$ identifies the message sender;
     \item $j$, the justification, is the {\em protocol state} seen by the sender
-        at the time of message sending.  
+        at the time of message sending.
 \end{itemize}
 
-There are two technical difficulties with the above definition:  
+There are two technical difficulties with the above definition:
 \begin{itemize}
     \item States and messages are mutually recursive: states are sets of messages, each containing a state;
     \item Message ordering should not matter
@@ -33,7 +33,7 @@ Notation "'add' ( c , v , j ) 'to' sigma" :=
   (at level 20).
 \end{coq}
 
-This definition addresses the first difficulty mentioned above by capturing the recursive nature of states. 
+This definition addresses the first difficulty mentioned above by capturing the recursive nature of states.
 
 The second issue critical to the notion of state equality. Defining an equivalence between states which disregards message ordering is possible but non-trivial: the definition would itself need to be recursive, as it requires an equivalence
 on messages, which in turn is defined in terms of the same state equivalence.
@@ -71,13 +71,13 @@ Note that defining this ordering requires that there exist orderings on
 consensus values and validators, but these can be any orderings,
 and a total ordering is guaranteed to exists for any set in set theory
 by the axiom of choice \cite{Gonzalez}. The existence of these orderings is reflected in our \verb|StrictlyComparable| types for consensus values and validators.
-    
+
 This ordering naturally induces an ordering on messages, and thus allows us
 to define the notion of a \verb|LocallySorted| state, i.e., one in which
 each message is smaller than the next and all justifications are themselves
 \verb|LocallySorted|.
 
-Choosing \verb|LocallySorted| states as representatives for states thus reducing the equality testing between states to syntactic equality checking. 
+Choosing \verb|LocallySorted| states as representatives for states thus reducing the equality testing between states to syntactic equality checking.
 
 Protocol states are defined by means of an inductive predicate on states as follows:
 \begin{coq}

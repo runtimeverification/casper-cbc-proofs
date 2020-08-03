@@ -9,6 +9,7 @@ docs
 Makefile.coq
 Makefile.coq.conf
 .depend
+.history
 .coqdeps.d
 *.dep
 *.depend

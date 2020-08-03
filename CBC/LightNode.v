@@ -6,8 +6,7 @@ Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC
 (* Lists of state hashes *)
 Definition justification_type (hash : Type) : Type := list hash.
 
-Lemma justification_type_inhabited {hash} : { j : justification_type hash | True}.
-Proof. split; auto. exact []. Qed.
+Definition justification_type_inhabited {hash} : justification_type hash := [].
 
 Definition justification_compare
   {hash} `{HscH : StrictlyComparable hash}
@@ -143,8 +142,7 @@ Class InjectiveMessageHash message hash `{Hmh : MessageHash message hash} :=
 (* Additionally, we don't care about sorting *)
 Definition state C V hash := set (message C V hash).
 
-Lemma state_inhabited {C V hash} : { s : state C V hash| True}.
-Proof. exists []. auto. Qed.
+Definition state_inhabited {C V hash} : state C V hash := [].
 
 Definition state_compare
   {C V hash} `{Hsc3 : StrictlyComparable3 C V hash}

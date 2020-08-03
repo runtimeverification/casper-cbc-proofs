@@ -1,12 +1,15 @@
 -Q . CasperCBC
 
 VLSM/Common.v
+VLSM/CommonTraces.v
 VLSM/Composition.v
 VLSM/Decisions.v
 VLSM/ProjectionTraces.v
 VLSM/CommonFutures.v
 VLSM/Validating.v
 VLSM/ByzantineTraces.v
+VLSM/Equivocation.v
+VLSM/PreceedsEquivocation.v
 VLSM/FullNodeSimple.v
 VLSM/FullNodeComposite.v
 VLSM/ListNode.v
@@ -17,9 +20,17 @@ CBC/Definitions.v
 CBC/FullNode.v
 CBC/LightNode.v
 CBC/Protocol.v
+CBC/Equivocation.v
+CBC/FullNode/Validator/State.v
+CBC/FullNode/Validator/Equivocation.v
 Lib/StreamExtras.v
 Lib/RealsExtras.v
 Lib/ListSetExtras.v
 Lib/SortedLists.v
+Lib/TopSort.v
 Lib/ListExtras.v
 Lib/Preamble.v
+Lib/TraceClassicalProperties.v
+Lib/TraceProperties.v
+Lib/Traces.v
+Lib/SsrExport.v
