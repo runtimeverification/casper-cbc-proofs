@@ -1,7 +1,7 @@
 Require Import Bool List Streams Logic.Epsilon Logic.Decidable Reals ProofIrrelevance Fin FinFun.
 Import ListNotations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions CBC.FullNode.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions VLSM.Equivocation CBC.FullNode.
 
 Section ListNode.
 
@@ -44,6 +44,18 @@ with indexed_state : list index -> Type :=
       (s : state) (is : indexed_state l),
   indexed_state (v :: l)
 .
+
+
+Fixpoint depth (s : state) : nat :=
+  match s with
+  | Bottom => 0
+  | Something cv ls => depth_indexed index_listing ls
+  end
+  with depth_indexed (l : list index) (ls : indexed_state l) : nat :=
+  match ls with
+  | Empty => 0
+  | Append v l' s' is' => max (depth s') (depth_indexed l' is') 
+  end.
 
 (** Some utility functions. **)
 
@@ -286,6 +298,7 @@ Fixpoint get_all_states
   - exact (s :: get_all_states l i).
   Defined.
 
+
 (** Our only initial state will be Bottom. **)
 
 Definition state00 := Bottom.
@@ -416,6 +429,7 @@ Instance VLSM_list : VLSM LSM_list :=
     ; valid := valid
   }.
 
+
 End ListNode.
 
 Section Equivocation.
@@ -425,10 +439,57 @@ Context
   {index_self : index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
-  {dec : EqDec index}
-  {temp_dec : EqDec (option bool)}.
+  {idec : EqDec index}
+  {temp_dec : EqDec (option bool)}
+  (X := @VLSM_list _ index_self index_listing idec temp_dec)
+  {sdec : EqDec (@state index index_listing)}.
   
-  
-  
+  Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
+    @project_indexed _ index_listing _ l ls who.
+    
+  Fixpoint search_sent (s target : state) (who : index) (d : nat) : bool :=
+    match sdec s target with
+    | left _ => true
+    | _ => match s, d with
+           | Bottom, _ => false
+           | _, 0 => false
+           | (Something cv ls), (S d') => search_sent (last_recorded index_listing ls who) target who d' 
+           end
+    end.
+    
+  Definition send_oracle (who : index) (s : state) (m : message)  : bool :=
+    let who := fst m in
+    let what := snd m in
+    match idec who index_self with
+    | right _ => false
+    | left _ => match s with 
+                | Bottom => false
+                | Something cv ls => search_sent (last_recorded index_listing ls who) what who (depth s)
+                end
+    end.
+    
+    (** Soundness of sending oracle. WIP **)
+    
+    Lemma send_oracle_prop 
+      (s : state)
+      (m : message) :
+      has_been_sent_prop X (send_oracle index_self) s m.
+    
+    Proof.
+      unfold has_been_sent_prop.
+      unfold all_traces_have_message_prop.
+      split.
+      - intros.
+      unfold send_oracle in H.
+      destruct (idec (fst m) index_self) eqn:eq.
+      + induction s.
+        * discriminate H.
+        * admit.   
+      + discriminate H.
+      -admit.
+    Admitted.
+    
+End Equivocation.
+      
 
 
