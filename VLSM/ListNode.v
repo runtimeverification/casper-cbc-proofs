@@ -418,3 +418,17 @@ Instance VLSM_list : VLSM LSM_list :=
 
 End ListNode.
 
+Section Equivocation.
+
+Context 
+  {index : Type}
+  {index_self : index}
+  {index_listing : list index}
+  {Hfinite : Listing index_listing}
+  {dec : EqDec index}
+  {temp_dec : EqDec (option bool)}.
+  
+  
+  
+
+
