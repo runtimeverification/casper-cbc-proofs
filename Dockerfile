@@ -49,7 +49,7 @@ RUN    opam init --auto-setup --yes --jobs=${NJOBS} --compiler=${COMPILER} --dis
 
 # From: https://github.com/coq-community/docker-coq/blob/master/Dockerfile
 
-ENV COQ_VERSION="8.11.2"
+ENV COQ_VERSION="8.12.0"
 ENV COQ_EXTRA_OPAM="coq-bignums"
 
 RUN    eval $(opam env --switch=${COMPILER} --set-switch)   \

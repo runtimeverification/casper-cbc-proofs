@@ -31,8 +31,8 @@ license:
   file: LICENSE.md
 
 supported_coq_versions:
-  text: 8.11 or later
-  opam: '{>= "8.11" & < "8.13~"}'
+  text: 8.12 or later
+  opam: '{>= "8.12" & < "8.13~"}'
 
 namespace: CasperCBC
 
