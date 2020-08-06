@@ -1113,6 +1113,20 @@ It inherits some previously introduced definitions, culminating with the
       subst.
       assumption.
     Qed.
+    
+    Lemma trace_states_are_protocol
+      (s : state)
+      (is : initial_state)
+      (tr : list transition_item)
+      (Hin : In s (List.map destination tr))
+      : protocol_state_prop s.
+      
+      Proof.
+        pose proof in_split as in_split.
+        apply in_split in Hin.
+        destruct Hin as [l1 [l2 Hconcat]].
+        admit.
+      Admitted.
 
         (* end hide *)
 

@@ -54,7 +54,7 @@ Fixpoint depth (s : state) : nat :=
   with depth_indexed (l : list index) (ls : indexed_state l) : nat :=
   match ls with
   | Empty => 0
-  | Append v l' s' is' => max (depth s') (depth_indexed l' is') 
+  | Append v l' s' is' => max (depth s') (depth_indexed l' is') + 1 
   end.
 
 (** Some utility functions. **)
@@ -248,7 +248,36 @@ Definition update_state (big : state) (news : state) (i : index) : state :=
   | Bottom => Bottom
   | Something cv f => Something cv (update_indexed index_listing f i news)
   end.
-  
+
+(* update_consensus doesn't touch state *)
+Lemma update_consensus_clean
+  (s : state)
+  (i : index)
+  (value : bool) :
+  project s i = project (update_consensus s value) i.
+
+Proof.
+  unfold update_consensus.
+  destruct s.
+  - simpl. reflexivity.
+  - unfold project. reflexivity.
+Qed.
+
+Lemma project_same
+  (s : state)
+  (news : state)
+  (i : index)
+  (Hnot_bottom : s <> Bottom) :
+  project (update_state s news i) i = news.
+Proof.
+  unfold project.
+  destruct s.
+  - elim Hnot_bottom. reflexivity.
+  - simpl. apply update_indexed_same.
+    + reflexivity.
+    + apply ((proj2 Hfinite) i).
+Qed.
+
 Lemma update_state_eq
       (big : state)
       (news : state)
@@ -303,16 +332,19 @@ Fixpoint get_all_states
 
 Definition state00 := Bottom.
 
-Definition initial_state_prop (s : state) : Prop := (s = Bottom).
+Definition initial_state_prop (s : state) : Prop := 
+  exists (cv : bool),
+  (s = Something cv all_bottom).
 
-Lemma bottom_good : initial_state_prop Bottom.
+Lemma bottom_good : initial_state_prop (Something false all_bottom).
   Proof.
     unfold initial_state_prop.
-    auto.
+    exists false.
+    reflexivity.
   Qed.
 
 Definition state0 : {s | initial_state_prop s} := 
-  exist _ Bottom bottom_good.
+  exist _ (Something false all_bottom) bottom_good.
 
 (** Messages are pairs of indices and states.
     There are no initial messages.
@@ -442,19 +474,30 @@ Context
   {idec : EqDec index}
   {temp_dec : EqDec (option bool)}
   (X := @VLSM_list _ index_self index_listing idec temp_dec)
+  (preX := pre_loaded_vlsm X)
   {sdec : EqDec (@state index index_listing)}.
   
   Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
     @project_indexed _ index_listing _ l ls who.
     
-  Fixpoint search_sent (s target : state) (who : index) (d : nat) : bool :=
-    match sdec s target with
+  Fixpoint rec_history (s : state) (who : index) (d : nat) : list state :=
+    match s, d with
+    | Bottom, _ => []
+    | _, 0 => []
+    | (Something cv ls), (S d') => s :: rec_history (last_recorded index_listing ls who) who d'
+    end.
+    
+  Definition get_history (s : state) (who : index) : list state :=
+     match s with
+     | Bottom => []
+     | Something cv ls => let child := last_recorded index_listing ls who in
+                          rec_history child who (depth child)
+    end.
+    
+  Definition state_eqb (s1 s2 : state) : bool :=
+    match sdec s1 s2 with
     | left _ => true
-    | _ => match s, d with
-           | Bottom, _ => false
-           | _, 0 => false
-           | (Something cv ls), (S d') => search_sent (last_recorded index_listing ls who) target who d' 
-           end
+    | right _ => false
     end.
     
   Definition send_oracle (who : index) (s : state) (m : message)  : bool :=
@@ -462,13 +505,199 @@ Context
     let what := snd m in
     match idec who index_self with
     | right _ => false
-    | left _ => match s with 
+    | left _ => match s with
                 | Bottom => false
-                | Something cv ls => search_sent (last_recorded index_listing ls who) what who (depth s)
+                | Something cv ls => existsb (state_eqb what) (get_history s who)
                 end
     end.
+
+    Lemma last_recorded_present
+      (s child : state)
+      (ls : indexed_state index_listing)
+      (cv : bool)
+      (Heq : s = Something cv ls)
+      (Hchild : last_recorded index_listing ls index_self = child)
+      (tr : protocol_trace (pre_loaded_vlsm X))
+      (last : transition_item)
+      (prefix : list transition_item)
+      (Hpr : trace_prefix (proj1_sig tr) last prefix)
+      (Hlast : destination last = s) :
+      List.Exists (fun (elem : transition_item) => output elem = Some (index_self, child)) prefix.
+      
+    Proof.
+    Admitted.
     
-    (** Soundness of sending oracle. WIP **)
+    Lemma protocol_no_bottom 
+      (s : protocol_state preX) :
+      (proj1_sig s) <> Bottom.
+    
+    Proof.
+      destruct s.
+      simpl.
+      destruct p.
+      remember (x, x0) as gigi.
+      generalize dependent x0.
+      generalize dependent x.
+      induction H.
+      - intros.
+        simpl in *.
+        destruct is.
+        simpl in *.
+        unfold initial_state_prop in i.
+        destruct i.
+        unfold s.
+        inversion Heqgigi.
+        subst.
+        discriminate.
+      - intros.
+        simpl in *.
+        unfold s.
+        inversion Heqgigi.
+        unfold s.
+        discriminate.
+      - destruct l eqn : eq.
+        + intros.
+          simpl in *.
+          inversion Heqgigi.
+          unfold update_consensus.
+          unfold update_state.
+          assert (dif : s <> Bottom). {
+            apply IHprotocol_prop1 with (x0 := _om).
+            reflexivity.
+          }
+          destruct s.
+          * assumption.
+          * simpl in *.
+            discriminate.
+         + intros.
+           simpl in *.
+           assert (dif : s <> Bottom). {
+            apply IHprotocol_prop1 with (x0 := _om).
+            reflexivity.
+          }
+          destruct om.
+          inversion Heqgigi.
+          * unfold update_state.
+            destruct s.
+            assumption.
+            discriminate.
+          * inversion Heqgigi.
+            destruct s.
+            elim dif.
+            reflexivity.
+            rewrite <- H2.
+            discriminate.
+    Qed.
+
+    
+    Lemma transition_gets_recorded :
+      forall (l : label)
+             (s1 s2 : state)
+             (m1 : option message)
+             (m2 : message)
+             (som1 := (s1, m1))
+             (som2 := (s2, Some m2))
+             (Hnot_bottom : s1 <> Bottom)
+             (Hprotocol : protocol_transition preX l som1 som2),
+             project s2 index_self = snd m2.
+    Proof.
+      intros.
+      unfold protocol_transition in Hprotocol.
+      destruct Hprotocol as [pr_valid_prop transition_prop].
+      unfold protocol_valid in pr_valid_prop.
+      simpl in *.
+      unfold transition in transition_prop.
+      destruct l eqn : l_eq.
+      - unfold som2 in transition_prop.
+        inversion transition_prop. 
+        simpl.
+        assert (project (update_consensus (update_state s1 s1 index_self) c) index_self
+                = project (update_state s1 s1 index_self) index_self). {
+                  symmetry.
+                  apply (@update_consensus_clean index index_listing _ _).
+                }
+       rewrite H.
+       Check @project_same index index_listing Hfinite.
+       apply (@project_same index index_listing Hfinite _ _).
+       assumption.
+       - destruct m1 eqn : m1_eq.
+         + inversion transition_prop.
+         + inversion transition_prop.
+    Qed.
+    
+    Lemma message_gets_recorded :
+      forall (m : message)
+             (tr : protocol_trace preX)
+             (last1 : transition_item)
+             (prefix : list transition_item)
+             (Hpr : trace_prefix (proj1_sig tr) last1 prefix)
+             (Hm : output last1 = Some m),
+             project (destination last1) index_self = snd m.
+    Proof.
+     intros.
+     
+     assert (smth : protocol_trace_prop preX (Finite (trace_first (proj1_sig tr)) (prefix ++ [last1]))). {
+        apply trace_prefix_protocol.
+        assumption.
+     }
+     
+     destruct tr as [raw tr_prop].
+     destruct raw as [s0 l0| s0 l0] eqn : eq.
+     - destruct prefix as [|t l1] eqn : prefix_eq.
+       + simpl in smth.
+          unfold finite_protocol_trace in smth.
+          destruct smth.
+          
+          assert (Hpr_tr : protocol_transition preX (l last1) (s0, (input last1)) ((destination last1), (output last1))). {
+            admit.  
+          }
+          
+          apply transition_gets_recorded with (l := l last1) (s1 := s0) (m1 := input last1).
+          * simpl in *.
+            destruct tr_prop.
+            destruct H2.
+            rewrite H2.
+            discriminate.
+          * rewrite <- Hm. 
+            assumption.
+       + simpl in *.
+         assert (exists (tr1 : list transition_item) (prev : transition_item), (t :: l1 ++ [last1]) = tr1 ++ [prev;last1]). {
+          admit.
+         }
+         
+         destruct H as [tr1 [prev Hdecomp]].
+         pose proof (@finite_ptrace_consecutive_valid_transition _ _ _ preX) as consecutive.
+         
+         assert (Hp_tr : protocol_transition preX (l last1) (destination prev, (input last1)) ((destination last1), (output last1))). {
+            simpl in *.
+            (*
+            specialize (consecutive s0 (t :: l1 ++ [last1]) [] tr1 prev last1).
+            apply consecutive.
+            destruct smth.
+            assumption.
+            assumption.*)
+            
+            apply consecutive with (te2 := last1) (te1 := prev).
+         }
+         
+         apply transition_gets_recorded with (l := l last1) (s1 := destination prev) (m1 := input last1).
+         
+         * assert(protocol_state_prop preX (destination prev)). {
+            admit.
+         }
+           remember (exist _ (destination prev) H) as protocol_prev.
+           assert (destination prev = proj1_sig protocol_prev). {
+              inversion protocol_prev.
+              rewrite Heqprotocol_prev.
+              simpl. reflexivity.
+           }
+           rewrite H0.
+           apply protocol_no_bottom with (s := protocol_prev).
+         * rewrite <- Hm.
+           assumption.
+      - simpl in smth.
+        admit.
+    Admitted.
     
     Lemma send_oracle_prop 
       (s : state)
@@ -480,13 +709,16 @@ Context
       unfold all_traces_have_message_prop.
       split.
       - intros.
-      unfold send_oracle in H.
-      destruct (idec (fst m) index_self) eqn:eq.
-      + induction s.
-        * discriminate H.
-        * admit.   
-      + discriminate H.
-      -admit.
+        unfold send_oracle in H.
+        destruct (idec (fst m) index_self) eqn:eq.
+        2: discriminate H.
+        destruct s eqn:eq_s.
+        + discriminate H.
+        + apply existsb_exists in H.
+          destruct H.
+          admit.
+      - intros.
+      
     Admitted.
     
 End Equivocation.
