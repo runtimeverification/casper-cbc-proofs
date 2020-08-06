@@ -20,10 +20,8 @@ Section PreceedsEquivocation.
 
   Context
     {message : Type}
-    {vtype : VLSM_type message}
-    {Sig : VLSM_sign vtype}
     {Eqv : HasEquivocation message}
-    (X : VLSM Sig).
+    (X : VLSM message).
 
   Class HasPreceedsEquivocation
     :=
@@ -43,17 +41,13 @@ Section composite_preceeds_equivocation.
     {Eqv : HasEquivocation message}
     {index : Type}
     {IndEqDec : EqDec index}
+    (IM : index -> VLSM message)
     (i0 : index)
-    {IT : index -> VLSM_type message}
-    {IS : forall i : index, VLSM_sign (IT i)}
-    (IM : forall n : index, VLSM (IS n))
-    (T := composite_type IT)
-    (S := composite_sig i0 IS)
-    (constraint1 : @label _ T -> @state _ T * option message -> Prop)
-    (constraint2 : @label _ T -> @state _ T * option message -> Prop)
-    (Hsubsumption : constraint_subsumption constraint1 constraint2)
-    (X1 := composite_vlsm i0 IM constraint1)
-    (X2 := composite_vlsm i0 IM constraint2)
+    (constraint1 : composite_label IM -> composite_state IM * option message -> Prop)
+    (constraint2 : composite_label IM -> composite_state IM * option message -> Prop)
+    (Hsubsumption : constraint_subsumption IM constraint1 constraint2)
+    (X1 := composite_vlsm IM i0 constraint1)
+    (X2 := composite_vlsm IM i0 constraint2)
     .
 
   Lemma preceeds_equivocation_constrained
@@ -68,7 +62,7 @@ Section composite_preceeds_equivocation.
       ].
     specialize
       (constraint_subsumption_byzantine_message_prop
-        i0 IM constraint1 constraint2 Hsubsumption
+        IM i0 constraint1 constraint2 Hsubsumption
       ); intro Hem.
     repeat split.
     - intros [m1 Hem1].

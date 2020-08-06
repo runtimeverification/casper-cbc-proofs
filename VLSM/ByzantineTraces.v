@@ -25,9 +25,7 @@ signature <<S>> and of type <<T>>.
 Section ByzantineTraces.
 Context
     {message : Type}
-    {T : VLSM_type message}
-    {S : VLSM_sign T}
-    (M : VLSM S)
+    (M : VLSM message)
     .
 
 (**
@@ -43,8 +41,8 @@ to <<M>>.
 *)
 
 Definition byzantine_trace_prop
-    (tr : @Trace _ T) :=
-    exists (T' : VLSM_type message) (S' : VLSM_sign T') (M' : VLSM S')
+    (tr : vTrace M) :=
+    exists (M' : VLSM message)
         (Proj := binary_free_composition_fst M M'),
         protocol_trace_prop Proj tr.
 
@@ -56,22 +54,21 @@ for a VLSM <<M>> are traces of the [pre_loaded_vlsm] associated to <<M>>:
 
 Lemma byzantine_pre_loaded
     (PreLoaded := pre_loaded_vlsm M)
-    (tr : @Trace _ T)
+    (tr : vTrace M)
     (Hbyz : byzantine_trace_prop tr)
     : protocol_trace_prop PreLoaded tr.
 Proof.
-    destruct Hbyz as [T' [S' [M' Htr]]].
+    destruct Hbyz as [M' Htr].
     simpl in Htr.
-    specialize
+    apply
         (proj_pre_loaded_incl
-            first
             (binary_IM M M')
-            free_constraint
+            first
+            (free_constraint _)
             first
             tr
             Htr
-        ); intros Htr'.
-    assumption.
+        ).
 Qed.
 
 (** ** An alternative definition
@@ -134,13 +131,17 @@ Definition all_messages_valid
     : Prop
     := True.
 
-Definition all_messages_vlsm
+Definition all_messages_vlsm_machine
     (inhm : message)
-    : VLSM (all_messages_sig inhm)
+    : VLSM_class (all_messages_sig inhm)
     :=
     {| transition := all_messages_transition
      ; valid := all_messages_valid
     |}.
+
+Definition all_messages_vlsm
+    (inhm : message)
+    := mk_vlsm (all_messages_vlsm_machine inhm).
 
 (**
 
@@ -152,8 +153,8 @@ to the component corresponding to <<M>>:
 *)
 
 Definition alternate_byzantine_trace_prop
-    (tr : @Trace _ T)
-    (Proj := binary_free_composition_fst M (all_messages_vlsm m0))
+    (tr : vTrace M)
+    (Proj := binary_free_composition_fst M (all_messages_vlsm (vm0 M)))
     :=
     protocol_trace_prop Proj tr.
 
@@ -167,13 +168,11 @@ to any other VLSM, we can instantiate that definition to the
 *)
 
 Lemma byzantine_alt_byzantine
-    (tr : @Trace _ T)
+    (tr : vTrace M)
     (Halt : alternate_byzantine_trace_prop tr)
     : byzantine_trace_prop tr.
 Proof.
-    exists all_messages_type.
-    exists (all_messages_sig m0).
-    exists (all_messages_vlsm m0).
+    exists (all_messages_vlsm (vm0 M)).
     assumption.
 Qed.
 
@@ -196,8 +195,8 @@ Section pre_loaded_byzantine_alt.
 
 Context
     (PreLoaded := pre_loaded_vlsm M)
-    (Alt1 := binary_free_composition_fst M (all_messages_vlsm m0))
-    (Alt := binary_free_composition M (all_messages_vlsm m0))
+    (Alt1 := binary_free_composition_fst M (all_messages_vlsm (vm0 M)))
+    (Alt := binary_free_composition M (all_messages_vlsm (vm0 M)))
     .
 
 (**
@@ -210,7 +209,7 @@ of <<Alt1>> into <<Preloaded>>
 *)
 
     Lemma alt_pre_loaded_incl
-        : VLSM_incl Alt1 PreLoaded.
+        : VLSM_incl (machine Alt1) (machine PreLoaded).
     Proof.
         intros t Hpt.
         apply byzantine_pre_loaded.
@@ -238,20 +237,20 @@ First note that _all_ messages are [protocol_message]s for <<Alt>>, as
         (om : option message)
         : option_protocol_message_prop Alt om.
     Proof.
-        exists (proj1_sig (@s0 _ _ (sign Alt))).
+        exists (proj1_sig (vs0 Alt)).
         destruct om as [m|]; try apply protocol_initial_state.
-        remember (proj1_sig (@s0 _ _ (sign Alt))) as s.
-        assert (Ht : @transition _ _ _ Alt (existT _ second m) (s, None) = (s, Some m)).
-        { simpl.
+        remember (proj1_sig (vs0 Alt)) as s.
+        replace
+          (@pair (@state message (@type message Alt)) (option message) s (@Some message m))
+          with (vtransition Alt (existT _ second m) (s, None)).
+        - assert (Hps : protocol_prop Alt (s, None))
+            by (subst; apply protocol_initial_state).
+          apply protocol_generated with None s; try assumption. 
+          split; exact I.
+        - unfold vtransition. simpl.
           f_equal.
           apply state_update_id.
           subst. reflexivity.
-        }
-        rewrite <- Ht.
-        assert (Hps : protocol_prop Alt (s, None))
-            by (subst; apply protocol_initial_state).
-        apply protocol_generated with None s; try assumption.
-        split; exact I.
     Qed.
 
 (**
@@ -272,10 +271,10 @@ by simply setting to <<s>> the  corresponding component of the initial
 (composed) state [s0] of <<Alt>>.
 *)
     Definition lifted_alt_state
-        (s : @state _ T)
-        : @state _ (type Alt)
+        (s : vstate M)
+        : vstate Alt
         := lift_to_composite_state
-            first (binary_IS M (all_messages_vlsm m0)) first s.
+             (binary_IM M (all_messages_vlsm (vm0 M))) first s.
 
 (**
 Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Alt>>.
@@ -289,40 +288,54 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
       remember (sj, om) as sjom.
       generalize dependent om. generalize dependent sj.
       induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom.
-      - assert (Hinit : @initial_state_prop _ _ (sign Alt) (lifted_alt_state s)).
+      - assert (Hinit : vinitial_state_prop Alt (lifted_alt_state s)).
         { intros [|]; try exact I.
           unfold lifted_alt_state. unfold lift_to_composite_state.
           rewrite state_update_eq. unfold s. destruct is. assumption.
         }
-        remember (exist (@initial_state_prop _ _ (sign Alt)) (lifted_alt_state s) Hinit) as six.
+        remember (exist (vinitial_state_prop Alt) (lifted_alt_state s) Hinit) as six.
         replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
         exists None.
         apply (protocol_initial_state Alt).
-      - assert (Hinit : @initial_state_prop _ _ (sign Alt) (lifted_alt_state s)).
+      - assert (Hinit : vinitial_state_prop Alt (lifted_alt_state s)).
         { intros [|]; try exact I.
           unfold lifted_alt_state. unfold lift_to_composite_state.
           rewrite state_update_eq. unfold s. destruct s0. assumption.
         }
-        remember (exist (@initial_state_prop _ _ (sign Alt)) (lifted_alt_state s) Hinit) as six.
+        remember (exist (vinitial_state_prop Alt) (lifted_alt_state s) Hinit) as six.
         replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
         exists None.
         apply (protocol_initial_state Alt).
       - specialize (IHHp1 s _om eq_refl). clear IHHp2.
-        remember (@transition _ _ _ Alt (existT _ first l) (lifted_alt_state s, om)) as xsom'.
+        remember (vtransition Alt (existT _ first l) (lifted_alt_state s, om)) as xsom'.
         destruct xsom' as [xs' om'].
         destruct IHHp1 as [_omX Hlift].
         exists om'.
         replace (lifted_alt_state sj) with xs'.
-        + rewrite Heqxsom'.
+        + replace
+            (@pair (@state message (@type message Alt)) (option message) xs' om')
+            with
+            (@pair (@state message
+               (@projT1 (VLSM_type message)
+                  (fun T : VLSM_type message =>
+                   @sigT (@VLSM_sign message T)
+                     (fun S : @VLSM_sign message T =>
+                      @VLSM_class message T S)) Alt)) 
+                (option message) xs' om')
+            by reflexivity.    
+          rewrite Heqxsom'.
           destruct (alt_option_protocol_message om) as [_sX Hopm].
           apply (protocol_generated Alt) with _omX _sX; try assumption.
           split; try exact I.
           assumption.
-        + simpl in Heqxsom'.
+        + unfold vtransition in Heqxsom'. simpl in Heqxsom'.
           unfold lifted_alt_state at 1 in Heqxsom'.
           unfold lift_to_composite_state at 1 in Heqxsom'.
           rewrite state_update_eq in Heqxsom'.
-          replace (transition l (s, om)) with (sj, om0) in Heqxsom'.
+          replace
+            (@vtransition message M l (@pair (@vstate message M) (option message) s om))
+            with (sj, om0)
+            in Heqxsom'.
           inversion Heqxsom'; subst.
           unfold lifted_alt_state.
           apply state_update_twice.
@@ -334,9 +347,9 @@ results above to show that <<Preloaded>> is included in <<Alt1>>.
 *)
 
     Lemma pre_loaded_alt_incl
-        : VLSM_incl PreLoaded Alt1.
+        : VLSM_incl (machine PreLoaded) (machine Alt1).
     Proof.
-        apply (basic_VLSM_incl PreLoaded Alt1)
+        apply (basic_VLSM_incl (machine PreLoaded) (machine Alt1))
         ; intros; try (assumption || reflexivity).
         - apply alt_proj_option_protocol_message.
         - exists (lifted_alt_state s).
@@ -351,7 +364,7 @@ results above to show that <<Preloaded>> is included in <<Alt1>>.
 Hence, <<Preloaded>> and <<Alt1>> are actually trace-equal:
 *)
     Lemma pre_loaded_alt_eq
-        : VLSM_eq PreLoaded Alt1
+        : VLSM_eq (machine PreLoaded) (machine Alt1)
         .
     Proof.
         split.
@@ -367,7 +380,7 @@ equivalent:
 *)
 
 Lemma byzantine_alt_byzantine_iff
-    (tr : @Trace _ T)
+    (tr : vTrace M)
     : alternate_byzantine_trace_prop tr <-> byzantine_trace_prop tr.
 Proof.
     split; intros.
@@ -391,15 +404,13 @@ Section composite_validating_byzantine_traces.
     Context {message : Type}
             {index : Type}
             {IndEqDec : EqDec index}
-            {IT : index -> VLSM_type message}
+            (IM : index -> VLSM message)
             (i0 : index)
-            {IS : forall i : index, VLSM_sign (IT i)}
-            (IM : forall n : index, VLSM (IS n))
-            (constraint : composite_label IT -> composite_state IT  * option message -> Prop)
-            (X := composite_vlsm i0 IM constraint)
+            (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
+            (X := composite_vlsm IM i0 constraint)
             (PreLoadedX := pre_loaded_vlsm X)
-            (FreeX := free_composite_vlsm i0 IM)
-            (Hvalidating: forall i : index, validating_projection_prop i0 IM constraint i)
+            (FreeX := free_composite_vlsm IM i0)
+            (Hvalidating: forall i : index, validating_projection_prop IM i0 constraint i)
             .
 
 (**
@@ -419,15 +430,15 @@ First let us show that each [valid] <<PreloadedX>> message is a
         (l : label)
         (s : state)
         (om : option message)
-        (Hv : @valid _ _ _ PreLoadedX l (s, om))
+        (Hv : vvalid PreLoadedX l (s, om))
         : option_protocol_message_prop FreeX om.
     Proof.
         destruct l as (i, li).
         destruct Hv as [Hv Hconstraint].
         specialize (Hvalidating i li (s i, om) Hv).
-        specialize (constraint_subsumption_protocol_prop i0 IM constraint free_constraint)
+        specialize (constraint_subsumption_protocol_prop IM i0 constraint (free_constraint IM))
         ; intro Hprotocol.
-        assert (Hsubsum : constraint_subsumption constraint free_constraint)
+        assert (Hsubsum : constraint_subsumption IM constraint (free_constraint IM))
           by (intro; intros; exact I).
         specialize (Hprotocol Hsubsum).
         destruct Hvalidating as [sX [Hsi [Hps [[_s HpmX] H0]]]].
@@ -440,7 +451,7 @@ We can now apply the meta-lemma [basic_VLSM_incl], using
 Lemma [pre_loaded_composite_free_protocol_message] above to prove that:
 *)
     Lemma pre_loaded_composite_free_incl
-        : VLSM_incl PreLoadedX FreeX.
+        : VLSM_incl (machine PreLoadedX) (machine FreeX).
     Proof.
         apply basic_VLSM_incl
         ; intros; try (assumption || reflexivity).
@@ -455,7 +466,7 @@ Lemma [pre_loaded_composite_free_protocol_message] above to prove that:
 Finally,  we can conclude that [composite_validating_byzantine_traces_are_free]:
 *)
     Lemma composite_validating_byzantine_traces_are_free
-        (tr : @Trace _ (type X))
+        (tr : vTrace X)
         (Hbyz : byzantine_trace_prop X tr)
         : protocol_trace_prop FreeX tr.
     Proof.

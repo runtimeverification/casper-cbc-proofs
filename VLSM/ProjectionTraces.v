@@ -14,19 +14,17 @@ Context
   {message : Type}
   {index : Type}
   {IndEqDec : EqDec index}
+  (IM : index -> VLSM message)
   (i0 : index)
-  {IT : index -> VLSM_type message}
-  {IS : forall i : index, VLSM_sign (IT i)}
-  (IM : forall n : index, VLSM (IS n))
-  (constraint : @label _ (composite_type IT) -> @state _ (composite_type IT) * option message -> Prop)
-  (X := composite_vlsm i0 IM constraint)
+  (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+  (X := composite_vlsm IM i0 constraint)
   (j : index)
-  (Xj := composite_vlsm_constrained_projection i0 IM constraint j)
+  (Xj := composite_vlsm_constrained_projection IM i0 constraint j)
   .
 
 Fixpoint finite_trace_projection_list
-  (trx : list (@transition_item _ (type X)))
-  : list (@transition_item _ (type Xj))
+  (trx : list (vtransition_item X))
+  : list (vtransition_item Xj)
   :=
   match trx with
   | [] => []
@@ -44,7 +42,7 @@ Fixpoint finite_trace_projection_list
   end.
 
 Definition from_projection
-  (a : @transition_item _ (type X))
+  (a : vtransition_item X)
   : Prop
   := j = projT1 (l a).
 
@@ -54,12 +52,12 @@ Definition dec_from_projection
   := eq_dec j (projT1 (l a)).
 
 Definition finite_trace_projection_list_alt
-  (trx : list (@transition_item _ (type X)))
+  (trx : list (vtransition_item X))
   (ftrx := (filter (predicate_to_function dec_from_projection) trx))
   (Hall: Forall from_projection ftrx)
   :=
   List.map
-    (fun item : {a : @transition_item _ (type X) | from_projection a} =>
+    (fun item : {a : vtransition_item X | from_projection a} =>
       let (item, e) := item in
       let lj := eq_rect_r _ (projT2 (l item)) e in
       @Build_transition_item _ (type Xj)
@@ -71,7 +69,7 @@ Definition finite_trace_projection_list_alt
   (list_annotate from_projection ftrx Hall).
 
 Lemma finite_trace_projection_list_alt_iff
-  (trx : list (@transition_item _ (type X)))
+  (trx : list (vtransition_item X))
   (ftrx := (filter (predicate_to_function dec_from_projection) trx))
   (Hall: Forall from_projection ftrx)
   : finite_trace_projection_list_alt trx Hall = finite_trace_projection_list trx.
@@ -80,14 +78,32 @@ Proof.
   generalize dependent Hall.
   induction trx; intros; try reflexivity.
   simpl.
-  destruct (eq_dec j (projT1 (l a))) eqn:Heq.
+  destruct
+    (@eq_dec index IndEqDec j
+    (@projT1 index (fun n : index => @vlabel message (IM n))
+       (@l message (@composite_type message index IM) a)))
+    eqn:Heq.
   - assert
     (Hunroll :
       filter (predicate_to_function dec_from_projection) (a :: trx)
       = a :: filter (predicate_to_function dec_from_projection) trx
     ).
     { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
-      rewrite Heq. reflexivity.
+      replace
+        (@eq_dec index IndEqDec j
+        (@projT1 index (fun n : index => @vlabel message (IM n))
+           (@l message (@type message X) a)))
+      with
+        (@left
+           (@eq index j
+              (@projT1 index (fun n : index => @vlabel message (IM n))
+                 (@l message (@composite_type message index IM) a)))
+           (not
+              (@eq index j
+                 (@projT1 index (fun n : index => @vlabel message (IM n))
+                    (@l message (@composite_type message index IM) a)))) e)
+      .
+      reflexivity.
     }
     unfold finite_trace_projection_list_alt.
     generalize dependent Hall.
@@ -99,18 +115,36 @@ Proof.
     simpl.
     f_equal.
     f_equal; try reflexivity.
-    specialize UIP_refl__Streicher_K; intro K.
-    unfold UIP_refl_ in K.
-    unfold UIP_refl_on_ in K.
-    replace (Forall_hd Hall) with e; try reflexivity.
+    replace
+      (@Forall_hd (@vtransition_item message X) from_projection a
+      (@filter
+         (@transition_item message (@composite_type message index IM))
+         (@predicate_to_function
+            (@transition_item message (@composite_type message index IM))
+            from_projection dec_from_projection) trx) Hall)
+      with e; try reflexivity.
     apply UIP.
-  -  assert
+  - assert
     (Hunroll :
       filter (predicate_to_function dec_from_projection) (a :: trx)
       = filter (predicate_to_function dec_from_projection) trx
     ).
     { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
-      rewrite Heq. reflexivity.
+      replace
+        (@eq_dec index IndEqDec j
+        (@projT1 index (fun n0 : index => @vlabel message (IM n0))
+           (@l message (@type message X) a)))
+      with
+        (@right
+          (@eq index j
+             (@projT1 index (fun n : index => @vlabel message (IM n))
+                (@l message (@composite_type message index IM) a)))
+          (not
+             (@eq index j
+                (@projT1 index (fun n : index => @vlabel message (IM n))
+                   (@l message (@composite_type message index IM) a)))) n)
+        .
+      reflexivity.
     }
     unfold finite_trace_projection_list_alt.
     generalize dependent Hall.
@@ -122,11 +156,11 @@ Proof.
 Qed.
 
 Lemma finite_trace_projection_empty
-  (s : @state _ (type X))
-  (trx : list (@transition_item _ (type X)))
+  (s : vstate X)
+  (trx : list (vtransition_item X))
   (Htr : finite_protocol_trace_from X s trx)
   (Hempty : finite_trace_projection_list trx = [])
-  (t : (@transition_item _ (type X)))
+  (t : (vtransition_item X))
   (Hin : In t trx)
   : destination t j = s j.
 Proof.
@@ -136,7 +170,7 @@ Proof.
   - destruct l as [i l].
     destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
     unfold transition in Htransition; simpl in Htransition.
-    destruct (transition l (s' i, iom)) as [si' om'] eqn:Hteq.
+    destruct (vtransition (IM i) l (s' i, iom)) as [si' om'] eqn:Hteq.
     inversion Htransition; subst. clear Htransition.
     destruct Hin as [Heq | Hin]; subst; simpl in *; destruct (eq_dec j i).
     + inversion Hempty.
@@ -147,8 +181,8 @@ Proof.
 Qed.
 
 Lemma finite_trace_projection_last_state
-  (start : @state _ (type X))
-  (transitions : list (@transition_item _ (type X)))
+  (start : vstate X)
+  (transitions : list (vtransition_item X))
   (Htr : finite_protocol_trace_from X start transitions)
   (lstx := last (List.map destination transitions) start)
   (lstj := last (List.map destination (finite_trace_projection_list transitions)) (start j))
@@ -164,20 +198,19 @@ Proof.
     assumption.
   - destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
     unfold transition in Htransition; simpl in Htransition.
-    destruct (transition l (s' i, iom)) as [si' om'] eqn:Hteq.
+    destruct (vtransition (IM i) l (s' i, iom)) as [si' om'] eqn:Hteq.
     inversion Htransition; subst. clear Htransition.
     specialize (state_update_neq _ s' i si' j n); intro Hupd.
     rewrite Hupd in *.
-    rewrite IHHtr.
-    reflexivity.
+    assumption.
 Qed.
 
 (* The projection of a finite protocol trace remains a protocol trace *)
 
 Lemma finite_ptrace_projection
-  (s : @state _ (type X))
+  (s : vstate X)
   (Psj : protocol_state_prop Xj (s j))
-  (trx : list (@transition_item _ (type X)))
+  (trx : list (vtransition_item X))
   (Htr : finite_protocol_trace_from X s trx)
    : finite_protocol_trace_from Xj (s j) (finite_trace_projection_list trx).
 Proof.
@@ -187,24 +220,22 @@ Proof.
     destruct H as [[Ps' [Piom [Hv Hc]]] Ht].
     assert (Hpp : protocol_prop X (s, oom)).
     { rewrite <- Ht. destruct Ps' as [_om Ps']. destruct Piom as [_s Piom].
-      apply (protocol_generated _ _ _ _ Ps' _ _ Piom). split; assumption.
+      apply protocol_generated with _om _s; try assumption. split; assumption.
     }
     assert (Hps : protocol_state_prop X s) by (exists oom; assumption).
-    unfold composite_valid in Hv.
     destruct (eq_dec j x).
     + subst x.
       simpl in Ht.
-      destruct (transition lx (s' j, iom)) as [si' om'] eqn:Hteq.
+      destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.
       inversion Ht; subst. rewrite state_update_eq in *.
       simpl in Hv.
-      constructor.
+      apply (finite_ptrace_extend Xj).
       * apply IHHtr.
         exists oom.
-        assert (Ht' : @transition _ _ _ Xj lx (s' j, iom) = (si', oom))
-          by assumption.
-        rewrite <- Ht'.
+        replace (@pair (@state message (@type message Xj)) (option message) si' oom)
+          with (vtransition (IM j) lx (s' j, iom)).
         destruct Psj as [os'j Psj].
-        specialize (protocol_message_projection i0 IM constraint j _ Piom); intros [sj HPjiom].
+        specialize (protocol_message_projection IM i0 constraint j _ Piom); intros [sj HPjiom].
         apply (protocol_generated Xj lx (s' j) os'j Psj sj iom HPjiom).
         unfold valid; simpl.
         exists s'.
@@ -215,15 +246,15 @@ Proof.
         ; repeat split; assumption.
       * assert
           (Heqlx :
-            (@eq_rect_r index j (fun n : index => @label message (IT n)) lx j (@eq_refl index j))
+            (@eq_rect_r index j (fun n : index => vlabel (IM n)) lx j (@eq_refl index j))
             = lx
           ) by reflexivity.
         rewrite Heqlx.
-        specialize (protocol_message_projection i0 IM constraint j _ Piom); intros HPjiom.
+        specialize (protocol_message_projection IM i0 constraint j _ Piom); intros HPjiom.
         repeat split; try assumption.
         exists s'.
         repeat split; assumption.
-    + simpl in Ht. destruct (transition lx (s' x, iom)) eqn:Hteq.
+    + simpl in Ht. destruct (vtransition (IM x) lx (s' x, iom)) eqn:Hteq.
       inversion Ht; subst.
       rewrite state_update_neq in IHHtr; try assumption.
       apply IHHtr.
@@ -260,29 +291,14 @@ Proof.
   specialize (run_is_protocol Xj (exist _ run Hrun)); simpl; intro Hps.
   specialize (vlsm_run_last_state Xj (exist _ run Hrun)); simpl; intros Hlast'.
   rewrite Htrans in Hlast'. rewrite Hstart in Hlast'. simpl in Hlast'.
-  destruct (final run) as (s', om). simpl in Hlast'.
+  destruct (final Xj run) as (s', om). simpl in Hlast'.
   exists om.
   subst.
   specialize (finite_trace_projection_last_state start transitions Htrace)
   ; simpl; intro Hlast.
   clear - Hlast Hps.
   simpl in Hlast.
-  replace
-    (@last (@_composite_state message index IT)
-      (@List.map
-         (@transition_item message (@composite_type message index IT))
-         (@_composite_state message index IT)
-         (@destination message (@composite_type message index IT))
-         transitions
-      ) start j
-    )
-    with
-    (@last (@state message (IT j))
-              (@List.map (@transition_item message (IT j))
-                 (@state message (IT j)) (@destination message (IT j))
-                 (finite_trace_projection_list transitions))
-              (start j))
-    .
+  rewrite <- Hlast.
   assumption.
 Qed.
 
@@ -305,28 +321,28 @@ Proof.
 Qed.
 
 Definition in_projection
-   (tr : Stream (@transition_item _ (type X)))
+   (tr : Stream (vtransition_item X))
    (n : nat)
    := from_projection (Str_nth n tr).
 
 Definition in_projection_dec
-  := forall (tr : Stream (@transition_item _ (type X))),
+  := forall (tr : Stream (vtransition_item X)),
        bounding (in_projection tr)
        + { ss : monotone_nat_stream
          | filtering_subsequence from_projection tr ss
          }.
 
 Definition infinite_trace_projection_stream
-  (ss: Stream (@transition_item _ (type X)))
+  (ss: Stream (vtransition_item X))
   (ks: monotone_nat_stream)
   (Hfilter: filtering_subsequence from_projection ss ks)
-  : Stream (@transition_item _ (IT j))
+  : Stream (vtransition_item (IM j))
   :=
   let subs := stream_subsequence ss ks in
   let HForAll := stream_filter_Forall from_projection ss ks Hfilter in
   let subsP := stream_annotate from_projection subs HForAll in
   Streams.map
-    (fun item : {a : @transition_item _ (type X) | from_projection a} =>
+    (fun item : {a : vtransition_item X | from_projection a} =>
       let (item, e) := item in
       let lj := eq_rect_r _ (projT2 (l item)) e in
       @Build_transition_item _ (type Xj) lj (input item) (destination item j) (output item)
@@ -334,7 +350,7 @@ Definition infinite_trace_projection_stream
     subsP.
 
 Lemma finite_trace_projection_stream
-  (ss: Stream (@transition_item _ (type X)))
+  (ss: Stream (vtransition_item X))
   (ks: monotone_nat_stream)
   (Hfilter: filtering_subsequence from_projection ss ks)
   (n : nat)
@@ -353,25 +369,16 @@ Proof.
       (succ n)
     ); intros [Hall Heq].
   clear -Heq.
-  assert
-    (Heq' :
-      (@stream_prefix
-        (@sig (@transition_item message (type X))
-          (fun a : @transition_item message (type X) => from_projection a))
-        (@stream_annotate (@transition_item message (type X)) from_projection
-          (@stream_subsequence (@transition_item message (type X)) ss ks)
-          (@stream_filter_Forall (@transition_item message (type X)) from_projection
-              ss ks Hfilter)) (succ n))
-      =
-      (@stream_prefix
-        (@sig (@transition_item message (type X)) from_projection)
-        (@stream_annotate (@transition_item message (type X)) from_projection
-          (@stream_subsequence (@transition_item message (type X)) ss ks)
-          (@stream_filter_Forall (@transition_item message (type X)) from_projection
-              ss ks Hfilter)) (succ n))
-    ) by reflexivity.
-    rewrite Heq'.
-    rewrite Heq.
+  replace
+    (@stream_prefix
+      (@sig (@vtransition_item message X)
+         (fun a : @vtransition_item message X => from_projection a))
+      (@stream_annotate (@vtransition_item message X) from_projection
+         (@stream_subsequence (@vtransition_item message X) ss ks)
+         (@stream_filter_Forall (@vtransition_item message X) from_projection ss ks Hfilter))
+      (succ n))
+    with
+      (list_annotate from_projection (stream_prefix (stream_subsequence ss ks) (succ n)) Hall).
     specialize
       (stream_filter_prefix
         from_projection
@@ -393,8 +400,8 @@ Qed.
 
 Definition trace_projection
   (Hproj_dec : in_projection_dec)
-  (tr : @Trace _ (type X))
-  : @Trace _ (IT j).
+  (tr : vTrace X)
+  : vTrace (IM j).
 Proof.
   destruct tr as [s ls | s ss].
   - exact (Finite (s j) (finite_trace_projection_list ls)).
@@ -406,7 +413,7 @@ Defined.
 
 Lemma trace_projection_initial_state
   (Hproj_dec : in_projection_dec)
-  (tr : @Trace _ (type X))
+  (tr : vTrace X)
   : trace_first (trace_projection Hproj_dec tr)
   = trace_first tr j.
 Proof.
@@ -418,7 +425,7 @@ Proof.
 Qed.
 
 Lemma infinite_ptrace_projection
-  (s: @state _ (type X))
+  (s: vstate X)
   (ss: Stream transition_item)
   (Psj: protocol_state_prop Xj (s j))
   (Htr: infinite_protocol_trace_from X s ss)
@@ -439,7 +446,7 @@ Qed.
 
 Lemma ptrace_from_projection
   (Hproj_dec : in_projection_dec)
-  (tr : @Trace _ (type X))
+  (tr : vTrace X)
   (Psj : protocol_state_prop Xj (trace_first tr j))
   (Htr : ptrace_from_prop X tr)
    : ptrace_from_prop Xj (trace_projection Hproj_dec tr).
@@ -455,7 +462,7 @@ Qed.
 
 Lemma protocol_trace_projection
   (Hproj_dec : in_projection_dec)
-  (tr : @Trace _ (type X))
+  (tr : vTrace X)
   (Htr : protocol_trace_prop X tr)
   : protocol_trace_prop Xj (trace_projection Hproj_dec tr).
 Proof.
@@ -466,7 +473,7 @@ Proof.
   - apply ptrace_from_projection; try assumption.
     apply protocol_state_prop_iff.
     left.
-    apply (initial_state_projection i0 IM constraint j) in Hinit.
+    apply (initial_state_projection IM i0 constraint j) in Hinit.
     exists (exist _ _ Hinit).
     reflexivity.
   - rewrite trace_projection_initial_state.
@@ -477,10 +484,10 @@ Qed.
 (* We axiomatize projection friendliness as the converse of protocol_trace_projection *)
 Definition finite_projection_friendly
   := forall
-    (sj : @state _ (IT j))
-    (trj : list (@transition_item _ (IT j)))
+    (sj : vstate (IM j))
+    (trj : list (vtransition_item (IM j)))
     (Htrj : finite_protocol_trace Xj sj trj),
-    exists (sx : @state _ (type X)) (trx : list (@transition_item _ (type X))),
+    exists (sx : vstate X) (trx : list (vtransition_item X)),
       finite_protocol_trace X sx trx
       /\ sx j = sj
       /\ finite_trace_projection_list trx = trj.
@@ -488,9 +495,9 @@ Definition finite_projection_friendly
 Definition projection_friendly
   (Hproj_dec : in_projection_dec)
   := forall
-  (trj : @Trace _ (IT j))
+  (trj : vTrace (IM j))
   (Htrj : protocol_trace_prop Xj trj),
-  exists (tr : @Trace _ (type X)),
+  exists (tr : vTrace X),
     protocol_trace_prop X tr
     /\ trace_projection Hproj_dec tr = trj.
 
@@ -536,9 +543,15 @@ Lemma projection_friendly_in_futures'
         (sj
          :: List.map destination (finite_trace_projection_list_alt trx Hall))
         n2 = Some s2)
-  : exists sX1 sX2 : @state _ (type X), sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2.
+  : exists sX1 sX2 : vstate X, sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2.
 Proof.
-    assert (HsX1 : exists (nX1 nX2 : nat) (sX1 sX2 : @state _ (type X)), nX1 <= nX2 /\ sX1 j = s1 /\ sX2 j = s2 /\ nth_error (sx :: List.map destination trx) nX1 = Some sX1 /\ nth_error (sx :: List.map destination trx) nX2 = Some sX2).
+    assert
+      (HsX1 :
+        exists (nX1 nX2 : nat) (sX1 sX2 : vstate X),
+          nX1 <= nX2 /\ sX1 j = s1 /\ sX2 j = s2
+          /\ nth_error (sx :: List.map destination trx) nX1 = Some sX1
+          /\ nth_error (sx :: List.map destination trx) nX2 = Some sX2
+      ).
     {
       destruct n1; destruct n2.
       - exists 0; exists 0; exists sx; exists sx
@@ -555,15 +568,18 @@ Proof.
             Hall
             n2
           ); intros [oitem [Hoa Hnth]].
+        
         replace
           (@nth_error
-            (@sig (@transition_item message (type X))
-               (fun a : @transition_item message (type X) => from_projection a))
-            (@list_annotate (@transition_item message (type X)) from_projection
-               (@filter (@transition_item message (type X))
-                  (@predicate_to_function (@transition_item message (type X))
-                     from_projection dec_from_projection) trx) Hall) n2
-          ) with oitem in Hs2.
+            (@sig (@vtransition_item message X)
+               (fun a : @vtransition_item message X => from_projection a))
+            (@list_annotate (@vtransition_item message X)
+               from_projection
+               (@filter (@transition_item message (@type message X))
+                  (@predicate_to_function
+                     (@transition_item message (@type message X))
+                     from_projection dec_from_projection) trx) Hall) n2)        
+          with oitem in Hs2.
         clear Hoa.
         destruct oitem as [[item Hitem]|]; try inversion Hs2; subst; clear Hs2.
         simpl in Hnth.
@@ -576,7 +592,9 @@ Proof.
         repeat split.
         + lia.
         + simpl. rewrite nth_error_map.
-          replace (nth_error trx nX2) with (Some item).
+          replace
+            (@nth_error (@transition_item message (@composite_type message index IM)) trx nX2)
+            with (Some item).
           reflexivity.
       - inversion Hle.
       - simpl in Hs1. simpl in Hs2.
@@ -602,23 +620,27 @@ Proof.
           ); intros [oitem1 [Hoa1 Hn1th]].
         replace
           (@nth_error
-            (@sig (@transition_item message (type X))
-               (fun a : @transition_item message (type X) => from_projection a))
-            (@list_annotate (@transition_item message (type X)) from_projection
-               (@filter (@transition_item message (type X))
-                  (@predicate_to_function (@transition_item message (type X))
-                     from_projection dec_from_projection) trx) Hall) n2
-          ) with oitem2 in Hs2.
+            (@sig (@vtransition_item message X)
+               (fun a : @vtransition_item message X => from_projection a))
+            (@list_annotate (@vtransition_item message X)
+               from_projection
+               (@filter (@transition_item message (@type message X))
+                  (@predicate_to_function
+                     (@transition_item message (@type message X))
+                     from_projection dec_from_projection) trx) Hall) n2)
+          with oitem2 in Hs2.
         clear Hoa2.
         replace
           (@nth_error
-            (@sig (@transition_item message (type X))
-               (fun a : @transition_item message (type X) => from_projection a))
-            (@list_annotate (@transition_item message (type X)) from_projection
-               (@filter (@transition_item message (type X))
-                  (@predicate_to_function (@transition_item message (type X))
-                     from_projection dec_from_projection) trx) Hall) n1
-          ) with oitem1 in Hs1.
+            (@sig (@vtransition_item message X)
+               (fun a : @vtransition_item message X => from_projection a))
+            (@list_annotate (@vtransition_item message X)
+               from_projection
+               (@filter (@transition_item message (@type message X))
+                  (@predicate_to_function
+                     (@transition_item message (@type message X))
+                     from_projection dec_from_projection) trx) Hall) n1)
+           with oitem1 in Hs1.
         clear Hoa1.
         destruct oitem2 as [[item2 Hitem2]|]; try inversion Hs2; subst; clear Hs2.
         destruct oitem1 as [[item1 Hitem1]|]; try inversion Hs1; subst; clear Hs1.
@@ -638,9 +660,13 @@ Proof.
         + assert (Hle' : n1 <= n2) by lia.
           specialize (nth_error_filter_index_le _ _ _ _ Hle' _ _ Hindex1 Hindex2).
           intro; lia.
-        + simpl. rewrite nth_error_map. replace (nth_error trx nX1) with (Some item1).
+        + simpl. rewrite nth_error_map.
+          replace (@nth_error (@transition_item message (@composite_type message index IM)) trx nX1)
+            with (Some item1).
           reflexivity.
-        + simpl. rewrite nth_error_map. replace (nth_error trx nX2) with (Some item2).
+        + simpl. rewrite nth_error_map.
+          replace (@nth_error (@transition_item message (@composite_type message index IM)) trx nX2)
+            with (Some item2).
           reflexivity.
     }
     destruct HsX1 as [nX1 [nX2 [sX1 [sX2 [HleX [Hps1 [Hps2 [HsX1 HsX2]]]]]]]].
@@ -651,9 +677,9 @@ Qed.
 
 Lemma projection_friendly_in_futures
   (Hfr : finite_projection_friendly)
-  (s1 s2 : @state _ (IT j))
+  (s1 s2 : vstate (IM j))
   (Hfuture : in_futures Xj s1 s2)
-  : exists (sX1 sX2 : @state _ (type X)),
+  : exists (sX1 sX2 : vstate X),
     sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2.
 Proof.
   specialize (in_futures_witness Xj s1 s2 Hfuture)
@@ -661,7 +687,7 @@ Proof.
   clear Hfuture.
   destruct trj as [trj Htrj].
   specialize (trace_prefix_fn_protocol Xj trj Htrj n2); intros Hpref.
-  remember (trace_prefix_fn trj n2) as trj2.
+  remember (trace_prefix_fn Xj trj n2) as trj2.
   destruct trj2 as [sj' lj' | sj' lj']; destruct trj as [sj lj | sj lj]
   ; inversion Heqtrj2
   ; subst sj' lj'.
@@ -692,11 +718,10 @@ Proof.
       rewrite list_prefix_map.
       symmetry. apply list_prefix_nth. constructor.
     }
-    rewrite Hs1' in Hs1; clear Hs1'.
-    rewrite Hs2' in Hs2; clear Hs2'.
-    rewrite <- Hproj in Hs1.
-    rewrite <- Hproj in Hs2.
-    apply projection_friendly_in_futures' with sx trx sj Hall n1 n2; assumption.
+    apply projection_friendly_in_futures' with sx trx sj Hall n1 n2; try assumption
+    ; rewrite Hproj.
+    + rewrite <- Hs1. symmetry. assumption.
+    + rewrite <- Hs2. symmetry. assumption.
   - specialize (Hfr sj (stream_prefix lj n2) Hpref).
     destruct Hfr as [sx [trx [Htrx [Hsx Hproj]]]].
     assert (Hall : Forall from_projection
@@ -727,11 +752,8 @@ Proof.
       simpl.
       rewrite stream_prefix_nth; subst; constructor.
     }
-    rewrite Hs1' in Hs1; clear Hs1'.
-    rewrite Hs2' in Hs2; clear Hs2'.
-    rewrite <- Hproj in Hs1.
-    rewrite <- Hproj in Hs2.
-    apply projection_friendly_in_futures' with sx trx sj Hall n1 n2; assumption.
+    apply projection_friendly_in_futures' with sx trx sj Hall n1 n2; try assumption
+    ; rewrite Hproj; rewrite <- Hs1 || rewrite <- Hs2; symmetry; assumption.
 Qed.
 
 End ProjectionTraces.

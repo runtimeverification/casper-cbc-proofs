@@ -19,18 +19,14 @@ Context
   {message : Type}
   {index : Type}
   {IndEqDec : EqDec index}
+  (IM : index -> VLSM message)
   (i0 : index)
-  {IT : index -> VLSM_type message}
-  {IS : forall i : index, VLSM_sign (IT i)}
-  (IM : forall n : index, VLSM (IS n))
-  (T := composite_type IT)
-  (S := composite_sig i0 IS)
-  (constraint : @label _ T -> @state _ T * option message -> Prop)
-  (X := composite_vlsm i0 IM constraint)
+  (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+  (X := composite_vlsm IM i0 constraint)
   {CV : consensus_values}
-  (IE : forall i : index, Estimator (@state _ (IT i)) C)
-  (ID : forall i : index, decision (IT i))
-  (DE : forall i : index, decision_estimator_property i0 IM constraint ID IE i)
+  (ID : forall i : index, vdecision (IM i))
+  (IE : forall i : index, Estimator (vstate (IM i)) C)
+  (DE : forall i : index, composite_projection_decision_estimator_property IM i0 constraint ID IE i)
   .
 
 (**
@@ -52,15 +48,15 @@ all components yields the same estimates.
 *)
 
 Class HasCommonFutureEstimates :=
-  { union : @state _ T -> @state _ T
+  { union : vstate X -> vstate X
   ; union_is_reachable
     : forall
-      (s : @state _ T)
+      (s : vstate X)
       (Hps : protocol_state_prop X s)
       , in_futures X s (union s)
   ; union_has_consistent_estimators
     : forall
-      (s : @state _ T)
+      (s : vstate X)
       (Hps : protocol_state_prop X s)
       (i j : index)
       (c : C),
@@ -78,7 +74,7 @@ decisions.
 
 Lemma consistent_estimator_decisions
   (HCFE : HasCommonFutureEstimates)
-  : final_and_consistent i0 IM constraint ID.
+  : final_and_consistent IM i0 constraint ID.
 Proof.
   unfold final_and_consistent; intros.
   specialize (in_futures_protocol_snd X s1 s2 Hfuture); intros Hps2.
@@ -87,11 +83,11 @@ Proof.
   ; intros HconsEst.
   specialize (in_futures_trans X s1 s2 (union s2) Hfuture HcmnFuture)
   ; intro HcmnFuture1.
-  specialize (in_futures_projection i0 IM constraint j s1 (union s2) HcmnFuture1)
+  specialize (in_futures_projection IM i0 constraint j s1 (union s2) HcmnFuture1)
   ; intros HFuture1.
   assert (Dej := DE j).
   specialize (Dej (s1 j) c1 HDecided1 (union s2 j) HFuture1).
-  specialize (in_futures_projection i0 IM constraint k s2 (union s2) HcmnFuture)
+  specialize (in_futures_projection IM i0 constraint k s2 (union s2) HcmnFuture)
   ; intros HFuture2.
   assert (Dek := DE k).
   specialize (Dek (s2 k) c2 HDecided2 (union s2 k) HFuture2).

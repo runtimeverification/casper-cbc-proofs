@@ -35,9 +35,7 @@ This chapter is dedicated to building the language for discussing equivocation.
 Section Simple.
     Context
       {message : Type}
-      {vtype : VLSM_type message}
-      {Sig : VLSM_sign vtype}
-      (vlsm : VLSM Sig).
+      (vlsm : VLSM message).
 
 (** We begin with a basic utility function. **)
 
@@ -48,7 +46,7 @@ Section Simple.
       : Prop
       := exists (last : transition_item),
          exists (prefix : list transition_item),
-          trace_prefix (proj1_sig tr) last prefix
+          trace_prefix vlsm (proj1_sig tr) last prefix
           /\ message_selector last = Some msg.
 
 (** The following property detects equivocation in a given trace for a given message. **)
@@ -60,7 +58,7 @@ Section Simple.
       :=
         exists (last : transition_item),
         exists (prefix : list transition_item),
-          trace_prefix (proj1_sig tr) last prefix
+          trace_prefix vlsm (proj1_sig tr) last prefix
           /\  input last = Some msg
           /\  ~ In (Some msg) (List.map output prefix).
 
@@ -70,8 +68,8 @@ Section Simple.
 
 (** General signature of a message oracle **)
 
-    Definition state_message_oracle (x : VLSM Sig)
-      := (state) -> (message) -> bool.
+    Definition state_message_oracle
+      := vstate vlsm -> message -> bool.
 
 (** Checks if all [protocol_trace]s leading to a certain state contain a certain message.
     The [message_selector] argument specifices whether we're looking for received or sent
@@ -85,7 +83,7 @@ Section Simple.
 
     Definition all_traces_have_message_prop
       (message_selector : transition_item -> option message)
-      (oracle : state_message_oracle vlsm)
+      (oracle : state_message_oracle)
       (s : state)
       (m : message)
       : Prop
@@ -95,13 +93,13 @@ Section Simple.
         (tr : protocol_trace (pre_loaded_vlsm vlsm))
         (last : transition_item)
         (prefix : list transition_item)
-        (Hpr : trace_prefix (proj1_sig tr) last prefix)
+        (Hpr : trace_prefix vlsm (proj1_sig tr) last prefix)
         (Hlast : destination last = s),
         List.Exists (fun (elem : transition_item) => message_selector elem = Some m) prefix.
 
     Definition no_traces_have_message_prop
       (message_selector : transition_item -> option message)
-      (oracle : state_message_oracle vlsm)
+      (oracle : state_message_oracle)
       (s : state)
       (m : message)
 
@@ -112,20 +110,20 @@ Section Simple.
         (tr : protocol_trace (pre_loaded_vlsm vlsm))
         (last : transition_item)
         (prefix : list transition_item)
-        (Hpr : trace_prefix (proj1_sig tr) last prefix)
+        (Hpr : trace_prefix vlsm (proj1_sig tr) last prefix)
         (Hlast : destination last = s),
         ~ List.Exists (fun (elem : transition_item) => message_selector elem = Some m) prefix.
 
-    Definition has_been_sent_prop : state_message_oracle vlsm -> state -> message -> Prop
+    Definition has_been_sent_prop : state_message_oracle -> state -> message -> Prop
       := (all_traces_have_message_prop output).
 
-    Definition has_not_been_sent_prop : state_message_oracle vlsm -> state -> message -> Prop
+    Definition has_not_been_sent_prop : state_message_oracle -> state -> message -> Prop
       := (no_traces_have_message_prop output).
 
-    Definition has_been_received_prop : state_message_oracle vlsm -> state -> message -> Prop
+    Definition has_been_received_prop : state_message_oracle -> state -> message -> Prop
       := (all_traces_have_message_prop input).
 
-    Definition has_not_been_received_prop : state_message_oracle vlsm -> state -> message -> Prop
+    Definition has_not_been_received_prop : state_message_oracle -> state -> message -> Prop
       := (no_traces_have_message_prop input).
 
 (** Per the vocabulary of the official VLSM document, we say that VLSMs endowed
@@ -141,14 +139,14 @@ Section Simple.
     [has_been_sent] and [has_not_been_sent]. **)
 
     Class has_been_sent_capability := {
-      has_been_sent: state_message_oracle vlsm;
+      has_been_sent: state_message_oracle;
 
       proper_sent:
         forall (s : state)
                (m : message),
                (has_been_sent_prop has_been_sent s m);
 
-      has_not_been_sent: state_message_oracle vlsm;
+      has_not_been_sent: state_message_oracle;
       proper_not_sent:
         forall (s : state)
                (m : message),
@@ -161,14 +159,14 @@ Section Simple.
     }.
 
     Class has_been_received_capability := {
-      has_been_received: state_message_oracle vlsm;
+      has_been_received: state_message_oracle;
 
       proper_received:
         forall (s : state)
                (m : message),
                (has_been_received_prop has_been_received s m);
 
-      has_not_been_received: state_message_oracle vlsm;
+      has_not_been_received: state_message_oracle;
       proper_not_received:
         forall (s : state)
                (m : message),
@@ -208,18 +206,17 @@ Section Composite.
             (validator_listing : list validator)
             {finite_validator : Listing validator_listing}
             {IndEqDec : EqDec index}
-            {IT : index -> VLSM_type message}
+            (IM : index -> VLSM message)
             (i0 : index)
-            {IS : forall i : index, VLSM_sign (IT i)}
-            (IM : forall n : index, VLSM (IS n))
-            (constraint : _composite_label IT -> _composite_state IT  * option message -> Prop)
+            (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
             (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
             (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
             (sender : message -> option validator)
             (A : validator -> index)
             (Weight : validator -> R)
             (T : R)
-            (X := composite_vlsm i0 IM constraint).
+            (X := composite_vlsm IM i0 constraint)
+            .
 
      (** It is now straightforward to define a [no_equivocations] composition constraint.
          An equivocating transition can be detected by calling the [has_been_sent]
@@ -227,7 +224,7 @@ Section Composite.
 
      Definition equivocation
       (m : message)
-      (s : _composite_state IT)
+      (s : vstate X)
       : Prop
       :=
       forall (i : index),
@@ -236,8 +233,8 @@ Section Composite.
       (* TODO: Reevaluate if this looks better in a positive form *)
 
       Definition no_equivocations
-        (l : _composite_label IT)
-        (som : _composite_state IT * option message)
+        (l : vlabel X)
+        (som : vstate X * option message)
         : Prop
         :=
         let (s, om) := som in
@@ -264,10 +261,10 @@ Section Composite.
         (v : validator)
         (Hid : A v = i)
         (Hsender : sender m = Some v),
-        can_emit (composite_vlsm_constrained_projection i0 IM constraint i) m /\
+        can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m /\
         forall (j : index)
                (Hdif : i <> j),
-               ~can_emit (composite_vlsm_constrained_projection i0 IM constraint j) m.
+               ~can_emit (composite_vlsm_constrained_projection IM i0 constraint j) m.
 
        (** An alternative, possibly friendlier, formulation. Note that it is
            slightly weaker, in that it does not require that the sender
@@ -279,21 +276,20 @@ Section Composite.
         (m : message)
         (v : validator)
         (Hsender : sender m = Some v),
-        can_emit (composite_vlsm_constrained_projection i0 IM constraint i) m ->
+        can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m ->
         A v = i.
 
        Definition sender_weak_nontriviality_prop : Prop :=
         forall (v : validator),
         exists (m : message),
-        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) m /\
+        can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m /\
         sender m = Some v.
 
        Definition sender_strong_nontriviality_prop : Prop :=
         forall (v : validator),
         forall (m : message),
-        can_emit (composite_vlsm_constrained_projection i0 IM constraint (A v)) m ->
+        can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m ->
         sender m = Some v.
-
 
        (** We say that a validator <v> (with associated component <i>) is equivocating wrt.
        to another component <j>, if there exists a message which [has_been_received] by
@@ -314,7 +310,7 @@ Section Composite.
         (** We can now decide whether a validator is equivocating in a certain state. **)
 
         Definition is_equivocating_statewise
-          (s : _composite_state IT)
+          (s : vstate X)
           (v : validator)
           : Prop
           :=
@@ -332,19 +328,19 @@ Section Composite.
 
         Definition is_equivocating_tracewise
           (v : validator)
-          (s : _composite_state IT)
+          (s : vstate X)
           (j := A v)
           : Prop
           :=
           forall (tr : protocol_trace X)
           (last : transition_item)
           (prefix : list transition_item)
-          (Hpr : trace_prefix (proj1_sig tr) last prefix)
+          (Hpr : trace_prefix X (proj1_sig tr) last prefix)
           (Hlast : destination last = s),
           exists (m : message),
           (sender m = Some v) /\
           List.Exists
-          (fun (elem : @transition_item _ (type X)) =>
+          (fun (elem : vtransition_item X) =>
           input elem = Some m
           /\ has_been_sent (IM j) ((destination elem) j) m = false
           ) prefix.
@@ -355,14 +351,14 @@ Section Composite.
         (** A possibly friendlier version using a previously defined primitive. **)
         Definition is_equivocating_tracewise_alt
           (v : validator)
-          (s : _composite_state IT)
+          (s : vstate X)
           (j := A v)
           : Prop
           :=
           forall (tr : protocol_trace X)
           (last : transition_item)
           (prefix : list transition_item)
-          (Hpr : trace_prefix (proj1_sig tr) last prefix)
+          (Hpr : trace_prefix X (proj1_sig tr) last prefix)
           (Hlast : destination last = s),
           exists (m : message),
           (sender m = Some v) /\
@@ -374,9 +370,9 @@ Section Composite.
             in the future **)
 
          Class equivocation_dec_statewise := {
-          is_equivocating_fn (s : _composite_state IT) (v : validator) : bool;
+          is_equivocating_fn (s : vstate X) (v : validator) : bool;
 
-          is_equivocating_dec : forall (s : _composite_state IT) (v : validator),
+          is_equivocating_dec : forall (s : vstate X) (v : validator),
            is_equivocating_fn s v = true <-> is_equivocating_statewise s v;
          }.
 
@@ -384,7 +380,7 @@ Section Composite.
 
          Definition equivocating_validators
          (Dec : equivocation_dec_statewise)
-         (s : _composite_state IT)
+         (s : vstate X)
          : list validator
           := List.filter (is_equivocating_fn s) validator_listing.
 
@@ -393,7 +389,7 @@ Section Composite.
 
          Definition equivocation_fault
           (Dec : equivocation_dec_statewise)
-          (s : _composite_state IT)
+          (s : vstate X)
           : R
           :=
           List.fold_left Rplus (List.map Weight (equivocating_validators Dec s)) 0%R.
@@ -403,11 +399,11 @@ Section Composite.
 
          Definition equivocation_fault_constraint
           (Dec : equivocation_dec_statewise)
-          (l : _composite_label IT)
-          (som : _composite_state IT * option message)
+          (l : vlabel X)
+          (som : vstate X * option message)
           : Prop
           :=
-          let (s', om') := (@transition _ _ _ X l som) in
+          let (s', om') := (vtransition X l som) in
           Rle (equivocation_fault Dec s') T.
 
 End Composite.
