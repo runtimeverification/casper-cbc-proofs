@@ -678,7 +678,8 @@ Context
             assumption.
             assumption.*)
             
-            apply consecutive with (te2 := last1) (te1 := prev).
+            eapply consecutive with (te2 := last1) (te1 := prev); eauto.
+            apply smth.
          }
          
          apply transition_gets_recorded with (l := l last1) (s1 := destination prev) (m1 := input last1).
