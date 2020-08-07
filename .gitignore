@@ -18,3 +18,4 @@ Makefile.coq.conf
 _build
 resources/index.html
 .lia.cache
+html

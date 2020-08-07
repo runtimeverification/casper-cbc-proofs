@@ -205,24 +205,14 @@ Proof.
   intros. intro; subst. apply H0. assumption.
 Qed.
 
-Fixpoint inb {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (x : A) (xs : list A) :=
-  match xs with
-  | [] => false
-  | h::t => if Aeq_dec x h then true else inb Aeq_dec x t
-  end.
+Definition inb {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (x : A) (xs : list A) :=
+  if in_dec Aeq_dec x xs then true else false.
 
 Lemma in_function {A}  (Aeq_dec : forall x y:A, {x = y} + {x <> y}) :
   PredicateFunction2 (@In A) (inb Aeq_dec).
 Proof.
-  intros x xs. induction xs; split; intros.
-  - inversion H.
-  - inversion H.
-  - simpl. destruct H as [Heq | Hin].
-    + subst. apply eq_dec_if_true. reflexivity.
-    + apply IHxs  in Hin. rewrite Hin. destruct (Aeq_dec x a); reflexivity.
-  - simpl in H. destruct (Aeq_dec x a).
-    + subst. left. reflexivity.
-    + right. apply IHxs. assumption.
+  intros x xs. unfold inb. destruct (in_dec Aeq_dec x xs); split; intros
+  ; try assumption; try reflexivity; try contradiction; discriminate.
 Qed.
 
 Lemma in_correct {X} `{StrictlyComparable X} :
@@ -1025,4 +1015,25 @@ Proof.
     intro n.
     specialize (Hnth (S n)).
     assumption.
+Qed.
+
+Lemma occurrences_ordering
+  {A : Type}
+  (a b : A)
+  (la1 la2 lb1 lb2 : list A)
+  (Heq : la1 ++ a :: la2 = lb1 ++ b :: lb2)
+  (Ha : ~In a (b :: lb2))
+  : exists lab : list A, lb1 = la1 ++ a :: lab.
+Proof.
+  generalize dependent lb2. generalize dependent la2.
+  generalize dependent b. generalize dependent lb1.
+  generalize dependent a.
+  induction la1; intros; destruct lb1 as [|b0 lb1]; simpl in *
+  ; inversion Heq; subst.
+  - elim Ha. left. reflexivity.
+  - exists lb1. reflexivity.
+  - elim Ha. right. apply in_app_iff. right. left. reflexivity.
+  - specialize (IHla1 a0 lb1 b la2 lb2 H1 Ha).
+    destruct IHla1 as [la0b Hla0b].
+    exists la0b. subst. reflexivity.
 Qed.

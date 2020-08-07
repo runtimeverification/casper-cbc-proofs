@@ -1145,12 +1145,12 @@ Proof.
   - exists c. exists c''. repeat split; try assumption.
     intros. unfold equivocating_messages. rewrite eq_dec_if_false.
     + rewrite eq_dec_if_true; try reflexivity.
-      apply andb_true_iff. split.
-      * unfold hash_state, inb; simpl.
-        rewrite eq_dec_if_false; simpl; try reflexivity.
-        intro. apply hash_message_injective in H0. inversion H0; subst.
-      * simpl. reflexivity.
-    + intro. inversion H0.
+      apply andb_true_iff. split; apply  negb_true_iff; apply in_correct'.
+      * unfold hash_state; simpl.
+        intro Hh. destruct Hh as [Hh | Hf]; try contradiction Hf.
+        apply hash_message_injective in Hh. discriminate Hh.
+      * simpl. intro Hf. contradiction Hf.
+    + intro. discriminate H0.
 Qed.
 
 Theorem non_triviality_decisions_on_properties_of_protocol_states

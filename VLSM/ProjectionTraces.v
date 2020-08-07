@@ -568,7 +568,7 @@ Proof.
             Hall
             n2
           ); intros [oitem [Hoa Hnth]].
-        
+
         replace
           (@nth_error
             (@sig (@vtransition_item message X)
@@ -578,7 +578,7 @@ Proof.
                (@filter (@transition_item message (@type message X))
                   (@predicate_to_function
                      (@transition_item message (@type message X))
-                     from_projection dec_from_projection) trx) Hall) n2)        
+                     from_projection dec_from_projection) trx) Hall) n2)
           with oitem in Hs2.
         clear Hoa.
         destruct oitem as [[item Hitem]|]; try inversion Hs2; subst; clear Hs2.

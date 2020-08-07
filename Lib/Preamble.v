@@ -330,6 +330,15 @@ Class StrictlyComparable (X : Type) : Type :=
      compare_strictorder :> CompareStrictOrder compare;
     }.
 
+Lemma strictly_comparable_eq_dec
+  {M : Type}
+  (HM : StrictlyComparable M)
+  : EqDec M.
+Proof.
+  intros x y.
+  apply compare_eq_dec.
+Qed.
+
 Lemma compare_two_cases
   {M} `{Hsc : StrictlyComparable M}
   : forall m1 m2 : M,

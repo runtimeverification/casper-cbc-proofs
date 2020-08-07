@@ -298,7 +298,7 @@ the [free_composite_valid]ity.
       {|  transition := composite_transition
        ;  valid := constrained_composite_valid constraint
       |}.
-    
+
     Definition composite_vlsm
       (constraint : composite_label -> composite_state * option message -> Prop)
       : VLSM message
@@ -543,7 +543,7 @@ for the [free_composite_vlsm].
           (@projT1 (VLSM_type message)
              (fun T : VLSM_type message =>
               @sigT (@VLSM_sign message T)
-                (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
+                (fun S : @VLSM_sign message T => @VLSM_class message T S))
              (IM j))
           (@projT1
              (@VLSM_sign message
@@ -558,7 +558,7 @@ for the [free_composite_vlsm].
                          (fun T : VLSM_type message =>
                           @sigT (@VLSM_sign message T)
                             (fun S : @VLSM_sign message T =>
-                             @VLSM_class message T S)) 
+                             @VLSM_class message T S))
                          (IM j)) =>
               @VLSM_class message
                 (@projT1 (VLSM_type message)
@@ -661,7 +661,7 @@ having the same transition function as <<IM i>>, the <<i>>th component of
     {|  transition :=  vtransition (IM i)
      ;  valid := projection_valid i
     |}.
-  
+
   Definition composite_vlsm_constrained_projection
     (i : index)
     : VLSM message

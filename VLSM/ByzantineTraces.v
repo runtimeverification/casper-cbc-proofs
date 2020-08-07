@@ -245,7 +245,7 @@ First note that _all_ messages are [protocol_message]s for <<Alt>>, as
           with (vtransition Alt (existT _ second m) (s, None)).
         - assert (Hps : protocol_prop Alt (s, None))
             by (subst; apply protocol_initial_state).
-          apply protocol_generated with None s; try assumption. 
+          apply protocol_generated with None s; try assumption.
           split; exact I.
         - unfold vtransition. simpl.
           f_equal.
@@ -320,9 +320,9 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
                   (fun T : VLSM_type message =>
                    @sigT (@VLSM_sign message T)
                      (fun S : @VLSM_sign message T =>
-                      @VLSM_class message T S)) Alt)) 
+                      @VLSM_class message T S)) Alt))
                 (option message) xs' om')
-            by reflexivity.    
+            by reflexivity.
           rewrite Heqxsom'.
           destruct (alt_option_protocol_message om) as [_sX Hopm].
           apply (protocol_generated Alt) with _omX _sX; try assumption.

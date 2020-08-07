@@ -220,6 +220,7 @@ End CommuteIndexed.
 (* Section 5 *)
 
 Section Estimators.
+
   Context
     {CV : consensus_values}
     {message : Type}
@@ -241,37 +242,39 @@ Section Estimators.
       c' = c.
 
   Lemma estimator_only_has_decision
-      : decision_estimator_property ->
-      forall (s : protocol_state X) (c c_other : C), (D (proj1_sig s)) = (Some c) ->
-      (estimates (proj1_sig s) c_other) ->
-      c_other = c.
+    (Hde : decision_estimator_property)
+    (s : protocol_state X)
+    (c c_other : C)
+    (Hc  : D (proj1_sig s) = (Some c))
+    (Hc_other : estimates (proj1_sig s) c_other)
+    : c_other = c.
   Proof.
     intros.
     destruct s as [s Hs].
-    unfold decision_estimator_property in H.
-    apply H with (sigma := s) (sigma':= s); try assumption.
+    apply Hde with (sigma := s) (sigma':= s); try assumption.
     apply in_futures_refl.
     assumption.
   Qed.
 
   Lemma estimator_surely_has_decision
-      : decision_estimator_property ->
-      forall (s : protocol_state X) (c : C), (D (proj1_sig s)) = (Some c) ->
-      (estimates (proj1_sig s) c).
+    (Hde : decision_estimator_property)
+    (s : protocol_state X)
+    (c : C)
+    (Hc  : D (proj1_sig s) = (Some c))
+    : estimates (proj1_sig s) c.
    Proof.
     intros.
-    unfold decision_estimator_property in H.
-    assert(exists (c_other : C), (estimates (proj1_sig s) c_other)). {
+    assert(Hc_other : exists (c_other : C), (estimates (proj1_sig s) c_other)). {
       apply estimator_total.
     }
-    destruct H1.
+    destruct Hc_other as [c_other Hc_other].
     destruct s as [s Hs].
-    assert (x = c). {
-      apply H with (sigma := s) (sigma' := s); try assumption.
+    assert (Heq : c_other = c). {
+      apply Hde with (sigma := s) (sigma' := s); try assumption.
       apply in_futures_refl.
       assumption.
     }
-    rewrite <- H2.
+    rewrite <- Heq.
     assumption.
    Qed.
 

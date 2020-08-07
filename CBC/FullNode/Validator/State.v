@@ -15,9 +15,19 @@ Import ListNotations.
 
 Section FullNodeState.
 
+(** * Full-node state tracking sent messages *)
+
+(** The development below defines a full-node-like state based on pointed sets,
+with the distinguished element being the last message sent by the machine.
+*)
+
 Context
     (C V : Type)
     .
+
+(**  As justifications contain sets of messages which contain justifications,
+we define justifications, messages, and message sets by mutual recursion.
+*)
 
 Inductive justification : Type :=
     | NoSent : message_set -> justification
@@ -38,15 +48,35 @@ with message_set_mut_ind := Induction for message_set Sort Prop
 
 Definition justification0 : justification := NoSent Empty.
 
+(**
+States are defined as pair between a (regular) set of messages and an
+optional message representing the last message sent.
+*)
+
 Definition state : Type := set message * option message.
 
 End FullNodeState.
+
+Definition get_message_set {C V} (s : state C V) : set (message C V) := fst s.
+
+Definition last_sent {C V} (s : state C V) : option (message C V) := snd s.
 
 Notation "( c , v , j )" :=
   (Msg _ _ c v j)
   (at level 20).
 
 Section FullNodeStateProperties.
+
+(** ** Full node state properties
+
+This section defines syntactical orders for messages and justifications.
+
+The main purpose of these is to define canonical ways to [make_justification]s
+ensuring that whenever two states <<s1>>, <<s2>> are equal as pointed sets,
+[make_justification] <<s1>> = [make_justification] <<s2>>
+(Lemma [make_justification_set_eq]).
+
+*)
 
 Context
     {C V : Type}
@@ -72,7 +102,7 @@ Definition get_justification
   :=
   match msg with (_,_,j) => j end.
 
-Definition get_last_sent
+Definition justification_last_sent
   (j : justification C V)
   : option (message C V)
   :=
@@ -81,7 +111,7 @@ Definition get_last_sent
   | LastSent _ _ _ m => Some m
   end.
 
-Definition get_message_set
+Definition justification_message_set
   (j : justification C V)
   : message_set C V
   :=
@@ -393,7 +423,7 @@ Definition message_set_eq
 Definition justification_incl
   (j1 j2 : justification C V)
   :=
-  message_set_incl (get_message_set j1) (get_message_set j2).
+  message_set_incl (justification_message_set j1) (justification_message_set j2).
 
 Fixpoint message_set_add
   (m : message C V)
@@ -711,13 +741,17 @@ Qed.
 
 Lemma make_message_set_equal
   (s1 s2 : set (message C V))
-  (Heq : set_eq s1 s2)
-  : make_message_set s1 = make_message_set s2.
+  : set_eq s1 s2 <-> make_message_set s1 = make_message_set s2.
 Proof.
-  apply message_set_locally_sorted_eq
-  ; try apply make_message_set_locally_sorted.
-  apply make_message_set_eq.
-  assumption.
+  split; intro Heq.
+  - apply message_set_locally_sorted_eq
+    ; try apply make_message_set_locally_sorted.
+    apply make_message_set_eq.
+    assumption.
+  - apply set_eq_tran with (unmake_message_set (make_message_set s2))
+    ; try apply make_unmake_message_set_eq.
+    rewrite <- Heq. apply set_eq_comm.
+    apply make_unmake_message_set_eq.
 Qed.
 
 Inductive message_set_recursively_sorted
@@ -894,8 +928,8 @@ Qed.
 Lemma in_make_justification
   (m : message C V)
   (s : state C V)
-  : in_message_set m (get_message_set (make_justification s))
-  <-> In m (fst s).
+  : in_message_set m (justification_message_set (make_justification s))
+  <-> In m (get_message_set s).
 Proof.
   destruct s as [msgs [final|]]; simpl
   ; rewrite <- in_make_message_set
@@ -922,13 +956,13 @@ Definition unmake_justification
   (j : justification C V)
   : state C V
   :=
-  pair (unmake_message_set (get_message_set j)) (get_last_sent j).
+  pair (unmake_message_set (justification_message_set j)) (justification_last_sent j).
 
 Lemma in_unmake_justification
   (m : message C V)
   (j : justification C V)
-  : in_message_set m (get_message_set j)
-  <-> In m (fst (unmake_justification j)).
+  : in_message_set m (justification_message_set j)
+  <-> In m (get_message_set (unmake_justification j)).
 Proof.
   destruct j; simpl
   ; rewrite <- in_unmake_message_set
@@ -946,18 +980,19 @@ Proof.
   assumption.
 Qed.
 
+Definition make_justification_set_eq
+  (s1 s2 : state C V)
+  : make_justification s1 = make_justification s2
+  <-> set_eq (get_message_set s1) (get_message_set s2) /\ last_sent s1 = last_sent s2.
+Proof.
+  destruct s1 as [msgs1 [lst1|]]; destruct s2 as [msgs2 [lst2|]]
+  ; unfold last_sent; unfold get_message_set; simpl; split; intros [Heqs Heq] || intro Heq
+  ; inversion Heq; subst; try (split; try reflexivity)
+  ; try (apply make_message_set_equal; assumption)
+  ; f_equal
+  ; apply make_message_set_equal; assumption
+  .
+Qed.
+
+
 End FullNodeStateProperties.
-
-Section sorted_stuff.
-
-Context
-    (C V : Type)
-    {about_C : StrictlyComparable C}
-    {about_V : StrictlyComparable V}
-    .
-
-Definition sorted_message : Type := sig (@message_recursively_sorted C V about_C about_V).
-
-Definition sorted_state : Type := sig (@sorted_state_property C V about_C about_V).
-
-End sorted_stuff.

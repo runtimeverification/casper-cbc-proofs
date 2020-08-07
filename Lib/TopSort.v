@@ -256,9 +256,197 @@ Qed.
 
 End min_predecessors.
 
-Section top_sort.
-(** ** The topological sorting algorithm
+Section topologically_sorted.
+
+(** ** Topologically sorted lists. Definition and properties. *)
+
+Context
+  {A : Type}
+  {eq_dec_a : EqDec A}
+  (preceeds : A -> A -> bool)
+  (l : list A)
+  .
+
+(**
+We say that a list <<l>> is [topologically_sorted] w.r.t a <<preceeds>>
+relation iff <<a preceeds b>> implies that <<a>> cannot occur after <<b>> in <<l>>.
 *)
+Definition topologically_sorted
+  :=
+  forall
+    (a b : A)
+    (Hab : preceeds a b = true)
+    (l1 l2 : list A)
+    (Heq : l = l1 ++ [b] ++ l2)
+    , ~In a l2.
+
+(** The following properties assume that <<preceeds>> determines a [StrictOrder]
+on the list
+*)
+Context
+  (P : A -> Prop)
+  {Hso : StrictOrder (preceeds_P preceeds P)}
+  .
+
+Section topologically_sorted_fixed_list.
+
+Context
+  (Hl : Forall P l)
+  (Hts : topologically_sorted)
+  .
+
+(** If <<l>> is [topologically_sorted], then for any occurences
+of <<a>> and <<b>> in <<l>> such that <<a preceeds b>> it must be that
+the occurrence of <<a>> is before that of <<b>>.
+
+Hence all occurrences of <<a>> must be before all occurrences of <<b>> in
+a [topologically_sorted] list.
+*)
+Lemma topologically_sorted_occurrences_ordering
+  (a b : A)
+  (Hab : preceeds a b = true)
+  (la1 la2 : list A)
+  (Heqa : l = la1 ++ [a] ++ la2)
+  (lb1 lb2 : list A)
+  (Heqb : l = lb1 ++ [b] ++ lb2)
+  : exists (lab : list A), lb1 = la1 ++ a :: lab.
+Proof.
+  assert (Hpa : P a).
+  { rewrite Forall_forall in Hl. apply Hl. rewrite Heqa. apply in_elt. }
+  specialize (Hts a b Hab lb1 lb2 Heqb).
+  rewrite Heqa in Heqb.
+  assert (Ha : ~In a (b :: lb2)).
+  { intro Ha. apply Hts. destruct Ha; try assumption. subst.
+    rewrite (preceeds_irreflexive preceeds P a Hpa) in Hab.
+    discriminate Hab.
+  }
+  specialize (occurrences_ordering a b la1 la2 lb1 lb2 Heqb Ha).
+  intro; assumption.
+Qed.
+
+
+(**
+If <<a>> and <<b>> are in a [topologically_sorted] list <<lts>> and <<a preceeds b>>
+then there is an <<a>> before any occurence of <<b>> in <<lts>>.
+*)
+Corollary top_sort_before
+  (a b : A)
+  (Hab : preceeds a b = true)
+  (Ha : In a l)
+  (l1 l2 : list A)
+  (Heq : l = l1 ++ [b] ++ l2)
+  : In a l1.
+Proof.
+  apply in_split in Ha.
+  destruct Ha as [la1 [la2 Ha]].
+  specialize (topologically_sorted_occurrences_ordering a b Hab la1 la2 Ha l1 l2 Heq).
+  intros [lab Hlab].
+  subst. apply in_elt.
+Qed.
+
+(** As a corollary of the above, if <<a preceeds b>> then <<a>> can be found before
+<<b>> in l.
+
+*)
+Corollary top_sort_preceeds
+  (a b : A)
+  (Hab : preceeds a b = true)
+  (Ha : In a l)
+  (Hb : In b l)
+  : exists l1 l2 l3, l = l1 ++ [a] ++ l2 ++ [b] ++ l3.
+Proof.
+  apply in_split in Hb.
+  destruct Hb as [l12 [l3 Hb']].
+  specialize (top_sort_before a b Hab Ha l12 l3 Hb').
+  intros Ha12. apply in_split in Ha12.
+  destruct Ha12 as [l1 [l2 Ha12]].
+  subst l12.
+  exists l1. exists l2. exists l3. rewrite Hb'. rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
+End topologically_sorted_fixed_list.
+End topologically_sorted.
+
+Lemma toplogically_sorted_remove_last
+  {A : Type}
+  (preceeds : A -> A -> bool)
+  (l : list A)
+  (Hts : topologically_sorted preceeds l)
+  (init : list A)
+  (final : A)
+  (Hinit : l = init ++ [final])
+  : topologically_sorted preceeds init.
+Proof.
+  subst l.
+  intros a b Hab l1 l2 Hinit.
+  specialize (Hts a b Hab l1 (l2 ++ [final])).
+  rewrite Hinit in Hts. repeat rewrite <- app_assoc in Hts.
+  specialize (Hts eq_refl). intro Hnin. apply Hts.
+  apply in_app_iff. left. assumption.
+Qed.
+
+Definition preceeds_closed
+  {A : Type}
+  (preceeds : A -> A -> bool)
+  (s : set A)
+  : Prop
+  :=
+  Forall (fun (b : A) => forall (a : A) (Hmj : preceeds a b = true), In a s) s.
+
+Lemma preceeds_closed_set_eq
+  {A : Type}
+  (preceeds : A -> A -> bool)
+  (s1 s2 : set A)
+  (Heq : set_eq s1 s2)
+  : preceeds_closed preceeds s1 <-> preceeds_closed preceeds s2.
+Proof.
+  unfold preceeds_closed. repeat rewrite Forall_forall.
+  split; intros Hpc b Hb a Hab
+  ; apply Heq; apply Heq in Hb; apply (Hpc b Hb)
+  ; assumption.
+Qed.
+
+Lemma topologically_sorted_preceeds_closed_remove_last
+  {A : Type}
+  (preceeds : A -> A -> bool)
+  (P : A -> Prop)
+  {Hso : StrictOrder (preceeds_P preceeds P)}
+  (l : list A)
+  (Hl : Forall P l)
+  (Hts : topologically_sorted preceeds l)
+  (init : list A)
+  (final : A)
+  (Hinit : l = init ++ [final])
+  (Hpc : preceeds_closed preceeds l)
+  : preceeds_closed preceeds init.
+Proof.
+  unfold preceeds_closed in *.
+  rewrite Forall_forall in Hpc. rewrite Forall_forall.
+  subst l.
+  intros b Hb a Hab.
+  assert (Hb' : In b (init ++ [final])) by (apply in_app_iff; left; assumption).
+  specialize (Hpc b Hb' a Hab). apply in_app_iff in Hpc.
+  destruct Hpc as [Ha | Ha]; try assumption.
+  destruct Ha as [Heq | Hn]; try inversion Hn.
+  subst final.
+  apply in_split in Hb'.
+  destruct Hb' as [l1 [l2 Heq]].
+  specialize
+    (topologically_sorted_occurrences_ordering preceeds
+      (init ++ [a]) P Hl Hts a b Hab init [] eq_refl l1 l2 Heq
+    ).
+  intros [lab Hlab].
+  rewrite Hlab in Heq. exfalso. clear -Heq.
+  simpl in Heq. rewrite <- app_assoc in Heq. simpl in Heq.
+  apply app_inv_head in Heq. inversion Heq.
+  symmetry in H0. apply app_eq_nil in H0.
+  destruct H0 as [_ H].
+  inversion H.
+Qed.
+
+Section top_sort.
+(** ** The topological sorting algorithm *)
 
 Context
   {A : Type}
@@ -324,56 +512,45 @@ Proof.
       right. subst. apply set_remove_1 in Hinx. assumption.
 Qed.
 
-(** *** [top_sort] corectness *)
-
-(** We can prove the corectness of [top_sort] under the assumption that
-<<preceeds>> induces a [StrictOrder] on a subset of <<A>> including all
-elements of <<l>>.
-
-Let <<a>> and <<b>> be two elements of <<l>> such that <<a preceeds b>>.
-*)
-
 Context
   (P : A -> Prop)
   {Hso : StrictOrder (preceeds_P preceeds P)}
   (l : list A)
   (Hl : Forall P l)
-  (a : A)
-  (b : A)
-  (Ha : In a l)
-  (Hb : In b l)
-  (Hab : preceeds a b = true)
   .
 
-(** The main result of this section states that for any occurrence of <<b>>
-in [top_sort] <<l>>, <<a>> must occur before it and cannot occur after it.
+(** Under the assumption that <<preceeds>> induces a [StrictOrder] on the elements of
+<<l>>, [top_sort] <<l>> is [topologically_sorted].
 
-Quantifying over all occurrences of <<b>> guarantees that all occurrences
-of <<a>> must be before all occurrences of <<b>> in [top_sort] <<l>>.
 *)
-Lemma top_sort_correct
-  (l1 l2 : list A)
-  (Heq : top_sort l = l1 ++ [b] ++ l2)
-  : In a l1 /\ ~In a l2.
+Lemma top_sort_sorted : topologically_sorted preceeds (top_sort l).
 Proof.
+  intro a; intros.
+  intro Ha2.
+  assert (Ha : In a l).
+  { apply top_sort_set_eq.
+    rewrite Heq. simpl. apply in_app_iff. right. right. assumption.
+  }
   unfold top_sort in Heq.
   remember (length l) as n.
   generalize dependent Heq.
   generalize dependent l2.
   generalize dependent l1.
-  clear Hb.
-  generalize dependent Ha. clear Ha.
-  generalize dependent Hab. clear Hab.
-  generalize dependent b. clear b.
-  generalize dependent a. clear a.
+  generalize dependent Ha.
+  generalize dependent Hab.
+  generalize dependent b.
+  generalize dependent a.
   generalize dependent l. clear Hl l.
   induction n; intros
   ; try (symmetry in Heqn;  apply length_zero_iff_nil in Heqn; subst l; inversion Ha).
-  destruct l as [| a0 l0]; inversion Hl; subst.
-  - inversion Ha.
-  - simpl in Heq.
-    remember (min_predecessors preceeds (a0 :: l0) l0 a0) as min.
-    remember (if eq_dec min a0 then l0 else a0 :: set_remove eq_dec min l0) as l'.
+  destruct l as [| a0 l0]; inversion Hl; subst; simpl in Heq.
+  + inversion Ha.
+  + remember (min_predecessors preceeds (a0 :: l0) l0 a0) as min.
+    remember
+      (match @eq_dec A eq_dec_a min a0 return (set A) with
+      | left _ => l0
+      | right _ => @cons A a0 (@set_remove A (@eq_dec A eq_dec_a) min l0)
+      end) as l'.
     inversion Heqn.
     assert (Hall' : Forall P l').
     { rewrite Forall_forall. intros x Hx.
@@ -409,14 +586,9 @@ Proof.
     destruct l1 as [| _min l1]; inversion Heq
     ; try (subst b; elim Hminb; reflexivity).
     subst _min.
-    replace (if eq_dec min a0 then l0 else a0 :: set_remove eq_dec min l0) with l' in H4.
     destruct (in_dec eq_dec a l').
-    + specialize (IHn i l1 l2 H4).
-      destruct IHn as [Hin Hnin].
-      split; try assumption.
-      right.
-      assumption.
-    + assert (Hmina : min = a).
+    - apply (IHn i l1 l2 Ha2 H4).
+    - assert (Hmina : min = a).
       { destruct (eq_dec min a0).
       - subst a0 l'.
         inversion Ha; try assumption.
@@ -429,8 +601,6 @@ Proof.
           elim n0. right. assumption.
       }
       subst a.
-      split; try (left; reflexivity).
-      intro Hl2.
       apply n0.
       apply top_sort_set_eq.
       unfold top_sort. rewrite <- Hlenl'.
@@ -439,24 +609,19 @@ Proof.
       right. right. assumption.
 Qed.
 
-(** As a corollary of the above, <<a>> can be found before <<b>> in
-[top_sort l].
-
-This result is equivalent with the one above when there are no duplicate
-elements in <<l>>; however it is strictly weaker in the general case.
+(** <<lts>> is a [topological_sorting] of <<l>> if it has the same elements as <<l>>
+and is [toplogically_sorted].
 *)
-Corollary top_sort_preceeds
-  : exists l1 l2 l3, top_sort l = l1 ++ [a] ++ l2 ++ [b] ++ l3.
+Definition topological_sorting
+  (l lts : list A)
+  :=
+  set_eq l lts /\ topologically_sorted preceeds lts.
+
+Corollary top_sort_correct : topological_sorting l (top_sort l).
 Proof.
-  apply top_sort_set_eq in Hb.
-  apply in_split in Hb.
-  destruct Hb as [l12 [l3 Hb']].
-  specialize (top_sort_correct l12 l3 Hb').
-  intros [Ha12 _]. apply in_split in Ha12.
-  destruct Ha12 as [l1 [l2 Ha12]].
-  subst l12.
-  exists l1. exists l2. exists l3. rewrite Hb'. rewrite <- app_assoc.
-  reflexivity.
+  split.
+  - apply top_sort_set_eq.
+  - apply top_sort_sorted.
 Qed.
 
 End top_sort.

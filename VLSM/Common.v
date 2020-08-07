@@ -74,7 +74,7 @@ function and a [valid]ity condition.
   Definition VLSM (message : Type) :=
     sigT (fun T : VLSM_type message =>
       sigT (fun S : VLSM_sign T => VLSM_class S)).
-  
+
   Definition mk_vlsm
     {message : Type}
     {T : VLSM_type message}
@@ -162,9 +162,9 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition vvalid := @valid _ _ _ machine.
   Definition vtransition_item := @transition_item _ type.
   Definition vTrace := @Trace _ type.
-  
+
 End vlsm_projections.
-  
+
 Lemma mk_vlsm_machine
   {message : Type}
   (X : VLSM message)
@@ -659,6 +659,26 @@ decompose the above properties in proofs.
       : finite_protocol_trace_from (destination te) tr.
     Proof.
       inversion Htr. assumption.
+    Qed.
+
+    Lemma finite_ptrace_last_pstate
+      (s : state)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace_from s tr)
+      : protocol_state_prop (last (List.map destination tr) s).
+    Proof.
+      generalize dependent s.
+      induction tr; intros.
+      - simpl. apply finite_ptrace_first_pstate with []. assumption.
+      - apply finite_ptrace_tail in Htr.
+        apply IHtr in Htr.
+        replace
+          (last (List.map destination (a :: tr)) s)
+          with (last (List.map destination tr) (destination a))
+        ; try assumption.
+        rewrite map_cons.
+        rewrite unroll_last.
+        reflexivity.
     Qed.
 
     Lemma finite_ptrace_consecutive_valid_transition
@@ -1714,7 +1734,7 @@ is also available to Y.
       {message : Type}
       {vtype : VLSM_type message}
       .
-    
+
     Definition VLSM_eq
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
@@ -1950,7 +1970,7 @@ Byzantine fault tolerance analysis. *)
     {| transition := vtransition X
      ; valid := vvalid X
     |}.
-  
+
   Definition pre_loaded_vlsm
     : VLSM message
     := mk_vlsm pre_loaded_vlsm_machine.
