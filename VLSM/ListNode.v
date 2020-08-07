@@ -1,4 +1,5 @@
-Require Import Bool List Streams Logic.Epsilon Logic.Decidable Reals ProofIrrelevance Fin FinFun.
+Require Import Bool List Streams Logic.Epsilon Logic.Decidable Reals ProofIrrelevance Fin FinFun OrdersFacts.
+Require Import Lia.
 Import ListNotations.
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions VLSM.Equivocation CBC.FullNode.
@@ -597,6 +598,7 @@ Context
              (m2 : message)
              (som1 := (s1, m1))
              (som2 := (s2, Some m2))
+             (* TODO: remove not_bottom assumption *)
              (Hnot_bottom : s1 <> Bottom)
              (Hprotocol : protocol_transition preX l som1 som2),
              project s2 index_self = snd m2.
@@ -625,6 +627,194 @@ Context
          + inversion transition_prop.
     Qed.
     
+    
+    Lemma rec_history_split :
+      forall (s : state)
+             (i : index)
+             (d1 d2 : nat)
+             (Hsufficient : d2 >= (depth s))
+             (Hsmaller : d1 <= d2)
+             (short := rec_history s i d1),
+             rec_history s i d2 = short ++ rec_history (project (last short Bottom) i) i (d2 - d1).
+             
+    Proof.
+    Admitted.
+    
+    Lemma last_cant_progress :
+      forall (s : state)
+             (i : index)
+             (random : state),
+             (project (last (rec_history s i (depth s)) random) i = Bottom).
+    
+    Proof.
+      intros.
+      induction (depth s).
+      - simpl. admit.
+      - unfold rec_history.
+     Admitted.
+        
+
+      
+      
+    Admitted. 
+             
+    Lemma depth_redundancy :
+      forall (s : state)
+             (i : index)
+             (d : nat)
+             (Hbig : d >= depth s),
+        rec_history s i d = rec_history s i (depth s).
+    Proof.
+      intros.
+      specialize (rec_history_split s i (depth s) d Hbig Hbig).
+      intros.
+      rewrite H.
+      assert (rec_history (project (last (rec_history s i (depth s)) Bottom) i) i (d - depth s) = []). {
+        assert ((project (last (rec_history s i (depth s)) Bottom) i) = Bottom). {
+          apply last_cant_progress.
+        }
+        rewrite H0.
+        unfold rec_history.
+        destruct (d - depth s); reflexivity.
+      }
+      rewrite H0.
+      rewrite app_nil_r.
+      reflexivity.
+    Qed.
+    
+    Lemma history_oblivious:
+      forall (s : state)
+             (news : state)
+             (i : index)
+             (j : index)
+             (Hdif : j <> i),
+             get_history s i = get_history (update_state s news j) i.
+    
+    Proof.
+      intros.
+      unfold get_history.
+      destruct s.
+      - simpl. reflexivity.
+      - simpl. 
+        assert ((last_recorded index_listing is i) = 
+                (last_recorded index_listing (update_indexed index_listing is j news) i)). {
+                  unfold last_recorded.
+                  symmetry.
+                  apply update_indexed_different.
+                  assumption.
+                  split.
+                  apply ((proj2 Hfinite) j).
+                  apply ((proj2 Hfinite) i).
+                }
+        rewrite H.
+        reflexivity.
+    Qed.
+    
+    Lemma history_append :
+      forall (s : state)
+             (news : state)
+             (Hno_bottom_s : s <> Bottom)
+             (Hno_bottom_news : news <> Bottom)
+             (i : index)
+             (Hvalidity : project news i = project s i),
+             get_history (update_state s news i) i = (news :: get_history s i).
+    Proof.
+      intros.
+      unfold update_state.
+      destruct s eqn : s_eq.
+      - elim Hno_bottom_s. reflexivity.
+      - unfold get_history.
+        unfold last_recorded.
+        Check update_indexed_same.
+        
+        assert ((project_indexed index_listing (update_indexed index_listing is i news) i) =
+                 news). {
+          apply update_indexed_same.
+          reflexivity.
+          apply ((proj2 Hfinite) i).
+        }
+        
+        rewrite H.
+        (* unfold rec_history at 1. *)
+        destruct news eqn : news_eq.
+        + elim Hno_bottom_news. reflexivity.
+        + unfold rec_history at 1.
+          simpl in *.
+          assert ((depth (Something b0 is0)) = (S (depth (project_indexed index_listing is i)))). {
+            (* This is false *)
+            admit.
+          }
+          rewrite H0.
+          unfold last_recorded.
+          rewrite Hvalidity.
+          reflexivity.
+     Admitted.
+
+
+    
+    Lemma history_persists_transition:
+      forall (s1 s2 s3 : state)
+             (l : label)
+             (om1 om2 : option message)
+             (i : index)
+             (Hprotocol: protocol_transition preX l (s1, om1) (s2, om2))
+             (Hhas_1 : In s3 (get_history s1 i)),
+             In s3 (get_history s2 i).
+    
+    Proof.
+     intros.
+     unfold protocol_transition in Hprotocol.
+     destruct Hprotocol as [Hprotocol_valid Htransition].
+     simpl in *.
+     destruct l eqn : eq.
+     - admit. 
+     - assert ((get_history s1 i) = (get_history s2 i)). {
+          destruct om1.
+          + inversion Htransition.
+            destruct (idec (fst m) i) eqn : dec_eq.
+            * admit.
+            * apply history_oblivious. assumption.
+          + inversion Htransition.
+            reflexivity.
+       } 
+    Admitted.
+    
+    Lemma history_persists_trace :
+      forall (s1 s2 s3 : state)
+             (i : index)
+             (Hin : in_futures preX s1 s2),
+             In s3 (get_history s1 i) -> In s3 (get_history s2 i).
+             
+    Proof.
+      intros.
+      unfold in_futures in Hin.
+      destruct Hin.
+      destruct H0.
+      generalize dependent s1.
+      induction x.
+      - intros.
+        simpl in *.
+        rewrite <- H1.
+        assumption.
+      - intros.
+        apply IHx with (s1 := destination a).
+        + inversion H0.
+          assumption.
+        + assert (List.map destination (a :: x) = (destination a) :: (List.map destination x)). {
+            apply map_cons.
+          }
+          rewrite H2 in H1.
+          rewrite unroll_last in H1.
+          assumption.
+        + inversion H0.
+          simpl. 
+          apply history_persists_transition with (s1 := s1) (s2 := s) (l := l) (om1 := iom) (om2 := oom).
+          assumption.
+          assumption.
+    Qed.
+    
+    (* TODO : remove duplication for infinite traces *)
+    
     Lemma message_gets_recorded :
       forall (m : message)
              (tr : protocol_trace preX)
@@ -649,7 +839,8 @@ Context
           destruct smth.
           
           assert (Hpr_tr : protocol_transition preX (l last1) (s0, (input last1)) ((destination last1), (output last1))). {
-            admit.  
+            apply first_transition_valid.
+            assumption.
           }
           
           apply transition_gets_recorded with (l := l last1) (s1 := s0) (m1 := input last1).
@@ -661,8 +852,26 @@ Context
           * rewrite <- Hm. 
             assumption.
        + simpl in *.
-         assert (exists (tr1 : list transition_item) (prev : transition_item), (t :: l1 ++ [last1]) = tr1 ++ [prev;last1]). {
-          admit.
+         assert (exists (tr1 : list transition_item)
+                        (prev : transition_item),
+                        (t :: l1 ++ [last1]) = tr1 ++ [prev;last1]). {
+          destruct l1.
+          * simpl. exists []. exists t. reflexivity.
+          * specialize exists_last with (l := (t :: (t0 :: l1))).
+            intros. 
+            destruct X0 as [tr [a Heq]].
+            discriminate.
+            exists tr.
+            exists a.
+            simpl.
+            assert (tr ++ [a;last1] = (tr ++ [a]) ++ [last1]). {
+              rewrite <- app_assoc.
+              simpl.
+              reflexivity.
+            }
+            rewrite H.
+            rewrite <-Heq.
+            reflexivity.
          }
          
          destruct H as [tr1 [prev Hdecomp]].
@@ -670,13 +879,6 @@ Context
          
          assert (Hp_tr : protocol_transition preX (l last1) (destination prev, (input last1)) ((destination last1), (output last1))). {
             simpl in *.
-            (*
-            specialize (consecutive s0 (t :: l1 ++ [last1]) [] tr1 prev last1).
-            apply consecutive.
-            destruct smth.
-            assumption.
-            assumption.*)
-            
             eapply consecutive with (te2 := last1) (te1 := prev); eauto.
             apply smth.
          }
@@ -684,7 +886,10 @@ Context
          apply transition_gets_recorded with (l := l last1) (s1 := destination prev) (m1 := input last1).
          
          * assert(protocol_state_prop preX (destination prev)). {
-            admit.
+            unfold protocol_transition in Hp_tr.
+            destruct Hp_tr.
+            destruct H.
+            assumption.
          }
            remember (exist _ (destination prev) H) as protocol_prev.
            assert (destination prev = proj1_sig protocol_prev). {
@@ -696,9 +901,76 @@ Context
            apply protocol_no_bottom with (s := protocol_prev).
          * rewrite <- Hm.
            assumption.
-      - simpl in smth.
-        admit.
-    Admitted.
+      - destruct prefix as [|t l1] eqn : prefix_eq.
+       + simpl in smth.
+          unfold finite_protocol_trace in smth.
+          destruct smth.
+          
+          assert (Hpr_tr : protocol_transition preX (l last1) (s0, (input last1)) ((destination last1), (output last1))). {
+            apply first_transition_valid.
+            assumption.
+          }
+          
+          apply transition_gets_recorded with (l := l last1) (s1 := s0) (m1 := input last1).
+          * simpl in *.
+            destruct tr_prop.
+            destruct H2.
+            rewrite H2.
+            discriminate.
+          * rewrite <- Hm. 
+            assumption.
+       + simpl in *.
+         assert (exists (tr1 : list transition_item)
+                        (prev : transition_item),
+                        (t :: l1 ++ [last1]) = tr1 ++ [prev;last1]). {
+          destruct l1.
+          * simpl. exists []. exists t. reflexivity.
+          * specialize exists_last with (l := (t :: (t0 :: l1))).
+            intros. 
+            destruct X0 as [tr [a Heq]].
+            discriminate.
+            exists tr.
+            exists a.
+            simpl.
+            assert (tr ++ [a;last1] = (tr ++ [a]) ++ [last1]). {
+              rewrite <- app_assoc.
+              simpl.
+              reflexivity.
+            }
+            rewrite H.
+            rewrite <-Heq.
+            reflexivity.
+         }
+         
+         destruct H as [tr1 [prev Hdecomp]].
+         pose proof (@finite_ptrace_consecutive_valid_transition _ _ _ preX) as consecutive.
+         
+         assert (Hp_tr : protocol_transition preX (l last1) (destination prev, (input last1)) ((destination last1), (output last1))). {
+            simpl in *.
+            eapply consecutive with (te2 := last1) (te1 := prev); eauto.
+            apply smth.
+         }
+         
+         apply transition_gets_recorded with (l := l last1) (s1 := destination prev) (m1 := input last1).
+         
+         * assert(protocol_state_prop preX (destination prev)). {
+            unfold protocol_transition in Hp_tr.
+            destruct Hp_tr.
+            destruct H.
+            assumption.
+         }
+           remember (exist _ (destination prev) H) as protocol_prev.
+           assert (destination prev = proj1_sig protocol_prev). {
+              inversion protocol_prev.
+              rewrite Heqprotocol_prev.
+              simpl. reflexivity.
+           }
+           rewrite H0.
+           apply protocol_no_bottom with (s := protocol_prev).
+         * rewrite <- Hm.
+           assumption.
+    Qed.
+    
     
     Lemma send_oracle_prop 
       (s : state)

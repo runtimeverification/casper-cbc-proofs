@@ -178,6 +178,29 @@ dependent types [protocol_state] and [protocol_message].
 
     Definition protocol_message : Type :=
       { m : message | protocol_message_prop m }.
+      
+   
+    (* begin hide *)
+    
+    Lemma initial_is_protocol 
+      (s : state)
+      (Hinitial : initial_state_prop s) :
+      protocol_state_prop s.
+    Proof.
+      unfold protocol_state_prop.
+      unfold initial_state_prop.
+      exists None.
+      remember (exist _ s Hinitial) as is.
+      assert (s = proj1_sig is). {
+        rewrite Heqis.
+        simpl.
+        reflexivity.
+      }
+      rewrite H.
+      apply protocol_initial_state.
+    Qed.
+      
+    (* end hide *)
 
 (**
 As often times we work with optional protocol messages, it is convenient
@@ -612,6 +635,18 @@ decompose the above properties in proofs.
       - specialize (IHtr1 (tr1 ++ [te1; te2] ++ tr2) eq_refl).
         intros tr Heq is Htr; subst. inversion Htr; subst.
         simpl in IHtr1. specialize (IHtr1 s H2). assumption.
+    Qed.
+    
+    Lemma first_transition_valid
+      (s : state)
+      (te : transition_item)
+      (Htr : finite_protocol_trace_from s [te])
+      : protocol_transition (l te) (s, input te) (destination te, output te).
+      
+    Proof.
+      inversion Htr.
+      simpl.
+      assumption.
     Qed.
 
     Lemma extend_right_finite_trace_from
