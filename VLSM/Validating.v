@@ -16,17 +16,12 @@ Context
     {message : Type}
     {index : Type}
     {IndEqDec : EqDec index}
+    (IM : index -> VLSM message)
     (i0 : index)
-    {IT : index -> VLSM_type message}
-    {IS : forall i : index, VLSM_sign (IT i)}
-    (IM : forall n : index, VLSM (IS n))
-    (T := composite_type IT)
-    (S := composite_sig i0 IS)
-    (constraint : @label _ T -> @state _ T * option message -> Prop)
-    (X := composite_vlsm i0 IM constraint)
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM i0 constraint)
     (i : index)
-    (valid_i := @valid _ _ _ (IM i))
-    (projection_valid_i := projection_valid i0 IM constraint i)
+    (Xi := composite_vlsm_constrained_projection IM i0 constraint i)
     .
 
 (**
@@ -36,9 +31,9 @@ non-[projection_valid]itiy implied non-component-[valid]ity.
 
 Definition validating_projection_received_messages_prop
     :=
-    forall (li : @label _ (IT i)) (si : @state _ (IT i)) (mi : message),
-        ~ projection_valid_i li (si, Some mi)
-        -> ~ valid_i li (si, Some mi).
+    forall (li : vlabel (IM i)) (si : vstate (IM i)) (mi : message),
+        ~ vvalid Xi li (si, Some mi)
+        -> ~ vvalid (IM i) li (si, Some mi).
 
 (**
 We can slightly generalize the definition above to also include empty messages
@@ -47,9 +42,9 @@ requiring that [valid]ity in the component implies [projection_valid]ity.
 *)
 
 Definition validating_projection_prop :=
-    forall (li : @label _ (IT i)) (siomi : @state _ (IT i) * option message),
-        valid_i li siomi ->
-        projection_valid_i li siomi.
+    forall (li : vlabel (IM i)) (siomi : vstate (IM i) * option message),
+        vvalid (IM i) li siomi ->
+        vvalid Xi li siomi.
 
 (**
 It is easy to see that the [validating_projection_prop]erty includes the
@@ -74,14 +69,14 @@ transition in component <<i>> can be "lifted" to a [protocol_transition] in <<X>
 
 Definition validating_transitions :=
     forall
-        (si : @state _ (IT i))
+        (si : vstate (IM i))
         (omi : option message)
-        (li : @label _ (IT i))
+        (li : vlabel (IM i))
         ,
-        valid_i li (si, omi)
+        vvalid (IM i) li (si, omi)
         ->
         (exists
-            (s s' : @state _ T)
+            (s s' : vstate X)
             (om' : option message),
             si = s i
             /\
@@ -101,13 +96,14 @@ Proof.
     simpl. intros.
     specialize (H li (si, omi) H0). clear H0. simpl in H.
     destruct H as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
-    remember (@transition _ _ _ X (existT _ i li) (s, omi)) as t.
+    remember (vtransition X (existT _ i li) (s, omi)) as t.
     destruct t as [s' om'].
     exists s. exists s'. exists om'.
     symmetry in Hsi. subst si; simpl.
     repeat split; try assumption.
+    unfold vtransition in Heqt.
     simpl in Heqt.
-    remember (transition li (s i, omi)) as t.
+    remember (vtransition (IM i) li (s i, omi)) as t.
     destruct t as [si' om''].
     inversion Heqt; subst.
     reflexivity.
@@ -135,7 +131,6 @@ and <<Preloaded>> be the [pre_loaded_vlsm] associated to component <<i>>.
 Section pre_loaded_validating_proj.
     Context
         (Hvalidating : validating_projection_prop)
-        (Xi := composite_vlsm_constrained_projection i0 IM constraint i)
         (PreLoaded := pre_loaded_vlsm (IM i))
         .
 
@@ -146,9 +141,9 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
 *)
 
     Lemma pre_loaded_validating_proj_incl
-        : VLSM_incl PreLoaded Xi.
+        : VLSM_incl (machine PreLoaded) (machine Xi).
     Proof.
-        apply (basic_VLSM_incl PreLoaded Xi)
+        apply (basic_VLSM_incl (machine PreLoaded) (machine Xi))
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
         - apply Hvalidating in H. destruct H as [_ [_ [_ [Hopm _]]]].
           apply protocol_message_projection. assumption.
@@ -162,7 +157,7 @@ trace-equal.  This means that all the byzantine behavior of a
 validating component is exhibited by its corresponding projection.
 *)
     Lemma pre_loaded_validating_proj_eq
-        : VLSM_eq PreLoaded Xi.
+        : VLSM_eq (machine PreLoaded) (machine Xi).
     Proof.
         split.
         - apply pre_loaded_validating_proj_incl.
@@ -181,9 +176,7 @@ Section validating_vlsm.
 
 Context
     {message : Type}
-    {T : VLSM_type message}
-    {S : VLSM_sign T}
-    (X : VLSM S)
+    (X : VLSM message)
     .
 
 (**
@@ -195,7 +188,7 @@ VLSM, respectively.
 Definition validating_vlsm_prop
     :=
     forall (l : label) (s : state) (om : option message),
-        valid l (s, om) ->
+        vvalid X l (s, om) ->
         protocol_state_prop X s /\ option_protocol_message_prop X om.
 
 (**
@@ -222,12 +215,13 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
 *)
 
     Lemma pre_loaded_validating_vlsm_incl
-        : VLSM_incl PreLoaded X.
+        : VLSM_incl (machine PreLoaded) (machine X).
     Proof.
-        apply (basic_VLSM_incl PreLoaded X)
+        apply (basic_VLSM_incl (machine PreLoaded) (machine X))
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
         apply Hvalidating in H.
         destruct H as [_ Hpm].
+        destruct X as (T, (S, M)); simpl.
         assumption.
     Qed.
 
@@ -236,11 +230,13 @@ We conclude that <<X>> and <<Preloaded>> are trace-equal.
 *)
 
     Lemma pre_loaded_validating_vlsm_eq
-        : VLSM_eq PreLoaded X.
+        : VLSM_eq (machine PreLoaded) (machine X).
     Proof.
         split.
         - apply pre_loaded_validating_vlsm_incl.
-        - apply vlsm_incl_pre_loaded_vlsm.
+        - pose (vlsm_incl_pre_loaded_vlsm X) as Hincl.
+          destruct X as (T, (S, M)).
+          apply Hincl.
     Qed.
 
 End validating_vlsm.

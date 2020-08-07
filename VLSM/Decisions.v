@@ -20,70 +20,71 @@ Class consensus_values :=
 Definition decision {message} (T : VLSM_type message) {CV : consensus_values}
   := @state _ T -> option C.
 
+Definition vdecision {message} (V : VLSM message) {CV : consensus_values}
+  := decision (type V).
+
 Section CommuteSingleton.
 
   Context
     {message : Type}
-    {T : VLSM_type message}
-    {S : VLSM_sign T}
     {CV : consensus_values}
-    (V : VLSM S).
+    (V : VLSM message).
 
   (* 3.2.1 Decision finality *)
 
   (* Definition of finality per document. *)
-  Definition final_original : decision T -> Prop :=
-    fun (D : decision T) => forall (tr : protocol_trace V),
+  Definition final_original : vdecision V -> Prop :=
+    fun (D : vdecision V) => forall (tr : protocol_trace V),
         forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
-          (trace_nth (proj1_sig tr) n1 = Some s1) ->
-          (trace_nth (proj1_sig tr) n2 = Some s2) ->
+          (trace_nth V (proj1_sig tr) n1 = Some s1) ->
+          (trace_nth V (proj1_sig tr) n2 = Some s2) ->
           (D s1 = (Some c1)) ->
           (D s2 = (Some c2)) ->
           c1 = c2.
 
   (* Definition of finality using in_futures, which plays better with the estimator property *)
-  Definition final: decision T -> Prop :=
-  fun (D : decision T) => forall (s1 s2 : @state _ T) (c1 c2 : C),
+  Definition final: vdecision V -> Prop :=
+  fun (D : vdecision V) => forall (s1 s2 : vstate V) (c1 c2 : C),
         in_futures V s1 s2 ->
         (D s1 = (Some c1)) ->
         (D s2 = (Some c2)) ->
         c1 = c2.
 
   (* 3.3.1 Initial protocol state bivalence *)
-  Definition bivalent : decision T -> Prop :=
-    fun (D : decision T) =>
+  Definition bivalent : vdecision V -> Prop :=
+    fun (D : vdecision V) =>
       (* All initial states decide on None *)
       (forall (s0 : state),
-        initial_state_prop s0 ->
+        vinitial_state_prop V s0 ->
         D s0 = None) /\
       (* Every protocol trace (already beginning from an initial state) contains a state deciding on each consensus value *)
       (forall (c : C) ,
           exists (tr : protocol_trace V) (s : state) (n : nat),
-            (trace_nth (proj1_sig tr) n) = Some s /\ D s = (Some c)).
+            (trace_nth V (proj1_sig tr) n) = Some s /\ D s = (Some c)).
 
   (* 3.3.2 No stuck states *)
 
-  Definition stuck_free : decision T -> Prop :=
-    fun (D : decision T) =>
+  Definition stuck_free : vdecision V -> Prop :=
+    fun (D : vdecision V) =>
       (forall (s : state),
           exists (tr : protocol_trace V)
                  (decided_state : state)
                  (n_s n_decided : nat)
                  (c : C),
-         trace_nth (proj1_sig tr) n_s = Some s /\
-         trace_nth (proj1_sig tr) n_decided = Some decided_state /\
+         trace_nth V (proj1_sig tr) n_s = Some s /\
+         trace_nth V (proj1_sig tr) n_decided = Some decided_state /\
          n_decided >= n_s /\
          D decided_state = Some c).
 
   (* 3.3.3 Protocol definition symmetry *)
   (* How do we formalize this property set-theoretically? *)
 
-  Definition behavior : decision T -> Prop :=
+  Definition behavior : vdecision V -> Prop :=
     fun _ => True.
 
-  Definition symmetric : decision T -> Prop :=
-    fun (D : decision T) =>
-    exists (f : decision T -> decision T),
+  Definition symmetric : vdecision V -> Prop :=
+    fun (D : vdecision V) =>
+    exists (f : vdecision V -> vdecision V),
       behavior D = behavior (f D).
 
 End CommuteSingleton.
@@ -92,16 +93,14 @@ Section CommuteIndexed.
 
   Context
     {CV : consensus_values}
+    {message : Type}
     {index : Type}
     {Heqd : EqDec index}
-    {message : Type}
-    {IT : index -> VLSM_type message}
-    {IS : forall i : index, VLSM_sign (IT i)}
+    (IM : index -> VLSM message)
     (Hi : index)
-    (IM : forall i : index, VLSM (IS i))
-    (constraint : composite_label IT -> composite_state IT * option message -> Prop)
-    (X := composite_vlsm Hi IM constraint)
-    (ID : forall i : index, decision (IT i)).
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM Hi constraint)
+    (ID : forall i : index, vdecision (IM i)).
 
   (* ** Decision consistency
 
@@ -113,11 +112,11 @@ Section CommuteIndexed.
       forall (tr : protocol_trace X),
       forall (n1 n2 : nat),
       forall (j k : index),
-      forall (s1 s2 : @state _ (composite_type IT)),
+      forall (s1 s2 : vstate X),
       forall (c1 c2 : C),
       j <> k ->
-      trace_nth (proj1_sig tr) n1 = (Some s1) ->
-      trace_nth (proj1_sig tr) n2 = (Some s2) ->
+      trace_nth X (proj1_sig tr) n1 = (Some s1) ->
+      trace_nth X (proj1_sig tr) n2 = (Some s2) ->
       (ID j) (s1 j) = (Some c1) ->
       (ID k) (s2 k) = (Some c2) ->
       c1 = c2.
@@ -129,7 +128,7 @@ Section CommuteIndexed.
 
   Definition consistent :=
       forall
-        (s1 s2 : @state _ (composite_type IT))
+        (s1 s2 : vstate X)
         (Hfuture : in_futures X s1 s2)
         (j k : index)
         (Hneq : j <> k)
@@ -180,7 +179,7 @@ Section CommuteIndexed.
 
   Definition final_and_consistent :=
       forall
-        (s1 s2 : @state _ (composite_type IT))
+        (s1 s2 : vstate X)
         (Hfuture : in_futures X s1 s2)
         (j k : index)
         (c1 c2 : C)
@@ -191,11 +190,11 @@ Section CommuteIndexed.
   Lemma final_and_consistent_implies_final
       (Hcons : final_and_consistent)
       (i : index)
-      (Hfr : finite_projection_friendly Hi IM constraint i)
-      : final (composite_vlsm_constrained_projection Hi IM constraint i) (ID i).
+      (Hfr : finite_projection_friendly IM Hi constraint i)
+      : final (composite_vlsm_constrained_projection IM Hi constraint i) (ID i).
   Proof.
     intros s1 s2 c1 c2 Hfuturesi HD1 HD2.
-    specialize (projection_friendly_in_futures Hi IM constraint i Hfr s1 s2 Hfuturesi)
+    specialize (projection_friendly_in_futures IM Hi constraint i Hfr s1 s2 Hfuturesi)
     ; intros [sX1 [sX2 [Hs1 [Hs2 HfuturesX]]]].
     subst.
     apply (Hcons sX1 sX2 HfuturesX i i c1 c2 HD1 HD2).
@@ -212,8 +211,8 @@ Section CommuteIndexed.
   Definition live :=
     forall (tr : @Trace _ (type X)),
       complete_trace_prop X tr ->
-      exists (s : @state _ (composite_type IT)) (n : nat) (i : index) (c : C),
-        trace_nth tr n = Some s /\
+      exists (s : vstate X) (n : nat) (i : index) (c : C),
+        trace_nth X tr n = Some s /\
         (ID i) (s i) = Some c.
 
 End CommuteIndexed.
@@ -224,38 +223,27 @@ Section Estimators.
   Context
     {CV : consensus_values}
     {message : Type}
-    {index : Type}
-    {Heqd : EqDec index}
-    (Hi : index)
-    {IT : index -> VLSM_type message}
-    {IS : forall i : index, VLSM_sign (IT i)}
-    (IM : forall i : index, VLSM (IS i))
-    (constraint : composite_label IT -> composite_state IT * option message -> Prop)
-    (X := composite_vlsm Hi IM constraint)
-    (ID : forall i : index, decision (IT i))
-    (IE : forall i : index, Estimator (@state _ (IT i)) C).
+    (X : VLSM message)
+    (D : vdecision X)
+    (E : Estimator (vstate X) C)
+    (estimates := @estimator _ _ E)
+    .
 
   Definition decision_estimator_property
-    (i : index)
-    (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
-    (Ei := @estimator _ _ (IE i))
     := forall
-      (sigma : @state _ (IT i))
+      (sigma : vstate X)
       (c : C)
-      (HD : ID i sigma = Some c)
-      (sigma' : @state _ (IT i))
-      (Hreach : in_futures Xi sigma sigma')
-      (c' : C),
-      Ei sigma' c'
-      -> c' = c.
+      (HD : D sigma = Some c)
+      (sigma' : vstate X)
+      (Hreach : in_futures X sigma sigma')
+      (c' : C)
+      (Hc' : estimates sigma' c'),
+      c' = c.
 
   Lemma estimator_only_has_decision
-     (i : index)
-     (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
-     (Ei := @estimator _ _ (IE i))
-      : decision_estimator_property i ->
-      forall (s : protocol_state Xi) (c c_other : C), (ID i (proj1_sig s)) = (Some c) ->
-      (Ei (proj1_sig s) c_other) ->
+      : decision_estimator_property ->
+      forall (s : protocol_state X) (c c_other : C), (D (proj1_sig s)) = (Some c) ->
+      (estimates (proj1_sig s) c_other) ->
       c_other = c.
   Proof.
     intros.
@@ -267,16 +255,13 @@ Section Estimators.
   Qed.
 
   Lemma estimator_surely_has_decision
-     (i : index)
-     (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
-     (Ei := @estimator _ _ (IE i))
-      : decision_estimator_property i ->
-      forall (s : protocol_state Xi) (c : C), (ID i (proj1_sig s)) = (Some c) ->
-      (Ei (proj1_sig s) c).
+      : decision_estimator_property ->
+      forall (s : protocol_state X) (c : C), (D (proj1_sig s)) = (Some c) ->
+      (estimates (proj1_sig s) c).
    Proof.
     intros.
     unfold decision_estimator_property in H.
-    assert(exists (c_other : C), (Ei (proj1_sig s) c_other)). {
+    assert(exists (c_other : C), (estimates (proj1_sig s) c_other)). {
       apply estimator_total.
     }
     destruct H1.
@@ -302,15 +287,13 @@ Section Estimators.
    *)
 
   Theorem decision_estimator_finality
-    (i : index)
-    (Xi := composite_vlsm_constrained_projection Hi IM constraint i)
-    : decision_estimator_property i -> final Xi (ID i).
+    : decision_estimator_property -> final X D.
   Proof.
     intros.
     unfold final.
     intros.
-    specialize (in_futures_protocol_snd Xi s1 s2 H0); intro Hps2.
-    apply estimator_only_has_decision with (i := i) (s := (exist _ s2 Hps2)).
+    specialize (in_futures_protocol_snd X s1 s2 H0); intro Hps2.
+    apply estimator_only_has_decision with (s := (exist _ s2 Hps2)).
     assumption.
     assumption.
     unfold decision_estimator_property in H.
@@ -318,7 +301,7 @@ Section Estimators.
       apply H with (sigma := s1) (sigma' := s2).
       assumption.
       assumption.
-      apply (estimator_surely_has_decision i H (exist _ s2 Hps2)).
+      apply (estimator_surely_has_decision H (exist _ s2 Hps2)).
       assumption.
     }
     rewrite <- H3.
@@ -327,3 +310,24 @@ Section Estimators.
     assumption.
    Qed.
 End Estimators.
+
+Section composite_estimators.
+
+  Context
+    {CV : consensus_values}
+    {message : Type}
+    {index : Type}
+    {Heqd : EqDec index}
+    (IM : index -> VLSM message)
+    (Hi : index)
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM Hi constraint)
+    (ID : forall i : index, vdecision (IM i))
+    (IE : forall i : index, Estimator (vstate (IM i)) C).
+
+  Definition composite_projection_decision_estimator_property
+    (i : index)
+    (Xi := composite_vlsm_constrained_projection IM Hi constraint i)
+    := decision_estimator_property Xi (ID i) (IE i).
+
+End composite_estimators.

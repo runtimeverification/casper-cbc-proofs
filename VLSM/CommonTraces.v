@@ -8,7 +8,7 @@ Import ListNotations.
 
 Section VLSM.
 
-Context `{vlsm : VLSM}.
+Context `{M : VLSM_class} (vlsm := mk_vlsm M).
 
 (** ** Core protocol definitions *)
 
