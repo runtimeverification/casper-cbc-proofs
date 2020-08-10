@@ -42,30 +42,25 @@ end.
 
 (** ** Using midpoints to show the right associativity of the append property *)
 
-CoFixpoint midp (p0 p1: trace -> Prop) tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) : trace.
-case (followsT_dec h).
-- case => tr; case => st; case => h1; case => h2 h3.
-  apply constructive_indefinite_description in h3.
-  case: h3 => x [h4 h5].
-  apply x.
-- case => tr; case => tr'. case => a; case => b; case => h1; case => h2 h3.
-  apply (Tcons a b (@midp _ _ _ _ h3)).
-Defined.
+CoFixpoint midp (p0 p1: trace -> Prop) tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) : trace :=
+match followsT_dec h with
+| inl (existT tr (exist a (conj _ (conj _ H)))) =>
+  let: exist x _ := constructive_indefinite_description _ H in x
+| inr (existT tr (existT tr' (existT a (exist b (conj _ (conj _ H)))))) =>
+  Tcons a b (@midp _ _ _ _ H)
+end.
 
-Lemma midpointT_midp : forall (p0 p1: trace -> Prop)  tr0 tr1 (h : followsT (appendT p0 p1) tr0 tr1),
+Lemma midpointT_midp : forall (p0 p1: trace -> Prop) tr0 tr1 (h : followsT (appendT p0 p1) tr0 tr1),
  midpointT h (midp h).
 Proof.
 cofix CIH.
-dependent inversion h.
-- subst.
-  intros.
-  rewrite [midp _]trace_destr. simpl.
-  case (constructive_indefinite_description _ _); simpl.
+dependent inversion h; subst.
+- rewrite [midp _]trace_destr /=.
+  case (constructive_indefinite_description _ _) => /=.
   move => x [a1 hm].
   by apply midpointT_nil => //; destruct x.
-- subst.
-  rewrite [midp _]trace_destr. simpl.
-  by apply (@midpointT_delay _ _ p0 p1 (Tcons a b tr) (Tcons a b tr') (followsT_delay a b f) tr tr' f a b (midp f)).
+- rewrite [midp _]trace_destr /=.
+  exact: (@midpointT_delay _ _ p0 p1 (Tcons a b tr) (Tcons a b tr') (followsT_delay a b f) tr tr' f a b (midp f)).
 Qed.
 
 Lemma appendT_assoc_R: forall p1 p2 p3,
