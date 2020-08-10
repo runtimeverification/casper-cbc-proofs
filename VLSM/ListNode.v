@@ -666,6 +666,25 @@ Context
      Admitted.
      
      (* begin hide *)
+    Lemma depth_parent_child_indexed
+      (indices : list index)
+      (i : index)
+      (Hi : In i indices)
+      (ls : indexed_state indices)
+      : depth_indexed indices ls >= @depth _ index_listing (project_indexed indices ls i).
+    Proof.
+      generalize dependent indices.
+      induction ls.
+      - auto.
+      - simpl.
+        destruct (eq_dec v i) eqn : Heqdec.
+        + unfold depth_indexed. unfold depth. lia.
+        + pose (in_fast l i v Hi n) as Hi'.
+          specialize (IHls Hi').
+          unfold depth_indexed in *. unfold depth in *. lia.
+    Qed.
+          
+
     Lemma depth_parent_child :
       forall (ls : indexed_state index_listing)
          (cv : bool)
@@ -674,20 +693,10 @@ Context
     
       Proof.
         intros.
-        assert ((depth_indexed index_listing ls) >= depth (project_indexed index_listing ls i)). {
-          induction ls.
-          - auto.
-          - destruct (eq_dec v i) eqn : Heqdec.
-            + simpl. rewrite Heqdec.
-              unfold depth_indexed. 
-              admit.
-        }
-        
-        unfold depth in H. 
-        unfold depth at 1.
-        
       Admitted.
 (* end hide *)
+
+  Print induction_ltof1.
 
     Lemma depth_redundancy :
       forall (s : state)
@@ -697,20 +706,26 @@ Context
         rec_history s i d = rec_history s i (depth s).
     Proof.
       intros.
-      specialize (rec_history_split s i (depth s) d Hbig Hbig).
-      intros.
-      rewrite H.
-      assert (rec_history (project (last (rec_history s i (depth s)) Bottom) i) i (d - depth s) = []). {
-        assert ((project (last (rec_history s i (depth s)) Bottom) i) = Bottom). {
-          apply last_cant_progress.
-        }
-        rewrite H0.
-        unfold rec_history.
-        destruct (d - depth s); reflexivity.
-      }
-      rewrite H0.
-      rewrite app_nil_r.
-      reflexivity.
+      remember (depth s) as dpth.
+      generalize dependent s. generalize dependent d.
+      induction dpth using (well_founded_induction lt_wf); intros.
+      destruct s. 
+      - simpl. unfold rec_history.
+         destruct d; destruct dpth; reflexivity.
+      - destruct dpth.
+        + unfold depth in Heqdpth. lia.
+        + destruct d. 
+          * lia.
+          * simpl. f_equal.
+            {
+              unfold last_recorded.
+              pose (depth (project_indexed index_listing is i)) as dlst.
+              pose (depth_parent_child is b i) as Hdlst.
+              apply eq_trans with (rec_history (project_indexed index_listing is i) i dlst).
+              - 
+                apply H; lia.
+              - symmetry. apply H; lia.
+            }
     Qed.
     
     Lemma history_oblivious:
