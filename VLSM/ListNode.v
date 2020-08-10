@@ -50,12 +50,12 @@ with indexed_state : list index -> Type :=
 Fixpoint depth (s : state) : nat :=
   match s with
   | Bottom => 0
-  | Something cv ls => depth_indexed index_listing ls
+  | Something cv ls => depth_indexed index_listing ls + 1
   end
   with depth_indexed (l : list index) (ls : indexed_state l) : nat :=
   match ls with
   | Empty => 0
-  | Append v l' s' is' => max (depth s') (depth_indexed l' is') + 1 
+  | Append v l' s' is' => max (depth s') (depth_indexed l' is') 
   end.
 
 (** Some utility functions. **)
@@ -74,7 +74,7 @@ Fixpoint project_indexed
     then s
     else project_indexed l' is' v
   end.
-
+  
 Definition project
   (s : state)
   (v : index)
@@ -438,7 +438,7 @@ Definition valid
   | update c => estimator s c
   | receive => match om with 
                | None => False
-               | Some m => project s (fst m) = project (snd m) (fst m) /\ index_self <> (fst m)
+               | Some m => project s (fst m) = project (snd m) (fst m) /\ (snd m) <> Bottom /\ index_self <> (fst m)
                end
     end.
 
@@ -589,6 +589,18 @@ Context
             rewrite <- H2.
             discriminate.
     Qed.
+    
+    Lemma protocol_prop_no_bottom :
+      forall (s : state)
+             (Hprotocol_prop : protocol_state_prop preX s),
+             s <> Bottom.
+    Proof.
+      intros.
+      remember (exist _ s Hprotocol_prop) as protocol_s.
+      assert (s = proj1_sig protocol_s). 
+        - inversion Heqprotocol_s. simpl. reflexivity.
+        - rewrite H. apply protocol_no_bottom.
+    Qed.
 
     
     Lemma transition_gets_recorded :
@@ -652,12 +664,31 @@ Context
       - simpl. admit.
       - unfold rec_history.
      Admitted.
+     
+     (* begin hide *)
+    Lemma depth_parent_child :
+      forall (ls : indexed_state index_listing)
+         (cv : bool)
+         (i : index),
+         depth (Something cv ls) >= S (depth (project_indexed index_listing ls i)).
+    
+      Proof.
+        intros.
+        assert ((depth_indexed index_listing ls) >= depth (project_indexed index_listing ls i)). {
+          induction ls.
+          - auto.
+          - destruct (eq_dec v i) eqn : Heqdec.
+            + simpl. rewrite Heqdec.
+              unfold depth_indexed. 
+              admit.
+        }
         
+        unfold depth in H. 
+        unfold depth at 1.
+        
+      Admitted.
+(* end hide *)
 
-      
-      
-    Admitted. 
-             
     Lemma depth_redundancy :
       forall (s : state)
              (i : index)
@@ -710,6 +741,20 @@ Context
         reflexivity.
     Qed.
     
+    Lemma history_disregards_cv :
+        forall (s : state)
+               (cv : bool)
+               (i : index),
+          get_history (update_consensus s cv) i = get_history s i.
+    
+    Proof.
+      intros.
+      unfold update_consensus.
+      destruct s.
+      - reflexivity.
+      - reflexivity.
+    Qed.
+    
     Lemma history_append :
       forall (s : state)
              (news : state)
@@ -725,7 +770,6 @@ Context
       - elim Hno_bottom_s. reflexivity.
       - unfold get_history.
         unfold last_recorded.
-        Check update_indexed_same.
         
         assert ((project_indexed index_listing (update_indexed index_listing is i news) i) =
                  news). {
@@ -735,20 +779,41 @@ Context
         }
         
         rewrite H.
-        (* unfold rec_history at 1. *)
         destruct news eqn : news_eq.
         + elim Hno_bottom_news. reflexivity.
         + unfold rec_history at 1.
           simpl in *.
-          assert ((depth (Something b0 is0)) = (S (depth (project_indexed index_listing is i)))). {
-            (* This is false *)
-            admit.
+          
+          assert ((depth (Something b0 is0)) >= (S (depth (project_indexed index_listing is i)))). {
+            rewrite <- Hvalidity.
+            apply depth_parent_child.
           }
-          rewrite H0.
+          
+          assert (exists x, depth (Something b0 is0) = S x /\ x >= depth (project_indexed index_listing is i)). {
+            destruct (depth (Something b0 is0)).
+            lia.
+            exists n.
+            split.
+            reflexivity.
+            lia.
+          }
+
+          specialize depth_redundancy.
+          intros.
+          destruct H1 as [x [Heqx Hineqx]].
+          rewrite Heqx.
           unfold last_recorded.
           rewrite Hvalidity.
-          reflexivity.
-     Admitted.
+          assert (rec_history (project_indexed index_listing is i) i
+                  x = 
+                  rec_history (project_indexed index_listing is i) i
+                  (depth (project_indexed index_listing is i))). {
+                     apply H2.
+                     assumption.
+                  }
+         rewrite <- H1.
+         reflexivity.
+    Qed.
 
 
     
@@ -767,17 +832,73 @@ Context
      destruct Hprotocol as [Hprotocol_valid Htransition].
      simpl in *.
      destruct l eqn : eq.
-     - admit. 
-     - assert ((get_history s1 i) = (get_history s2 i)). {
-          destruct om1.
-          + inversion Htransition.
-            destruct (idec (fst m) i) eqn : dec_eq.
-            * admit.
-            * apply history_oblivious. assumption.
-          + inversion Htransition.
-            reflexivity.
-       } 
-    Admitted.
+     - inversion Htransition.
+       destruct (eq_dec index_self i).
+       + specialize history_disregards_cv.
+         intros.
+         assert (get_history (update_consensus (update_state s1 s1 index_self) c) i
+              = get_history (update_state s1 s1 index_self) i)  by apply history_disregards_cv.
+        rewrite H2.
+        assert ((get_history (update_state s1 s1 index_self) i)
+                = (s1 :: get_history s1 i)). {
+                rewrite e.
+                apply history_append.
+                apply protocol_prop_no_bottom.
+                destruct Hprotocol_valid. assumption.
+                apply protocol_prop_no_bottom.
+                destruct Hprotocol_valid. assumption.
+                reflexivity.
+              }
+        rewrite H3.
+        unfold In.
+        right.
+        assumption.
+      + assert (get_history (update_consensus (update_state s1 s1 index_self) c) i
+                = get_history s1 i). {
+                  assert (get_history (update_consensus (update_state s1 s1 index_self) c) i 
+                          = get_history (update_state s1 s1 index_self) i). {
+                            apply history_disregards_cv with (s := (update_state s1 s1 index_self)) (cv := c).
+                          }
+                  rewrite H.
+                  symmetry.
+                  apply history_oblivious.
+                  assumption.
+                }
+        rewrite H.
+        assumption.
+     -  destruct om1.
+        destruct (idec (fst m) i) eqn : dec_eq.
+        + inversion Htransition.
+          assert (get_history (update_state s1 (snd m) i) i
+                   = (snd m) :: (get_history s1 i)). {
+                      apply history_append.
+                      apply protocol_prop_no_bottom.
+                      destruct Hprotocol_valid.
+                      assumption.
+                      destruct Hprotocol_valid as [x [y [z [t u]]]].
+                      assumption.
+                      destruct Hprotocol_valid as [x [y [z t]]].
+                      rewrite e in z.
+                      symmetry.
+                      assumption.
+                   }
+          rewrite e.
+          rewrite H.
+          unfold In.
+          right.
+          assumption.
+        + inversion Htransition.
+          assert (get_history (update_state s1 (snd m) (fst m)) i = get_history s1 i). {
+            symmetry.
+            apply history_oblivious.
+            assumption.
+          }
+          rewrite H.
+          assumption.
+        + inversion Htransition.
+          rewrite <- H0.
+          assumption.
+    Qed.
     
     Lemma history_persists_trace :
       forall (s1 s2 s3 : state)
@@ -972,10 +1093,25 @@ Context
     Qed.
     
     
+    (* This is not true though. *)
+    Lemma only_from_self
+      (m : protocol_message preX) :
+      fst (proj1_sig m) = index_self.
+      
+    Proof.
+      destruct m.
+      simpl.
+      destruct p.
+      simpl in *.
+      inversion H.
+      - destruct im.
+        simpl in i.
+    Admitted.
+    
     Lemma send_oracle_prop 
       (s : state)
       (m : message) :
-      has_been_sent_prop X (send_oracle index_self) s m.
+      has_been_sent_prop preX (send_oracle index_self) s m.
     
     Proof.
       unfold has_been_sent_prop.
@@ -990,8 +1126,8 @@ Context
         + apply existsb_exists in H.
           destruct H.
           admit.
-      - intros.
-      
+      - unfold send_oracle.
+        admit.
     Admitted.
     
 End Equivocation.
