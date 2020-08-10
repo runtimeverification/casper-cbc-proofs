@@ -25,7 +25,10 @@ based on pointed sets, by defining <<m1 preceeds m2>> iff <<m1>> is in the
 justification of <<m2>>.
 
 We additionally prove that the relation is [Irreflexive].
-For the [Transitive] property we will need to restrict it to [protocol_message]s.
+For the [Transitive] property we will need to restrict the relation
+to [protocol_message]s. Otherwise, there is nothing to enforce that if <<m1>>
+is in the justification of <<m2>> and <<m2>> is in the justification of <<m3>>,
+then <<m2>> must also be in the justification of <<m3>>.
 *)
 
 Context

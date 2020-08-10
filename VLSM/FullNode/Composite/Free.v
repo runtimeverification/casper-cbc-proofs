@@ -18,7 +18,7 @@ From CasperCBC
 
 Section ClientsAndValidators.
 
-(** * Full-node VLSM clients and validators composition
+(** * Full-node VLSM clients and validators  free composition
 *)
 
   Context
@@ -54,6 +54,16 @@ Proof.
 Qed.
 
 Existing Instance index_eq_dec.
+
+(**
+In order to create a composition of clients and validators
+we assume a set of validators names <<V>> and a set of client
+identifiers <<clients>>, and let <<index>> be their disjoint union.
+
+We define a set of VLSMs indexed by <<index>>, associating to
+validator names the validator VLSM identifying as that name,
+and to client identifiers.
+*)
 
 Definition IM_index
   (i : index)

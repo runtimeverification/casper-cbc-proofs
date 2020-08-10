@@ -29,7 +29,12 @@ Section CompositeValidator.
   Here we define a VLSM for a full-node validator identifying itself as
   <<v>> when sending messages.
 
-  No equivocation check is done within the validator.
+  The validator and incorporates messages (sent by other validators), and
+  creates and sends new messages proposing consensus values estimated based
+  on its current state, signing them with its name and current state.
+
+  Unlike the client, no equivocation check is done within the validator upon
+  receiving a new message.
   *)
   Definition labelv : Type := option C.
 
