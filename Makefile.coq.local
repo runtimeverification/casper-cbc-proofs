@@ -3,6 +3,8 @@ CSSFILES = resources/coqdoc.css resources/coqdocjs.css
 JSFILES = resources/config.js resources/coqdocjs.js
 HTMLFILES = resources/header.html resources/footer.html
 COQDOCDIR = docs/coqdoc
+COQ2HTML = coq2html
+COQ2HTMLDIR = docs/coq2html
 
 COQDOCHTMLFLAGS = --toc --toc-depth 2 --index indexpage --html -s \
   --interpolate --no-lib-name --parse-comments \
@@ -15,6 +17,14 @@ coqdoc: $(GLOBFILES) $(VFILES) $(CSSFILES) $(JSFILES) $(HTMLFILES)
 	$(SHOW)'COPY resources'
 	$(HIDE)cp $(CSSFILES) $(JSFILES) $(COQDOCDIR)
 .PHONY: coqdoc
+
+coq2html: $(GLOBFILES) $(VFILES)
+	$(SHOW)'COQ2HTML -d $(COQ2HTMLDIR)'
+	$(HIDE)mkdir -p $(COQ2HTMLDIR)
+	$(HIDE)cd Lib && $(COQ2HTML) -base CasperCBC.Lib -d ../$(COQ2HTMLDIR) *.v *.glob
+	$(HIDE)cd CBC && $(COQ2HTML) -base CasperCBC.CBC -d ../$(COQ2HTMLDIR) *.v *.glob
+	$(HIDE)cd VLSM && $(COQ2HTML) -base CasperCBC.VLSM -d ../$(COQ2HTMLDIR) *.v *.glob
+.PHONY: coq2html
 
 resources/index.html: resources/index.md
 	pandoc -s -o $@ $<

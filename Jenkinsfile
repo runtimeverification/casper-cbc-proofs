@@ -37,6 +37,7 @@ pipeline {
           sh '''
             eval $(opam env)
             make -j 6 coqdoc
+            make -j 6 coq2html
             export COQ_SHA=$(git rev-parse HEAD)
 
             git clone 'ssh://github.com/runtimeverification/casper-cbc-proof-docs.git'
@@ -46,6 +47,7 @@ pipeline {
             mkdir docs/${COQ_SHA}
             cd docs
             cp -r ../../docs/coqdoc ${COQ_SHA}
+            cp -r ../../docs/coq2html ${COQ_SHA}
             ln -sfn ${COQ_SHA} latest
             cd ..
 
