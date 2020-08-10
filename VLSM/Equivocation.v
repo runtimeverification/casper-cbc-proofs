@@ -146,16 +146,13 @@ Section Simple.
                (m : message),
                (has_been_sent_prop has_been_sent s m);
 
-      has_not_been_sent: state_message_oracle;
+      has_not_been_sent: state_message_oracle
+        := fun (s : state) (m : message) => negb (has_been_sent s m);
+
       proper_not_sent:
         forall (s : state)
                (m : message),
                has_not_been_sent_prop has_not_been_sent s m;
-
-      sent_excluded_middle :
-        forall (s : state)
-               (m : message),
-               has_been_sent s m = true <-> has_not_been_sent s m = false;
     }.
 
     Class has_been_received_capability := {
@@ -166,16 +163,13 @@ Section Simple.
                (m : message),
                (has_been_received_prop has_been_received s m);
 
-      has_not_been_received: state_message_oracle;
+      has_not_been_received: state_message_oracle
+        := fun (s : state) (m : message) => negb (has_been_received s m);
+
       proper_not_received:
         forall (s : state)
                (m : message),
                has_not_been_received_prop has_not_been_received s m;
-
-      received_excluded_middle :
-        forall (s : state)
-               (m : message),
-               has_been_received s m = true <-> has_not_been_received s m = false;
     }.
 
 End Simple.

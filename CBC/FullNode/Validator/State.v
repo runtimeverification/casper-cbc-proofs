@@ -8,6 +8,7 @@ From CasperCBC
     Require Import
       Preamble
       SortedLists
+      ListExtras
       ListSetExtras
     .
 
@@ -994,5 +995,43 @@ Proof.
   .
 Qed.
 
+Section message_oracles.
+
+Fixpoint sent_messages_justification
+  (j : justification C V)
+  : set (message C V)
+  :=
+  match j with 
+  | NoSent _ _ _ => []
+  | LastSent _ _ msgs ((c,v,j)) =>
+    set_add compare_eq_dec ((c,v,j)) (sent_messages_justification j)
+  end.
+
+Definition sent_messages
+  (s : state C V)
+  : set (message C V)
+  :=
+  match last_sent s with
+  | None => []
+  | Some ((c, v, j)) =>
+    set_add compare_eq_dec ((c, v, j)) (sent_messages_justification j)
+  end.
+
+Definition has_been_sent_oracle
+  (s : state C V)
+  (m : message C V)
+  : bool
+  :=
+  inb compare_eq_dec m (sent_messages s).
+
+Definition has_been_received_oracle
+  (s : state C V)
+  (m : message C V)
+  : bool
+  :=
+  inb compare_eq_dec m (get_message_set s)
+  && negb (has_been_sent_oracle s m).
+
+End message_oracles.
 
 End FullNodeStateProperties.

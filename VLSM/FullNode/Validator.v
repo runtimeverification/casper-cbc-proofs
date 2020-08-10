@@ -10,6 +10,7 @@ From CasperCBC
     CBC.Equivocation
     Validator.State
     Validator.Equivocation
+    VLSM.Equivocation
     .
 
 Section CompositeValidator.
@@ -98,8 +99,39 @@ Section CompositeValidator.
     {| transition := vtransitionv v
      ; valid := valid_validator
     |}.
-
+  
   Definition VLSM_full_validator (v : V) : VLSM message :=
     mk_vlsm (VLSM_full_validator_machine v).
+  
+  
+Section proper_sent_received.
+  Context
+    (v : V)
+    (vlsm := VLSM_full_validator v)
+    (bvlsm := pre_loaded_vlsm vlsm)
+    .
+
+  Lemma VLSM_full_validator_proper_sent
+    (s : state C V)
+    (m : message)
+    : has_been_sent_prop vlsm has_been_sent_oracle s m.
+  Proof.
+    unfold has_been_sent_prop. unfold all_traces_have_message_prop.
+    split.
+    - intros Horacle [tr Htr]; simpl; intros lst prefix Hprefix Hlast.
+      pose (trace_prefix_protocol bvlsm (exist _ tr Htr) lst prefix Hprefix) as Hpprefix.
+      simpl in Hpprefix. destruct Hpprefix as [Hpprefix Hinit].
+      remember (@trace_first message VLSM_type_full_validator tr) as start.
+      clear -Hpprefix Horacle Hlast.
+      generalize dependent Hpprefix.
+      induction prefix; simpl; intro Hprefix; inversion Hprefix; subst.
+      simpl in 
+      inversion 
+      rewrite <- Heqstart in Hpprefix.
+      unfold finite_protocol_trace in Hpprefix.
+      
+      apply Exists_exists.
+
+End proper_sent_received.
 
 End CompositeValidator.
