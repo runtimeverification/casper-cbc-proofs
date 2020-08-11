@@ -92,29 +92,26 @@ Section Simple.
       :=
       oracle s m = true <->
         forall
-        (tr : protocol_trace (pre_loaded_vlsm vlsm))
-        (last : transition_item)
-        (prefix : list transition_item)
-        (Hpr : trace_prefix (proj1_sig tr) last prefix)
-        (Hlast : destination last = s),
-        List.Exists (fun (elem : transition_item) => message_selector elem = Some m) prefix.
+        (start : state)
+        (tr : list transition_item)
+        (Htr : finite_protocol_trace (pre_loaded_vlsm vlsm) start tr)
+        (Hlast : last (List.map destination tr) start = s),
+        List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
 
     Definition no_traces_have_message_prop
       (message_selector : transition_item -> option message)
       (oracle : state_message_oracle vlsm)
       (s : state)
       (m : message)
-
       : Prop
       :=
       oracle s m = true <->
         forall
-        (tr : protocol_trace (pre_loaded_vlsm vlsm))
-        (last : transition_item)
-        (prefix : list transition_item)
-        (Hpr : trace_prefix (proj1_sig tr) last prefix)
-        (Hlast : destination last = s),
-        ~ List.Exists (fun (elem : transition_item) => message_selector elem = Some m) prefix.
+        (start : state)
+        (tr : list transition_item)
+        (Htr : finite_protocol_trace (pre_loaded_vlsm vlsm) start tr)
+        (Hlast : last (List.map destination tr) start = s),
+        ~ List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
 
     Definition has_been_sent_prop : state_message_oracle vlsm -> state -> message -> Prop
       := (all_traces_have_message_prop output).
