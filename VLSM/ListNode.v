@@ -522,7 +522,7 @@ Context
       (tr : protocol_trace (pre_loaded_vlsm X))
       (last : transition_item)
       (prefix : list transition_item)
-      (Hpr : trace_prefix (proj1_sig tr) last prefix)
+      (Hpr : trace_prefix (pre_loaded_vlsm X) (proj1_sig tr) last prefix)
       (Hlast : destination last = s) :
       List.Exists (fun (elem : transition_item) => output elem = Some (index_self, child)) prefix.
       
@@ -957,7 +957,7 @@ Context
              (tr : protocol_trace preX)
              (last1 : transition_item)
              (prefix : list transition_item)
-             (Hpr : trace_prefix (proj1_sig tr) last1 prefix)
+             (Hpr : trace_prefix preX (proj1_sig tr) last1 prefix)
              (Hm : output last1 = Some m),
              project (destination last1) index_self = snd m.
     Proof.
@@ -1012,7 +1012,7 @@ Context
          }
          
          destruct H as [tr1 [prev Hdecomp]].
-         pose proof (@finite_ptrace_consecutive_valid_transition _ _ _ preX) as consecutive.
+         pose proof (finite_ptrace_consecutive_valid_transition preX) as consecutive.
          
          assert (Hp_tr : protocol_transition preX (l last1) (destination prev, (input last1)) ((destination last1), (output last1))). {
             simpl in *.
@@ -1080,7 +1080,7 @@ Context
          }
          
          destruct H as [tr1 [prev Hdecomp]].
-         pose proof (@finite_ptrace_consecutive_valid_transition _ _ _ preX) as consecutive.
+         pose proof (finite_ptrace_consecutive_valid_transition preX) as consecutive.
          
          assert (Hp_tr : protocol_transition preX (l last1) (destination prev, (input last1)) ((destination last1), (output last1))). {
             simpl in *.
