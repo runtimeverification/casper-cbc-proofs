@@ -555,6 +555,32 @@ and [protocol_message]s, similar to their recursive definition.
         + exists om'. rewrite <- Ht. apply protocol_generated with _om _s; assumption.
     Qed.
 
+    Lemma protocol_state_prop_ind
+      (P : state -> Prop)
+      (IHinit : forall (s : state) (Hs : initial_state_prop s), P s)
+      (IHgen :
+        forall (s' : state) (l: label) (om om' : option message) (s : state) 
+          (Ht : protocol_transition l (s, om) (s', om')) (Hs : P s),
+          P s'
+      )
+      : forall (s : state) (Hs : protocol_state_prop s), P s.
+    Proof.
+      intros.
+      destruct Hs as [om Hs].
+      remember (s, om) as som.
+      generalize dependent om. generalize dependent s.
+      induction Hs; intros; inversion Heqsom; subst.
+      - apply IHinit. unfold s. destruct is. assumption.
+      - apply IHinit. unfold s. destruct s0. assumption.
+      - specialize (IHgen s1 l1 om om0 s).
+        specialize (IHHs1 s _om eq_refl).
+        apply IHgen; try assumption.
+        repeat split; try assumption.
+        + exists _om. assumption.
+        + exists _s. assumption.
+    Qed.
+
+
     (* Protocol message characterization - similar to the definition in the report. *)
 
     Lemma protocol_message_prop_iff :

@@ -140,6 +140,7 @@ Section Simple.
 
       proper_sent:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                (has_been_sent_prop has_been_sent s m);
 
@@ -148,6 +149,7 @@ Section Simple.
 
       proper_not_sent:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                has_not_been_sent_prop has_not_been_sent s m;
     }.
@@ -157,6 +159,7 @@ Section Simple.
 
       proper_received:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                (has_been_received_prop has_been_received s m);
 
@@ -165,6 +168,7 @@ Section Simple.
 
       proper_not_received:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                has_not_been_received_prop has_not_been_received s m;
     }.
