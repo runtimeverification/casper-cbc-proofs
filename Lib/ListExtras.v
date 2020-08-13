@@ -197,6 +197,16 @@ Proof.
       * apply IHl; assumption.
 Qed.
 
+Lemma in_first : 
+  forall A (x : A) (l : list A),
+  In x l ->
+  exists (prefix : list A)
+         (suffix : list A),
+         (prefix ++ [x] ++ suffix = l) /\
+         (~ In x prefix).
+Proof.
+Admitted.
+
 Lemma in_not_in : forall A (x y : A) l,
   In x l ->
   ~ In y l ->
