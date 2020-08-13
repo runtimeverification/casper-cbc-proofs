@@ -1037,3 +1037,31 @@ Proof.
     destruct IHla1 as [la0b Hla0b].
     exists la0b. subst. reflexivity.
 Qed.
+
+Lemma exists_first 
+  {A : Type}
+  (l : list A)
+  (P : A -> Prop)
+  (Pdec : forall a : A, {P a } + {~P a})
+  (Hsomething : Exists P l) :
+  exists (prefix : list A)
+         (suffix : list A)
+         (first : A),
+         (P first) /\
+         l = prefix ++ [first] ++ suffix /\
+         ~Exists P prefix.
+Proof.
+  induction l.
+  - inversion Hsomething.
+  - destruct (Pdec a).
+    + exists []. exists l. exists a. repeat split; try assumption.
+      intro H; inversion H.
+    + assert (Hl : Exists P l).
+      { inversion Hsomething; subst; try (elim n; assumption). assumption. }
+      specialize (IHl Hl).
+      destruct IHl as [prefix [suffix [first [Hfirst [Heq Hprefix]]]]].
+      exists (a :: prefix). exists suffix. exists first. repeat split; try assumption.
+      * simpl. subst. reflexivity.
+      * intro Hprefix'. inversion Hprefix'; try (elim n; assumption).
+        elim Hprefix. assumption.
+Qed.
