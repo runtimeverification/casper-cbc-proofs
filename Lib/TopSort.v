@@ -544,7 +544,7 @@ Proof.
           destruct Hin as [Heq | Hin]; try assumption.
           elim n. assumption.
         }
-        rewrite Hlen' in Hmin. 
+        rewrite Hlen' in Hmin.
         apply (proj2 (top_sort_set_eq (a :: set_remove eq_dec (min_predecessors preceeds (a :: l) l a) l)))
           in Hmin.
         destruct Hmin; try (symmetry in H; elim n; assumption).

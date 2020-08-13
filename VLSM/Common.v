@@ -559,7 +559,7 @@ and [protocol_message]s, similar to their recursive definition.
       (P : state -> Prop)
       (IHinit : forall (s : state) (Hs : initial_state_prop s), P s)
       (IHgen :
-        forall (s' : state) (l: label) (om om' : option message) (s : state) 
+        forall (s' : state) (l: label) (om om' : option message) (s : state)
           (Ht : protocol_transition l (s, om) (s', om')) (Hs : P s),
           P s'
       )

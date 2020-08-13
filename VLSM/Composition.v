@@ -1055,7 +1055,7 @@ All results from regular projections carry to these "free" projections.
     : VLSM message
     :=
     composite_vlsm_constrained_projection IM i0 (free_constraint IM) i.
-  
+
   Lemma preloaded_composed_protocol_state
     (s : vstate X)
     (Hs : protocol_state_prop (pre_loaded_vlsm X) s)

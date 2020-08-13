@@ -584,7 +584,7 @@ Proof.
           justification_incl j' j ->
           ~ in_message_set ((c, v, j)) (justification_message_set j')
       )
-      (fun m : message C V => 
+      (fun m : message C V =>
         forall (msgs : message_set C V),
           message_set_incl msgs (justification_message_set (get_justification m)) ->
           ~ in_message_set m msgs
@@ -1057,7 +1057,7 @@ Fixpoint sent_messages_justification
   (j : justification C V)
   : set (message C V)
   :=
-  match j with 
+  match j with
   | NoSent _ _ _ => []
   | LastSent _ _ msgs ((c,v,j)) =>
     set_add compare_eq_dec ((c,v,j)) (sent_messages_justification j)

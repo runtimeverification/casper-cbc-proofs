@@ -207,7 +207,7 @@ messages, implementing a limited equivocation tolerance policy.
       clear -H3.
       destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       destruct iom as [msg|]; inversion Ht; try apply incl_refl.
-      simpl. intros m Hm. apply set_add_iff. right. assumption. 
+      simpl. intros m Hm. apply set_add_iff. right. assumption.
   Qed.
 
   Definition client_has_been_sent
@@ -355,7 +355,7 @@ messages, implementing a limited equivocation tolerance policy.
       assert (Hstart : ~In m start).
       { inversion Hinit. simpl. intro n. contradiction n. }
       clear -H Htr Hlast Hstart bvlsm.
-      generalize dependent start. 
+      generalize dependent start.
       induction tr; intros.
       + simpl in Hlast. subst start. elim Hstart. assumption.
       + inversion Htr. clear Htr. subst s' a tl.
@@ -368,13 +368,13 @@ messages, implementing a limited equivocation tolerance policy.
           exists {| l := l; input := iom; destination := s0; output := oom |}.
           split; try (left; reflexivity). simpl.
           {destruct iom as [msg|]; inversion Ht; subst; clear Ht.
-          + apply set_add_iff in i. 
+          + apply set_add_iff in i.
             destruct i as [i | i]; try (elim Hstart; assumption).
             subst m. reflexivity.
           + elim Hstart. assumption.
           }
         * specialize (IHtr n). destruct IHtr as [item [Hitem Hm]].
-          exists item. split; try assumption. right. assumption. 
+          exists item. split; try assumption. right. assumption.
     - destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
@@ -391,7 +391,7 @@ messages, implementing a limited equivocation tolerance policy.
         specialize (H is tr Htr Hlst). apply Exists_exists in H.
         destruct H as [item [Hitem Hm]].
         apply has_been_received_in_trace with is tr item; assumption.
-  Qed. 
+  Qed.
 
   Definition client_has_not_been_received
     (s : set message)
@@ -411,7 +411,7 @@ messages, implementing a limited equivocation tolerance policy.
     unfold client_has_been_received.
     pose (in_correct' s m) as Hin.
     rewrite <- Hin. clear Hin.
-    split. 
+    split.
     - intros.
       rewrite <- Forall_Exists_neg.
       apply Forall_forall.

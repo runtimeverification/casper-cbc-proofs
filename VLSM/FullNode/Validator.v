@@ -120,11 +120,11 @@ Section CompositeValidator.
     {| transition := vtransitionv v
      ; valid := valid_validator
     |}.
-  
+
   Definition VLSM_full_validator (v : V) : VLSM message :=
     mk_vlsm (VLSM_full_validator_machine v).
-  
-  
+
+
 Section proper_sent_received.
   Context
     (v : V)
@@ -232,7 +232,7 @@ Section proper_sent_received.
       + destruct om as [msg|]; inversion Ht; subst
         ; simpl in Hlst; subst final
         ; specialize (Hs lst eq_refl); simpl; try assumption.
-        apply set_add_iff. right. assumption. 
+        apply set_add_iff. right. assumption.
   Qed.
 
   Lemma last_sent_justification_protocol
@@ -328,7 +328,7 @@ Section proper_sent_received.
       apply incl_tran with (sent_messages s); try assumption.
       clear -H3.
       destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
-      destruct s1 as (msgs, final). 
+      destruct s1 as (msgs, final).
       destruct l as [c|].
       + inversion Ht; subst; clear Ht. unfold sent_messages. simpl.
         destruct final as [m|]; subst; simpl in *; try apply incl_nil_l.
@@ -352,12 +352,12 @@ Section proper_sent_received.
       apply incl_tran with (get_message_set s); try assumption.
       clear -H3.
       destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
-      destruct s1 as (msgs, final). 
+      destruct s1 as (msgs, final).
       destruct l as [c|].
       + inversion Ht; subst; clear Ht. unfold get_message_set. simpl.
         intros m Hm. apply set_add_iff. right. assumption.
       + destruct iom as [msg|]; inversion Ht; try apply incl_refl.
-        simpl. intros m Hm. apply set_add_iff. right. assumption. 
+        simpl. intros m Hm. apply set_add_iff. right. assumption.
   Qed.
 
   Lemma has_been_sent_in_futures
@@ -389,9 +389,9 @@ Section proper_sent_received.
     unfold vtransition in Ht. simpl in Ht.
     destruct s1 as (msgs, final).
     unfold has_been_sent_oracle in *.
-    pose (in_correct' (sent_messages (msgs, final)) m)  as Hnin. 
+    pose (in_correct' (sent_messages (msgs, final)) m)  as Hnin.
     rewrite <- Hnin in Hs1.
-    pose (in_correct (sent_messages s2) m)  as Hin. 
+    pose (in_correct (sent_messages s2) m)  as Hin.
     rewrite <- Hin.
     destruct l as [c|]; inversion Ht; subst.
     + unfold sent_messages. simpl.  split; intro H.
@@ -469,7 +469,7 @@ Section proper_sent_received.
     generalize dependent start.
     induction prefix; intros.
     + inversion Hprefix; subst.
-      simpl in Horacle. rewrite Hstart in Horacle. discriminate Horacle. 
+      simpl in Horacle. rewrite Hstart in Horacle. discriminate Horacle.
     + rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
       inversion Hprefix; subst. simpl in *.
       destruct oom as [om|]; try destruct (compare_eq_dec om m); try subst om.
@@ -477,7 +477,7 @@ Section proper_sent_received.
         split; try reflexivity.
         left. reflexivity.
       * assert (Hs0 : has_been_sent_oracle s0 m = false).
-        { apply not_true_is_false. 
+        { apply not_true_is_false.
           intro Hbs.
           apply (has_been_sent_protocol_transition _ _ _ _ _ H3 _ Hstart) in Hbs.
           elim n.
@@ -489,7 +489,7 @@ Section proper_sent_received.
         split; try assumption.
         right. assumption.
       * assert (Hs0 : has_been_sent_oracle s0 m = false).
-        { apply not_true_is_false. 
+        { apply not_true_is_false.
           intro Hbs.
           apply (has_been_sent_protocol_transition _ _ _ _ _ H3 _ Hstart) in Hbs.
           discriminate Hbs.
@@ -506,7 +506,7 @@ Section proper_sent_received.
     (Hs : in_futures bvlsm s1 s2)
     (m : message)
     (Hm : has_been_received_oracle s1 m = true)
-    : has_been_received_oracle s2 m = true. 
+    : has_been_received_oracle s2 m = true.
   Proof.
     unfold has_been_received_oracle in *.
     apply andb_true_iff in Hm.
@@ -550,14 +550,14 @@ Section proper_sent_received.
     - inversion Ht; subst. destruct final as [m|]; clear Ht.
       + elim
         (in_justification_recursive'
-          ((c, v, LastSent C V (make_message_set msgs) m)) 
+          ((c, v, LastSent C V (make_message_set msgs) m))
           msgs
           eq_refl
         ).
         assumption.
       + elim
         (in_justification_recursive'
-          ((c, v, NoSent C V (make_message_set msgs))) 
+          ((c, v, NoSent C V (make_message_set msgs)))
           msgs
           eq_refl
         ).
@@ -632,7 +632,7 @@ Section proper_sent_received.
       destruct Htr_app as [Hl1 Hl2].
       inversion Hl2. subst item tl.
       rewrite <- H1 in *.
-      simpl in Hm. subst oom. 
+      simpl in Hm. subst oom.
       apply protocol_transition_inv_out in H3.
       destruct H3 as [Hs0 [c Hc]].
       assert (Hfutures : in_futures bvlsm s0 s).
@@ -729,7 +729,7 @@ Section proper_sent_received.
   Proof.
     unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
     unfold has_not_been_sent_oracle. rewrite negb_true_iff.
-    split. 
+    split.
     - intros.
       rewrite <- Forall_Exists_neg.
       apply Forall_forall.
@@ -784,7 +784,7 @@ Section proper_sent_received.
       assert (Hstart : ~In m (get_message_set start)).
       { inversion Hinit. simpl. intro n. contradiction n. }
       clear -Hin Hns Htr Hlast Hstart bvlsm.
-      generalize dependent start. 
+      generalize dependent start.
       induction tr; intros.
       + simpl in Hlast. subst start. elim Hstart. assumption.
       + inversion Htr. clear Htr. subst s' a tl.
@@ -817,7 +817,7 @@ Section proper_sent_received.
                 (set_add compare_eq_dec
                   ((c, v, LastSent C V (make_message_set msgs) m))
                     (sent_messages_justification
-                       (LastSent C V (make_message_set msgs) m))) 
+                       (LastSent C V (make_message_set msgs) m)))
                ((c, v, LastSent C V (make_message_set msgs) m))
               ))  as Hin.
               apply Hin in Hnbs. elim Hnbs.
@@ -831,13 +831,13 @@ Section proper_sent_received.
               apply Hin in Hnbs. elim Hnbs.
               apply set_add_iff. left. reflexivity.
           - destruct iom as [msg|]; inversion Ht; subst; clear Ht. simpl in *.
-            + apply set_add_iff in i. 
+            + apply set_add_iff in i.
               destruct i as [i | i]; try (elim Hstart; assumption).
               subst m. reflexivity.
             + elim Hstart. assumption.
           }
         * specialize (IHtr n). destruct IHtr as [item [Hitem Hm]].
-          exists item. split; try assumption. right. assumption. 
+          exists item. split; try assumption. right. assumption.
     - destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
@@ -902,12 +902,12 @@ Section proper_sent_received.
             rewrite map_cons in Hlst. rewrite unroll_last in Hlst.
             simpl in Hlst. clear Hs0. subst. reflexivity.
           - rewrite app_length. rewrite app_length in Heqlen.
-            simpl in Heqlen. clear -Heqlen. 
+            simpl in Heqlen. clear -Heqlen.
             rewrite Plus.plus_comm in Heqlen. inversion Heqlen.
             apply Plus.plus_comm.
           }
 *)
-  Qed. 
+  Qed.
 
   Definition has_not_been_received_oracle
     (s : state C V)
@@ -924,7 +924,7 @@ Section proper_sent_received.
   Proof.
     unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
     unfold has_not_been_received_oracle. rewrite negb_true_iff.
-    split. 
+    split.
     - intros.
       rewrite <- Forall_Exists_neg.
       apply Forall_forall.
@@ -937,7 +937,7 @@ Section proper_sent_received.
       intro H. destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + inversion Hinit. unfold has_been_received_oracle. 
+      + inversion Hinit. unfold has_been_received_oracle.
         reflexivity.
       + assert (Hlst : last (map destination tr) is = s).
         { destruct tr as [|i tr]; inversion Hlsts.

@@ -1419,7 +1419,7 @@ Proof.
       destruct Hs as [om Hs].
       exists om. apply (pre_loaded_protocol_prop FreeX).
       apply constraint_free_protocol_prop in Hs.
-      assumption.  
+      assumption.
     + specialize
         (@top_sort_correct _ _
           message_preceeds_fn

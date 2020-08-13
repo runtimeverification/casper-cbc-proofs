@@ -1038,7 +1038,7 @@ Proof.
     exists la0b. subst. reflexivity.
 Qed.
 
-Lemma exists_first 
+Lemma exists_first
   {A : Type}
   (l : list A)
   (P : A -> Prop)
