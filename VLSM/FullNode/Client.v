@@ -32,6 +32,18 @@ messages, implementing a limited equivocation tolerance policy.
     (message := State.message C V)
     .
 
+  Existing Instance full_node_message_equivocation_evidence.
+
+  Instance client_state_encapsulating_messages
+    : state_encapsulating_messages (set message) message
+    :=
+    {| get_messages := fun s => s |}.
+  
+  Definition client_basic_equivocation
+    := state_encapsulating_messages_equivocation (set message) message V.
+  
+  Existing Instance client_basic_equivocation.
+
   (* 2.5.1 Minimal full client protocol: Client2 *)
   Definition label2 : Type := unit.
 
@@ -45,10 +57,6 @@ messages, implementing a limited equivocation tolerance policy.
     | None => pair msgs None
     | Some msg => pair (set_add compare_eq_dec msg msgs)  None
     end.
-
-  Definition not_heavy
-    :=
-    @CBC.Equivocation.set_not_heavy _ (full_node_equivocation C V ).
 
   Definition valid_client2
     (_ : unit)

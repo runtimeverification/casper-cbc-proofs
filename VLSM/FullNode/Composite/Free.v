@@ -15,6 +15,7 @@ From CasperCBC
     FullNode.Client
     FullNode.Validator
     Validator.Equivocation
+    CBC.Equivocation
     .
 
 Section ClientsAndValidators.
@@ -361,12 +362,37 @@ Proof.
   apply free_full_byzantine_message_preceeds_transitive.
 Defined.
 
-Global Instance VLSM_full_composed_free_preceeds_equivocation
-  : HasPreceedsEquivocation VLSM_full_composed_free.
+Existing Instance full_node_message_equivocation_evidence.
+
+Instance VLSM_full_composed_free_message_equivocation_evidence
+  : vlsm_message_equivocation_evidence V VLSM_full_composed_free.
 Proof.
   split.
   apply free_full_byzantine_message_preceeds_stict_order.
 Defined.
 
+Parameter indices : list index.
+Parameter finite_index : Listing indices.
+
+(**
+Equivocation is defined as non-heaviness of the full set of exchanged messages.
+[state_union] extracts that set from a composite state.
+*)
+
+Definition state_union
+  (s : vstate VLSM_full_composed_free)
+  : set message
+  :=
+  let state_list := List.map (project s) indices in
+  fold_right (set_union compare_eq_dec) []
+    (List.map get_message_set state_list).
+
+Instance VLSM_full_composed_free_state_encapsulating_messages
+  : state_encapsulating_messages (vstate VLSM_full_composed_free) message
+  :=
+  {| get_messages := state_union |}.
+
+Definition VLSM_full_composed_free_basic_equivocation
+  := state_encapsulating_messages_equivocation (vstate VLSM_full_composed_free) message V.
 
 End ClientsAndValidators.

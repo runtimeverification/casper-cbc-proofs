@@ -9,21 +9,22 @@ From CasperCBC
     VLSM.Common Composition
     .
 
-(** * VLSM equivocation based-on full-node-like  [HasEquivocation]
+(** * VLSM equivocation based-on full-node-like  [message_equivocation_evidence]
 
-Given a [VLSM] X over a type of messages which [HasEquivocation], we say
-that @X@ [HasPreceedsEquivocation] if [message_preceeds_fn] determines
-a [StrictOrder] on the [protocol_message]s of @X@.
+Given a [VLSM] X over a type of messages which [message_equivocation_evidence], we say
+that @X@ has [vlsm_message_equivocation_evidence] if [message_preceeds_fn]
+determines a [StrictOrder] on the [protocol_message]s of @X@.
 *)
 
-Section PreceedsEquivocation.
+Section vlsm_message_equivocation_evidence.
 
   Context
     {message : Type}
-    {Eqv : HasEquivocation message}
+    (validator : Type)
+    `{Eqv : message_equivocation_evidence message validator}
     (X : VLSM message).
 
-  Class HasPreceedsEquivocation
+  Class vlsm_message_equivocation_evidence
     :=
     { protocol_message_preceeds
         (pm1 pm2 : byzantine_message X)
@@ -33,12 +34,13 @@ Section PreceedsEquivocation.
       : StrictOrder protocol_message_preceeds
     }.
 
-End PreceedsEquivocation.
+End vlsm_message_equivocation_evidence.
 
 Section composite_preceeds_equivocation.
 
-  Context {message : Type}
-    {Eqv : HasEquivocation message}
+  Context
+    {message validator : Type}
+    `{Eqv : message_equivocation_evidence message validator}
     {index : Type}
     {IndEqDec : EqDec index}
     (IM : index -> VLSM message)
@@ -51,8 +53,8 @@ Section composite_preceeds_equivocation.
     .
 
   Lemma preceeds_equivocation_constrained
-    (Heqv : HasPreceedsEquivocation X2)
-    : HasPreceedsEquivocation X1.
+    (Heqv : vlsm_message_equivocation_evidence validator X2)
+    : vlsm_message_equivocation_evidence validator X1.
   Proof.
     destruct Heqv as
       [ protocol_message_preceeds2

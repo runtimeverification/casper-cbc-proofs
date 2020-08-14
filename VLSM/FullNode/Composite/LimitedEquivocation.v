@@ -35,8 +35,6 @@ Section ConstrainedValidators.
     .
 
 Let index : Type := V + clients.
-Parameter indices : list index.
-Parameter finite_index : Listing indices.
 Let v_eq_dec := strictly_comparable_eq_dec about_V.
 Existing Instance v_eq_dec.
 Existing Instance index_eq_dec.
@@ -108,19 +106,6 @@ Proof.
 Defined.
 *)
 
-(**
-Equivocation is defined as non-heaviness of the full set of exchanged messages.
-[state_union] extracts that set from a composite state.
-*)
-
-Definition state_union
-  (s : vstate FreeX)
-  : set message
-  :=
-  let state_list := List.map (project s) indices in
-  fold_right (set_union compare_eq_dec) []
-    (List.map get_message_set state_list).
-
 Lemma state_union_nodup
   (s : vstate FreeX)
   (Hs : protocol_state_prop (pre_loaded_vlsm FreeX) s)
@@ -186,34 +171,33 @@ Proof.
   ; inversion Hm.
 Qed.
 
-Definition not_heavy
-  :=
-  @CBC.Equivocation.set_not_heavy _ (full_node_equivocation C V ).
+Existing Instance VLSM_full_composed_free_basic_equivocation.
 
-Definition validators_composition_constraint
+Definition Full_composition_constraint
   (l : vlabel FreeX)
   (som : vstate FreeX * option message)
   : Prop
   :=
   let (s', om') := vtransition FreeX l som in
-  not_heavy (state_union s').
+  not_heavy s'.
 
-Definition validators_constrained_composition : VLSM message
-  := composite_vlsm IM_index i0 validators_composition_constraint.
+Definition Full_constrained_composition : VLSM message
+  := composite_vlsm IM_index i0 Full_composition_constraint.
 
-Lemma validators_composition_constraint_state_not_heavy
+Lemma Full_composition_constraint_state_not_heavy
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
-  : not_heavy (state_union s).
+  (Hs : protocol_state_prop Full_constrained_composition s)
+  : not_heavy s.
 Proof.
   destruct Hs as [_om Hs].
   inversion Hs; subst; simpl.
-  - unfold s0. rewrite state_union_initially_empty.
-    apply empty_not_heavy.
-  - unfold s0. rewrite state_union_initially_empty.
-    apply empty_not_heavy.
+  - unfold s0. apply empty_not_heavy.
+    simpl. rewrite state_union_initially_empty. reflexivity.
+  - unfold s0. apply empty_not_heavy.
+    remember (proj1_sig Common.s0) as s1. simpl. subst s1.
+    rewrite state_union_initially_empty. reflexivity.
   - destruct Hv as [Hv Hctr].
-    unfold validators_composition_constraint in Hctr.
+    unfold Full_composition_constraint in Hctr.
     unfold vtransition in Hctr.
     simpl in Hctr.
     destruct l as (i, li).
@@ -229,29 +213,31 @@ Proof.
     assumption.
 Qed.
 
-Global Instance validators_constrained_composition_preceeds_equivocation
-  : HasPreceedsEquivocation validators_constrained_composition.
+Existing Instance full_node_message_equivocation_evidence.
+
+Global Instance Full_constrained_composition_message_equivocation_evidence
+  : vlsm_message_equivocation_evidence V Full_constrained_composition.
 Proof.
   apply
     (preceeds_equivocation_constrained
-      IM_index i0 validators_composition_constraint (free_constraint _)
+      IM_index i0 Full_composition_constraint (free_constraint _)
     ).
   - intro l; intros. exact I.
-  - apply VLSM_full_composed_free_preceeds_equivocation.
+  - apply VLSM_full_composed_free_message_equivocation_evidence.
 Qed.
 
 Lemma in_protocol_state
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
+  (Hs : protocol_state_prop Full_constrained_composition s)
   (m : message)
   (i : index)
   (Hm : In m (get_message_set (project s i)))
-  : protocol_message_prop validators_constrained_composition m.
+  : protocol_message_prop Full_constrained_composition m.
 Proof.
   destruct  Hs as [om Hsom].
   remember
     (@pair
-      (@Common.state message (@type message validators_constrained_composition))
+      (@Common.state message (@type message Full_constrained_composition))
       (option message) s om)
     as som.
   generalize dependent i.
@@ -269,11 +255,11 @@ Proof.
     destruct i; inversion His; simpl in Hm
     ; rewrite H0 in Hm
     ; inversion Hm.
-  - assert (Hpsom0 : option_protocol_message_prop validators_constrained_composition om0).
+  - assert (Hpsom0 : option_protocol_message_prop Full_constrained_composition om0).
     { exists s0.
       replace
-        (@pair (@Common.state message (@type message validators_constrained_composition)) (option message) s0 om0)
-        with (vtransition validators_constrained_composition l (s, om)).
+        (@pair (@Common.state message (@type message Full_constrained_composition)) (option message) s0 om0)
+        with (vtransition Full_constrained_composition l (s, om)).
       apply protocol_generated with _om _s; assumption.
     }
     destruct l as (i', li').
@@ -342,8 +328,8 @@ Qed.
 
 Lemma state_union_protocol_message
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
-  : Forall (protocol_message_prop validators_constrained_composition) (state_union s).
+  (Hs : protocol_state_prop Full_constrained_composition s)
+  : Forall (protocol_message_prop Full_constrained_composition) (state_union s).
 Proof.
   apply Forall_forall.
   intros m Hm.
@@ -355,8 +341,8 @@ Qed.
 
 Lemma state_union_byzantine_message
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
-  : Forall (byzantine_message_prop validators_constrained_composition) (state_union s).
+  (Hs : protocol_state_prop Full_constrained_composition s)
+  : Forall (byzantine_message_prop Full_constrained_composition) (state_union s).
 Proof.
   apply state_union_protocol_message in Hs.
   rewrite Forall_forall in *.
@@ -370,11 +356,11 @@ Qed.
 
 Lemma state_union_free_byzantine_message
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
+  (Hs : protocol_state_prop Full_constrained_composition s)
   : Forall (byzantine_message_prop FreeX) (state_union s).
 Proof.
   rewrite Forall_forall. intros m Hm.
-  apply constraint_subsumption_byzantine_message_prop with validators_composition_constraint.
+  apply constraint_subsumption_byzantine_message_prop with Full_composition_constraint.
   - intro l; intros. exact I.
   - specialize (state_union_byzantine_message s Hs).
     intros Hbm.
@@ -419,7 +405,7 @@ Definition receive_destination
   : vstate FreeX
   :=
   fst
-    (vtransition validators_constrained_composition
+    (vtransition Full_constrained_composition
       (receive_label s i m)
       (s, Some m)
     ).
@@ -881,14 +867,14 @@ Qed.
 
 Lemma receive_messages_protocol
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
+  (Hs : protocol_state_prop Full_constrained_composition s)
   (i : index)
   (ms : list message)
   (Hms : NoDup ms)
   (Hmsj : preceeds_closed message_preceeds_fn ms)
   (Hmsi : incl ms (state_union s))
   (Hmst : topologically_sorted message_preceeds_fn ms)
-  : finite_protocol_trace_from validators_constrained_composition s (receive_messages s i (rev ms)).
+  : finite_protocol_trace_from Full_constrained_composition s (receive_messages s i (rev ms)).
 Proof.
   induction ms using rev_ind.
   - constructor. assumption.
@@ -915,7 +901,7 @@ Proof.
     specialize (IHms Hms Hmsj' Hmsi' Hmst').
     rewrite rev_unit. simpl.
     destruct (in_dec compare_eq_dec x (get_message_set (project s i))); try assumption.
-    apply (extend_right_finite_trace_from validators_constrained_composition); try assumption.
+    apply (extend_right_finite_trace_from Full_constrained_composition); try assumption.
     repeat split.
     + apply finite_ptrace_last_pstate. assumption.
     + specialize (state_union_protocol_message s Hs).
@@ -968,9 +954,8 @@ Proof.
         ; unfold unmake_justification
         ; assumption
         ).
-      * pose (validators_composition_constraint_state_not_heavy s Hs) as Hsnh.
-        unfold Client.not_heavy.
-        apply set_not_heavy_incl with (state_union s); try assumption.
+      * pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
+        apply not_heavy_incl with (state_union s); try assumption.
         specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
         intros [_ Hincl].
         simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
@@ -1017,9 +1002,9 @@ Proof.
         apply state_union_iff. right. exists client.
         rewrite state_update_eq.
         assumption.
-    + unfold validators_composition_constraint.
+    + unfold Full_composition_constraint.
       unfold vtransition. simpl.
-      pose (validators_composition_constraint_state_not_heavy s Hs) as Hsnh.
+      pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
       specialize (receive_messages_set_eq s i (ms ++ [x]) Hmsi).
       intros [_ Hincl].
       simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
@@ -1063,7 +1048,7 @@ Proof.
            (receive_messages s (@inr V clients client) (@rev message ms))) s
         (@inr V clients client))
         as msgs eqn:Hmsgs
-      ; apply set_not_heavy_incl with (state_union s); try assumption
+      ; apply not_heavy_incl with s; try assumption
       ; unfold vtransition in Hincl; simpl in Hincl
       .
       * replace
@@ -1313,7 +1298,7 @@ Qed.
 
 Lemma state_union_justification_closed
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
+  (Hs : protocol_state_prop Full_constrained_composition s)
   : preceeds_closed message_preceeds_fn (state_union s).
 Proof.
   unfold preceeds_closed.
@@ -1324,7 +1309,7 @@ Proof.
   assert (Hs' : protocol_state_prop (pre_loaded_vlsm FreeX) s).
   { destruct Hs as [_om Hs]. exists _om.
     apply (pre_loaded_protocol_prop FreeX).
-    apply constraint_free_protocol_prop with validators_composition_constraint.
+    apply constraint_free_protocol_prop with Full_composition_constraint.
     assumption.
   }
   unfold message_preceeds_fn in Hmj. simpl in Hmj.
@@ -1341,12 +1326,12 @@ Qed.
 Lemma receive_sorted_messages_protocol
   (is : list index)
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
+  (Hs : protocol_state_prop Full_constrained_composition s)
   (ms : set message)
   (Hnodup : NoDup ms)
   (Hms : topological_sorting message_preceeds_fn (state_union s) ms)
   (tr := receive_messages_iterated s ms is)
-  : finite_protocol_trace_from validators_constrained_composition s tr.
+  : finite_protocol_trace_from Full_constrained_composition s tr.
 Proof.
   assert (Hmsj : preceeds_closed message_preceeds_fn ms).
   { destruct Hms as [Hmseq _].
@@ -1363,7 +1348,7 @@ Proof.
   induction is; intros.
   - constructor. assumption.
   - unfold tr; clear tr. simpl.
-    apply (finite_protocol_trace_from_app_iff validators_constrained_composition).
+    apply (finite_protocol_trace_from_app_iff Full_constrained_composition).
     specialize (receive_messages_protocol s Hs a ms Hnodup Hmsj Hmsi Hmst).
     intro Hms.
     split; try assumption.
@@ -1406,8 +1391,8 @@ Qed.
 
 Lemma common_future_state
   (s : vstate FreeX)
-  (Hs : protocol_state_prop validators_constrained_composition s)
-  : exists s', in_futures validators_constrained_composition s s'
+  (Hs : protocol_state_prop Full_constrained_composition s)
+  : exists s', in_futures Full_constrained_composition s s'
     /\ forall i i' : index, set_eq (get_message_set (project s' i)) (get_message_set (project s' i')).
 Proof.
   exists (union_state s).

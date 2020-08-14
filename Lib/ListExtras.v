@@ -197,6 +197,24 @@ Proof.
       * apply IHl; assumption.
 Qed.
 
+Lemma filter_nodup
+  {A : Type}
+  (f : A -> bool)
+  (l : list A)
+  (Hl : NoDup l)
+  : NoDup (filter f l).
+Proof.
+  induction l.
+  - constructor.
+  - inversion Hl. specialize (IHl H2).
+    simpl. destruct (f a); try assumption.
+    constructor; try assumption.
+    intro Hn. apply filter_In in Hn.
+    destruct Hn as [Hn _]. elim H1. assumption.
+Qed.
+
+
+
 Lemma in_not_in : forall A (x y : A) l,
   In x l ->
   ~ In y l ->
