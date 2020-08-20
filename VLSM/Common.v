@@ -856,6 +856,21 @@ traces.
         rewrite list_prefix_map.
         rewrite list_prefix_nth; assumption.
     Qed.
+    
+        
+    (* begin hide *)
+    Lemma can_emit_from_protocol_trace
+      (si : state)
+      (m : message)
+      (tr : list transition_item)
+      (Hprotocol: finite_protocol_trace si tr)
+      (Hm : List.Exists (fun elem : transition_item => output elem = Some m) tr) :
+      can_emit m.
+    
+    Proof.
+    
+    Admitted.
+    (* end hide *)
 
 (**
 ** Infinite [protcol_trace]s

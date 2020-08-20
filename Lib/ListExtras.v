@@ -197,15 +197,52 @@ Proof.
       * apply IHl; assumption.
 Qed.
 
-Lemma in_first : 
-  forall A (x : A) (l : list A),
-  In x l ->
+Lemma existsb_first 
+  {A : Type}
+  (l : list A)
+  (f : A -> bool)
+  (Hsomething : existsb f l = true) :
   exists (prefix : list A)
-         (suffix : list A),
-         (prefix ++ [x] ++ suffix = l) /\
-         (~ In x prefix).
+         (suffix : list A)
+         (first : A),
+         (f first = true) /\
+         l = prefix ++ [first] ++ suffix /\
+         (existsb f prefix = false).
+
 Proof.
-Admitted.
+  generalize dependent l.
+  induction l.
+  - intros. 
+    simpl in *.
+    discriminate Hsomething.
+  - intros.
+    unfold existsb in Hsomething.
+    destruct (f a) eqn : eq_a.
+    + simpl in Hsomething.
+      exists [].
+      exists l.
+      exists a.
+      split.
+      assumption.
+      simpl.
+      intuition.
+    + simpl in *.
+      specialize (IHl Hsomething).
+      destruct IHl as [prefix [suffix [first [Hf [Hconcat Hnone_before]]]]].
+      exists (a :: prefix).
+      exists suffix.
+      exists first.
+      split.
+      assumption.
+      split.
+      rewrite Hconcat.
+      auto.
+      unfold existsb.
+      rewrite eq_a.
+      simpl.
+      unfold existsb in Hnone_before.
+      assumption.
+Qed.
 
 Lemma in_not_in : forall A (x y : A) l,
   In x l ->
@@ -443,6 +480,17 @@ Fixpoint list_prefix
     | _,[] => []
     | S n, a :: l => a :: list_prefix l n
     end.
+    
+Lemma list_prefix_split
+  {A : Type}
+  (l left right: list A)
+  (left_len : nat)
+  (Hlen : left_len = length left)
+  (Hsplit : l = left ++ right) :
+  list_prefix l left_len = left.
+
+Proof.
+Admitted.
 
 Lemma list_prefix_map
   {A B : Type}
@@ -1006,6 +1054,27 @@ Proof.
     + simpl. destruct (f a) eqn:Hfa.
       * right. apply IHl. exists a'. split; try assumption.
       * apply IHl. exists a'. split; try assumption.
+Qed.
+
+Lemma first_implies_last
+  {A : Type}
+  (e : A)
+  (l : list A) :
+  exists (l2 : list A) (lst : A),
+    (e :: l) = l2 ++ [lst].
+Proof.
+  generalize dependent e.
+  generalize dependent l.
+  
+  induction l.
+  - intros. exists []. exists e. auto.
+  - intros. 
+    specialize (IHl a).
+    destruct IHl as [l2 [lst Hrem]].
+    rewrite Hrem.
+    exists (e :: l2).
+    exists lst.
+    reflexivity.
 Qed.
 
 Lemma nth_error_eq
