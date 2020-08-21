@@ -279,6 +279,27 @@ Proof.
     + apply ((proj2 Hfinite) i).
 Qed.
 
+Lemma project_different
+  (s : state)
+  (news : state)
+  (i j : index)
+  (Hdif : i <> j)
+  (Hnot_bottom : s <> Bottom) :
+  project (update_state s news j) i = project s i.
+
+Proof.
+  unfold project.
+  destruct s.
+  - intuition.
+  - unfold update_state.
+    rewrite update_indexed_different.
+    intuition.
+    intuition.
+    split. 
+    apply ((proj2 Hfinite) j).
+    apply ((proj2 Hfinite) i).
+Qed.
+
 Lemma update_state_eq
       (big : state)
       (news : state)
@@ -725,13 +746,13 @@ Context
     
       Proof.
         intros.
-        unfold depth.
         specialize depth_parent_child_indexed.
         intros.
-      Admitted. 
-(* end hide *)
-
-  Print induction_ltof1.
+        specialize (H index_listing i ((proj2 Hfinite) i) ls).
+        unfold depth at 1.
+        unfold depth_indexed in H.
+        lia.
+   Qed.
 
     Lemma depth_redundancy :
       forall (s : state)
@@ -1019,8 +1040,6 @@ Context
         reflexivity.
     Qed.
     
-    Check @state.
-    
     Lemma message_gets_recorded :
       forall (s : vstate preX)
              (s0 : state)
@@ -1224,29 +1243,92 @@ Context
       - destruct o; inversion H0.
     Qed.
     
+    Lemma depth_zero_bottom
+      (s : state)
+      (Hzero : @depth index index_listing s = 0) :
+      s = Bottom.
+    
+    Proof.
+      unfold depth in Hzero.
+      destruct s.
+      - reflexivity.
+      - lia.
+    Qed.
+    
     Lemma no_bottom_in_history
       (s s': state)
       (i : index) 
-      (Hin : In s' (get_history s i)) :
+      (l : list state)
+      (Heql : l = rec_history s i (depth s))
+      (Hin : In s' l) :
       s' <> Bottom.
-    
     Proof.
-      remember (get_history s i) as history.
       generalize dependent s.
       generalize dependent s'.
-      induction history.
-      - intros. simpl in *. exfalso. assumption.
-      - intros. simpl in *.
+      induction l.
+      - intros. 
+        simpl in *.
+        intuition.
+      - intros.
         destruct (sdec a s').
-        + unfold get_history in Heqhistory.
-          destruct s eqn : eq_s.
-          * discriminate Heqhistory.
-          * unfold rec_history in Heqhistory.
-            destruct (depth (last_recorded index_listing is i)) eqn : eq_depth.
-            specialize (depth_parent_child is b i). intros.
-    Admitted.
+        + destruct s eqn : eq_s.
+          * discriminate Heql.
+          * unfold rec_history in Heql.
+            simpl in *.
+            assert (exists (n : nat), depth (Something b is) = n + 1). {
+              exists (depth_indexed index_listing is).
+              unfold depth.
+              reflexivity.
+            }
+            
+            destruct H as [n H].
+            rewrite H in Heql.
+            replace (n + 1) with (S n) in Heql.
+            inversion Heql.            
+            rewrite <- e.
+            rewrite H1.
+            intuition.
+            discriminate H0.
+            discriminate H0.
+            lia.
+        + simpl in Hin.
+          destruct Hin.
+          * elim n. 
+            intuition.
+          * unfold get_history in Heql.
+            destruct s.
+            discriminate Heql.
+            unfold rec_history in Heql.
+            simpl in *. 
+            
+            assert (exists (n : nat), depth (Something b is) = n + 1). {
+              exists (depth_indexed index_listing is).
+              unfold depth.
+              reflexivity.
+            }
+            
+            destruct H0 as [m H0].
+            rewrite H0 in Heql.
+            replace (m + 1) with (S m) in Heql.
+            specialize (IHl s' H (last_recorded index_listing is i)).
+            inversion Heql.
+            
+            assert (m >= depth (last_recorded index_listing is i)). {
+               specialize (depth_parent_child is b i).
+               intros.
+               rewrite H0 in H1.
+               unfold last_recorded.
+               lia.
+            }
+            
+            rewrite depth_redundancy in H3.
+            specialize (IHl H3).
+            assumption.
+            assumption.
+            lia.
+    Qed.
     
-    Lemma new_projection_implies_message
+    Lemma new_projection_implies_output_message
       (l : label)
       (som som' : (state * option message))
       (Hprotocol : protocol_transition preX l som som')
@@ -1257,81 +1339,111 @@ Context
     Proof.
       remember Hprotocol as Horiginal.
       unfold protocol_transition in Hprotocol.
-      simpl in *.
       destruct Hprotocol as [Hvalid Htransition].
-      
-      assert (Hno_bottoms: (fst som) <> Bottom /\ (fst som') <> Bottom). {
-        split.
-        unfold protocol_valid in Hvalid.
-          destruct som.
-          destruct som'.
-          destruct Hvalid as [Hneed Hother].
-        - apply protocol_prop_no_bottom.
-          simpl. 
-          assumption.
-        - apply protocol_prop_no_bottom.
-          admit.
-      }
-      
-      unfold transition in Htransition.
-      remember som as sommy.
-      destruct sommy.
-      destruct l eqn : eq_label.
-      - inversion Htransition.
-        simpl.
-        destruct som'.
+      simpl in *.
+      unfold protocol_valid in *.
+      unfold transition in *.
+      destruct l eqn: eq_l.
+      - destruct som as [s1 om1].
+        destruct som' as [s2 om2].
         simpl in *.
-        inversion H.
-        Check output_gets_recordedd.
-        specialize (output_gets_recordedd l s s0 o (index_self, s)).
-        intros.
-        assert (fst som <> Bottom). {
-           rewrite <- Heqsommy.
-           simpl.
-           intuition.
-        }
-        rewrite <- Heqsommy in H3.
-        replace (@Some (@message index index_listing)
-                   (@pair index (@state index index_listing) index_self s)) with o0 in H0.
-        rewrite eq_label in H0.
-        specialize (H0 Horiginal).
-        assert (s = s'). {
-          rewrite <- Hnew.
-          rewrite H0.
-          simpl.
-          reflexivity.
-        }
-        rewrite H4.
+        inversion Htransition.
+        rewrite <- H0 in Hnew.
+        rewrite <- update_consensus_clean with (value := c) in Hnew .
+        rewrite @project_same in Hnew.
+        rewrite Hnew.
         reflexivity.
-      - destruct som'.
+        exact Hfinite.
+        apply protocol_prop_no_bottom.
+        destruct Hvalid as [Hproto Hother].
+        assumption.
+      - destruct som.
+        simpl in *.
         destruct o eqn : eq_o.
-        + inversion Htransition.
-          simpl in *.
-          assert (project s index_self = project s0 index_self). {
-            unfold update_state in H0.
-            destruct s.
-            - intuition.
-            - unfold project.
-              destruct s0.
-              + intuition.
-              + inversion H0.
-                rewrite update_indexed_different.
-                reflexivity.
-                destruct Hvalid as [alfa [beta [caroten [deva euglena]]]].
-                auto.
-                split.
-                apply ((proj2 Hfinite) (fst m)).
-                apply ((proj2 Hfinite) (index_self)). 
-          }
-          rewrite H in Hold. 
-          rewrite Hnew in Hold. 
-          elim Hold.
-          reflexivity.
-        + simpl in *. 
-          destruct Hvalid as [a [b c]].
+        + destruct som'.
+          inversion Htransition.
+          simpl in Hnew.
+          rewrite <- H0 in Hnew.
+          destruct (idec (fst m) (index_self)).
+          * destruct Hvalid as [tmp1 [tmp2 [tmp3 [tmp4 Hneed]]]].
+            elim Hneed.
+            intuition.
+          * rewrite @project_different in Hnew.
+            elim Hold.
+            intuition.
+            exact Hfinite.
+            intuition.
+            apply protocol_prop_no_bottom.
+            destruct Hvalid as [Hneed Hother].
+            assumption.
+        + destruct Hvalid as [tmp1 [tmp2 Hfalse]].
           exfalso.
           assumption.
-    Admitted.
+    Qed.
+    
+    Lemma new_projection_implies_input_message
+      (l : label)
+      (som som' : (state * option message))
+      (Hprotocol : protocol_transition preX l som som')
+      (i : index)
+      (Hnot_self : i <> index_self)
+      (s' : state)
+      (Hold : project (fst som) i <> s')
+      (Hnew : project (fst som') i = s') :
+      (snd som) = Some (i, s').
+    Proof.
+      remember Hprotocol as Horiginal.
+      unfold protocol_transition in Hprotocol.
+      destruct Hprotocol as [Hvalid Htransition].
+      simpl in *.
+      unfold protocol_valid in *.
+      unfold transition in *.
+      destruct l eqn: eq_l.
+      - destruct som as [s1 om1].
+        destruct som' as [s2 om2].
+        simpl in *.
+        inversion Htransition.
+        rewrite <- H0 in Hnew.
+        rewrite <- update_consensus_clean with (value := c) in Hnew .
+        rewrite @project_different in Hnew.
+        elim Hold.
+        assumption.
+        exact Hfinite.
+        assumption.
+        apply protocol_prop_no_bottom.
+        destruct Hvalid as [Hneed Hother].
+        assumption.
+      - destruct som.
+        simpl in *.
+        destruct o eqn : eq_o.
+        + destruct som'.
+          inversion Htransition.
+          simpl in Hnew.
+          rewrite <- H0 in Hnew.
+          destruct (idec (fst m) i).
+          * rewrite e in Hnew.
+            rewrite @project_same in Hnew.
+            rewrite <- Hnew.
+            rewrite <- e.
+            rewrite <- surjective_pairing.
+            reflexivity.
+            exact Hfinite.
+            apply protocol_prop_no_bottom.
+            destruct Hvalid as [Hneed Hother].
+            assumption.
+          * rewrite @project_different in Hnew.
+            elim Hold.
+            intuition.
+            exact Hfinite.
+            intuition.
+            apply protocol_prop_no_bottom.
+            destruct Hvalid as [Hneed Hother].
+            assumption.
+        + destruct som'.
+          destruct Hvalid as [temp1 [temp2 Hfalse]].
+          exfalso.
+          assumption.
+    Qed.
     
     Lemma project_all_bottom_f
       (i : index)
@@ -1355,6 +1467,284 @@ Context
       apply project_all_bottom_f.
     Qed.
     
+    Lemma some_project
+      (s si target : state)
+      (len : nat)
+      (tr : list transition_item)
+      (Hlen : length tr = len)
+      (i : index)
+      (Hprotocol_tr : finite_protocol_trace preX si tr)
+      (Hlast : last (List.map destination tr) si = s)
+      (Hin : In target (get_history s i)) :
+      List.Exists (fun elem : (@transition_item _ (type preX)) => project (destination elem) i = target) tr.
+    Proof.
+    Admitted.
+    (* 
+      generalize dependent s.
+      generalize dependent tr.
+      induction len.
+      - intros. 
+        rewrite length_zero_iff_nil in Hlen.
+        subst.
+        simpl in *.
+        inversion Hprotocol_tr.
+        destruct H0.
+        rewrite H0 in Hin.
+        assert (get_history (Something x all_bottom) i = []). {
+          unfold get_history.
+          unfold last_recorded.
+          rewrite project_all_bottom.
+          simpl.
+          reflexivity.
+        }
+        rewrite H1 in Hin.
+        simpl in *.
+        exfalso. 
+        assumption.
+      - intros.
+        rewrite Exists_exists.
+        assert (exists (tr' : list transition_item) (lst : transition_item), tr = tr' ++ [lst]). {
+          destruct tr.
+          - discriminate Hlen.
+          - apply first_implies_last.
+        }
+        
+        destruct H as [tr' [lst Hlst]].
+        destruct (sdec (project s i) target) eqn : eq.
+        + exists lst. 
+          split.
+          * rewrite Hlst. 
+            apply in_or_app.
+            right.
+            intuition.
+          * rewrite Hlst in Hlast.
+            rewrite map_app in Hlast.
+            rewrite last_app in Hlast.
+            simpl in *.
+            subst.
+            reflexivity.
+       + assert (Hlen' : length tr' = len). {
+          rewrite Hlst in Hlen.
+          rewrite app_length in Hlen.
+          simpl in *.
+          lia.
+         }
+         
+         assert (Hprotocol' : finite_protocol_trace preX si tr'). {
+           remember (@Finite _ (type preX) si tr) as trace.
+           remember (exist _ trace Hprotocol_tr) as protocol_trace.
+           destruct Hprotocol_tr.
+           specialize (finite_protocol_trace_from_prefix preX si tr f (length tr - 1)).
+           intros.
+           
+           assert (Hone_less: tr' = list_prefix tr (length tr - 1)). {
+              rewrite Hlst.
+              specialize (list_prefix_split tr tr' [lst] (length tr')).
+              intros.
+              intuition.
+              rewrite <- H0 at 1.
+              rewrite <- Hlst.
+              assert (length tr' = length tr - 1). {
+                lia.
+              }
+              intuition.
+           }
+           
+           rewrite Hone_less.
+           unfold finite_protocol_trace.
+           intuition.
+         }
+         
+         destruct tr' as [| h tl] eqn : eq'.
+         * assert (s = destination lst). {
+             rewrite Hlst in Hlast.
+             simpl in Hlast.
+             intuition.
+           }
+           
+           assert (protocol_transition preX (l lst) (si, input lst) (destination lst, output lst)). {
+              rewrite Hlst in Hprotocol_tr.
+              simpl in *.
+              destruct Hprotocol_tr.
+              specialize (first_transition_valid preX si lst H0).
+              intros.
+              assumption.
+           }
+           
+           remember H0 as Horiginal.
+           unfold protocol_transition in H0.
+           destruct H0 as [Hvalid Htransition].
+           simpl in *.
+           inversion Htransition.
+           
+           assert (Hempty : get_history si i = []). {
+               unfold get_history.
+               unfold last_recorded.
+               destruct Hprotocol_tr.
+               simpl in *.
+               unfold initial_state_prop in H2.
+               destruct H2 as [cv Heq_initial].
+               rewrite Heq_initial.
+               rewrite project_all_bottom.
+               simpl.
+               reflexivity.
+           }
+           
+           destruct (l lst) eqn : eq_l. { 
+              - inversion H1. 
+                rewrite <- H in H2.
+                rewrite <- H2 in Hin.
+                rewrite history_disregards_cv in Hin.
+                rewrite history_append in Hin.
+                simpl in Hin.
+                specialize (output_gets_recordedd (l lst) si (destination lst) (input lst) (index_self, si)).
+                intros.
+                assert (project (destination lst) index_self = snd (index_self, si)). {
+                  replace (@Some (@message index index_listing)
+                        (@pair index (@state index index_listing) index_self si)) with (output lst) in H0.
+                  apply H0.
+                  rewrite eq_l.
+                  assumption.
+                }
+                simpl in *.
+                assert (si <> target). {
+                  rewrite <- H4.
+                  rewrite <- H.
+                  assumption.
+                }
+                
+                intuition.
+                rewrite Hempty in H6.
+                simpl in H6.
+                exfalso.
+                assumption.
+                apply protocol_prop_no_bottom. destruct Hvalid. assumption.
+                apply protocol_prop_no_bottom. destruct Hvalid. assumption.
+                reflexivity. 
+           }
+           { - destruct (input lst).
+               + inversion Htransition.
+                 rewrite H in Hin.
+                 rewrite <- H2 in Hin.
+                 Check history_oblivious.
+                 rewrite <- (history_oblivious si (snd m) index_self (fst m)) in Hin.
+                 rewrite Hempty in Hin.
+                 simpl in Hin.
+                 exfalso.
+                 assumption.
+                 destruct Hvalid as [a [b [c [d e]]]].
+                 intuition.
+               + destruct Hvalid as [a [b c]].
+                 exfalso.
+                 assumption.
+         }
+
+         * assert (exists (tr'' : list transition_item) (lst' : transition_item), tr' = tr'' ++ [lst']). {
+              destruct tr'.
+              - discriminate eq'.
+              - apply first_implies_last.
+           }
+           destruct H as [tr'' [lst' Hlst']].
+           rewrite <- eq' in Hlen'. 
+           rewrite <- eq' in Hprotocol'.
+           assert (Hlast'' : last (List.map destination tr') si = (destination lst')). {
+              rewrite Hlst'.
+              rewrite map_app.
+              rewrite last_app.
+              simpl.
+              reflexivity.
+           }
+           
+           specialize (IHlen tr' Hlen' Hprotocol' (destination lst') Hlast'').
+           
+           assert (Hin' : In target (get_history (destination lst') index_self)). {
+              assert (protocol_transition preX (l lst) (destination lst', input lst) (destination lst, output lst)). {
+                specialize (finite_ptrace_consecutive_valid_transition preX) as Hcons.
+                simpl in *.
+                specialize (Hcons si tr [] tr'' lst' lst).
+                destruct Hprotocol_tr as [Hfrom Hinit].
+                specialize (Hcons Hfrom).
+                apply Hcons.
+                simpl.
+                rewrite <- app_cons.
+                rewrite app_assoc.
+                rewrite <- Hlst'.
+                rewrite eq'.
+                rewrite Hlst.
+                reflexivity.
+              }
+              
+              remember H as Hold.
+              unfold protocol_transition in H.
+              destruct H as [Hvalid Htransition].
+              
+              assert (s = destination lst). {
+                rewrite Hlst in Hlast.
+                rewrite map_app in Hlast.
+                rewrite last_app in Hlast.
+                simpl in Hlast.
+                symmetry.
+                assumption.
+              }
+              
+              destruct (l lst) eqn : eq_l.
+              - simpl in *.
+                inversion Htransition.
+                rewrite H in Hin.
+                rewrite <- H1 in Hin.
+                rewrite history_disregards_cv in Hin.
+                rewrite history_append in Hin.
+                specialize (output_gets_recordedd 
+                            (update c)
+                            (destination lst')
+                            (destination lst)
+                            (input lst)
+                            (index_self, destination lst')).
+               intros.
+               replace (@Some (@message index index_listing)
+                   (@pair index
+                      (@Common.state (@message index index_listing)
+                         (@VLSM_list_protocol index index_listing)) index_self
+                      (@destination (@message index index_listing)
+                         (@VLSM_list_protocol index index_listing) lst'))) with (output lst) in H0.
+               specialize (H0 Hold).
+               simpl in *.
+               rewrite <- H in H0.
+               
+               inversion Hin.
+               + rewrite H3 in H0. elim n. assumption.
+               + assumption.
+               + apply protocol_prop_no_bottom. destruct Hvalid. intuition.
+               + apply protocol_prop_no_bottom. destruct Hvalid. intuition.
+               + reflexivity.
+             - simpl in *.
+               inversion Htransition.
+               destruct (input lst) eqn : input_eq. 
+               + inversion H1.
+                 rewrite <- H in H2.
+                 rewrite <- H2 in Hin.
+                 rewrite <- (history_oblivious (destination lst') (snd m) index_self (fst m)) in Hin.
+                 assumption.
+                 destruct Hvalid as [a [b [c [d e]]]].
+                 intuition.
+               + destruct Hvalid as [a [b c]].
+                 exfalso.
+                 assumption.
+           }
+           specialize (IHlen Hin').
+           rewrite Exists_exists in IHlen.
+           destruct IHlen as [x' [Hin_x Hproject_x]].
+           exists x'.
+           split.
+           rewrite Hlst.
+           rewrite <- eq'.
+           intuition.
+           assumption.
+    Qed.
+    *)
+    
+    
+    (*
     Lemma some_project
       (s si target : state)
       (len : nat)
@@ -1626,6 +2016,8 @@ Context
            intuition.
            assumption.
     Qed.
+    
+    *)
       
     
     Lemma send_oracle_prop 
@@ -1742,7 +2134,7 @@ Context
                 }
             }
             
-            specialize (new_projection_implies_message 
+            specialize (new_projection_implies_output_message 
                         (l target) 
                         (start, (input target)) 
                         ((destination target), (output target))
@@ -1802,7 +2194,7 @@ Context
             rewrite <- app_assoc in Hsplit.
             simpl in Hsplit.
             specialize (H0 Hsplit).
-            specialize (new_projection_implies_message 
+            specialize (new_projection_implies_output_message 
                        (l target) 
                        (destination prev_target, (input target)) 
                        ((destination target), (output target))
@@ -2025,7 +2417,146 @@ Context
       unfold all_traces_have_message_prop.
       split.
       - intros.
+        unfold receive_oracle in H.
+        destruct (idec (fst m) index_self) eqn:eq.
+        + discriminate H.
+        + destruct s eqn:eq_s.
+          * discriminate H.
+          * apply existsb_exists in H.
+            destruct H as [x [Hin Heq_state]].
+          (* Somewhere, the message shows up as somebody's projection *)
+          
+          assert (List.Exists (fun elem : (@transition_item _ (type preX)) => project (destination elem) (fst m) = (snd m)) tr). {
+              apply some_project with (s := s) (si := start) (len := length tr).
+              reflexivity.
+              assumption.
+              rewrite eq_s.
+              assumption.
+              rewrite eq_s.
+              rewrite state_eqb_eq in Heq_state.
+              rewrite Heq_state.
+              assumption.
+          }
+          
+          (* Among those places, we choose the earliest one *)
+          
+          assert (exists (prefix : list transition_item)
+                         (suffix : list transition_item)
+                         (target : transition_item),
+                         tr = prefix ++ [target] ++ suffix /\
+                         project (destination target) (fst m) = (snd m) /\
+                         ~List.Exists (fun elem : (@transition_item _ (type preX)) 
+                                        => project (destination elem) (fst m) = (snd m)) prefix). {
+              rewrite Exists_exists in H.
+              destruct H as [t [Hin' Hproject]].
+              rewrite <- state_eqb_eq in Hproject.
+              assert (exists (t : transition_item), In t tr /\ state_eqb (project (destination t) (fst m)) (snd m) = true). {
+                exists t.
+                intuition.
+              }
+              
+              rewrite <- existsb_exists in H.
+              specialize (existsb_first 
+                          tr 
+                          (fun x : transition_item => state_eqb (project (destination x) (fst m)) (snd m))
+                          H).
+              intros.
+              destruct H0 as [prefix [suffix [first [Heqb [Hsplt Hno_earlier]]]]].
+              exists prefix.
+              exists suffix.
+              exists first.
+              split.
+              assumption.
+              split.
+              rewrite <- state_eqb_eq.
+              assumption.
+              rewrite <- Forall_Exists_neg.
+              rewrite Forall_forall.
+              intros.
+              apply In_nth with (d := x0) in H0.
+              destruct H0 as [nn [Hless Hnth]].
+              apply existsb_nth with (n := nn) (d := x0) in Hno_earlier.
+              rewrite <- Hnth.
+              rewrite state_eqb_neq in Hno_earlier.
+              assumption.
+              assumption.
+          }
         
+        rewrite Exists_exists.
+        destruct H0 as [prefix [suffix [target [Hconcat [Hproject Hno_earlier]]]]].
+        
+        exists target.
+        split.
+        rewrite Hconcat.
+        apply in_elt.
+        
+        remember (last (List.map destination prefix) start) as prev_target.
+        assert (Hptransition: protocol_transition preX (l target) (prev_target, input target) (destination target, output target)). {
+          admit.
+        }
+        
+        specialize new_projection_implies_input_message as Hchange.
+        specialize (Hchange (l target) (prev_target, input target) (destination target, output target)).
+        specialize (Hchange Hptransition (fst m) n (snd m)).
+        simpl in *.
+        
+        assert (Hold: project prev_target (fst m) <> snd m). {
+          destruct prefix eqn : eq_prefix.
+          - simpl in *.
+            rewrite Heqprev_target.
+            assert (Hnot_bottom : snd m <> Bottom). {
+              specialize (no_bottom_in_history s x (fst m)).
+              intros.
+              rewrite eq_s in H0.
+              specialize (H0 Hin).
+              rewrite state_eqb_eq in Heq_state.
+              rewrite <- Heq_state in H0.
+              assumption.
+            }
+            
+            unfold project.
+            destruct Htr as [_ Hinit].
+            simpl in Hinit.
+            unfold initial_state_prop in Hinit.
+            destruct Hinit as [cv Hinit].
+            rewrite Hinit.
+            rewrite project_all_bottom.
+            intuition.
+          - assert (Hprev: exists 
+                           (lst : transition_item) 
+                           (prefix' : list transition_item),
+                           (prefix = prefix' ++ [lst])). {
+              specialize (first_implies_last t l).
+              intros.
+              destruct H0 as [l2 [lst Hrev]].
+              exists lst.
+              exists l2.
+              rewrite eq_prefix.
+              assumption.
+            }
+            
+            destruct Hprev as [lst [prefix' Hprefix]].
+            assert (prev_target = destination lst). {
+              rewrite Heqprev_target.
+              rewrite <- eq_prefix.
+              rewrite Hprefix.
+              rewrite map_app.
+              rewrite last_app.
+              simpl.
+              reflexivity.
+            }
+            rewrite H0.
+            rewrite <- Forall_Exists_neg in Hno_earlier.
+            rewrite Forall_forall in Hno_earlier.
+            specialize (Hno_earlier lst).
+            apply Hno_earlier.
+            rewrite <- eq_prefix.
+            rewrite Hprefix.
+            apply in_elt.
+        }
+        specialize (Hchange Hold Hproject).
+        rewrite <- surjective_pairing in Hchange.
+        assumption.
       - intros.
         unfold receive_oracle.
         remember Hprotocol as Hprotocol'.
