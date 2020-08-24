@@ -796,7 +796,6 @@ traces.
       can_emit m.
     
     Proof.
-    
     Admitted.
     (* end hide *)
 
