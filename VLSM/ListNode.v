@@ -1005,8 +1005,6 @@ Context
           assumption.
     Qed.
     
-    (* TODO : remove duplication for infinite traces *)
-    
     Lemma projection_in_history :
       forall (s : state)
              (news : state)
@@ -1255,7 +1253,7 @@ Context
       - lia.
     Qed.
     
-    Lemma no_bottom_in_history
+    Lemma no_bottom_in_history_rec
       (s s': state)
       (i : index) 
       (l : list state)
@@ -1326,6 +1324,25 @@ Context
             assumption.
             assumption.
             lia.
+    Qed.
+    
+    Lemma no_bottom_in_history
+      (s s': state)
+      (i : index) 
+      (Hin : In s' (get_history s i)) :
+      s' <> Bottom.
+    
+    Proof.
+      unfold get_history in Hin.
+      destruct s.
+      - simpl in Hin. 
+        intuition.
+      - specialize (no_bottom_in_history_rec (last_recorded index_listing is i)).
+        intros.
+        specialize (H s' i (rec_history (last_recorded index_listing is i) i
+           (depth (last_recorded index_listing is i)))).
+        specialize (H eq_refl Hin).
+        assumption.
     Qed.
     
     Lemma new_projection_implies_output_message
@@ -2038,6 +2055,9 @@ Context
         + discriminate H.
         + apply existsb_exists in H.
           destruct H as [x [Hin Heq_state]].
+          rewrite e in Hin.
+          specialize (no_bottom_in_history (Something b is) x index_self Hin) as Hxgood.
+          rewrite <- e in Hin.
           (* Somewhere, the message shows up as somebody's projection *)
           
           assert (List.Exists (fun elem : (@transition_item _ (type preX)) => project (destination elem) index_self = (snd m)) tr). {
@@ -2158,11 +2178,6 @@ Context
                   reflexivity.
                 }
                 rewrite H3.
-                specialize (no_bottom_in_history (Something b is) x).
-                intros.
-                specialize (H6 index_self).
-                rewrite <- e in H6.
-                subst.
                 rewrite state_eqb_eq in Heq_state.
                 rewrite Heq_state.
                 intuition.
@@ -2215,7 +2230,8 @@ Context
             rewrite e.
             apply right.
             intuition.
-            rewrite e. assumption.
+            rewrite e. 
+            assumption.
       - unfold send_oracle.
         intros.
         remember Hprotocol as Hprotocol'.
@@ -2492,7 +2508,11 @@ Context
         
         remember (last (List.map destination prefix) start) as prev_target.
         assert (Hptransition: protocol_transition preX (l target) (prev_target, input target) (destination target, output target)). {
-          admit.
+            specialize (protocol_transition_to preX start target tr prefix suffix Hconcat) as Himp.
+            destruct Htr.
+            specialize (Himp H0).
+            rewrite Heqprev_target.
+            assumption.
         }
         
         specialize new_projection_implies_input_message as Hchange.
@@ -2606,12 +2626,10 @@ Context
           remember (last (List.map destination l1) start) as prev_x.
           
           assert (protocol_transition preX (l x) (prev_x, input x) (destination x, output x)). {
-            destruct l1.
-            - simpl in *.
-              rewrite Heqprev_x.
-              admit.
-            - simpl in *.
-              admit.
+            destruct Hprotocol_tr.
+            specialize (protocol_transition_to preX start x tr l1 l2 Hconcat H) as Himp.
+            rewrite Heqprev_x.
+            assumption.
           }
           
           destruct (idec (fst m) index_self). 
@@ -2640,7 +2658,17 @@ Context
             intros.
             
             assert (Hnot_bottom: snd m <> Bottom). {
-              admit.
+              unfold protocol_transition in H.
+              unfold protocol_valid in H.
+              simpl in H.
+              destruct (l x).
+              - destruct H as [Hleft Hright].
+                inversion Hright.
+                destruct Hleft as [Ha [Hb [Hc Hd]]].
+                discriminate Hd.
+              - destruct H as [Hleft Hright].
+                destruct Hleft as [Ha [Hb [Hc [Hd He]]]].
+                assumption.
             }
             
             specialize (Hproject Hnot_bottom Hrecorded).
