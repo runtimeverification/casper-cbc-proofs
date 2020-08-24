@@ -648,6 +648,18 @@ decompose the above properties in proofs.
       simpl.
       assumption.
     Qed.
+    
+    Lemma protocol_transition_to
+      (si : state)
+      (middle : transition_item)
+      (tr prefix suffix : list transition_item)
+      (Hsplit : tr = prefix ++ [middle] ++ suffix)
+      (Htr : finite_protocol_trace_from si tr)
+      (prev_state := last (List.map destination prefix) si)
+      :
+      protocol_transition (l middle) (prev_state, input middle) (destination middle, output middle).
+    Proof.
+    Admitted.
 
     Lemma extend_right_finite_trace_from
       : forall s1 ts s3 iom3 oom3 l3 (s2 := List.last (List.map destination ts) s1),
