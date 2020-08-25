@@ -38,10 +38,10 @@ messages, implementing a limited equivocation tolerance policy.
     : state_encapsulating_messages (set message) message
     :=
     {| get_messages := fun s => s |}.
-  
+
   Definition client_basic_equivocation
     := state_encapsulating_messages_equivocation (set message) message V.
-  
+
   Existing Instance client_basic_equivocation.
 
   (* 2.5.1 Minimal full client protocol: Client2 *)

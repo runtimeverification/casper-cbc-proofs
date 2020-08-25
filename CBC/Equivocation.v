@@ -18,17 +18,24 @@ From CasperCBC
 
   (** ** Basic equivocation **)
 
-  (** Assuming a set of <<state>>s, and a set of [Finite] <<validator>>s,
-  which is [Measurable] and has a [ReachableThreshold], we can define 
+  (** Assuming a set of <<state>>s, and a set of <<validator>>s,
+  which is [Measurable] and has a [ReachableThreshold], we can define
   [basic_equivocation] starting from a computable [is_equivocating_fn]
   deciding whether a validator is equivocating in a state.
 
+  To avoid a [Finite] constraint on the entire set of validators, we will
+  assume that there is a finite set of validators for each state, which
+  can be retrieved through the [state_validators] function.
+  This can be taken to be entire set of validators when that is finite,
+  or the set of senders for all messages in the state for
+  [state_encapsulating_messages].
+
   This allows us to determine the [equivocating_validators] for a given
   state as those equivocating in that state.
-  
+
   The [equivocation_fault] is determined the as the sum of weights of the
   [equivocating_validators].
-  
+
   We call a state [not_heavy] if its corresponding [equivocation_fault]
   is lower than the [threshold] set for the <<validator>>s type.
   **)
@@ -61,7 +68,7 @@ From CasperCBC
         : R
         :=
         sum_weights (equivocating_validators s)
-      
+
     ; not_heavy
         (s : state)
         :=  (equivocation_fault s <= proj1_sig threshold)%R
@@ -114,7 +121,11 @@ Class message_equivocation_evidence
 (** ** Equivocation for states encapsulating messages
 
 The definition below assumes that one can [get_messages] associated to
-states, and these messages are equiped with [message_equivocation_evidence].
+states, and these messages are equipped with [message_equivocation_evidence].
+
+For the purpose of the definition, what are the messages associated to the
+state can remain an abstract notion; however, one could imagine these messages
+as being those the state has memory of (sent, received, or otherwise observed).
 
 We can use this to instantiate [basic_equivocation], by saying that a
 validator is equivocating in a state iff there exists at least one message
@@ -208,7 +219,7 @@ Lemma equivocation_fault_incl
 Proof.
   intros.
   apply sum_weights_incl
-  ; try (apply filter_nodup; apply state_validators_nodup).
+  ; try (apply NoDup_filter; apply state_validators_nodup).
   apply equivocating_validators_incl. assumption.
 Qed.
 
