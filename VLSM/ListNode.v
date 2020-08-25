@@ -1,8 +1,8 @@
-Require Import Bool List Streams Logic.Epsilon Logic.Decidable Reals ProofIrrelevance Fin FinFun OrdersFacts Wellfounded.
+Require Import Bool List Reals FinFun .
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions VLSM.Equivocation CBC.FullNode.
+Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition VLSM.Equivocation .
 
 Section ListNode.
 
