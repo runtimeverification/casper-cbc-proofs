@@ -525,7 +525,6 @@ Context
     
   Lemma state_eqb_eq (s1 s2 : state) :
     (state_eqb s1 s2) = true <-> s1 = s2.
-  
   Proof.
     unfold state_eqb.
     split.
@@ -533,26 +532,20 @@ Context
       + intuition.
       + intros. discriminate H.
     - intros.
-      destruct (sdec s1 s2).
-      + intuition.
-      + intuition.
+      destruct (sdec s1 s2);
+      intuition.
   Qed.
   
   Lemma state_eqb_neq (s1 s2 : state) :
     (state_eqb s1 s2) = false <-> s1 <> s2.
-  
   Proof.
     unfold state_eqb.
-    split.
-    - destruct (sdec s1 s2).
-      + intuition.
-      + intuition.
-    - destruct (sdec s1 s2).
-      + intuition.
-      + intuition.
+    split;
+    destruct (sdec s1 s2);
+    intuition.
   Qed.
     
-  Definition send_oracle (who : index) (s : state) (m : message)  : bool :=
+  Definition send_oracle (s : state) (m : message)  : bool :=
     let who := fst m in
     let what := snd m in
     match idec who index_self with
@@ -563,7 +556,7 @@ Context
                 end
     end.
     
-  Definition receive_oracle (who : index) (s : state) (m : message) : bool :=
+  Definition receive_oracle (s : state) (m : message) : bool :=
     let who := fst m in
     let what := snd m in
     match idec who index_self with
@@ -571,10 +564,15 @@ Context
     | right _ => existsb (state_eqb what) (get_history s who)
     end.
     
+    Definition not_send_oracle (s : state) (m : message)  : bool :=
+      negb (send_oracle s m).
+    
+    Definition not_receive_oracle (s : state) (m : message) : bool :=
+      negb (receive_oracle s m).
+    
     Lemma protocol_no_bottom 
       (s : protocol_state preX) :
       (proj1_sig s) <> Bottom.
-    
     Proof.
       destruct s.
       simpl.
@@ -671,7 +669,6 @@ Context
                   apply (@update_consensus_clean index index_listing _ _).
                 }
        rewrite H.
-       Check @project_same index index_listing Hfinite.
        apply (@project_same index index_listing Hfinite _ _).
        apply protocol_prop_no_bottom.
        destruct pr_valid_prop.
@@ -1606,7 +1603,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_been_sent_prop X (send_oracle index_self) s m.
+      has_been_sent_prop X send_oracle s m.
     Proof.
       unfold has_been_sent_prop.
       unfold all_traces_have_message_prop.
@@ -1929,8 +1926,7 @@ Context
                 destruct Hprefix as [suffix Hsuffix].
                 exists suffix.
                 split.
-                + Check finite_protocol_trace_from_app_iff.
-                  specialize (finite_protocol_trace_from_app_iff preX s0 (tr' ++ [lst]) suffix).
+                + specialize (finite_protocol_trace_from_app_iff preX s0 (tr' ++ [lst]) suffix).
                   intros.
                   destruct H6 as [_ right].
                   
@@ -1984,7 +1980,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_been_received_prop X (receive_oracle index_self) s m.
+      has_been_received_prop X receive_oracle s m.
     
     Proof.
       unfold has_been_received_prop.
@@ -2272,12 +2268,6 @@ Context
             reflexivity.
     Qed.
     
-    Definition not_send_oracle (who : index) (s : state) (m : message)  : bool :=
-      negb (send_oracle who s m).
-    
-    Definition not_receive_oracle (who : index) (s : state) (m : message) : bool :=
-      negb (receive_oracle who s m).
-    
     Lemma output_to_history
       (s : state)
       (si : state)
@@ -2467,7 +2457,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_not_been_sent_prop X (not_send_oracle index_self) s m.
+      has_not_been_sent_prop X not_send_oracle s m.
     Proof.
       intros.
       unfold has_not_been_sent_prop.
@@ -2524,7 +2514,7 @@ Context
       - intros.
         unfold not_send_oracle.
         rewrite negb_true_iff.
-        destruct (send_oracle index_self s m) eqn : send_oracle_eq.
+        destruct (send_oracle s m) eqn : send_oracle_eq.
         + exfalso.
           specialize (send_oracle_prop s Hprotocol m).
           intros.
@@ -2588,7 +2578,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_not_been_received_prop X (not_receive_oracle index_self) s m.
+      has_not_been_received_prop X not_receive_oracle s m.
      Proof.
       intros.
       unfold has_not_been_received_prop.
@@ -2646,7 +2636,7 @@ Context
       - intros.
         unfold not_receive_oracle.
         rewrite negb_true_iff.
-        destruct (receive_oracle index_self s m) eqn : receive_oracle_eq.
+        destruct (receive_oracle s m) eqn : receive_oracle_eq.
         + exfalso.
           specialize (receive_oracle_prop s Hprotocol m).
           intros.
