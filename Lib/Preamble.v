@@ -61,6 +61,30 @@ Proof.
     + right. intros Heq. inversion Heq. contradiction.
 Qed.
 
+Lemma option_eq_dec 
+   {X : Type} 
+   (Xdec : EqDec X) : 
+   EqDec (option X).
+Proof.
+  unfold EqDec.
+  intros.
+  destruct x; destruct y.
+  - destruct (eq_dec x x0).
+    * left.
+      rewrite e.
+      reflexivity.
+    * right.
+      intros contra.
+      inversion contra.
+      elim n.
+      assumption.
+   - right.
+     discriminate.
+   - right.
+     discriminate.
+   - left.
+     reflexivity.
+Qed.
 
 Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
   snd (fst xyz).
