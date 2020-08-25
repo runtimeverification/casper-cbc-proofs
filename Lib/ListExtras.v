@@ -490,7 +490,32 @@ Lemma list_prefix_split
   list_prefix l left_len = left.
 
 Proof.
-Admitted.
+  generalize dependent l.
+  generalize dependent left.
+  generalize dependent right.
+  generalize dependent left_len.
+  induction left_len.
+  - intros.
+    symmetry in Hlen.
+    rewrite length_zero_iff_nil in Hlen.
+    rewrite Hlen.
+    unfold list_prefix.
+    destruct l;
+    reflexivity.
+  - intros.
+    destruct left.
+    + discriminate Hlen.
+    + assert (left_len = length left). {
+        simpl in Hlen.
+        inversion Hlen.
+        intuition.
+      }
+      specialize (IHleft_len right left H (left ++ right) eq_refl).
+      rewrite Hsplit.
+      simpl.
+      rewrite IHleft_len.
+      reflexivity.
+Qed.
 
 Lemma list_prefix_map
   {A B : Type}
