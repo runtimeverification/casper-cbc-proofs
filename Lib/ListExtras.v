@@ -197,7 +197,7 @@ Proof.
       * apply IHl; assumption.
 Qed.
 
-Lemma existsb_first 
+Lemma existsb_first
   {A : Type}
   (l : list A)
   (f : A -> bool)
@@ -212,7 +212,7 @@ Lemma existsb_first
 Proof.
   generalize dependent l.
   induction l.
-  - intros. 
+  - intros.
     simpl in *.
     discriminate Hsomething.
   - intros.
@@ -480,7 +480,7 @@ Fixpoint list_prefix
     | _,[] => []
     | S n, a :: l => a :: list_prefix l n
     end.
-    
+
 Lemma list_prefix_split
   {A : Type}
   (l left right: list A)
@@ -1090,10 +1090,10 @@ Lemma first_implies_last
 Proof.
   generalize dependent e.
   generalize dependent l.
-  
+
   induction l.
   - intros. exists []. exists e. auto.
-  - intros. 
+  - intros.
     specialize (IHl a).
     destruct IHl as [l2 [lst Hrem]].
     rewrite Hrem.

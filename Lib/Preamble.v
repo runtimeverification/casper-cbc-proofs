@@ -61,9 +61,9 @@ Proof.
     + right. intros Heq. inversion Heq. contradiction.
 Qed.
 
-Lemma option_eq_dec 
-   {X : Type} 
-   (Xdec : EqDec X) : 
+Lemma option_eq_dec
+   {X : Type}
+   (Xdec : EqDec X) :
    EqDec (option X).
 Proof.
   unfold EqDec.
