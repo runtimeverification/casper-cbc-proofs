@@ -52,11 +52,11 @@ Section CompositeValidator.
     match l with
     | None => match om with
              | None => som
-             | Some msg => pair (pair (set_add compare_eq_dec msg msgs) final) None
+             | Some msg => pair (pair (set_add eq_dec msg msgs) final) None
            end
     | Some c =>
       let msg := (c, v, make_justification s) in
-      pair (pair (set_add compare_eq_dec msg msgs) (Some msg)) (Some msg)
+      pair (pair (set_add eq_dec msg msgs) (Some msg)) (Some msg)
     end.
 
   Lemma vtransitionv_inv_out
@@ -66,7 +66,7 @@ Section CompositeValidator.
     (om : option message)
     (m' : message)
     (Ht : vtransitionv v l (s, om) = pair s' (Some m'))
-    : s' = pair (set_add compare_eq_dec m' (get_message_set s)) (Some m')
+    : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
     /\ exists (c : C), l = Some c.
   Proof.
     unfold vtransitionv in Ht. destruct s as (msgs, final).
@@ -162,7 +162,7 @@ Section proper_sent_received.
     (om : option message)
     (m' : message)
     (Ht : vtransition bvlsm l (s, om) = pair s' (Some m'))
-    : s' = pair (set_add compare_eq_dec m' (get_message_set s)) (Some m')
+    : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
     /\ exists (c : C), l = Some c.
   Proof.
     apply vtransitionv_inv_out in Ht. assumption.
@@ -174,7 +174,7 @@ Section proper_sent_received.
     (om : option message)
     (m' : message)
     (Ht : protocol_transition bvlsm l (s, om) (s', Some m'))
-    : s' = pair (set_add compare_eq_dec m' (get_message_set s)) (Some m')
+    : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
     /\ exists (c : C), l = Some c.
   Proof.
     destruct Ht as [_ Ht]. apply vtransition_inv_out in Ht. assumption.
@@ -186,7 +186,7 @@ Section proper_sent_received.
     (m : message)
     (om' : option message)
     (Ht : protocol_transition bvlsm l (s, Some m) (s', om'))
-    : s' = pair (set_add compare_eq_dec m (get_message_set s)) (last_sent s)
+    : s' = pair (set_add eq_dec m (get_message_set s)) (last_sent s)
     /\ om' = None
     /\ ~In m (get_message_set s)
     /\ incl
@@ -472,7 +472,7 @@ Section proper_sent_received.
       simpl in Horacle. rewrite Hstart in Horacle. discriminate Horacle.
     + rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
       inversion Hprefix; subst. simpl in *.
-      destruct oom as [om|]; try destruct (compare_eq_dec om m); try subst om.
+      destruct oom as [om|]; try destruct (eq_dec om m); try subst om.
       * exists (@Build_transition_item message VLSM_type_full_validator l iom s0 (@Some message m)).
         split; try reflexivity.
         left. reflexivity.
@@ -797,7 +797,7 @@ Section proper_sent_received.
           rewrite Hns in Hs0. discriminate Hs0.
         }
         specialize (IHtr s0 H2 Hlast).
-        destruct (in_dec compare_eq_dec m (get_message_set s0)).
+        destruct (in_dec eq_dec m (get_message_set s0)).
         * destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
           exists {| l := l; input := iom; destination := s0; output := oom |}.
           split; try (left; reflexivity). simpl.
@@ -814,7 +814,7 @@ Section proper_sent_received.
             destruct final as [m|].
             + pose
               (proj2 (in_correct'
-                (set_add compare_eq_dec
+                (set_add eq_dec
                   ((c, v, LastSent C V (make_message_set msgs) m))
                     (sent_messages_justification
                        (LastSent C V (make_message_set msgs) m)))
@@ -824,7 +824,7 @@ Section proper_sent_received.
               apply set_add_iff. left. reflexivity.
             + pose
               (proj2 (in_correct'
-                  (set_add compare_eq_dec ((c, v, NoSent C V (make_message_set msgs)))
+                  (set_add eq_dec ((c, v, NoSent C V (make_message_set msgs)))
                     (sent_messages_justification (NoSent C V (make_message_set msgs))))
                   ((c, v, NoSent C V (make_message_set msgs)))
               ))  as Hin.

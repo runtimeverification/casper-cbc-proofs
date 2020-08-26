@@ -29,8 +29,11 @@ messages, implementing a limited equivocation tolerance policy.
     {about_V : StrictlyComparable V}
     {Hmeasurable : Measurable V}
     {Hrt : ReachableThreshold V}
+    (eq_V := strictly_comparable_eq_dec about_V)
     (message := State.message C V)
     .
+  
+  Existing Instance eq_V.
 
   Existing Instance full_node_message_equivocation_evidence.
 
@@ -55,7 +58,7 @@ messages, implementing a limited equivocation tolerance policy.
     let (msgs, om) := sm in
     match om with
     | None => pair msgs None
-    | Some msg => pair (set_add compare_eq_dec msg msgs)  None
+    | Some msg => pair (set_add eq_dec msg msgs)  None
     end.
 
   Definition valid_client2
@@ -68,7 +71,7 @@ messages, implementing a limited equivocation tolerance policy.
     | Some msg =>
       ~In msg msgs
       /\ incl (get_message_set (unmake_justification (get_justification msg))) msgs
-      /\ not_heavy (set_add compare_eq_dec msg msgs)
+      /\ not_heavy (set_add eq_dec msg msgs)
     end.
 
   Instance VLSM_type_full_client2 : VLSM_type message :=
@@ -134,7 +137,7 @@ messages, implementing a limited equivocation tolerance policy.
     (m : message)
     (om' : option message)
     (Ht : protocol_transition bvlsm l (s, Some m) (s', om'))
-    : s' = set_add compare_eq_dec m s
+    : s' = set_add eq_dec m s
     /\ om' = None
     /\ ~In m s
     /\ incl
@@ -226,7 +229,7 @@ messages, implementing a limited equivocation tolerance policy.
   Definition client_has_been_received
     : state_message_oracle vlsm
     :=
-    fun s m => inb compare_eq_dec m s.
+    fun s m => inb eq_dec m s.
 
   Lemma has_been_sent_in_trace
     (s : set message)
@@ -371,7 +374,7 @@ messages, implementing a limited equivocation tolerance policy.
         assert (Hfutures : in_futures bvlsm s0 s)
           by (exists tr; split; assumption).
         specialize (IHtr s0 H3 Hlast).
-        destruct (in_dec compare_eq_dec m s0).
+        destruct (in_dec eq_dec m s0).
         * destruct H4 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
           exists {| l := l; input := iom; destination := s0; output := oom |}.
           split; try (left; reflexivity). simpl.

@@ -96,17 +96,17 @@ for a restricted set, e.g., [protocol_messsage]s
 
 Class message_equivocation_evidence
   (message validator : Type)
-  {about_message : StrictlyComparable message}
-  {about_V : StrictlyComparable validator}
+  {about_message : EqDec message}
+  {about_V : EqDec validator}
   :=
   { sender : message -> validator
   ; message_preceeds_fn (m1 m2 : message) : bool
   ; equivocating_with
       (msg1 msg2 : message)  : bool
       :=
-      if compare_eq_dec msg1 msg2
+      if eq_dec msg1 msg2
       then false
-      else if compare_eq_dec (sender msg1) (sender msg2)
+      else if eq_dec (sender msg1) (sender msg2)
         then
           negb (message_preceeds_fn msg1 msg2)
           && negb (message_preceeds_fn msg2 msg1)
@@ -145,11 +145,11 @@ Definition state_encapsulating_messages_equivocation
   {reachable_threshold : ReachableThreshold validator}
   : basic_equivocation state validator
   :=
-  {|  state_validators := fun s => set_map compare_eq_dec sender (get_messages s)
-   ;  state_validators_nodup := fun s => set_map_nodup compare_eq_dec sender (get_messages s)
+  {|  state_validators := fun s => set_map eq_dec sender (get_messages s)
+   ;  state_validators_nodup := fun s => set_map_nodup eq_dec sender (get_messages s)
    ;  is_equivocating_fn := fun s v =>
         let msgs := get_messages s in
-        inb compare_eq_dec v
+        inb eq_dec v
           (map sender (filter (fun msg => equivocating_in_set msg msgs) msgs))
   |}.
 

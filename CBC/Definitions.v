@@ -1658,7 +1658,9 @@ Lemma fault_weight_state_incl
   (fault_weight_state sigma <= fault_weight_state sigma')%R.
 Proof.
   intros. apply @sum_weights_incl; try apply set_map_nodup.
-  -  apply (triple_strictly_comparable_proj2 about_M).
+  - specialize (triple_strictly_comparable_proj2 about_M); intro Scv.
+    intros x y.
+    apply compare_eq_dec.
   - apply equivocating_senders_incl. assumption.
 Qed.
 
@@ -2077,8 +2079,10 @@ Lemma equivocating_senders_fault_weight_eq
     fault_weight_state s1 = fault_weight_state s2.
 Proof.
   intros s1 s2 H_eq.
-  apply (@set_eq_nodup_sum_weight_eq _ (triple_strictly_comparable_proj2 about_M)); try apply set_map_nodup.
-  assumption.
+  apply @set_eq_nodup_sum_weight_eq; try apply set_map_nodup; try assumption.
+  pose (triple_strictly_comparable_proj2 about_M) as Sc.
+  intros x y.
+  apply compare_eq_dec.
 Qed.
 
 Lemma messages_fault_weight_eq
@@ -2504,6 +2508,7 @@ Lemma valid_protocol_state_ps
   estimator (next (cempty, v, Empty) Empty) csigma ->
   protocol_state (valid_protocol_state (next (cempty, v, Empty) Empty) csigma cempty vs).
 Proof.
+  pose (strictly_comparable_eq_dec (triple_strictly_comparable_proj2 about_M)) as HEqDec.
   intros. induction vs.
   - simpl. apply protocol_state_singleton. assumption.
   - simpl. constructor.
@@ -2523,7 +2528,7 @@ Proof.
       assumption.
       red. unfold fault_weight_state.
       apply Rle_trans with (sum_weights (a :: vs)); try assumption.
-      apply (@sum_weights_incl _ (triple_strictly_comparable_proj2 about_M)); try assumption; try apply set_map_nodup.
+      apply sum_weights_incl; try assumption; try apply set_map_nodup.
       rewrite add_is_next.
       remember (next (cempty, v, Empty) Empty) as sigma.
       remember (valid_protocol_state sigma csigma cempty vs) as sigma2.
@@ -2555,7 +2560,7 @@ Proof.
     + assumption.
     + red; unfold fault_weight_state.
       apply Rle_trans with (sum_weights (a :: vs)); try assumption.
-      apply (@sum_weights_incl _ (triple_strictly_comparable_proj2 about_M)); try assumption; try apply set_map_nodup.
+      apply sum_weights_incl; try assumption; try apply set_map_nodup.
       apply incl_tran with (equivocating_senders (valid_protocol_state (next (cempty, v, Empty) Empty) csigma cempty (a :: vs)))
       ; try  apply incl_refl.
       apply set_eq_proj1.

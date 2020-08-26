@@ -61,17 +61,17 @@ Definition weight_proj1_sig (w : pos_R) : R := proj1_sig w.
 Coercion weight_proj1_sig : pos_R >-> R.
 
 Lemma sum_weights_in
-  {V} `{HscV : StrictlyComparable V} `{Hm : Measurable V}
+  {V} `{HscV : EqDec V} `{Hm : Measurable V}
   : forall v vs,
   NoDup vs ->
   In v vs ->
-  sum_weights vs = (proj1_sig (weight v) + sum_weights (set_remove compare_eq_dec v vs))%R.
+  sum_weights vs = (proj1_sig (weight v) + sum_weights (set_remove eq_dec v vs))%R.
 Proof.
   induction vs; intros; inversion H0; subst; clear H0.
   - inversion H; subst; clear H. simpl. apply Rplus_eq_compat_l.
-    destruct (eq_dec_left compare_eq_dec v). rewrite H. reflexivity.
+    destruct (eq_dec_left eq_dec v). rewrite H. reflexivity.
   - inversion H; subst; clear H. simpl. assert (Hav := H3). apply (in_not_in _ _ _ _ H1) in Hav.
-    destruct (compare_eq_dec v a); try (exfalso; apply Hav; assumption). simpl.
+    destruct (eq_dec v a); try (exfalso; apply Hav; assumption). simpl.
     rewrite <- Rplus_assoc. rewrite (Rplus_comm (proj1_sig (weight v)) (proj1_sig (weight a))). rewrite Rplus_assoc.
     apply Rplus_eq_compat_l. apply IHvs; assumption.
 Qed.
@@ -79,7 +79,7 @@ Qed.
 
 
 Lemma sum_weights_incl
-  {V} `{HscV : StrictlyComparable V} `{Hm : Measurable V}
+  {V} `{HscV : EqDec V} `{Hm : Measurable V}
   : forall vs vs',
   NoDup vs ->
   NoDup vs' ->
@@ -90,10 +90,10 @@ Proof.
   induction vs'; intros.
   - apply incl_empty in H1; subst. apply Rle_refl.
   - inversion H0; subst; clear H0.
-    destruct (in_dec compare_eq_dec a vs).
+    destruct (in_dec eq_dec a vs).
     + apply sum_weights_in in i. rewrite i. simpl.
       apply Rplus_le_compat_l. apply IHvs'.
-      * apply (set_remove_nodup compare_eq_dec a). assumption.
+      * apply (set_remove_nodup eq_dec a). assumption.
       * assumption.
       * intros x Hrem. apply set_remove_iff in Hrem; try assumption.
         destruct Hrem as [Hin Hxa].
@@ -108,7 +108,7 @@ Proof.
 Qed.
 
 Lemma set_eq_nodup_sum_weight_eq
-   {V} `{HscV : StrictlyComparable V} `{Hm : Measurable V}
+   {V} `{HscV : EqDec V} `{Hm : Measurable V}
   : forall (lv1 lv2 : list V),
     NoDup lv1 ->
     NoDup lv2 ->
@@ -132,7 +132,7 @@ Proof.
 Qed.
 
 Lemma senders_fault_weight_eq
-   {V} `{HscV : StrictlyComparable V} `{Hm : Measurable V}
+   {V} `{HscV : EqDec V} `{Hm : Measurable V}
   : forall lv1 lv2 : list V,
     NoDup lv1 ->
     NoDup lv2 ->
@@ -147,13 +147,13 @@ Proof.
     inversion H0.
   - simpl.
     (* hd must be in duplicate-free lv2 *)
-    spec IHlv1 (set_remove compare_eq_dec hd lv2).
+    spec IHlv1 (set_remove eq_dec hd lv2).
     spec IHlv1.
     apply NoDup_cons_iff in H_lv1. tauto.
     spec IHlv1.
     now apply set_remove_nodup.
     spec IHlv1.
-    replace tl with (set_remove compare_eq_dec hd (hd :: tl)).
+    replace tl with (set_remove eq_dec hd (hd :: tl)).
     apply set_eq_remove; try assumption.
     now rewrite set_remove_first.
     (* Now. *)
@@ -167,7 +167,7 @@ Qed.
 
 
 Lemma pivotal_validator_extension
-  {V} `{HscV : StrictlyComparable V} `{Hrt : ReachableThreshold V}
+  {V} `{HscV : EqDec V} `{Hrt : ReachableThreshold V}
   : forall vsfix vss,
   NoDup vsfix ->
   (* and whose added weight does not pass the threshold *)
@@ -180,7 +180,7 @@ Lemma pivotal_validator_extension
   (sum_weights (vs ++ vsfix) > proj1_sig threshold)%R /\
   exists v,
     In v vs /\
-    (sum_weights ((set_remove compare_eq_dec v vs) ++ vsfix) <= proj1_sig threshold)%R.
+    (sum_weights ((set_remove eq_dec v vs) ++ vsfix) <= proj1_sig threshold)%R.
 Proof.
   destruct threshold as [t about_t]; simpl in *.
   intro.  induction vss; intros.
@@ -200,7 +200,7 @@ Qed.
 
 (* From threshold.v *)
 Lemma validators_pivotal_ind
-  {V} `{HscV : StrictlyComparable V} `{Hrt : ReachableThreshold V}
+  {V} `{HscV : EqDec V} `{Hrt : ReachableThreshold V}
   : forall vss,
   NoDup vss ->
   (sum_weights vss > proj1_sig threshold)%R ->
@@ -210,7 +210,7 @@ Lemma validators_pivotal_ind
   (sum_weights vs > proj1_sig threshold)%R /\
   exists v,
     In v vs /\
-    (sum_weights (set_remove compare_eq_dec v vs) <= proj1_sig threshold)%R.
+    (sum_weights (set_remove eq_dec v vs) <= proj1_sig threshold)%R.
 Proof.
   intros.
   rewrite <- (app_nil_r vss) in H.   rewrite <- (app_nil_r vss) in H0.
@@ -225,13 +225,13 @@ Proof.
 Qed.
 
 Lemma sufficient_validators_pivotal
-  {V} `{HscV : StrictlyComparable V} `{Hrt : ReachableThreshold V}
+  {V} `{HscV : EqDec V} `{Hrt : ReachableThreshold V}
   : exists (vs : list V),
     NoDup vs /\
     (sum_weights vs > proj1_sig threshold)%R /\
     exists v,
       In v vs /\
-      (sum_weights (set_remove compare_eq_dec v vs) <= proj1_sig threshold)%R.
+      (sum_weights (set_remove eq_dec v vs) <= proj1_sig threshold)%R.
 Proof.
   destruct reachable_threshold as [vs [Hvs Hweight]].
   apply (validators_pivotal_ind vs Hvs) in Hweight.
@@ -251,12 +251,12 @@ Definition potentially_pivotal
       (sum_weights vs > proj1_sig threshold - (proj1_sig (weight v)))%R.
 
 Lemma exists_pivotal_validator
-  {V} `{HscV : StrictlyComparable V} `{Hrt : ReachableThreshold V}
+  {V} `{HscV : EqDec V} `{Hrt : ReachableThreshold V}
   : exists v, potentially_pivotal v.
 Proof.
   destruct sufficient_validators_pivotal as [vs [Hnodup [Hgt [v [Hin Hlte]]]]].
   exists v.
-  subst. exists (set_remove compare_eq_dec v vs). repeat split.
+  subst. exists (set_remove eq_dec v vs). repeat split.
   - apply set_remove_nodup. assumption.
   - intro. apply set_remove_iff in H; try assumption. destruct H. apply H0. reflexivity.
   - assumption.

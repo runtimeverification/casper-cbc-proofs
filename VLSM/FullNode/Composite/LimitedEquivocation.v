@@ -369,8 +369,6 @@ Proof.
     assumption.
 Qed.
 
-Instance eq_dec_message : EqDec message := compare_eq_dec.
-
 Definition sorted_state_union
   (s : vstate FreeX)
   : set message
@@ -433,7 +431,7 @@ Fixpoint receive_messages
   | [] => []
   | m :: ms' =>
     let items := receive_messages s i ms' in
-    match in_dec compare_eq_dec m (get_message_set (project s i)) with
+    match in_dec eq_dec m (get_message_set (project s i)) with
     | left _ => items
     | right _ =>
       let final := last (map destination items) s in
@@ -455,7 +453,7 @@ Proof.
   { intros m Hm. apply Hms. apply in_app_iff. left. assumption. }
   specialize (IHms s Hi).
   rewrite rev_unit. simpl.
-  destruct (in_dec compare_eq_dec x (get_message_set (project s i))); try assumption.
+  destruct (in_dec eq_dec x (get_message_set (project s i))); try assumption.
   rewrite map_app. simpl. rewrite last_last.
   unfold receive_destination.  unfold vtransition. simpl.
   unfold vtransition. simpl.
@@ -622,14 +620,14 @@ Lemma receive_messages_v
   (s : vstate FreeX)
   (i : index)
   (ms : list message)
-  : set_eq (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i)) (set_union compare_eq_dec (get_message_set (project s i)) ms).
+  : set_eq (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i)) (set_union eq_dec (get_message_set (project s i)) ms).
 Proof.
   generalize dependent s.
   induction ms using rev_ind; intros; try apply set_eq_refl.
   rewrite rev_unit. simpl.
-  destruct (in_dec compare_eq_dec x (get_message_set (project s i))).
+  destruct (in_dec eq_dec x (get_message_set (project s i))).
   { specialize (IHms s).
-    apply set_eq_tran with (set_union compare_eq_dec (get_message_set (project s i)) ms)
+    apply set_eq_tran with (set_union eq_dec (get_message_set (project s i)) ms)
     ; try assumption.
     split; intros m Hm; apply set_union_iff; apply set_union_iff in Hm
     ; destruct Hm as [Hm | Hm]; try (left; assumption); try (right; assumption).
@@ -802,7 +800,7 @@ Proof.
   induction ms using rev_ind; intros; try apply reflexivity.
   specialize (IHms s).
   rewrite rev_unit. simpl.
-  destruct (in_dec compare_eq_dec x (get_message_set (project s i))); try assumption.
+  destruct (in_dec eq_dec x (get_message_set (project s i))); try assumption.
   rewrite map_app. simpl.
   rewrite last_last.
   unfold receive_destination.
@@ -856,7 +854,7 @@ Proof.
   intros m Hm.
   specialize (receive_messages_v s i ms).
   intros [_ Hincl].
-  assert (Hm' : In m (set_union compare_eq_dec (get_message_set (project s i)) ms))
+  assert (Hm' : In m (set_union eq_dec (get_message_set (project s i)) ms))
    by (apply set_union_iff; right; assumption).
   apply Hincl in Hm'.
   apply state_union_iff.
@@ -900,7 +898,7 @@ Proof.
     rewrite app_nil_r in *.
     specialize (IHms Hms Hmsj' Hmsi' Hmst').
     rewrite rev_unit. simpl.
-    destruct (in_dec compare_eq_dec x (get_message_set (project s i))); try assumption.
+    destruct (in_dec eq_dec x (get_message_set (project s i))); try assumption.
     apply (extend_right_finite_trace_from Full_constrained_composition); try assumption.
     repeat split.
     + apply finite_ptrace_last_pstate. assumption.
@@ -959,7 +957,7 @@ Proof.
         specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
         intros [_ Hincl].
         simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
-        destruct (in_dec compare_eq_dec x (s (inr client))); try (elim n; assumption).
+        destruct (in_dec eq_dec x (s (inr client))); try (elim n; assumption).
         rewrite map_app in Hincl. simpl in Hincl.
         rewrite last_last in Hincl.
         unfold receive_destination in Hincl.
@@ -1008,7 +1006,7 @@ Proof.
       specialize (receive_messages_set_eq s i (ms ++ [x]) Hmsi).
       intros [_ Hincl].
       simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
-      destruct (in_dec compare_eq_dec x (get_message_set (project s i)))
+      destruct (in_dec eq_dec x (get_message_set (project s i)))
       ; try (elim n; assumption).
       rewrite map_app in Hincl. simpl in Hincl.
       rewrite last_last in Hincl.
@@ -1199,7 +1197,7 @@ Lemma receive_messages_iterated_in
   (Hi : In i is)
   : set_eq
     (get_message_set (project (last (map destination (receive_messages_iterated s ms is)) s) i))
-    (set_union compare_eq_dec (get_message_set (project s i)) ms).
+    (set_union eq_dec (get_message_set (project s i)) ms).
 Proof.
   generalize dependent s.
   induction is; intros; simpl; inversion Hi
@@ -1375,7 +1373,7 @@ Proof.
   intros Heq.
   specialize (top_sort_set_eq message_preceeds_fn (state_union s)).
   intro Heq'.
-  apply set_eq_tran with (set_union compare_eq_dec (get_message_set (project s i)) (sorted_state_union s))
+  apply set_eq_tran with (set_union eq_dec (get_message_set (project s i)) (sorted_state_union s))
   ; try assumption.
   split; intros m Hm.
   - apply set_union_iff in Hm.

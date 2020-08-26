@@ -587,16 +587,16 @@ Proof.
     apply H3. assumption.
 Qed.
 
-Lemma add_remove_inverse {X} `{StrictlyComparable X}:
+Lemma add_remove_inverse {X} `{EqDec X}:
   forall (lv : list X) (v : X),
     ~ In v lv ->
-    set_remove compare_eq_dec v (set_add compare_eq_dec v lv) = lv.
+    set_remove eq_dec v (set_add eq_dec v lv) = lv.
 Proof.
   induction lv as [|hd tl IHlv]; intros.
-  - compute.
-    destruct (compare_eq_dec v v).
+  - simpl.
+    destruct (eq_dec v v).
     reflexivity. contradiction.
-  - destruct (compare_eq_dec v hd).
+  - simpl. destruct (eq_dec v hd).
     subst. exfalso; apply H0.
     apply in_eq.
     spec IHlv v. spec IHlv.
@@ -604,10 +604,9 @@ Proof.
     right; assumption.
     rewrite <- IHlv at 2.
     simpl.
-    destruct (compare_eq_dec v hd).
+    destruct (eq_dec v hd).
     contradiction.
-    simpl. destruct (compare_eq_dec v hd).
-    contradiction. reflexivity.
+    reflexivity.
 Qed.
 
 Unset Implicit Arguments.

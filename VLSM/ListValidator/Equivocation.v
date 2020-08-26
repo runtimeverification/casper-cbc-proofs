@@ -2,7 +2,14 @@ Require Import Bool List Reals FinFun .
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ListValidator.ListValidator.
+Require Import
+  Lib.Preamble
+  Lib.ListExtras
+  VLSM.Common
+  VLSM.Composition
+  VLSM.Equivocation
+  VLSM.ListValidator.ListValidator
+  CBC.Equivocation.
 
 Section Equivocation.
 
@@ -33,6 +40,15 @@ Context
      | Something cv ls => let child := last_recorded index_listing ls who in
                           rec_history child who (depth child)
     end.
+
+  Definition list_preceeds (m1 m2 : message) : bool :=
+    let (i1, s1) := m1 in
+    let (i2, s2) := m2 in
+    if eq_dec i1 i2
+    then inb sdec s1 (get_history s2 i1)
+    else false.
+  
+  (* Definition list_message_equivocation_evidence : message_equivocation_evidence message index. *)
 
   Definition state_eqb (s1 s2 : state) : bool :=
     match sdec s1 s2 with

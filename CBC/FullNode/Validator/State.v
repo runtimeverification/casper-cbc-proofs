@@ -387,6 +387,9 @@ Global Instance message_type
     compare_strictorder := message_compare_strict_order;
   }.
 
+Global Instance message_eq : EqDec (message C V)
+  := strictly_comparable_eq_dec message_type.
+
 (* Constructing a StrictOrder type for message_lt *)
 
 Definition message_lt
@@ -510,7 +513,7 @@ Fixpoint unmake_message_set
   :=
   match msgs with
   | Empty _ _ => []
-  | add _ _ m msgs' => set_add compare_eq_dec m (unmake_message_set msgs')
+  | add _ _ m msgs' => set_add eq_dec m (unmake_message_set msgs')
   end.
 
 Lemma in_unmake_message_set
@@ -1060,7 +1063,7 @@ Fixpoint sent_messages_justification
   match j with
   | NoSent _ _ _ => []
   | LastSent _ _ msgs ((c,v,j)) =>
-    set_add compare_eq_dec ((c,v,j)) (sent_messages_justification j)
+    set_add eq_dec ((c,v,j)) (sent_messages_justification j)
   end.
 
 Definition sent_messages
@@ -1070,7 +1073,7 @@ Definition sent_messages
   match last_sent s with
   | None => []
   | Some ((c, v, j)) =>
-    set_add compare_eq_dec ((c, v, j)) (sent_messages_justification j)
+    set_add eq_dec ((c, v, j)) (sent_messages_justification j)
   end.
 
 Definition has_been_sent_oracle
@@ -1078,14 +1081,14 @@ Definition has_been_sent_oracle
   (m : message C V)
   : bool
   :=
-  inb compare_eq_dec m (sent_messages s).
+  inb eq_dec m (sent_messages s).
 
 Definition has_been_received_oracle
   (s : state C V)
   (m : message C V)
   : bool
   :=
-  inb compare_eq_dec m (get_message_set s)
+  inb eq_dec m (get_message_set s)
   && negb (has_been_sent_oracle s m).
 
   Lemma has_been_sent_not_received

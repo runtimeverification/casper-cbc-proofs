@@ -262,17 +262,17 @@ Proof.
   ; try assumption; try reflexivity; try contradiction; discriminate.
 Qed.
 
-Lemma in_correct {X} `{StrictlyComparable X} :
+Lemma in_correct {X} `{EqDec X} :
   forall (l : list X) (x : X),
-    In x l <-> inb compare_eq_dec x l = true.
+    In x l <-> inb eq_dec x l = true.
 Proof.
   intros s msg.
   apply in_function.
 Qed.
 
-Lemma in_correct' {X} `{StrictlyComparable X} :
+Lemma in_correct' {X} `{EqDec X} :
   forall (l : list X) (x : X),
-    ~ In x l <-> inb compare_eq_dec x l = false.
+    ~ In x l <-> inb eq_dec x l = false.
 Proof.
   intros s msg.
   symmetry. apply mirror_reflect_curry.
