@@ -263,31 +263,7 @@ dependent types [protocol_state] and [protocol_message].
 
     Definition protocol_message : Type :=
       { m : message | protocol_message_prop m }.
-      
    
-    (* begin hide *)
-    
-    Lemma initial_is_protocol 
-      (s : state)
-      (Hinitial : initial_state_prop s) :
-      protocol_state_prop s.
-    Proof.
-      unfold protocol_state_prop.
-      unfold initial_state_prop.
-      exists None.
-      remember (exist _ s Hinitial) as is.
-      assert (s = proj1_sig is). {
-        rewrite Heqis.
-        simpl.
-        reflexivity.
-      }
-      rewrite H.
-      apply protocol_initial_state.
-    Qed.
-      
-    (* end hide *)
-
-
     (* begin hide *)
 
     Lemma initial_is_protocol
@@ -749,28 +725,12 @@ decompose the above properties in proofs.
       (te : transition_item)
       (Htr : finite_protocol_trace_from s [te])
       : protocol_transition (l te) (s, input te) (destination te, output te).
-      
-    Proof.
-      inversion Htr.
-      simpl.
-      assumption.
-    Qed.
-    
-
-
-    Lemma first_transition_valid
-      (s : state)
-      (te : transition_item)
-      (Htr : finite_protocol_trace_from s [te])
-      : protocol_transition (l te) (s, input te) (destination te, output te).
 
     Proof.
       inversion Htr.
       simpl.
       assumption.
     Qed.
-
-
 
     Lemma extend_right_finite_trace_from
       : forall s1 ts s3 iom3 oom3 l3 (s2 := List.last (List.map destination ts) s1),
@@ -955,83 +915,6 @@ traces.
       (Hm : List.Exists (fun elem : transition_item => output elem = Some m) tr) :
       can_emit m.
     
-    Proof.
-      rewrite Exists_exists in Hm.
-      destruct Hm as [x [Hin Houtput]].
-      apply in_split in Hin.
-      destruct Hin as [l1 [l2 Hconcat]].
-      unfold can_emit.
-      destruct Hprotocol.
-      specialize (protocol_transition_to si x tr l1 l2 Hconcat H).
-      intros.
-      simpl in H1.
-      exists (last (List.map destination l1) si, input x).
-      exists (l x).
-      exists (destination x).
-      rewrite <- Houtput.
-      assumption.
-    Qed.
-    (* End Hide *)
-
-
-    (* begin hide *)
-
-    Lemma protocol_transition_to
-      (si : state)
-      (middle : transition_item)
-      (tr prefix suffix : list transition_item)
-      (Hsplit : tr = prefix ++ [middle] ++ suffix)
-      (Htr : finite_protocol_trace_from si tr)
-      (prev_state := last (List.map destination prefix) si)
-      :
-      protocol_transition (l middle) (prev_state, input middle) (destination middle, output middle).
-    Proof.
-      intros.
-      destruct prefix eqn : eq_prefix.
-      - simpl in *.
-        unfold prev_state.
-        apply first_transition_valid.
-        specialize (finite_protocol_trace_from_prefix si tr Htr 1).
-        intros.
-        rewrite Hsplit in H.
-        simpl in *.
-        assert (list_prefix suffix 0 = []). {
-          unfold list_prefix.
-          destruct suffix;
-          reflexivity.
-        }
-        rewrite H0 in H.
-        assumption.
-      - specialize (first_implies_last t l1).
-        intros.
-        destruct H as [l2 [lst Hlst]].
-        rewrite Hlst in Hsplit.
-        simpl in Hsplit.
-        rewrite <- app_assoc in Hsplit.
-        simpl in Hsplit.
-        specialize (finite_ptrace_consecutive_valid_transition si).
-        intros.
-        specialize (H tr suffix l2 lst middle Htr Hsplit).
-        assert (destination lst = prev_state). {
-          unfold prev_state.
-          rewrite Hlst.
-          rewrite map_app.
-          rewrite last_app.
-          simpl.
-          reflexivity.
-        }
-        rewrite <- H0.
-        assumption.
-    Qed.
-
-    Lemma can_emit_from_protocol_trace
-      (si : state)
-      (m : message)
-      (tr : list transition_item)
-      (Hprotocol: finite_protocol_trace si tr)
-      (Hm : List.Exists (fun elem : transition_item => output elem = Some m) tr) :
-      can_emit m.
-
     Proof.
       rewrite Exists_exists in Hm.
       destruct Hm as [x [Hin Houtput]].
