@@ -18,6 +18,19 @@ Import ListNotations.
 
 Section Equivocation.
 
+(** * Full-node [State.message] [HasEquivocation]
+
+Here we instantiate the [HasEquivocation] class for the full-node-like states
+based on pointed sets, by defining <<m1 preceeds m2>> iff <<m1>> is in the
+justification of <<m2>>.
+
+We additionally prove that the relation is [Irreflexive].
+For the [Transitive] property we will need to restrict the relation
+to [protocol_message]s. Otherwise, there is nothing to enforce that if <<m1>>
+is in the justification of <<m2>> and <<m2>> is in the justification of <<m3>>,
+then <<m2>> must also be in the justification of <<m3>>.
+*)
+
 Context
     (C V : Type)
     {about_C : StrictlyComparable C}
@@ -31,7 +44,7 @@ Definition validator_message_preceeds_fn
   : bool
   :=
   match m2 with
-  | (c, v, j) => inb compare_eq_dec m1 (fst (unmake_justification j))
+  | (c, v, j) => inb compare_eq_dec m1 (get_message_set (unmake_justification j))
   end.
 
 Definition validator_message_preceeds
@@ -45,7 +58,7 @@ Lemma  validator_message_preceeds_irreflexive'
   (v : V)
   (j1 j2 : justification C V)
   (Hincl : justification_incl j2 j1)
-  : ~inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) = true.
+  : ~inb compare_eq_dec ((c, v, j1)) (get_message_set (unmake_justification j2)) = true.
 Proof.
   generalize dependent j1.
   generalize dependent v.
@@ -55,16 +68,16 @@ Proof.
       (fun j2 =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl j2 j1 ->
-        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification j2)) <> true
+        inb compare_eq_dec ((c, v, j1)) (get_message_set (unmake_justification j2)) <> true
       )
       (fun m =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl (get_justification m) j1 ->
-        inb compare_eq_dec ((c, v, j1)) (fst (unmake_justification (get_justification m))) <> true
+        inb compare_eq_dec ((c, v, j1)) (get_message_set (unmake_justification (get_justification m))) <> true
       )
       (fun msgs =>
         forall (c : C) (v : V) (j1 : justification C V),
-        message_set_incl msgs (get_message_set j1) ->
+        message_set_incl msgs (justification_message_set j1) ->
         inb compare_eq_dec ((c, v, j1)) (unmake_message_set msgs) <> true
       )
     ); simpl; intros; intro Hin; try discriminate.
@@ -88,7 +101,7 @@ Proof.
       elim (H c v j1); try apply justification_incl_refl.
       specialize
         (in_correct
-          (unmake_message_set (get_message_set j1))
+          (unmake_message_set (justification_message_set j1))
           (Msg _ _ c v j1)
         ); intro Hin_in
       ; apply proj1 in Hin_in.

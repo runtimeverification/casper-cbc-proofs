@@ -10,8 +10,11 @@ VLSM/Validating.v
 VLSM/ByzantineTraces.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
-VLSM/FullNodeSimple.v
-VLSM/FullNodeComposite.v
+VLSM/FullNode/Simple.v
+VLSM/FullNode/Client.v
+VLSM/FullNode/Validator.v
+VLSM/FullNode/Composite/Free.v
+VLSM/FullNode/Composite/LimitedEquivocation.v
 VLSM/ListNode.v
 CBC/Binary.v
 CBC/Common.v

@@ -4,7 +4,7 @@ From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions CBC.FullNode.
 
 
-(* Section 2.3 Creating a full-node instance of VLSM *)
+(** * Full-node model as a single VLSM instance *)
 
 Section Full.
 
@@ -97,16 +97,17 @@ Section Full.
     ; l0 := None
     }.
 
-  Instance VLSM_full_client1 : VLSM LSM_full_client1 :=
-    { transition := vtransition
+  Definition VLSM_machine_full_client1 : VLSM_class LSM_full_client1 :=
+    {| transition := vtransition
       ; valid := valid_client
-    }.
+    |}.
 
+  Definition VLSM_full_client1 : VLSM message := mk_vlsm VLSM_machine_full_client1.
 
   (* Converting between full node and VLSM notions *)
 
   (* How to avoid these solutions to awkward namespace clashes? *)
-  Definition sorted_state_union : (@state _ VLSM_type_full_client1) -> (@state _ VLSM_type_full_client1) -> (@state _ VLSM_type_full_client1) :=
+  Definition sorted_state_union : vstate VLSM_full_client1 -> vstate VLSM_full_client1 -> vstate VLSM_full_client1 :=
     sorted_state_union.
 
   Definition estimator_proj1 (s : @CBC.Definitions.state C V) : C -> Prop := (@estimator _ _ He) (make_sorted_state s).
@@ -130,7 +131,7 @@ Section Full.
   (* Protocol state *)
   (* How do we state this? *)
   Lemma protocol_state_equiv_left :
-    forall (s : @state _ VLSM_type_full_client1),
+    forall (s : vstate VLSM_full_client1),
       (@CBC.Definitions.protocol_state C V message_type Hm Hrt He_proj1 PS_proj1) (proj1_sig s)
       ->
       (protocol_state_prop VLSM_full_client1) s.
@@ -150,12 +151,13 @@ Section Full.
       exists None.
       assert
         (Ht :
-          (@pair (@state message VLSM_type_full_client1) (option message)
-            (@exist (@CBC.Definitions.state C V)
-               (fun s0 : @CBC.Definitions.state C V =>
+          (@pair (@state message (@type message VLSM_full_client1))
+            (option message)
+            (@exist (@Definitions.state C V)
+               (fun s0 : @Definitions.state C V =>
                 @locally_sorted C V (@message_type C about_C V about_V) s0)
                (@add_in_sorted_fn C V (@message_type C about_C V about_V)
-                  (@pair (prod C V) (@CBC.Definitions.state C V) (@pair C V c v) j) s)
+                  (@pair (prod C V) (@Definitions.state C V) (@pair C V c v) j) s)
                Hs) (@None message))
           = vtransition None (ss, om)
         )
@@ -183,13 +185,13 @@ Section Full.
 
 
   Lemma protocol_state_messages
-    (s : @state _ VLSM_type_full_client1)
+    (s : vstate VLSM_full_client1)
     (om : option message)
     (P : (protocol_prop VLSM_full_client1) (s, om))
   : forall
     (c : C)
     (v : V)
-    (j : @state _ VLSM_type_full_client1)
+    (j : vstate VLSM_full_client1)
     (Hin : in_state (c, v, (proj1_sig j)) (proj1_sig s))
     , (protocol_prop VLSM_full_client1) (add_message_sorted (c, v, j) j, Some (c, v, j))
       /\ syntactic_state_inclusion (proj1_sig j) (proj1_sig s).
@@ -238,9 +240,9 @@ Section Full.
           - inversion H0.
           }
         * { split.
-          - specialize protocol_generated; intro PG.
+          - specialize (protocol_generated VLSM_full_client1); intro PG.
             specialize
-              (PG (VLSM_full_client1) (Some (c0, v0))
+              (PG (Some (c0, v0))
                   (exist (fun s : CBC.Definitions.state => locally_sorted s) j0 Hj0)
                   _om
                   P1
@@ -261,9 +263,9 @@ Section Full.
         destruct j as [j Hj].  simpl in Hin. rewrite in_state_add_in_sorted_iff in Hin.
         simpl in IHcvj. destruct Hin as [Heq | Hin]; try (inversion Heq; subst; clear Heq).
         * clear IHcvj. simpl. split; try (apply add_preserves_inclusion; apply incl_refl).
-          specialize protocol_generated; intro PG.
+          pose (protocol_generated VLSM_full_client1) as PG.
           specialize
-            (PG (VLSM_full_client1) (Some (c0, v0))
+            (PG (Some (c0, v0))
                 (exist (fun s : CBC.Definitions.state => locally_sorted s) j0 Hj0)
                 _om
                 P1
@@ -313,7 +315,7 @@ Section Full.
   Qed.
 
   Lemma protocol_state_generated_message
-    (s : @state _ VLSM_type_full_client1)
+    (s : vstate VLSM_full_client1)
     (m : sorted_message C V)
     (P : (protocol_prop VLSM_full_client1) (s, Some m))
     : in_state m (proj1_sig s).
@@ -332,20 +334,24 @@ Section Full.
   Qed.
 
   Lemma protocol_state_equiv_right :
-    forall (s : @state _ VLSM_type_full_client1),
+    forall (s : vstate VLSM_full_client1),
       (protocol_state_prop VLSM_full_client1) s
       ->
       (@CBC.Definitions.protocol_state C V message_type Hm Hrt He_proj1 PS_proj1) (proj1_sig s).
   Proof.
-    intros. destruct H as [om P]. remember (s, om) as som.
+    intros. destruct H as [om P].
+    remember (@pair (@state message (@type message VLSM_full_client1)) (option message) s om)
+      as som.
     generalize dependent om. generalize dependent s.
     induction P; intros.
     - destruct is as [is His]. unfold s in *. clear s.
       simpl in Heqsom. rewrite His in Heqsom. inversion Heqsom; subst; clear Heqsom.
       constructor.
     - destruct im as [m Him]. inversion Him.
-    - assert (P0 : protocol_prop (VLSM_full_client1) (s0, om0))
-      by (rewrite <- Heqsom; apply (protocol_generated (VLSM_full_client1) l s _om P1 _s om P2 Hv)).
+    - assert (P0 : protocol_prop (VLSM_full_client1) (s0, om0)).
+      { unfold vstate. rewrite <- Heqsom.
+        apply (protocol_generated (VLSM_full_client1)) with _om _s; try assumption.
+      }
       specialize (protocol_state_messages s0 om0 P0); intro Hmsgs.
       specialize (IHP1 s _om eq_refl).
       specialize (IHP2 _s om eq_refl).
@@ -388,7 +394,7 @@ Section Full.
 
 
   Lemma protocol_state_equiv :
-    forall (s : @state _ VLSM_type_full_client1),
+    forall (s : vstate VLSM_full_client1),
       (@CBC.Definitions.protocol_state C V message_type Hm Hrt He_proj1 PS_proj1) (proj1_sig s)
       <->
       (protocol_state_prop VLSM_full_client1) s.
@@ -409,8 +415,14 @@ Section Full.
   Proof. Admitted.
  *)
 
-  Definition vlsm_reach : protocol_state VLSM_full_client1 -> protocol_state VLSM_full_client1 -> Prop :=
-    fun s1 s2 => exists (ls : list (@transition_item _ VLSM_type_full_client1)), finite_protocol_trace (VLSM_full_client1) (proj1_sig s1) ls /\ List.In (proj1_sig s2) (List.map (@destination _ VLSM_type_full_client1) ls).
+  Definition vlsm_reach
+    (s1 : protocol_state VLSM_full_client1)
+    (s2 : protocol_state VLSM_full_client1)
+    : Prop
+    :=
+    exists (ls : list (vtransition_item VLSM_full_client1)),
+      finite_protocol_trace (VLSM_full_client1) (proj1_sig s1) ls
+      /\ List.In (proj1_sig s2) (List.map destination ls).
 
   Lemma reach_equiv :
     forall (s1 s2 : protocol_state (VLSM_full_client1)),
@@ -420,7 +432,7 @@ Section Full.
 
   (* VLSM state union *)
   Lemma join_protocol_state :
-    forall (s1 s2 : @state _ VLSM_type_full_client1),
+    forall (s1 s2 : vstate VLSM_full_client1),
       protocol_state_prop (VLSM_full_client1) s1 ->
       protocol_state_prop (VLSM_full_client1) s2 ->
       not_heavy (proj1_sig (sorted_state_union s1 s2)) ->
