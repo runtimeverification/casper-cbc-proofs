@@ -2,7 +2,7 @@ Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus Coq.
 Import ListNotations.
 
 From CasperCBC
-Require Import Lib.Preamble VLSM.Common VLSM.Composition.
+Require Import Lib.Preamble VLSM.Common VLSM.Composition CBC.Common CBC.Equivocation.
 
 (**
 *** Summary
@@ -140,19 +140,18 @@ Section Simple.
 
       proper_sent:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                (has_been_sent_prop has_been_sent s m);
 
-      has_not_been_sent: state_message_oracle;
+      has_not_been_sent: state_message_oracle
+        := fun (s : state) (m : message) => negb (has_been_sent s m);
+
       proper_not_sent:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                has_not_been_sent_prop has_not_been_sent s m;
-
-      sent_excluded_middle :
-        forall (s : state)
-               (m : message),
-               has_been_sent s m = true <-> has_not_been_sent s m = false;
     }.
 
     Class has_been_received_capability := {
@@ -160,19 +159,18 @@ Section Simple.
 
       proper_received:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                (has_been_received_prop has_been_received s m);
 
-      has_not_been_received: state_message_oracle;
+      has_not_been_received: state_message_oracle
+        := fun (s : state) (m : message) => negb (has_been_received s m);
+
       proper_not_received:
         forall (s : state)
+               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
                (m : message),
                has_not_been_received_prop has_not_been_received s m;
-
-      received_excluded_middle :
-        forall (s : state)
-               (m : message),
-               has_been_received s m = true <-> has_not_been_received s m = false;
     }.
 
 End Simple.
@@ -200,6 +198,8 @@ Section Composite.
             (index_listing : list index)
             {finite_index : Listing index_listing}
             {validator : Type}
+            {measurable_V : Measurable validator}
+            {threshold_V : ReachableThreshold validator}
             (validator_listing : list validator)
             {finite_validator : Listing validator_listing}
             {IndEqDec : EqDec index}
@@ -210,7 +210,6 @@ Section Composite.
             (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
             (sender : message -> option validator)
             (A : validator -> index)
-            (Weight : validator -> R)
             (T : R)
             (X := composite_vlsm IM i0 constraint)
             .
@@ -324,8 +323,8 @@ Section Composite.
         **)
 
         Definition is_equivocating_tracewise
-          (v : validator)
           (s : vstate X)
+          (v : validator)
           (j := A v)
           : Prop
           :=
@@ -342,13 +341,10 @@ Section Composite.
           /\ has_been_sent (IM j) ((destination elem) j) m = false
           ) prefix.
 
-
-
-
         (** A possibly friendlier version using a previously defined primitive. **)
         Definition is_equivocating_tracewise_alt
-          (v : validator)
           (s : vstate X)
+          (v : validator)
           (j := A v)
           : Prop
           :=
@@ -366,42 +362,38 @@ Section Composite.
             refers to [is_equivocating_statewise], but this might change
             in the future **)
 
-         Class equivocation_dec_statewise := {
-          is_equivocating_fn (s : vstate X) (v : validator) : bool;
-
-          is_equivocating_dec : forall (s : vstate X) (v : validator),
-           is_equivocating_fn s v = true <-> is_equivocating_statewise s v;
-         }.
-
-         (** All validators which are equivocating in a given composite state **)
-
-         Definition equivocating_validators
-         (Dec : equivocation_dec_statewise)
-         (s : vstate X)
-         : list validator
-          := List.filter (is_equivocating_fn s) validator_listing.
-
-          (** The equivocation fault sum: the sum of the weights of equivocating
-          validators **)
-
-         Definition equivocation_fault
-          (Dec : equivocation_dec_statewise)
-          (s : vstate X)
-          : R
+        Definition equivocation_dec_statewise
+           (Hdec : forall (s : vstate X) (v : validator),
+             {is_equivocating_statewise s v} + {~is_equivocating_statewise s v})
+            : basic_equivocation (vstate X) (validator)
           :=
-          List.fold_left Rplus (List.map Weight (equivocating_validators Dec s)) 0%R.
+          {|
+            state_validators := fun _ => validator_listing;
+            state_validators_nodup := fun _ => proj1 finite_validator;
+            is_equivocating_fn := fun (s : vstate X) (v : validator) =>
+              if Hdec s v then true else false
+          |}.
 
-        (** Finally, we are able to define a composition constraint which limits
-        the equivocation fault to a threshold <T> **)
+        Definition equivocation_dec_tracewise
+           (Hdec : forall (s : vstate X) (v : validator),
+             {is_equivocating_tracewise s v} + {~is_equivocating_tracewise s v})
+            : basic_equivocation (vstate X) (validator)
+          :=
+          {|
+            state_validators := fun _ => validator_listing;
+            state_validators_nodup := fun _ => proj1 finite_validator;
+            is_equivocating_fn := fun (s : vstate X) (v : validator) =>
+              if Hdec s v then true else false
+          |}.
 
-         Definition equivocation_fault_constraint
-          (Dec : equivocation_dec_statewise)
+        Definition equivocation_fault_constraint
+          (Dec : basic_equivocation (vstate X) validator)
           (l : vlabel X)
           (som : vstate X * option message)
           : Prop
           :=
           let (s', om') := (vtransition X l som) in
-          Rle (equivocation_fault Dec s') T.
+          not_heavy s'.
 
 End Composite.
 

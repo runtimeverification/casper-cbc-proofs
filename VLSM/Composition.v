@@ -1056,6 +1056,43 @@ All results from regular projections carry to these "free" projections.
     :=
     composite_vlsm_constrained_projection IM i0 (free_constraint IM) i.
 
+  Lemma preloaded_composed_protocol_state
+    (s : vstate X)
+    (Hs : protocol_state_prop (pre_loaded_vlsm X) s)
+    (i : index)
+    : protocol_state_prop (pre_loaded_vlsm (IM i)) (s i).
+  Proof.
+    revert i. generalize dependent s.
+    apply
+      (protocol_state_prop_ind (pre_loaded_vlsm X)
+        (fun (s : vstate (pre_loaded_vlsm X)) =>
+          forall i : index, protocol_state_prop (pre_loaded_vlsm (IM i)) (s i)
+        )
+      ); intros.
+    - apply protocol_state_prop_iff. left. specialize (Hs i). unfold vinitial_state_prop in Hs.
+      exists (exist _ (s i) Hs). reflexivity.
+    - destruct Ht as [[Hps [Hpm [Hv _]]] Ht].
+      simpl in Hv.
+      simpl in Ht. unfold vtransition in Ht. simpl in Ht.
+      destruct l as (i', li').
+      destruct (vtransition (IM i') li' (s i', om)) as (si', omi') eqn:Ht'.
+      inversion Ht. subst s' omi'; clear Ht.
+      destruct (eq_dec i i').
+      + subst i'. rewrite state_update_eq.
+        specialize (Hs i).
+        apply protocol_state_prop_iff. right.
+        exists li'. exists (s i, om). exists om'.
+        repeat split; try assumption.
+        exists (proj1_sig (vs0 (pre_loaded_vlsm (IM i)))).
+        destruct om as [m|].
+        * assert (Him : vinitial_message_prop  (pre_loaded_vlsm (IM i)) m)
+            by exact I.
+          pose (exist _ m Him) as im.
+          apply (protocol_initial_message (pre_loaded_vlsm (IM i)) im).
+        * apply (protocol_initial_state (pre_loaded_vlsm (IM i))).
+      + rewrite state_update_neq; try assumption. apply Hs.
+  Qed.
+
 End free_projections.
 
 Section binary_free_composition.

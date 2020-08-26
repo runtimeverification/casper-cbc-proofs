@@ -128,12 +128,16 @@ Proof.
   apply justification_incl_refl.
 Qed.
 
-Global Instance full_node_equivocation
-  : HasEquivocation (State.message C V)
+Definition full_node_message_equivocation_evidence
+  : message_equivocation_evidence (State.message C V) V
   :=
-    {| about_message := message_type
-    ; sender := State.sender
+    {| sender := State.sender
     ; message_preceeds_fn := validator_message_preceeds_fn
     |}.
+
+Definition validator_state_encapsulating_messages
+  : state_encapsulating_messages (State.state C V) (State.message C V)
+  :=
+  {| get_messages := get_message_set |}.
 
 End Equivocation.

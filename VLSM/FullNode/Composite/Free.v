@@ -9,11 +9,13 @@ From CasperCBC
     CBC.Common
     VLSM.Common
     VLSM.Composition
+    VLSM.ProjectionTraces
     VLSM.PreceedsEquivocation
     Validator.State
     FullNode.Client
     FullNode.Validator
     Validator.Equivocation
+    CBC.Equivocation
     .
 
 Section ClientsAndValidators.
@@ -84,8 +86,20 @@ Definition project
   :=
   match i with
   | inl v => s (inl v)
-  | inr c => s (inr c)
+  | inr c => pair (s (inr c)) None
   end.
+
+Lemma VLSM_full_protocol_state_nodup
+  (s : vstate VLSM_full_composed_free)
+  (Hs : protocol_state_prop (pre_loaded_vlsm VLSM_full_composed_free) s)
+  (i : index)
+  : NoDup (get_message_set (project s i)).
+Proof.
+  pose (preloaded_composed_protocol_state IM_index i0 s Hs i) as Hi.
+  destruct i as [v | client]; simpl.
+  - apply (validator_protocol_state_nodup v). assumption.
+  - apply client_protocol_state_nodup. assumption.
+Qed.
 
 Definition  free_full_byzantine_message_preceeds
   (pm1 pm2 : byzantine_message VLSM_full_composed_free)
@@ -131,7 +145,6 @@ Proof.
     + destruct om0; discriminate Ht.
   - exfalso.
     simpl in Ht.
-    destruct (s0 (inr c)) as (msgs, final) eqn: Hsv.
     destruct om0; discriminate Ht.
 Qed.
 
@@ -204,7 +217,7 @@ Proof.
             apply set_add_iff in Hm.
             destruct Hm as [Heqm | Hinm]; subst.
             + destruct Hv as [Hv _]. simpl in Hv.
-              rewrite Hsv' in Hv.
+              rewrite Hsv' in Hv. destruct Hv as [Hnin Hincl].
               apply incl_tran with msgsv'; try assumption.
               intros x Hx. simpl. rewrite set_add_iff.
               right; assumption.
@@ -227,7 +240,6 @@ Proof.
         apply (IHHsom1  s _om eq_refl m v).
         assumption.
     - unfold vtransition in H0. simpl in H0.
-      destruct (s (inr client')) as (msgsv', finalv') eqn:Hsv'.
       specialize (IHHsom1 s _om eq_refl m v).
       destruct om as [msg|]; inversion H0; subst; clear H0; destruct v as [v | client]
       ; simpl in Hm.
@@ -242,19 +254,15 @@ Proof.
           simpl; rewrite state_update_eq.
           apply set_add_iff in Hm.
           simpl in IHHsom1.
-          rewrite Hsv' in IHHsom1. simpl in IHHsom1.
           { destruct Hm as [Heq | Hm].
           - subst msg.
             destruct Hv as [Hv _]. simpl in Hv.
             unfold vvalid in Hv. simpl in Hv.
-            destruct Hv as [Hv _].
-            rewrite Hsv' in Hv. simpl in Hv.
-            apply incl_tran with msgsv'; try assumption.
-            simpl.
+            destruct Hv as [_ [Hv _]].
+            apply incl_tran with (s (inr client')); try assumption.
             intros msg Hmsg. apply set_add_iff. right. assumption.
           - specialize (IHHsom1 Hm).
-            apply incl_tran with msgsv'; try assumption.
-            simpl.
+            apply incl_tran with (s (inr client')); try assumption.
             intros msg' Hmsg'. apply set_add_iff. right. assumption.
           }
         * rewrite state_update_neq in Hm; try assumption.
@@ -269,7 +277,6 @@ Proof.
         * inversion e. subst.
           rewrite state_update_eq in Hm. simpl in Hm.
           simpl; rewrite state_update_eq.
-          rewrite Hsv' in IHHsom1. simpl in IHHsom1.
           apply IHHsom1. assumption.
         * rewrite state_update_neq in Hm; try assumption.
           simpl. rewrite state_update_neq; try assumption.
@@ -355,12 +362,37 @@ Proof.
   apply free_full_byzantine_message_preceeds_transitive.
 Defined.
 
-Global Instance VLSM_full_composed_free_preceeds_equivocation
-  : HasPreceedsEquivocation VLSM_full_composed_free.
+Existing Instance full_node_message_equivocation_evidence.
+
+Instance VLSM_full_composed_free_message_equivocation_evidence
+  : vlsm_message_equivocation_evidence V VLSM_full_composed_free.
 Proof.
   split.
   apply free_full_byzantine_message_preceeds_stict_order.
 Defined.
 
+Parameter indices : list index.
+Parameter finite_index : Listing indices.
+
+(**
+Equivocation is defined as non-heaviness of the full set of exchanged messages.
+[state_union] extracts that set from a composite state.
+*)
+
+Definition state_union
+  (s : vstate VLSM_full_composed_free)
+  : set message
+  :=
+  let state_list := List.map (project s) indices in
+  fold_right (set_union compare_eq_dec) []
+    (List.map get_message_set state_list).
+
+Instance VLSM_full_composed_free_state_encapsulating_messages
+  : state_encapsulating_messages (vstate VLSM_full_composed_free) message
+  :=
+  {| get_messages := state_union |}.
+
+Definition VLSM_full_composed_free_basic_equivocation
+  := state_encapsulating_messages_equivocation (vstate VLSM_full_composed_free) message V.
 
 End ClientsAndValidators.

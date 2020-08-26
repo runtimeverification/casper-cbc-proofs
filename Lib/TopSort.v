@@ -512,6 +512,57 @@ Proof.
       right. subst. apply set_remove_1 in Hinx. assumption.
 Qed.
 
+Lemma top_sort_nodup
+  (l : list A)
+  (Hl : NoDup l)
+  : NoDup (top_sort l).
+Proof.
+  unfold top_sort.
+  remember (length l) as len.
+  generalize dependent l.
+  induction len; intros.
+  - symmetry in Heqlen. apply length_zero_iff_nil in Heqlen. subst l.
+    constructor.
+  - destruct l as [| a l].
+    + constructor.
+    + simpl.
+      assert (Hl' : NoDup l) by (inversion Hl; assumption).
+      assert (Hlen : len = length l) by (inversion Heqlen; reflexivity).
+      assert (Hl'' : NoDup (set_remove eq_dec (min_predecessors preceeds (a :: l) l a) l))
+        by (apply set_remove_nodup; assumption).
+      destruct (eq_dec (min_predecessors preceeds (a :: l) l a) a); constructor.
+      * specialize (IHlen l Hl'  Hlen).
+        rewrite e in *.
+        inversion Hl; subst x l0. intro Ha. elim H1.
+        apply top_sort_set_eq. subst len. assumption.
+      * apply IHlen; try assumption.
+      * intro Hmin.
+        assert (Hlen' : len = length (a :: set_remove eq_dec (min_predecessors preceeds (a :: l) l a) l)).
+        { simpl.
+          rewrite <- set_remove_length; try assumption.
+          pose (@min_predecessors_in _ preceeds (a :: l) l a) as Hin.
+          destruct Hin as [Heq | Hin]; try assumption.
+          elim n. assumption.
+        }
+        rewrite Hlen' in Hmin.
+        apply (proj2 (top_sort_set_eq (a :: set_remove eq_dec (min_predecessors preceeds (a :: l) l a) l)))
+          in Hmin.
+        destruct Hmin; try (symmetry in H; elim n; assumption).
+        apply set_remove_2 in H; try assumption.
+        elim H. reflexivity.
+      * { apply IHlen.
+        - constructor; try assumption.
+          intro Ha. apply set_remove_iff in Ha; try assumption.
+          destruct Ha as [Ha _].
+          inversion Hl. elim H1. assumption.
+        - simpl.
+          rewrite <- set_remove_length; try assumption.
+          pose (@min_predecessors_in _ preceeds (a :: l) l a) as Hin.
+          destruct Hin as [Heq | Hin]; try assumption.
+          elim n. assumption.
+        }
+Qed.
+
 Context
   (P : A -> Prop)
   {Hso : StrictOrder (preceeds_P preceeds P)}

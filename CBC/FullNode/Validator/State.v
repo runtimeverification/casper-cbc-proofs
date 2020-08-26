@@ -8,6 +8,7 @@ From CasperCBC
     Require Import
       Preamble
       SortedLists
+      ListExtras
       ListSetExtras
     .
 
@@ -567,6 +568,62 @@ Proof.
   destruct j; unfold justification_incl; simpl; apply message_set_incl_refl.
 Qed.
 
+Lemma in_justification_recursive
+  (c : C)
+  (v : V)
+  (j j' : justification C V)
+  (Hs : justification_incl j' j)
+  : ~ in_message_set ((c,v,j)) (justification_message_set j').
+Proof.
+  generalize dependent j.
+  revert v. revert c. revert j'.
+  apply
+    (justification_mut_ind C V
+      (fun j' : justification C V =>
+        forall c v j,
+          justification_incl j' j ->
+          ~ in_message_set ((c, v, j)) (justification_message_set j')
+      )
+      (fun m : message C V =>
+        forall (msgs : message_set C V),
+          message_set_incl msgs (justification_message_set (get_justification m)) ->
+          ~ in_message_set m msgs
+      )
+      (fun msgs : message_set C V =>
+        forall c v j,
+          message_set_incl msgs (justification_message_set j) ->
+          ~ in_message_set ((c,v,j)) msgs
+      )
+    ); intros; simpl; intro Hin.
+  - unfold justification_incl in H0. simpl in H0.
+    specialize (H c v j H0). elim H. assumption.
+  - unfold justification_incl in H1. simpl in H1.
+    specialize (H c v j H1). elim H. assumption.
+  - simpl in H0.
+    specialize (H c v j (justification_incl_refl j)).
+    apply H. apply H0. assumption.
+  - assumption.
+  - destruct Hin as [Heq | Hin].
+    + subst m. simpl in H.
+      specialize (H (justification_message_set j) (message_set_incl_refl _)).
+      elim H. apply H1. constructor. reflexivity.
+    + specialize (H0 c v j). apply H0; try assumption.
+      apply message_set_incl_trans with (add C V m m0); try assumption.
+      intros msg Hmsg. right. assumption.
+Qed.
+
+Lemma in_justification_recursive'
+  (m : message C V)
+  (msgs : set (message C V))
+  (Hmsgs : justification_message_set (get_justification m) = make_message_set msgs)
+  : ~ In m msgs.
+Proof.
+  destruct m as (c,v, j). simpl in Hmsgs.
+  rewrite in_make_message_set. rewrite <- Hmsgs.
+  apply in_justification_recursive.
+  apply justification_incl_refl.
+Qed.
+
 Lemma unmake_message_set_eq
   (msgs1 msgs2 : message_set C V)
   : message_set_eq msgs1 msgs2
@@ -994,5 +1051,66 @@ Proof.
   .
 Qed.
 
+Section message_oracles.
+
+Fixpoint sent_messages_justification
+  (j : justification C V)
+  : set (message C V)
+  :=
+  match j with
+  | NoSent _ _ _ => []
+  | LastSent _ _ msgs ((c,v,j)) =>
+    set_add compare_eq_dec ((c,v,j)) (sent_messages_justification j)
+  end.
+
+Definition sent_messages
+  (s : state C V)
+  : set (message C V)
+  :=
+  match last_sent s with
+  | None => []
+  | Some ((c, v, j)) =>
+    set_add compare_eq_dec ((c, v, j)) (sent_messages_justification j)
+  end.
+
+Definition has_been_sent_oracle
+  (s : state C V)
+  (m : message C V)
+  : bool
+  :=
+  inb compare_eq_dec m (sent_messages s).
+
+Definition has_been_received_oracle
+  (s : state C V)
+  (m : message C V)
+  : bool
+  :=
+  inb compare_eq_dec m (get_message_set s)
+  && negb (has_been_sent_oracle s m).
+
+  Lemma has_been_sent_not_received
+    (s : state C V)
+    (m : message C V)
+    (Hbs : has_been_sent_oracle s m = true)
+    : has_been_received_oracle s m = false.
+  Proof.
+    unfold has_been_received_oracle.
+    rewrite Hbs. apply Bool.andb_false_r.
+  Qed.
+
+  Lemma has_been_received_not_sent
+    (s : state C V)
+    (m : message C V)
+    (Hbr : has_been_received_oracle s m = true)
+    : has_been_sent_oracle s m = false.
+  Proof.
+    unfold has_been_received_oracle in Hbr.
+    apply Bool.andb_true_iff in Hbr.
+    destruct Hbr as [_ Hbr].
+    apply Bool.negb_true_iff in Hbr.
+    assumption.
+  Qed.
+
+End message_oracles.
 
 End FullNodeStateProperties.
