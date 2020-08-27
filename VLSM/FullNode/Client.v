@@ -336,6 +336,7 @@ messages, implementing a limited equivocation tolerance policy.
     unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
     unfold client_has_not_been_sent. simpl.
     split; intros; try reflexivity.
+    unfold selected_message_exists_in_no_trace.
     intros.
     rewrite <- Forall_Exists_neg.
     apply Forall_forall.
@@ -360,6 +361,7 @@ messages, implementing a limited equivocation tolerance policy.
     unfold has_been_received_prop. unfold all_traces_have_message_prop.
     unfold client_has_been_received.
     pose (in_correct s m) as Hin. rewrite <- Hin. clear Hin.
+    unfold selected_message_exists_in_all_traces.
     split; intros.
     - apply Exists_exists.
       destruct Htr as [Htr Hinit].
@@ -422,6 +424,7 @@ messages, implementing a limited equivocation tolerance policy.
     unfold client_has_been_received.
     pose (in_correct' s m) as Hin.
     rewrite <- Hin. clear Hin.
+    unfold selected_message_exists_in_no_trace.
     split.
     - intros.
       rewrite <- Forall_Exists_neg.

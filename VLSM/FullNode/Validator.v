@@ -316,7 +316,7 @@ Section proper_sent_received.
   Lemma sent_messages_in_futures
     (s1 s2 : state C V)
     (Hs : in_futures bvlsm s1 s2)
-    : incl (sent_messages s1) (sent_messages s2).
+    : incl (State.sent_messages s1) (State.sent_messages s2).
   Proof.
     unfold in_futures in Hs. destruct Hs as [tr [Htr Hs2]].
     generalize dependent s2. generalize dependent s1.
@@ -325,12 +325,12 @@ Section proper_sent_received.
     - inversion Htr. subst a s' tl.
       rewrite map_cons in Hs2. rewrite unroll_last in Hs2. simpl in Hs2.
       specialize (IHtr s H2 s2 Hs2).
-      apply incl_tran with (sent_messages s); try assumption.
+      apply incl_tran with (State.sent_messages s); try assumption.
       clear -H3.
       destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       destruct s1 as (msgs, final).
       destruct l as [c|].
-      + inversion Ht; subst; clear Ht. unfold sent_messages. simpl.
+      + inversion Ht; subst; clear Ht. unfold State.sent_messages. simpl.
         destruct final as [m|]; subst; simpl in *; try apply incl_nil_l.
         destruct m as (c0, v0, j0). intros m Hm.
         apply set_add_iff. right. assumption.
@@ -368,9 +368,9 @@ Section proper_sent_received.
     : has_been_sent_oracle s2 m = true.
   Proof.
     unfold has_been_sent_oracle in *.
-    pose (proj2 (in_correct (sent_messages s1) m)) as Hin1.
+    pose (proj2 (in_correct (State.sent_messages s1) m)) as Hin1.
     specialize (Hin1 Hm).
-    pose (proj1 (in_correct (sent_messages s2) m)) as Hin2.
+    pose (proj1 (in_correct (State.sent_messages s2) m)) as Hin2.
     apply Hin2.
     pose (sent_messages_in_futures s1 s2 Hs) as Hsent.
     apply Hsent. assumption.
@@ -389,15 +389,15 @@ Section proper_sent_received.
     unfold vtransition in Ht. simpl in Ht.
     destruct s1 as (msgs, final).
     unfold has_been_sent_oracle in *.
-    pose (in_correct' (sent_messages (msgs, final)) m)  as Hnin.
+    pose (in_correct' (State.sent_messages (msgs, final)) m)  as Hnin.
     rewrite <- Hnin in Hs1.
-    pose (in_correct (sent_messages s2) m)  as Hin.
+    pose (in_correct (State.sent_messages s2) m)  as Hin.
     rewrite <- Hin.
     destruct l as [c|]; inversion Ht; subst.
-    + unfold sent_messages. simpl.  split; intro H.
+    + unfold State.sent_messages. simpl.  split; intro H.
       * apply set_add_iff in H.
         destruct H as [Heq | H]; subst; try reflexivity.
-        elim Hs1. unfold sent_messages. simpl.
+        elim Hs1. unfold State.sent_messages. simpl.
         destruct final; simpl in *; assumption.
       * inversion H; subst.
         apply set_add_iff. left. reflexivity.
@@ -438,10 +438,10 @@ Section proper_sent_received.
         as (msgs, final).
       destruct l as [c|].
       - unfold has_been_sent_oracle.
-        pose (proj1 (in_correct (sent_messages s0) m)) as Hin.
+        pose (proj1 (in_correct (State.sent_messages s0) m)) as Hin.
         apply Hin.
         inversion Ht; subst; clear Ht.
-        unfold sent_messages. simpl.
+        unfold State.sent_messages. simpl.
         apply set_add_iff. left. reflexivity.
       - destruct iom as [msg|]; inversion Ht.
     }
@@ -706,7 +706,7 @@ Section proper_sent_received.
   Lemma get_sent_messages
     (s : state C V)
     (Hs : protocol_state_prop bvlsm s)
-    : incl (sent_messages s) (get_message_set s).
+    : incl (State.sent_messages s) (get_message_set s).
   Proof.
     intros m Hm.
     apply has_been_sent_in; try assumption.
@@ -729,6 +729,7 @@ Section proper_sent_received.
   Proof.
     unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
     unfold has_not_been_sent_oracle. rewrite negb_true_iff.
+    unfold selected_message_exists_in_no_trace.
     split.
     - intros.
       rewrite <- Forall_Exists_neg.
@@ -740,7 +741,7 @@ Section proper_sent_received.
       intro H. destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + inversion Hinit. unfold has_been_sent_oracle. unfold sent_messages. unfold inb.
+      + inversion Hinit. unfold has_been_sent_oracle. unfold State.sent_messages. unfold inb.
         reflexivity.
       + assert (Hlst : last (map destination tr) is = s).
         { destruct tr as [|i tr]; inversion Hlsts.
@@ -774,6 +775,7 @@ Section proper_sent_received.
     : has_been_received_prop vlsm has_been_received_oracle s m.
   Proof.
     unfold has_been_received_prop. unfold all_traces_have_message_prop.
+    unfold selected_message_exists_in_all_traces.
     split; intros.
     - apply Exists_exists.
       apply andb_true_iff in H.
@@ -809,7 +811,7 @@ Section proper_sent_received.
             destruct i as [i | i]; try (elim Hstart; assumption).
             subst m.
             clear -Hnbs. exfalso.
-            unfold has_been_sent_oracle in Hnbs. unfold sent_messages in Hnbs.
+            unfold has_been_sent_oracle in Hnbs. unfold State.sent_messages in Hnbs.
             simpl in Hnbs.
             destruct final as [m|].
             + pose
@@ -878,10 +880,10 @@ Section proper_sent_received.
           apply protocol_transition_inv_in in H3.
           destruct H3 as [Hs0 [Hoom [Hnin [Hincl [Hs' [Hm Hps0]]]]]].
           assert (Hbs' : has_been_sent_oracle s' m = true).
-          { unfold has_been_sent_oracle. unfold sent_messages.
+          { unfold has_been_sent_oracle. unfold State.sent_messages.
             rewrite Hs0 in Hbs.
             unfold has_been_sent_oracle in Hbs.
-            unfold sent_messages in Hbs. simpl in Hbs.
+            unfold State.sent_messages in Hbs. simpl in Hbs.
             assumption.
           }
           assert (Hss0 : s0 = s').
@@ -924,6 +926,7 @@ Section proper_sent_received.
   Proof.
     unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
     unfold has_not_been_received_oracle. rewrite negb_true_iff.
+    unfold selected_message_exists_in_no_trace.
     split.
     - intros.
       rewrite <- Forall_Exists_neg.
