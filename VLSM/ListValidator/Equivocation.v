@@ -1,4 +1,4 @@
-Require Import Bool List Reals FinFun .
+Require Import Bool List ListSet Reals FinFun.
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
@@ -22,7 +22,8 @@ Context
   (X := @VLSM_list _ index_self index_listing idec)
   (preX := pre_loaded_vlsm X)
   (Xtype := type preX)
-  {sdec : EqDec (@state index index_listing)}.
+  {sdec : EqDec (@state index index_listing)}
+  {mdec : EqDec (@message index index_listing)}.
 
   Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
     @project_indexed _ index_listing _ l ls who.
@@ -2101,5 +2102,208 @@ Context
             assumption.
         + reflexivity.
     Qed.
+    
+    Definition get_messages_from_history (s : state) (i : index) : set message :=
+      List.map (pair i) (get_history s i).
+    
+    Definition get_sent_messages (s : state) : set message :=
+      get_messages_from_history s index_self.
+    
+    Definition get_messages (s : state) : set message :=
+      let all := List.map (get_messages_from_history s) index_listing in
+      List.fold_right (@set_union message mdec) [] all.
+      
+    Definition get_received_messages (s : state) : set message :=
+      set_diff mdec (get_messages s) (get_sent_messages s).
+    
+    Lemma get_iff_history
+      (s : state)
+      (m : message) :
+      In m (get_messages_from_history s (fst m)) <-> In (snd m) (get_history s (fst m)).
+    Proof.
+      split.
+      - intros.
+        unfold get_messages_from_history in H.
+        rewrite in_map_iff in H.
+        destruct H as [x [Heq Hinx]].
+        rewrite <- Heq.
+        simpl.
+        assumption.
+      - intros.
+        unfold get_messages_from_history.
+        rewrite in_map_iff.
+        exists (snd m).
+        split.
+        + rewrite surjective_pairing.
+          reflexivity.
+        + assumption.
+    Qed.
+    
+    Lemma sent_set_equiv_send_oracle 
+      (s : state)
+      (Hprotocol : protocol_state_prop preX s)
+      (m : message) :
+      send_oracle s m = true <-> In m (get_sent_messages s).
 
+    Proof.
+      split.
+      - intros.
+        unfold send_oracle in H.
+        destruct (idec (fst m) index_self).
+        + unfold get_sent_messages.
+          rewrite <- e.
+          rewrite get_iff_history.
+          rewrite existsb_exists in H.
+          destruct H as [x [Hinx Heq]].
+          rewrite state_eqb_eq in Heq.
+          rewrite Heq.
+          assumption.
+        + discriminate H.
+      - intros.
+        unfold send_oracle.
+        destruct (idec (fst m) index_self).
+        + unfold get_sent_messages in H.
+          rewrite <- e in H.
+          rewrite get_iff_history in H.
+          rewrite existsb_exists.
+          exists (snd m).
+          split.
+          * assumption.
+          * rewrite state_eqb_eq.
+            reflexivity.
+        + unfold get_sent_messages in H.
+          unfold get_messages_from_history in H.
+          rewrite in_map_iff in H.
+          destruct H as [x [Heq Hinx]].
+          elim n.
+          rewrite <- Heq.
+          reflexivity.
+    Qed.
+
+    Lemma message_in_unique_history
+      (s : state)
+      (m : message)
+      (i : index)
+      (Hin : In m (get_messages_from_history s i)) :
+      i = (fst m).
+    Proof.
+      unfold get_messages_from_history in Hin.
+      rewrite in_map_iff in Hin.
+      destruct Hin as [x [Heq Hinx]].
+      rewrite <- Heq.
+      simpl.
+      reflexivity.
+    Qed.
+    
+    Lemma in_history_equiv_in_union 
+      (s : state)
+      (m : message) :
+      In m (get_messages s) <-> In m (get_messages_from_history s (fst m)).
+    Proof.
+      remember (map (get_messages_from_history s) index_listing) as haystack.
+      remember (get_messages_from_history s (fst m)) as needle.
+      split.
+      - intros.
+        unfold get_messages in H.
+        specialize (union_fold haystack m).
+        intros.
+        destruct H0 as [Hleft _].
+        rewrite <- Heqhaystack in H.
+        specialize (Hleft H).
+        destruct Hleft as [needle' [Hin1 Hin2]].
+        assert (needle = needle'). {
+          assert (exists (i : index), needle' = (get_messages_from_history s i)). {
+            rewrite Heqhaystack in Hin2.
+            rewrite in_map_iff in Hin2.
+            destruct Hin2 as [x [Hneed _]].
+            exists x.
+            symmetry.
+            assumption.
+          }
+          destruct H0 as [i Heq].
+          specialize (message_in_unique_history s m i).
+          intros.
+          rewrite Heq in Hin1.
+          specialize (H0 Hin1).
+          rewrite H0 in Heq.
+          rewrite Heq.
+          rewrite Heqneedle.
+          reflexivity.
+        }
+        
+        rewrite H0.
+        assumption.
+      - intros.
+        unfold get_messages.
+
+        specialize (union_fold haystack m).
+        intros.
+        destruct H0 as [_ Hright].
+        rewrite Heqhaystack in Hright.
+        apply Hright.
+        exists (get_messages_from_history s (fst m)).
+        split.
+        + rewrite <- Heqneedle.
+          assumption.
+        + rewrite in_map_iff.
+          exists (fst m).
+          split.
+          * reflexivity.
+          * apply ((proj2 Hfinite) (fst m)).
+    Qed.
+    
+    Lemma received_set_equiv_receive_oracle 
+      (s : state)
+      (Hprotocol : protocol_state_prop preX s)
+      (m : message) :
+      receive_oracle s m = true <-> In m (get_received_messages s).
+    
+    Proof.
+      split.
+      - intros.
+        unfold receive_oracle in H.
+        destruct (idec (fst m) index_self).
+        + discriminate H.
+        + rewrite existsb_exists in H.
+          destruct H as [x [Hinx Heq]].
+          unfold get_received_messages.
+          specialize set_diff_intro.
+          intros.
+          specialize (H message mdec m (get_messages s) (get_sent_messages s)).
+          apply H.
+          * rewrite state_eqb_eq in Heq.
+            apply in_history_equiv_in_union.
+            rewrite get_iff_history.
+            rewrite Heq.
+            assumption.
+          * intros contra.
+            specialize (message_in_unique_history s m index_self).
+            intros.
+            rewrite state_eqb_eq in Heq.
+            unfold get_sent_messages in contra.
+            specialize (H0 contra).
+            elim n.
+            symmetry.
+            assumption.
+       - intros.
+         unfold receive_oracle.
+         destruct (idec (fst m) index_self).
+         + unfold get_received_messages in H.
+           rewrite set_diff_iff in H.
+           rewrite in_history_equiv_in_union in H.
+           unfold get_sent_messages in H.
+           rewrite e in H.
+           intuition.
+         + unfold get_received_messages in H.
+           rewrite set_diff_iff in H.
+           destruct H as [Hin Hnot_in].
+           rewrite existsb_exists.
+           exists (snd m).
+           split.
+           * rewrite in_history_equiv_in_union in Hin.
+             rewrite get_iff_history in Hin.
+             assumption.
+           * rewrite state_eqb_eq.
+             reflexivity.
+      Qed.
 End Equivocation.

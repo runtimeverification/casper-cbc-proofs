@@ -1,5 +1,5 @@
 Require Import Coq.Bool.Bool.
-Require Import List.
+Require Import List ListSet.
 Require Import Lia.
 Import ListNotations.
 
@@ -1161,4 +1161,64 @@ Proof.
   destruct Hin.
   - subst. elim Hneq. reflexivity.
   - assumption.
+Qed.
+
+Check fold_right.
+
+Lemma union_fold 
+  {A : Type}
+  {eq_dec_a : EqDec A}
+  (haystack : list (list A))
+  (a : A) :
+  In a (fold_right (set_union eq_dec_a) [] haystack)
+  <-> 
+  exists (needle : list A), (In a needle) /\ (In needle haystack). 
+Proof.
+  split.
+  - generalize dependent a.
+    generalize dependent haystack.
+    induction haystack.
+    + intros.
+      simpl in H.
+      intuition.
+    + intros.
+      unfold fold_right in H.
+      rewrite set_union_iff in H.
+      destruct H.
+      * exists a. 
+        split. 
+        assumption. 
+        simpl. 
+        left. 
+        reflexivity.
+      * unfold fold_right in IHhaystack.
+        specialize (IHhaystack a0 H).
+        destruct IHhaystack as [needle [Hin1 Hin2]].
+        exists needle.
+        split.
+        assumption.
+        intuition.
+   - generalize dependent a.
+     generalize dependent haystack.
+     induction haystack.
+     + intros.
+       simpl in *.
+       destruct H as [_ [_ Hfalse]].
+       assumption.
+     + intros.
+       destruct H as [needle [Hin Hin2]].
+       destruct Hin2.
+       * simpl.
+         rewrite set_union_iff.
+         left.
+         rewrite H.
+         assumption.
+       * simpl.
+         rewrite set_union_iff.
+         right.
+         specialize (IHhaystack a0).
+         apply IHhaystack.
+         exists needle.
+         split;
+         assumption.
 Qed.
