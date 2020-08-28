@@ -838,8 +838,119 @@ Context
     Proof.
       apply project_all_bottom_f.
     Qed.
+
+
+    Lemma protocol_state_consistency
+      (s : state)
+      (Hs : protocol_state_prop (pre_loaded_vlsm X) s)
+      (j : index)
+      (Hnb : project (project s index_self) j <> Bottom)
+      : In (project (project s index_self) j) (get_history s j).
+    Proof.
+      generalize dependent j. generalize dependent s.
+      remember (fun s => forall j : index, project (project s index_self) j <> Bottom -> In (project (project s index_self) j) (get_history s j)) as P.
+      specialize (protocol_state_prop_ind (pre_loaded_vlsm X) P) as Hind.
+      subst P.
+      apply Hind; intros; clear Hind.
+      - inversion Hs. subst s. simpl in H. rewrite project_all_bottom in H. simpl in H.
+        elim H. reflexivity.
+      - destruct Ht as [[Hps [Hom Hv]] Ht].
+        specialize (protocol_prop_no_bottom _ Hps) as Hnb.
+        simpl in Ht. unfold vtransition in Ht. simpl in Ht.
+        simpl in Hv. unfold vvalid in Hv. simpl in Hv.
+        destruct l as [c|].
+        + inversion Ht. clear Ht.
+          subst s'. rewrite <- update_consensus_clean in H.
+          rewrite (@project_same _ _ Hfinite) in H; try assumption.
+          rewrite <- update_consensus_clean.
+          rewrite history_disregards_cv.
+          rewrite (@project_same _ _ Hfinite); try assumption.
+          destruct (eq_dec index_self j).
+          * subst j. rewrite history_append; try assumption; try reflexivity.
+            right.
+            apply projection_in_history; try assumption.
+            reflexivity.
+          * rewrite <- history_oblivious; try assumption.
+            apply projection_in_history; try assumption.
+            reflexivity.
+        + destruct om as [m|]; inversion Ht; clear Ht; subst s'.
+          * destruct m as (im, sm); simpl in *.
+            destruct Hv as [Hsim [Hsm Him]].
+            rewrite (@project_different _ _ Hfinite) in H; try assumption.
+            rewrite (@project_different _ _ Hfinite); try assumption.
+            { destruct (eq_dec im j).
+            - subst im. rewrite history_append; auto.
+              right. apply Hs. assumption.
+            - rewrite <- history_oblivious; try assumption.
+              apply Hs. assumption.
+            }
+          * apply Hs. assumption.
+    Qed.
+
+    Lemma byzantine_message_consistency
+      (m : message)
+      (Hm : byzantine_message_prop X m)
+      (i := fst m)
+      (s := snd m)
+      (j : index)
+      (Hnb : project (project s i) j <> Bottom)
+      : In (project (project s i) j) (get_history s j).
+    Proof.
+      unfold byzantine_message_prop in Hm.
+      unfold can_emit in Hm.
+      unfold s in *; clear s.
+      unfold i in *; clear i.
+      destruct m as (im, sm); simpl in *.
+      destruct Hm as [(s, om) [l [s' [[Hs [Hom Hv]] Ht]]]].
+      specialize (protocol_state_consistency s Hs) as Hs'.
+      simpl in Hv. unfold vvalid in Hv. simpl in Hv.
+      simpl in Ht. unfold vtransition in Ht. simpl in Ht.
+      destruct l as [c|].
+      - inversion Ht. subst s' im sm; clear Ht.
+        apply Hs'. assumption.
+      - destruct om as [m|]; inversion Ht.
+    Qed.
+
+    Definition list_state_preceeds (s1 s2 : state) : bool :=
+      forallb
+        (fun i =>
+          if eq_dec (project s1 i) Bottom then true
+          else inb sdec (project s1 i) (get_history s2 i)
+        )
+        index_listing.
   
-  
+    Lemma list_state_preceeds_last_sent 
+      (s : state)
+      (Hs : protocol_state_prop (pre_loaded_vlsm X) s)
+      : list_state_preceeds (project s index_self) s = true.
+    Proof.
+      specialize (protocol_state_consistency s Hs) as Hls.
+      apply forallb_forall; intros j Hj.
+      destruct (eq_dec (project (project s index_self) j) Bottom); try reflexivity.
+      specialize (Hls j n).
+      apply in_correct. assumption.
+    Qed.
+
+    Lemma list_state_preceeds_previous_sent
+      (m : message)
+      (Hm : byzantine_message_prop X m)
+      (i := fst m)
+      (s := snd m)
+      : list_state_preceeds (project s i) s = true.
+    Proof.
+      specialize (byzantine_message_consistency m Hm) as Hps.
+      unfold i in *; clear i. unfold s in *; clear s.
+      destruct m as (i, s); simpl in *.
+      apply forallb_forall; intros j Hj.
+      destruct (eq_dec (project (project s i) j) Bottom); try reflexivity.
+      specialize (Hps j n).
+      apply in_correct. assumption.
+    Qed.
+
+    Definition list_message_preceeds (m1 m2 : message) : bool :=
+      list_state_preceeds (snd m1) (snd m2).
+
+
     (* If a state is present in some history,
        we know for sure that at some point it was equal to somebody's projection
        
