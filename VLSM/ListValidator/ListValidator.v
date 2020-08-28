@@ -45,6 +45,10 @@ with indexed_state : list index -> Type :=
   indexed_state (v :: l)
 .
 
+Scheme state_mut_ind := Induction for state Sort Prop
+with indexed_state_mut_ind := Induction for indexed_state Sort Prop
+.
+
 
 Fixpoint depth (s : state) : nat :=
   match s with

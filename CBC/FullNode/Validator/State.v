@@ -1076,43 +1076,11 @@ Definition sent_messages
     set_add eq_dec ((c, v, j)) (sent_messages_justification j)
   end.
 
-Definition has_been_sent_oracle
+Definition received_messages
   (s : state C V)
-  (m : message C V)
-  : bool
+  : set (message C V)
   :=
-  inb eq_dec m (sent_messages s).
-
-Definition has_been_received_oracle
-  (s : state C V)
-  (m : message C V)
-  : bool
-  :=
-  inb eq_dec m (get_message_set s)
-  && negb (has_been_sent_oracle s m).
-
-  Lemma has_been_sent_not_received
-    (s : state C V)
-    (m : message C V)
-    (Hbs : has_been_sent_oracle s m = true)
-    : has_been_received_oracle s m = false.
-  Proof.
-    unfold has_been_received_oracle.
-    rewrite Hbs. apply Bool.andb_false_r.
-  Qed.
-
-  Lemma has_been_received_not_sent
-    (s : state C V)
-    (m : message C V)
-    (Hbr : has_been_received_oracle s m = true)
-    : has_been_sent_oracle s m = false.
-  Proof.
-    unfold has_been_received_oracle in Hbr.
-    apply Bool.andb_true_iff in Hbr.
-    destruct Hbr as [_ Hbr].
-    apply Bool.negb_true_iff in Hbr.
-    assumption.
-  Qed.
+  set_diff eq_dec (get_message_set s) (sent_messages s).
 
 End message_oracles.
 

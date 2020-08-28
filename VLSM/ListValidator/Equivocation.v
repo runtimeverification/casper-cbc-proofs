@@ -42,13 +42,6 @@ Context
                           rec_history child who (depth child)
     end.
 
-  Definition list_preceeds (m1 m2 : message) : bool :=
-    let (i1, s1) := m1 in
-    let (i2, s2) := m2 in
-    if eq_dec i1 i2
-    then inb sdec s1 (get_history s2 i1)
-    else false.
-  
   (* Definition list_message_equivocation_evidence : message_equivocation_evidence message index. *)
 
   Definition state_eqb (s1 s2 : state) : bool :=
