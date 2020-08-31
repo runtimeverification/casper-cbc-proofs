@@ -401,7 +401,119 @@ Context
           rewrite <- H1.
           reflexivity.
     Qed.
-
+    
+    Lemma unfold_history 
+      (s1 s2 : state)
+      (i : index)
+      (pref suff : list state)
+      (Hin : get_history s1 i = pref ++ [s2] ++ suff) :
+      suff = get_history s2 i.
+    Proof.
+      generalize dependent s1.
+      generalize dependent s2.
+      generalize dependent suff.
+      generalize dependent pref.
+      induction pref.
+      - intros. simpl in *.
+        unfold get_history in Hin.
+        destruct s1.
+        + discriminate Hin.
+        + unfold rec_history in Hin.
+          destruct (last_recorded index_listing is i).
+          * simpl in Hin. discriminate Hin.
+          * destruct (depth (Something b0 is0)) eqn : eq_d.
+            discriminate Hin.
+            inversion Hin.
+            unfold get_history.
+            rewrite depth_redundancy.
+            reflexivity.
+            specialize (depth_parent_child is0 b0 i).
+            intros.
+            rewrite eq_d in H.
+            unfold last_recorded.
+            lia.
+      - intros.
+        unfold get_history in Hin.
+        specialize (IHpref suff s2 a).
+        apply IHpref.
+        
+        destruct s1.
+        + discriminate Hin.
+        + unfold rec_history in Hin.
+          * destruct (last_recorded index_listing is i).
+            simpl in *.
+            discriminate Hin.
+            destruct (depth (Something b0 is0)) eqn : eq_d.
+            discriminate Hin.
+            inversion Hin.
+            unfold get_history.
+            unfold rec_history.
+            
+            rewrite depth_redundancy in H1.
+            unfold rec_history.
+            assumption.
+            specialize (depth_parent_child is0 b0 i).
+            intros.
+            rewrite eq_d in H.
+            unfold last_recorded.
+            lia.
+    Qed.
+    
+    Lemma history_incl_equiv_suffix
+      (s1 s2 : state)
+      (i : index)
+      (history1 := get_history s1 i)
+      (history2 := get_history s2 i) :
+      incl history1 history2 <-> 
+      exists (pref' : list state), history2 = pref' ++ history1.
+   Proof.
+    split.
+    - intros.
+      unfold incl in H.
+      destruct history1 eqn : eq_1. 
+      + simpl in *.
+        intros.
+        exists history2.
+        rewrite app_nil_r.
+        reflexivity.
+      + specialize (H s).
+        simpl in *.
+        assert (s = s \/ In s l). {
+          left. reflexivity.
+        }
+        
+        specialize (H H0).
+        apply in_split in H.
+        destruct H as [pref [suff Hsplit]].
+        unfold history2 in Hsplit.
+        specialize (unfold_history s2 s i pref suff Hsplit).
+        intros.
+        exists pref.
+        unfold history2.
+        rewrite Hsplit.
+        rewrite H.
+        
+        assert (get_history s i = l). {
+          unfold history1 in eq_1.
+          specialize (unfold_history s1 s i [] l eq_1).
+          intros.
+          symmetry.
+          assumption.
+        }
+        
+        rewrite H1.
+        reflexivity.
+      - intros.
+        destruct H as [pref Hconcat].
+        assert (incl history1 history1). {
+          apply incl_refl.
+        }
+        
+        apply incl_appr with (m := pref) in H.
+        rewrite <- Hconcat in H.
+        assumption.
+   Qed.
+    
     Definition state_le
       (s1 s2 : state)
       : Prop
