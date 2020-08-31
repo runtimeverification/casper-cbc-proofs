@@ -557,23 +557,3 @@ Instance VLSM_list_machine : VLSM_class LSM_list :=
   }.
 
 Definition VLSM_list : VLSM message := mk_vlsm VLSM_list_machine.
-
-  
-Lemma lv_state_eq_dec : EqDec state.
-  unfold EqDec.
-  intros x.
-  remember (depth x) as dpth_x.
-  generalize dependent x.
-  induction dpth_x using (well_founded_induction_type lt_wf).
-  intros.
-  
-  
-Proof.
-Admitted.
-
-End ListNode.
-
-
-
-
-
