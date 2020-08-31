@@ -263,7 +263,7 @@ dependent types [protocol_state] and [protocol_message].
 
     Definition protocol_message : Type :=
       { m : message | protocol_message_prop m }.
-   
+
     (* begin hide *)
 
     Lemma initial_is_protocol
@@ -745,7 +745,7 @@ decompose the above properties in proofs.
         intros tr Heq is Htr; subst. inversion Htr; subst.
         simpl in IHtr1. specialize (IHtr1 s H2). assumption.
     Qed.
-    
+
     Lemma first_transition_valid
       (s : state)
       (te : transition_item)
@@ -881,10 +881,10 @@ traces.
         rewrite list_prefix_map.
         rewrite list_prefix_nth; assumption.
     Qed.
-    
-        
+
+
     (* begin hide *)
-    
+
     Lemma protocol_transition_to
       (si : state)
       (middle : transition_item)
@@ -936,7 +936,7 @@ traces.
         rewrite <- H0.
         assumption.
     Qed.
-    
+
     Lemma can_emit_from_protocol_trace
       (si : state)
       (m : message)
@@ -944,7 +944,7 @@ traces.
       (Hprotocol: finite_protocol_trace si tr)
       (Hm : List.Exists (fun elem : transition_item => output elem = Some m) tr) :
       can_emit m.
-    
+
     Proof.
       rewrite Exists_exists in Hm.
       destruct Hm as [x [Hin Houtput]].

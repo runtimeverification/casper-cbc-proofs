@@ -32,7 +32,7 @@ messages, implementing a limited equivocation tolerance policy.
     (eq_V := strictly_comparable_eq_dec about_V)
     (message := State.message C V)
     .
-  
+
   Existing Instance eq_V.
 
   Existing Instance full_node_message_equivocation_evidence.

@@ -197,7 +197,7 @@ Proof.
       * apply IHl; assumption.
 Qed.
 
-Lemma existsb_first 
+Lemma existsb_first
   {A : Type}
   (l : list A)
   (f : A -> bool)
@@ -480,7 +480,7 @@ Fixpoint list_prefix
     | _,[] => []
     | S n, a :: l => a :: list_prefix l n
     end.
-    
+
 Lemma list_prefix_split
   {A : Type}
   (l left right: list A)
@@ -1165,14 +1165,14 @@ Qed.
 
 Check fold_right.
 
-Lemma union_fold 
+Lemma union_fold
   {A : Type}
   {eq_dec_a : EqDec A}
   (haystack : list (list A))
   (a : A) :
   In a (fold_right (set_union eq_dec_a) [] haystack)
-  <-> 
-  exists (needle : list A), (In a needle) /\ (In needle haystack). 
+  <->
+  exists (needle : list A), (In a needle) /\ (In needle haystack).
 Proof.
   split.
   - generalize dependent a.
@@ -1185,11 +1185,11 @@ Proof.
       unfold fold_right in H.
       rewrite set_union_iff in H.
       destruct H.
-      * exists a. 
-        split. 
-        assumption. 
-        simpl. 
-        left. 
+      * exists a.
+        split.
+        assumption.
+        simpl.
+        left.
         reflexivity.
       * unfold fold_right in IHhaystack.
         specialize (IHhaystack a0 H).
