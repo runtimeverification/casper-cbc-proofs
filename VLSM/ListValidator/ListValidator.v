@@ -557,3 +557,5 @@ Instance VLSM_list_machine : VLSM_class LSM_list :=
   }.
 
 Definition VLSM_list : VLSM message := mk_vlsm VLSM_list_machine.
+
+End ListNode.
