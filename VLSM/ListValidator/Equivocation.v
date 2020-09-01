@@ -1,4 +1,4 @@
-Require Import Bool List ListSet Reals FinFun.
+Require Import Bool List ListSet Reals FinFun Relations Relations_1 Sorting.
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
@@ -2503,4 +2503,117 @@ Context
            * rewrite state_eqb_eq.
              reflexivity.
       Qed.
+    
+    Lemma in_history_is_protocol
+      (s s': state)
+      (Hprotocol : protocol_state_prop preX s)
+      (Hin : In s'(get_history s index_self)) :
+      protocol_state_prop preX s'.
+    Proof.
+      assert (send_oracle s (index_self, s') = true). {
+        unfold send_oracle.
+        simpl.
+        destruct (idec index_self index_self).
+        - rewrite existsb_exists.
+          exists s'.
+          split.
+          assumption.
+          rewrite state_eqb_eq.
+          reflexivity.
+        - elim n. reflexivity.
+      }
+      
+      specialize (send_oracle_prop s Hprotocol (index_self, s')).
+      intros.
+      unfold has_been_sent_prop in H0.
+      unfold all_traces_have_message_prop in H0.
+      destruct H0 as [H0 _].
+      specialize (H0 H).
+      unfold protocol_state_prop in Hprotocol.
+      destruct Hprotocol as [om Hprotocol].
+      specialize (protocol_is_trace preX s om Hprotocol).
+      intros.
+      destruct H1.
+      - simpl in *.
+        unfold vinitial_state_prop in H1.
+        simpl in H1.
+        unfold initial_state_prop in H1.
+        destruct H1 as [cv Heqinit].
+        rewrite Heqinit in Hin.
+        unfold get_history in Hin.
+        unfold last_recorded in Hin.
+        rewrite project_all_bottom in Hin.
+        simpl in Hin.
+        exfalso.
+        assumption.
+      - destruct H1 as [si [tr [Htr [Hdest Hm]]]].
+        specialize (H0 si tr Htr).
+        
+        assert (last (map destination tr) si = s). {
+          specialize (@last_map (@transition_item message (type preX)) state destination).
+               intros.
+               unfold option_map in Hdest.
+               destruct (last_error tr) eqn : eq.
+                - inversion Hdest.
+                  unfold last_error in eq.
+                  destruct tr.
+                  + discriminate eq.
+                  + inversion eq.
+                  apply H1.
+                - discriminate Hdest.
+        }
+        
+        specialize (H0 H1).
+        rewrite Exists_exists in H0.
+        destruct H0 as [x [Hin_x Houtput]].
+        apply in_split in Hin_x.
+        destruct Hin_x as [l1 [l2 Hconcat]].
+        
+        remember (last (List.map destination l1) si) as prev_x.
+        destruct Htr.
+        specialize (protocol_transition_to preX si x tr l1 l2 Hconcat H0).
+        intros.
+        simpl in H3.
+        
+        unfold protocol_transition in H3.
+        destruct H3 as [Hvalid Htransition].
+        unfold protocol_valid in Hvalid.
+        destruct Hvalid as [Hneed Hother].
+        
+        assert (last (map destination l1) si = s'). {
+          simpl in *.
+          unfold vtransition in Htransition.
+          simpl in *.
+          destruct (l x) eqn : eq_l.
+          - inversion Htransition.
+            rewrite Houtput in H5.
+            inversion H5.
+            reflexivity.
+          - destruct (input x).
+            + inversion Htransition.
+              rewrite Houtput in H5.
+              discriminate H5.
+            + inversion Htransition.
+              rewrite Houtput in H5.
+              discriminate H5.
+        }
+        rewrite <- H3.
+        assumption.
+    Qed.
+    
+    
+    Lemma get_history_self_Lsorted_le
+      (s : state)
+      (Hprotocol : protocol_state_prop preX s) :
+      LocallySorted state_le (rev (get_history s index_self)).
+    Proof.
+      remember ((get_history s index_self)) as history.
+      generalize dependent s.
+      induction (rev history)  using rev_ind.
+      - intros.
+        apply LSorted_nil.
+      - intros.
+        simpl.  
+    Admitted.
+      
 End Equivocation.
