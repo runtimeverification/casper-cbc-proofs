@@ -279,6 +279,24 @@ Proof.
   symmetry; now apply in_correct.
 Qed.
 
+Definition inclb
+  {A : Type}
+  {Heq : EqDec A}
+  (l1 l2 : list A)
+  : bool
+  := forallb (fun x : A => inb eq_dec x l2) l1.
+
+Lemma incl_function {A} {Heq : EqDec A} : PredicateFunction2 (@incl A) (inclb).
+Proof.
+  intros l1 l2. unfold inclb. rewrite forallb_forall.
+  split; intros Hincl x Hx; apply in_correct; apply Hincl; assumption.
+Qed.
+
+Definition incl_correct {A} {Heq : EqDec A}
+  (l1 l2 : list A)
+  : incl l1 l2 <-> inclb l1 l2 = true
+  := incl_function l1 l2.
+  
 Lemma map_injective : forall A B (f : A -> B),
   Injective f -> Injective (map f).
 Proof.
@@ -1162,8 +1180,6 @@ Proof.
   - subst. elim Hneq. reflexivity.
   - assumption.
 Qed.
-
-Check fold_right.
 
 Lemma union_fold
   {A : Type}

@@ -1,4 +1,4 @@
-Require Import Bool List ListSet Reals FinFun Relations Relations_1 Sorting.
+Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting.
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
@@ -458,7 +458,37 @@ Context
             unfold last_recorded.
             lia.
     Qed.
-    
+
+    Lemma unfold_history_bottom
+      (s : state)
+      (i : index)
+      (Hnbp : project s i = Bottom)
+      : get_history s i = [].
+    Proof.
+      destruct s; try reflexivity; simpl in *.
+      unfold last_recorded. rewrite Hnbp. reflexivity.
+    Qed.
+
+    Lemma unfold_history_cons
+      (s : state)
+      (i : index)
+      (Hnbp : project s i <> Bottom)
+      : get_history s i = project s i :: get_history (project s i) i.
+    Proof.
+      assert (Hproject : exists suff, get_history s i = project s i :: suff).
+      { unfold get_history. unfold project. destruct s; try (elim Hnbp; reflexivity).
+        unfold last_recorded.
+        destruct (project_indexed index_listing is i) eqn: Hproject; try (elim Hnbp; assumption).
+        destruct (depth (Something b0 is0)) eqn:Hdepth.
+        - unfold depth in Hdepth. lia.
+        - exists (rec_history (last_recorded index_listing is0 i) i n).
+          reflexivity.
+      }
+      destruct Hproject as [suff Hproject].
+      specialize (unfold_history s (project s i) i [] suff Hproject) as Hunfold.
+      subst. assumption.
+    Qed.
+
     Lemma history_incl_equiv_suffix
       (s1 s2 : state)
       (i : index)
@@ -512,12 +542,45 @@ Context
         apply incl_appr with (m := pref) in H.
         rewrite <- Hconcat in H.
         assumption.
-   Qed.
-    
+    Qed.
+
+    Lemma history_no_self_reference
+      (s : state)
+      (i : index)
+      : ~ In s (get_history s i).
+    Proof.
+      intro Hs. apply in_split in Hs.
+      destruct Hs as [pref [suff Hs]].
+      specialize (unfold_history s s i pref suff Hs) as Hsuff.
+      subst suff.
+      assert (Hl : length(get_history s i) = length(pref ++ s :: get_history s i))
+        by (f_equal; assumption).
+      rewrite app_length in Hl. simpl in Hl. lia.
+    Qed.
+
     Definition state_le
       (s1 s2 : state)
       : Prop
       := forall (i : index), incl (get_history s1 i) (get_history s2 i).
+
+    Definition state_leb
+      (s1 s2 : state)
+      : bool
+      := forallb (fun i : index => inclb (get_history s1 i) (get_history s2 i)) index_listing.
+    
+    Lemma state_le_function : PredicateFunction2 state_le state_leb.
+    Proof.
+      intros s1 s2. unfold state_leb. rewrite forallb_forall.
+      split; intros Hle i.
+      - intros _. apply incl_function. apply Hle.
+      - apply incl_function. apply Hle. apply (proj2 Hfinite).
+    Qed.
+
+    Definition state_lt
+      (s1 s2 : state)
+      : Prop
+      := state_le s1 s2 /\
+      exists (i : index) (s : state), In s (get_history s2 i) /\ ~In s (get_history s1 i).
 
     Lemma state_le_refl
       (s1 : state)
@@ -536,6 +599,44 @@ Context
       apply incl_tran with (m := (get_history s2 i)); assumption.
     Qed.
 
+    Lemma state_le_preorder : PreOrder state_le.
+    Proof.
+      split.
+      - intro s. apply state_le_refl.
+      - intros s1 s2 s3. apply state_le_tran.
+    Qed.
+
+    Lemma state_lt_tran
+      (s1 s2 s3 : state)
+      (H12 : state_lt s1 s2)
+      (H23 : state_lt s2 s3)
+      : state_lt s1 s3.
+    Proof.
+      destruct H12 as [Hle12 _].
+      destruct H23 as [Hle23 [i [s [Hs Hns]]]].
+      specialize (state_le_tran _ _ _ Hle12 Hle23) as Hle13.
+      split; try assumption.
+      exists i. exists s.
+      split; try assumption.
+      intro H13. elim Hns.
+      apply Hle12. assumption.
+    Qed.
+
+    Lemma state_lt_irreflexive : Irreflexive state_lt.
+    Proof.
+      intros s Hlt.
+      destruct Hlt as [_ [i [si [Hin Hnin]]]].
+      elim Hnin. assumption.
+    Qed.
+
+    Lemma state_lt_strictorder : StrictOrder state_lt.
+    Proof.
+      split; try apply state_lt_irreflexive.
+      intros s1 s2 s3 H12 H23.
+      specialize (state_lt_tran s1 s2 s3 H12 H23).
+      intro; assumption.
+    Qed.
+
     Lemma state_le_bottom
       (s : state)
       : state_le Bottom s.
@@ -543,64 +644,92 @@ Context
       intro i. simpl. apply incl_nil_l.
     Qed.
 
-    Lemma state_le_transition
-      (s1 s2 : state)
-      (l : label)
-      (om1 om2 : option message)
-      (Hprotocol: protocol_transition preX l (s1, om1) (s2, om2))
-      : state_le s1 s2.
+    Lemma state_le_transition : protocol_transition_preserving preX state_le.
     Proof.
-     intro i.
-     unfold protocol_transition in Hprotocol.
-     destruct Hprotocol as [Hprotocol_valid Htransition].
-     simpl in *.
+      intro s1; intros.
+      intro i.
+      unfold protocol_transition in Hprotocol.
+      destruct Hprotocol as [Hprotocol_valid Htransition].
+      simpl in *.
 
-     assert (s1 <> Bottom). {
-       apply protocol_prop_no_bottom.
-       intuition.
-     }
+      assert (s1 <> Bottom). {
+        apply protocol_prop_no_bottom.
+        intuition.
+      }
 
-     destruct l eqn : eq.
-     - inversion Htransition.
-       destruct (eq_dec index_self i).
-       + rewrite history_disregards_cv.
-         specialize (history_append s1 s1).
-         intros.
-         specialize (H0 H H i eq_refl).
-         rewrite <- e in H0 at 1.
-         rewrite H0.
-         unfold In.
-         right.
-         assumption.
-      + rewrite history_disregards_cv.
-        specialize (history_oblivious s1 s1 i index_self n).
-        intros.
-        rewrite <- H0.
-        apply incl_refl.
-     -  destruct om1.
-        destruct (idec (fst m) i) eqn : dec_eq.
-        + inversion Htransition.
-          specialize (history_append s1 (snd m) H).
+      destruct l eqn : eq.
+      - inversion Htransition.
+        destruct (eq_dec index_self i).
+        + rewrite history_disregards_cv.
+          specialize (history_append s1 s1).
           intros.
-          destruct Hprotocol_valid as [Ha [Hb [Hc [Hd He]]]].
-          specialize (H0 Hd i).
-          rewrite e in Hc.
-          symmetry in Hc.
-          specialize (H0 Hc).
-          rewrite e.
+          specialize (H0 H H i eq_refl).
+          rewrite <- e in H0 at 1.
           rewrite H0.
-          apply incl_tl. apply incl_refl.
-        + inversion Htransition.
-          assert (get_history (update_state s1 (snd m) (fst m)) i = get_history s1 i). {
-            symmetry.
-            apply history_oblivious.
-            assumption.
-          }
-          rewrite H0.
-          apply incl_refl.
-        + inversion Htransition.
-          rewrite <- H1.
-          apply incl_refl.
+          unfold In.
+          right.
+          assumption.
+       + rewrite history_disregards_cv.
+         specialize (history_oblivious s1 s1 i index_self n).
+         intros.
+         rewrite <- H0.
+         apply incl_refl.
+      -  destruct om1.
+         destruct (idec (fst m) i) eqn : dec_eq.
+         + inversion Htransition.
+           specialize (history_append s1 (snd m) H).
+           intros.
+           destruct Hprotocol_valid as [Ha [Hb [Hc [Hd He]]]].
+           specialize (H0 Hd i).
+           rewrite e in Hc.
+           symmetry in Hc.
+           specialize (H0 Hc).
+           rewrite e.
+           rewrite H0.
+           apply incl_tl. apply incl_refl.
+         + inversion Htransition.
+           assert (get_history (update_state s1 (snd m) (fst m)) i = get_history s1 i). {
+             symmetry.
+             apply history_oblivious.
+             assumption.
+           }
+           rewrite H0.
+           apply incl_refl.
+         + inversion Htransition.
+           rewrite <- H1.
+           apply incl_refl.
+    Qed.
+
+    Lemma state_lt_transition : protocol_transition_preserving preX state_lt.
+    Proof.
+      intro; intros.
+      split; try (apply state_le_transition with l om1 om2; assumption).
+      destruct Hprotocol as [[Hs1 [Hom1 Hv]] Ht].
+      simpl in *. unfold vvalid in Hv. unfold vtransition in Ht. simpl in *.
+      specialize (protocol_no_bottom (exist _  _ Hs1)) as Hnb.
+      destruct l as [c |].
+      - inversion Ht; subst; clear Ht.
+        exists index_self. exists s1.
+        rewrite history_disregards_cv.
+        rewrite history_append; try assumption; try reflexivity.
+        split; try (left; reflexivity).
+        apply history_no_self_reference.
+      - destruct om1 as [m|]; inversion Ht; subst; clear Ht.
+        + exists (fst m). exists (snd m).
+          destruct Hv as [Hv [Hnbm Hi]]. symmetry in Hv.
+          rewrite history_append; try assumption; try reflexivity.
+          split; try (left; reflexivity).
+          destruct (project s1 (fst m)) eqn:Hs1m.
+          * specialize (unfold_history_bottom _ _ Hs1m) as H.
+            rewrite H. intro contra; inversion contra.
+          * assert (Hs1nb : project s1 (fst m) <> Bottom)
+            by (intro contra; rewrite Hs1m in contra; discriminate contra).
+            rewrite unfold_history_cons; try assumption.
+            rewrite Hs1m in *.
+            rewrite <- Hv in *.
+            rewrite <- unfold_history_cons; try assumption.
+            apply history_no_self_reference.
+        + inversion Hv.
     Qed.
 
     Lemma state_le_in_futures
@@ -608,22 +737,20 @@ Context
       (Hin : in_futures preX s1 s2)
       : state_le s1 s2.
     Proof.
-      unfold in_futures in Hin.
-      destruct Hin.
-      destruct H.
-      generalize dependent s1.
-      induction x; intros.
-      - simpl in *.
-        rewrite <- H0.
-        apply state_le_refl.
-      - inversion H. subst a x s'. clear H.
-        apply state_le_transition in H5.
-        apply state_le_tran with (s2 := s); try assumption.
-        apply IHx; try assumption.
-        rewrite map_cons in H0.
-        rewrite unroll_last in H0.
-        assumption.
+      apply (in_futures_preserving preX); try assumption; try apply state_le_transition.
+      apply state_le_preorder.
     Qed.
+
+    Lemma state_lt_in_futures
+      (s1 s2 : state)
+      (Hin : in_futures preX s1 s2)
+      (Hne : s1 <> s2)
+      : state_lt s1 s2.
+    Proof.
+      apply (in_futures_strict_preserving preX); try assumption.
+      - apply state_lt_strictorder.
+      - apply state_lt_transition.
+    Qed. 
 
     Lemma projection_in_history
       (s : state)
@@ -984,19 +1111,20 @@ Context
       intro j. rewrite get_history_all_bottom. apply incl_nil_l.
     Qed.
 
-    Lemma state_le_last_sent
+    Lemma state_lt_last_sent
       (s : state)
       (Hs : protocol_state_prop (pre_loaded_vlsm X) s)
-      : state_le (last_sent s) s.
+      (Hnb : last_sent s <> Bottom)
+      : state_lt (last_sent s) s.
     Proof.
       generalize dependent s.
-      remember (fun s => state_le (last_sent s) s) as P.
+      remember (fun s => last_sent s <> Bottom -> state_lt (last_sent s) s) as P.
       specialize (protocol_state_prop_ind (pre_loaded_vlsm X) P) as Hind.
       subst P.
       apply Hind; intros; clear Hind.
-      - inversion Hs. subst s. simpl. rewrite project_all_bottom .
-        apply state_le_bottom.
-      - intro j. unfold last_sent.
+      - inversion Hs. subst s. elim H.
+        unfold last_sent. simpl. apply project_all_bottom.
+      - unfold last_sent.
         destruct Ht as [[Hps [Hom Hv]] Ht].
         specialize (protocol_prop_no_bottom _ Hps) as Hnb.
         simpl in Ht. unfold vtransition in Ht. simpl in Ht.
@@ -1006,44 +1134,65 @@ Context
           subst s'.
           rewrite <- update_consensus_clean.
           rewrite (@project_same _ _ Hfinite); try assumption.
-          rewrite history_disregards_cv.
-          destruct (eq_dec index_self j).
+          repeat split
+          ; try (intro j; rewrite history_disregards_cv; destruct (eq_dec index_self j)).
           * subst j. rewrite history_append; try assumption; try reflexivity.
             apply incl_tl. apply incl_refl.
           * rewrite <- history_oblivious; try assumption. apply incl_refl.
+          * exists index_self. exists s.
+            split; try apply history_no_self_reference.
+            rewrite history_disregards_cv.
+            rewrite history_append; try assumption; try reflexivity.
+            left. reflexivity.
         + destruct om as [m|]; inversion Ht; clear Ht; subst s'.
           * destruct m as (im, sm); simpl in *.
             destruct Hv as [Hsim [Hsm Him]].
             rewrite (@project_different _ _ Hfinite); try assumption.
-            { destruct (eq_dec im j).
+            unfold last_sent in H.
+            rewrite (@project_different _ _ Hfinite) in H; try assumption.
+            { repeat split; try (intro j; destruct (eq_dec im j)).
             - subst im. rewrite history_append; auto.
-              apply incl_tl. apply Hs.
+              apply incl_tl. apply Hs. assumption.
             - rewrite <- history_oblivious; try assumption.
-              apply Hs.
+              apply Hs. assumption.
+            - exists index_self. exists (project s index_self).
+              split; try apply history_no_self_reference.
+              rewrite <- history_oblivious.
+              + rewrite unfold_history_cons; try assumption. left. reflexivity.
+              + intro. subst. elim Him. reflexivity.
             }
-          * apply Hs.
+          * apply Hs. assumption.
     Qed.
 
-    Lemma state_le_previously_sent
+    Lemma byzantine_message_self_id
       (m : message)
       (Hm : byzantine_message_prop X m)
-      (i := fst m)
-      (s := snd m)
-      : state_le (project s i) s.
+      : fst m = index_self /\ protocol_state_prop preX (snd m).
     Proof.
       unfold byzantine_message_prop in Hm.
       unfold can_emit in Hm.
-      unfold s in *; clear s.
-      unfold i in *; clear i.
       destruct m as (im, sm); simpl in *.
       destruct Hm as [(s, om) [l [s' [[Hs [Hom Hv]] Ht]]]].
-      specialize (state_le_last_sent s Hs) as Hs'.
       simpl in Hv. unfold vvalid in Hv. simpl in Hv.
       simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       destruct l as [c|].
       - inversion Ht. subst s' im sm; clear Ht.
-        apply Hs'.
+        split; try assumption. reflexivity.
       - destruct om as [m|]; inversion Ht.
+    Qed.
+
+    Lemma state_lt_previously_sent
+      (m : message)
+      (Hm : byzantine_message_prop X m)
+      (i := fst m)
+      (s := snd m)
+      (Hnb : project s i <> Bottom)
+      : state_lt (project s i) s.
+    Proof.
+      destruct (byzantine_message_self_id m Hm) as [Hi Hs].
+      unfold s in *; clear s.
+      unfold i in *; clear i. rewrite Hi in *.
+      apply state_lt_last_sent; assumption.
     Qed.
 
     (* If a state is present in some history,

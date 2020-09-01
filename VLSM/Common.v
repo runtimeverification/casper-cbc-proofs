@@ -1,5 +1,5 @@
 Require Import Nat Lia.
-Require Import List Streams ProofIrrelevance.
+Require Import List Streams RelationClasses Morphisms.
 Import ListNotations.
 
 From CasperCBC
@@ -334,6 +334,17 @@ _protocol_ transitions:
       :=
       protocol_valid l som
       /\  transition l som = som'.
+
+    Definition protocol_transition_preserving
+      (R : state -> state -> Prop)
+      : Prop
+      :=
+      forall
+        (s1 s2 : state)
+        (l : label)
+        (om1 om2 : option message)
+        (Hprotocol: protocol_transition l (s1, om1) (s2, om2)),
+        R s1 s2.          
 
 (**
   Next three lemmas show the two definitions above are strongly related.
@@ -1383,6 +1394,52 @@ This relation is often used in stating safety and liveness properties.*)
       exists (tr : list transition_item),
         finite_protocol_trace_from first tr /\
         last (List.map destination tr) first = second.
+
+    Lemma in_futures_preserving
+      (R : state -> state -> Prop)
+      (Hpre : PreOrder R)
+      (Ht : protocol_transition_preserving R)
+      (s1 s2 : state)
+      (Hin : in_futures s1 s2)
+      : R s1 s2.
+    Proof.
+      unfold in_futures in Hin.
+      destruct Hin.
+      destruct H.
+      generalize dependent s1.
+      induction x; intros.
+      - simpl in *.
+        rewrite <- H0.
+        apply reflexivity.
+      - inversion H. subst a x s'. clear H.
+        apply Ht in H5.
+        apply transitivity with (y := s); try assumption.
+        apply IHx; try assumption.
+        rewrite map_cons in H0.
+        rewrite unroll_last in H0.
+        assumption.
+    Qed.      
+
+    Instance eq_equiv : @Equivalence state eq := _.
+
+    Lemma in_futures_strict_preserving
+      (R : state -> state -> Prop)
+      (Hpre : StrictOrder R)
+      (Ht : protocol_transition_preserving R)
+      (s1 s2 : state)
+      (Hin : in_futures s1 s2)
+      (Hneq : s1 <> s2)
+      : R s1 s2.
+    Proof.
+      apply (StrictOrder_PreOrder eq_equiv) in Hpre.
+      - specialize (in_futures_preserving (relation_disjunction R eq) Hpre) as Hpreserve.
+        spec Hpreserve.
+        + intro; intros. left. apply (Ht s3 s4 l1 om1 om2 Hprotocol).
+        + spec Hpreserve s1 s2 Hin. destruct Hpreserve; try assumption.
+          elim Hneq. assumption.
+      - intros x1 x2 Heq. subst. intros y1 y2 Heq. subst.
+        split; intro; assumption.
+    Qed.
 
     Lemma in_futures_protocol_fst
       (first second : state)
