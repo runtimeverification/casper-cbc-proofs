@@ -614,6 +614,40 @@ Context
       : Prop
       := state_le s1 s2 /\
       exists (i : index) (s : state), In s (get_history s2 i) /\ ~In s (get_history s1 i).
+    
+    Definition state_ltb
+      (s1 s2 : state)
+      : bool
+      := state_leb s1 s2 &&
+      existsb
+        (fun i : index =>
+          existsb (fun s : state => negb (inb eq_dec s (get_history s1 i))) (get_history s2 i))
+        index_listing.
+    
+    Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
+    Proof.
+      intros s1 s2. unfold state_ltb.
+      rewrite andb_true_iff.
+      repeat split; destruct H as [Hle H]; try (apply state_le_function; assumption).
+      - destruct H as [i [s [Hs2 Hs1]]]. apply existsb_exists.
+        exists i. split; try apply (proj2 Hfinite).
+        apply existsb_exists. exists s. split; try assumption.
+        apply negb_true_iff.
+        destruct (inb eq_dec s (get_history s1 i)) eqn:H; try reflexivity.
+        elim Hs1. apply in_function in H. assumption.
+      - apply existsb_exists in H. destruct H as [i [_ H]].
+        apply existsb_exists in H. destruct H as [s [Hs2 Hs1]].
+        exists i. exists s. split; try assumption.
+        intro contra. apply in_correct in contra.
+        rewrite contra in Hs1. discriminate Hs1.
+    Qed.
+
+    Definition state_lt_equivocation : message_equivocation_evidence message index
+      :=
+      {|
+        sender := fst;
+        message_preceeds_fn := fun m1 m2 => state_ltb (snd m1) (snd m2)
+      |}.
 
     Lemma state_le_refl
       (s1 : state)

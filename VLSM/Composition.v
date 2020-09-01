@@ -445,6 +445,17 @@ Then <<X1>> is trace-included into <<X2>>.
         assumption.
     Qed.
 
+    Lemma constraint_subsumption_pre_loaded_incl
+      : VLSM_incl (machine (pre_loaded_vlsm X1)) (machine (pre_loaded_vlsm X2)).
+    Proof.
+      apply (basic_VLSM_incl (machine (pre_loaded_vlsm X1)) (machine (pre_loaded_vlsm X2)))
+      ; intros; try (assumption || reflexivity).
+      - destruct H as [_ [[_s Hom] _]]. exists _s.
+        apply constraint_subsumption_preloaded_protocol_prop. assumption.
+      - apply constraint_subsumption_preloaded_protocol_valid.
+        assumption.
+    Qed.
+
     End constraint_subsumption.
 
 (**

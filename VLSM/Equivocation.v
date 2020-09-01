@@ -42,25 +42,23 @@ Section Simple.
     Definition trace_has_message
       (message_selector : transition_item -> option message)
       (msg : message)
-      (tr : protocol_trace vlsm)
+      (tr : list (vtransition_item vlsm))
       : Prop
-      := exists (last : transition_item),
-         exists (prefix : list transition_item),
-          trace_prefix vlsm (proj1_sig tr) last prefix
-          /\ message_selector last = Some msg.
+      := List.Exists (fun item => message_selector item = Some msg) tr.
 
 (** The following property detects equivocation in a given trace for a given message. **)
 
     Definition equivocation_in_trace
-               (msg : message)
-               (tr : protocol_trace vlsm)
+      (msg : message)
+      (tr : list (vtransition_item vlsm))
       : Prop
       :=
-        exists (last : transition_item),
-        exists (prefix : list transition_item),
-          trace_prefix vlsm (proj1_sig tr) last prefix
-          /\  input last = Some msg
-          /\  ~ In (Some msg) (List.map output prefix).
+      exists
+        (prefix suffix : list transition_item)
+        (item : transition_item),
+        tr = prefix ++ item :: suffix
+        /\ input item = Some msg
+        /\ ~ In (Some msg) (List.map output prefix).
 
 (** We intend to give define several message oracles: [has_been_sent], [has_not_been_sent],
     [has_been_received] and [has_not_been_received]. To avoid repetition, we give
@@ -355,7 +353,7 @@ Section Composite.
           (Hlast : destination last = s),
           exists (m : message),
           (sender m = Some v) /\
-          equivocation_in_trace X m (build_trace_prefix_protocol X Hpr).
+          equivocation_in_trace X m (prefix ++ [last]).
 
         (** For the equivocation sum fault to be computable, we require that
             our is_equivocating property is decidable. The current implementation

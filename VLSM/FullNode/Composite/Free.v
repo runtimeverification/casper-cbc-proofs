@@ -364,11 +364,27 @@ Defined.
 
 Existing Instance full_node_message_equivocation_evidence.
 
+Lemma full_composed_free_evidence_of_equivocation
+  (pm1 pm2 : byzantine_message VLSM_full_composed_free)
+  (m1 := proj1_sig pm1)
+  (m2 := proj1_sig pm2)
+  (Heqv : equivocating_with m1 m2 = true)
+  (s : Common.state)
+  (tr : list transition_item)
+  (Htr : finite_protocol_trace (pre_loaded_vlsm VLSM_full_composed_free) s tr)
+  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free input m1 tr)
+  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free input m2 tr)
+  : Equivocation.equivocation_in_trace VLSM_full_composed_free m1 tr \/
+    Equivocation.equivocation_in_trace VLSM_full_composed_free m2 tr.
+Proof.
+Admitted.
+
 Instance VLSM_full_composed_free_message_equivocation_evidence
   : vlsm_message_equivocation_evidence V VLSM_full_composed_free.
 Proof.
   split.
   apply free_full_byzantine_message_preceeds_stict_order.
+  apply full_composed_free_evidence_of_equivocation.
 Defined.
 
 Parameter indices : list index.

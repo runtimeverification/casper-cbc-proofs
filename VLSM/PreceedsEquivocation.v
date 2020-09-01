@@ -7,6 +7,7 @@ From CasperCBC
     Preamble
     CBC.Equivocation
     VLSM.Common Composition
+    VLSM.Equivocation
     .
 
 (** * VLSM equivocation based-on full-node-like  [message_equivocation_evidence]
@@ -32,6 +33,18 @@ Section vlsm_message_equivocation_evidence.
         := message_preceeds_fn (proj1_sig pm1) (proj1_sig pm2) = true
     ; protocol_message_preceeds_strict_order
       : StrictOrder protocol_message_preceeds
+    ; evidence_of_equivocation
+        (pm1 pm2 : byzantine_message X)
+        (m1 := proj1_sig pm1)
+        (m2 := proj1_sig pm2)
+        (Heqv : equivocating_with m1 m2 = true)
+        (s : state)
+        (tr : list transition_item)
+        (Htr : finite_protocol_trace (pre_loaded_vlsm X) s tr)
+        (Hm1 : trace_has_message X input m1 tr)
+        (Hm2 : trace_has_message X input m2 tr)
+        : equivocation_in_trace X m1 tr
+        \/ equivocation_in_trace X m2 tr
     }.
 
 End vlsm_message_equivocation_evidence.
@@ -61,6 +74,7 @@ Section composite_preceeds_equivocation.
         [ protocol_message_preceeds2_irreflexive
           protocol_message_preceeds2_transitive
         ]
+        Heqv
       ].
     specialize
       (constraint_subsumption_byzantine_message_prop
@@ -87,6 +101,17 @@ Section composite_preceeds_equivocation.
           H12
           H23
         ).
+      assumption.
+    - intros [m1 Hm1] [m2 Hm2]. simpl. intros.
+      assert (Hm1': byzantine_message_prop X2 m1)
+        by (apply constraint_subsumption_byzantine_message_prop with constraint1; assumption).
+      assert (Hm2': byzantine_message_prop X2 m2)
+        by (apply constraint_subsumption_byzantine_message_prop with constraint1; assumption).
+      specialize (constraint_subsumption_pre_loaded_incl IM i0 constraint1 constraint2 Hsubsumption (@Finite _ (type X1) s tr) Htr)
+        as Htrace'.
+      simpl in Htrace'.
+      specialize (Heqv (exist _ _ Hm1') (exist _ _ Hm2')). simpl in Heqv.
+      specialize (Heqv Heqv0 s tr Htrace' Hm0 Hm3).
       assumption.
   Qed.
 
