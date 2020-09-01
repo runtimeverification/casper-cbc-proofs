@@ -498,7 +498,29 @@ Context
       : s1 = project s i
       /\ ls = get_history (project s i) i.
     Proof.
-    Admitted.
+      destruct (project s i) eqn : eq_project.
+      - unfold get_history in Hcons.
+        destruct s.
+        discriminate Hcons.
+        unfold last_recorded in Hcons.
+        unfold rec_history in Hcons.
+        unfold project in eq_project.
+        rewrite eq_project in Hcons.
+        simpl in Hcons.
+        discriminate Hcons.
+      - specialize (unfold_history_cons s i).
+        intros.
+        spec H.
+        rewrite eq_project.
+        intuition.
+        discriminate H0.
+        rewrite Hcons in H.
+        inversion H.
+        split.
+        assumption.
+        rewrite eq_project.
+        reflexivity.
+    Qed.
 
     Lemma history_incl_equiv_suffix
       (s1 s2 : state)
@@ -2765,6 +2787,18 @@ Context
       (s1 s2 : state)
       : Prop
       := state_lt s2 s1.
+      
+    Lemma state_gt_tran
+      (s1 s2 s3 : state)
+      (H12 : state_gt s1 s2)
+      (H23 : state_gt s2 s3)
+      : state_gt s1 s3.
+    Proof.
+      unfold state_gt in *.
+      specialize (state_lt_tran s3 s2 s1).
+      intros.
+      intuition.
+    Qed.
 
     Lemma get_history_self_Lsorted_le
       (s : state)
@@ -2807,9 +2841,17 @@ Context
       (Hprotocol : protocol_state_prop preX s)
       (Hs1 : In s1 (get_history s index_self))
       (Hs2 : In s2 (get_history s index_self))
-      : state_lt s1 s2 \/ state_lt s2 s1.
+      : s1 = s2 \/ state_lt s1 s2 \/ state_lt s2 s1.
     Proof.
-    Admitted.
-
-      
+      remember (get_history s index_self) as history.
+      specialize (lsorted_pair_wise_unordered history state_gt).
+      intros.
+      spec H.
+      rewrite Heqhistory.
+      apply get_history_self_Lsorted_le.
+      assumption.
+      specialize (H state_gt_tran s1 s2 Hs1 Hs2).
+      unfold state_gt in H.
+      intuition.
+    Qed.
 End Equivocation.
