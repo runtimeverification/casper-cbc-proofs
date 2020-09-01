@@ -313,10 +313,10 @@ Section proper_sent_received.
           intros x Hx; apply set_add_iff. right. assumption.
   Qed.
 
-  Lemma sent_messages_in_futures
+  Lemma has_been_sent_in_futures
     (s1 s2 : state C V)
     (Hs : in_futures bvlsm s1 s2)
-    : incl (sent_messages s1) (sent_messages s2).
+    : incl (State.sent_messages s1) (State.sent_messages s2).
   Proof.
     unfold in_futures in Hs. destruct Hs as [tr [Htr Hs2]].
     generalize dependent s2. generalize dependent s1.
@@ -325,12 +325,12 @@ Section proper_sent_received.
     - inversion Htr. subst a s' tl.
       rewrite map_cons in Hs2. rewrite unroll_last in Hs2. simpl in Hs2.
       specialize (IHtr s H2 s2 Hs2).
-      apply incl_tran with (sent_messages s); try assumption.
+      apply incl_tran with (State.sent_messages s); try assumption.
       clear -H3.
       destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       destruct s1 as (msgs, final).
       destruct l as [c|].
-      + inversion Ht; subst; clear Ht. unfold sent_messages. simpl.
+      + inversion Ht; subst; clear Ht. unfold State.sent_messages. simpl.
         destruct final as [m|]; subst; simpl in *; try apply incl_nil_l.
         destruct m as (c0, v0, j0). intros m Hm.
         apply set_add_iff. right. assumption.
@@ -360,44 +360,23 @@ Section proper_sent_received.
         simpl. intros m Hm. apply set_add_iff. right. assumption.
   Qed.
 
-  Lemma has_been_sent_in_futures
-    (s1 s2 : state C V)
-    (Hs : in_futures bvlsm s1 s2)
-    (m : message)
-    (Hm : has_been_sent_oracle s1 m = true)
-    : has_been_sent_oracle s2 m = true.
-  Proof.
-    unfold has_been_sent_oracle in *.
-    pose (proj2 (in_correct (sent_messages s1) m)) as Hin1.
-    specialize (Hin1 Hm).
-    pose (proj1 (in_correct (sent_messages s2) m)) as Hin2.
-    apply Hin2.
-    pose (sent_messages_in_futures s1 s2 Hs) as Hsent.
-    apply Hsent. assumption.
-  Qed.
-
   Lemma has_been_sent_protocol_transition
     (l : vlabel bvlsm)
     (s1 s2 : state C V)
     (iom oom : option message)
     (Hpt : protocol_transition bvlsm l (s1, iom) (s2, oom))
     (m : message)
-    (Hs1 : has_been_sent_oracle s1 m = false)
-    : has_been_sent_oracle s2 m = true <-> oom = Some m.
+    (Hs1 : ~ In m (State.sent_messages s1))
+    : In m (State.sent_messages s2) <-> oom = Some m.
   Proof.
     destruct Hpt as [_ Ht]. simpl in Ht.
     unfold vtransition in Ht. simpl in Ht.
     destruct s1 as (msgs, final).
-    unfold has_been_sent_oracle in *.
-    pose (in_correct' (sent_messages (msgs, final)) m)  as Hnin.
-    rewrite <- Hnin in Hs1.
-    pose (in_correct (sent_messages s2) m)  as Hin.
-    rewrite <- Hin.
     destruct l as [c|]; inversion Ht; subst.
-    + unfold sent_messages. simpl.  split; intro H.
+    + unfold State.sent_messages. simpl.  split; intro H.
       * apply set_add_iff in H.
         destruct H as [Heq | H]; subst; try reflexivity.
-        elim Hs1. unfold sent_messages. simpl.
+        elim Hs1. unfold State.sent_messages. simpl.
         destruct final; simpl in *; assumption.
       * inversion H; subst.
         apply set_add_iff. left. reflexivity.
@@ -417,7 +396,7 @@ Section proper_sent_received.
     (Hitem: In item tr)
     (Hm: output item = Some m)
     (Hs: last (map destination tr) is = s)
-    : has_been_sent_oracle s m = true.
+    : In m (State.sent_messages s).
   Proof.
     apply in_split in Hitem.
     destruct Hitem as [l1 [l2 Hitem]]. subst tr.
@@ -427,7 +406,7 @@ Section proper_sent_received.
     specialize (Htr_app Htr).
     clear Htr. destruct Htr_app as [_ Htr].
     inversion Htr. subst tl item. simpl in Hm. subst oom.
-    assert (Hm0 : has_been_sent_oracle s0 m = true).
+    assert (Hm0 : In m (State.sent_messages s0)).
     { clear -H3. destruct H3 as [_ Ht].
       simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       destruct
@@ -437,11 +416,8 @@ Section proper_sent_received.
         is)
         as (msgs, final).
       destruct l as [c|].
-      - unfold has_been_sent_oracle.
-        pose (proj1 (in_correct (sent_messages s0) m)) as Hin.
-        apply Hin.
-        inversion Ht; subst; clear Ht.
-        unfold sent_messages. simpl.
+      - inversion Ht; subst; clear Ht.
+        unfold State.sent_messages. simpl.
         apply set_add_iff. left. reflexivity.
       - destruct iom as [msg|]; inversion Ht.
     }
@@ -458,9 +434,9 @@ Section proper_sent_received.
   Lemma has_been_sent_witness
     (s: state C V)
     (m: message)
-    (Horacle: has_been_sent_oracle s m = true)
+    (Horacle: In m (State.sent_messages s))
     (start: Common.state)
-    (Hstart: has_been_sent_oracle start m = false)
+    (Hstart: ~In m (State.sent_messages start))
     (prefix: list transition_item)
     (Hprefix: finite_protocol_trace_from (pre_loaded_vlsm vlsm) start prefix)
     (Hlast: last (map destination prefix) start = s)
@@ -469,16 +445,15 @@ Section proper_sent_received.
     generalize dependent start.
     induction prefix; intros.
     + inversion Hprefix; subst.
-      simpl in Horacle. rewrite Hstart in Horacle. discriminate Horacle.
+      simpl in Horacle. elim Hstart. assumption.
     + rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
       inversion Hprefix; subst. simpl in *.
       destruct oom as [om|]; try destruct (eq_dec om m); try subst om.
       * exists (@Build_transition_item message VLSM_type_full_validator l iom s0 (@Some message m)).
         split; try reflexivity.
         left. reflexivity.
-      * assert (Hs0 : has_been_sent_oracle s0 m = false).
-        { apply not_true_is_false.
-          intro Hbs.
+      * assert (Hs0 : ~In m (State.sent_messages s0)).
+        { intro Hbs.
           apply (has_been_sent_protocol_transition _ _ _ _ _ H3 _ Hstart) in Hbs.
           elim n.
           inversion Hbs. reflexivity.
@@ -488,9 +463,8 @@ Section proper_sent_received.
         exists x.
         split; try assumption.
         right. assumption.
-      * assert (Hs0 : has_been_sent_oracle s0 m = false).
-        { apply not_true_is_false.
-          intro Hbs.
+      * assert (Hs0 : ~In m (State.sent_messages s0)).
+        { intro Hbs.
           apply (has_been_sent_protocol_transition _ _ _ _ _ H3 _ Hstart) in Hbs.
           discriminate Hbs.
         }
@@ -501,29 +475,35 @@ Section proper_sent_received.
         right. assumption.
   Qed.
 
+  Lemma has_been_sent_in_trace_rev
+    (s: state C V)
+    (m: message)
+    (Horacle: In m (State.sent_messages s))
+    (is : state C V)
+    (tr: list transition_item)
+    (Htr: finite_protocol_trace bvlsm is tr)
+    (Hlast: last (map destination tr) is = s)
+    : exists item : transition_item, In item tr /\ output item = Some m.
+  Proof.
+    destruct Htr as [Htr Hinit].
+    apply has_been_sent_witness with s is; try assumption.
+    inversion Hinit. intro. contradiction H0.
+  Qed.
+
   Lemma has_been_received_in_futures
     (s1 s2 : state C V)
     (Hs : in_futures bvlsm s1 s2)
-    (m : message)
-    (Hm : has_been_received_oracle s1 m = true)
-    : has_been_received_oracle s2 m = true.
+    : incl (State.received_messages s1) (State.received_messages s2).
   Proof.
-    unfold has_been_received_oracle in *.
-    apply andb_true_iff in Hm.
+    unfold State.received_messages.
+    intros m Hm. apply set_diff_iff in Hm. apply set_diff_iff.
     destruct Hm as [Hm Hnm].
-    apply negb_true_iff in Hnm.
-    pose (proj2 (in_correct (get_message_set s1) m)) as Hin1.
-    apply Hin1 in Hm.
-    pose (get_messages_in_futures s1 s2 Hs) as Hsent.
-    specialize (Hsent _ Hm).
-    apply in_correct in Hsent.
-    apply andb_true_iff.
+    specialize (get_messages_in_futures s1 s2 Hs _ Hm) as Hm1.
     split; try assumption.
-    apply negb_true_iff.
-    destruct (has_been_sent_oracle s2 m) eqn:Hm2; try reflexivity.
+    intro Hsm; elim Hnm.
     destruct Hs as [tr [Htr Hs2]].
     destruct
-      (has_been_sent_witness s2 m Hm2 s1 Hnm tr Htr Hs2)
+      (has_been_sent_witness s2 m Hsm s1 Hnm tr Htr Hs2)
       as [item [Hitem Hm']].
     apply in_split in Hitem. destruct Hitem as [l1 [l2 Hitem]].
     subst tr.
@@ -565,64 +545,150 @@ Section proper_sent_received.
     - destruct iom as [msg|]; inversion Ht.
   Qed.
 
-  Lemma VLSM_full_validator_proper_sent
-    (s : state C V)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_been_sent_prop vlsm has_been_sent_oracle s m.
+  Lemma last_state_empty_segment
+    (start: Common.state)
+    (prefix: list transition_item)
+    (Hprefix: finite_protocol_trace_from bvlsm start prefix)
+    (Hlast: last (map destination prefix) start = pair [] None)
+    (item : transition_item)
+    (Hitem : In item prefix)
+    : input item = None /\ output item = None /\ destination item = pair [] None /\ l item = None.
   Proof.
-    unfold has_been_sent_prop. unfold all_traces_have_message_prop.
-    split.
-    - intros Horacle start prefix Hprefix Hlast.
-      apply Exists_exists.
-      destruct Hprefix as [Hprefix Hinit].
-      assert (Hstart : has_been_sent_oracle start m = false)
-        by (inversion Hinit; reflexivity).
-      clear -Hprefix Horacle Hstart Hlast bvlsm.
-      apply has_been_sent_witness with s start; assumption.
-    - intros.
-      destruct Hs as [_om Hs].
-      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + exfalso.
-        assert (Htrs : finite_protocol_trace bvlsm s []).
-        { split; try assumption. constructor. exists _om. assumption. }
-        specialize (H s [] Htrs eq_refl).
-        apply Exists_exists in H. destruct H as [x [Hin _]]. inversion Hin.
-      + assert (Hlst : last (map destination tr) is = s).
-        { destruct tr as [|i tr]; inversion Hlsts.
-          apply last_map.
-        }
-        specialize (H is tr Htr Hlst).
-        apply Exists_exists in H.
-        destruct H as [item [Hitem Hm]].
-        apply has_been_sent_in_trace with is tr item; assumption.
+    induction prefix using rev_ind.
+    - inversion Hitem.
+    - apply in_app_iff in Hitem.
+      rewrite map_app in Hlast.
+      simpl in Hlast. rewrite last_last in Hlast.
+      apply finite_protocol_trace_from_app_iff in Hprefix.
+      destruct Hprefix as [Hprefix Hx].
+      specialize (IHprefix Hprefix).
+      inversion Hx. subst s' x tl.
+      simpl in Hlast. subst s.
+      destruct H3 as [Hv Ht].
+      simpl in Ht. unfold vtransition in Ht. simpl in Ht.
+      destruct
+        (@last (state C V)
+        (@map (@transition_item message VLSM_type_full_validator)
+           (state C V) (@destination message VLSM_type_full_validator)
+           prefix) start)
+        as (msgs, final) eqn:Hlast.
+      destruct l as [c|]; inversion Ht.
+      destruct iom as [msg|]; inversion Ht; subst.
+      + specialize (set_add_not_empty eq_dec msg msgs) as Hempty. elim Hempty. assumption.
+      + clear Ht H2 H0. specialize (IHprefix Hlast).
+        destruct Hitem as [Hin |[Heq |Hfalse]]; try contradiction Hfalse.
+        * specialize (IHprefix Hin). assumption.
+        * subst item. simpl. repeat split; reflexivity.
   Qed.
 
-  Lemma has_been_sent_in
+  Lemma last_state_empty_trace
+    (is : state C V)
+    (tr: list transition_item)
+    (Htr: finite_protocol_trace bvlsm is tr)
+    (Hlast: last (map destination tr) is = pair [] None)
+    (item : transition_item)
+    (Hitem : In item tr)
+    : input item = None /\ output item = None /\ destination item = pair [] None /\ l item = None.
+  Proof.
+    destruct Htr as [Htr _].
+    specialize (last_state_empty_segment is tr Htr Hlast item Hitem) as H.
+    assumption.
+  Qed.
+
+  Lemma sent_messages_prop
     (s : state C V)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    (Hbs : has_been_sent_oracle s m = true)
-    : In m (get_message_set s).
+    : In m (State.sent_messages s) <->
+    exists (sm : sent_messages vlsm s), proj1_sig sm = m.
   Proof.
-    pose (VLSM_full_validator_proper_sent s Hs m) as Hps.
-    unfold has_been_sent_prop in Hps. unfold all_traces_have_message_prop in Hps.
-    simpl in Hps. rewrite Hps in Hbs. clear Hps.
+    destruct Hs as [_om Hs].
+    pose (protocol_is_trace bvlsm s _om Hs) as Htr.
+    destruct Htr as [His | [is [tr [Htr [Hdest _]]]]]; split; intros
+    ; try (inversion His; subst s; inversion H)
+    ; try assert (Hlst : last (List.map destination tr) is = s)
+      by (destruct tr as [|i tr]; inversion Hdest; apply last_map)
+    .
+    - destruct x as [m0 Hm0]. unfold selected_message_exists_in_some_traces in Hm0.
+      destruct Hm0 as [is [tr [Htr [Hlst Hex]]]]. simpl in *.
+      apply Exists_exists in Hex.
+      destruct Hex as [item [Hitem Hout]].
+      specialize (last_state_empty_trace is tr Htr Hlst item Hitem).
+      intros [_ [Hnout _]].
+      rewrite Hnout in Hout. discriminate Hout.
+    - assert (Hm : selected_message_exists_in_some_traces vlsm output s m).
+      { exists is. exists tr. exists Htr. exists Hlst.
+        apply Exists_exists.
+        apply (has_been_sent_in_trace_rev s m H is tr Htr Hlst).
+      }
+      exists (exist _ m Hm). reflexivity.
+    - destruct H as [[m0 Hm] Heq].
+      simpl in Heq. subst m0.
+      destruct Hm as [ism [trm [Htrm [Hlastm Hexistm]]]].
+      apply Exists_exists in Hexistm.
+      destruct Hexistm as [item [Hin Hout]].
+      apply (has_been_sent_in_trace s m ism trm Htrm item Hin Hout Hlastm).
+  Qed.
+
+  Lemma VLSM_full_validator_sent_consistency
+    (s : vstate vlsm)
+    (Hs : protocol_state_prop bvlsm s)
+    (m : message)
+    : selected_message_exists_in_some_traces vlsm output s m <->
+    selected_message_exists_in_all_traces vlsm output s m.
+  Proof.
+    specialize (sent_messages_prop s Hs m) as Hin.
+    split; intros.
+    - intro is; intros.
+      apply proj2 in Hin.
+      spec Hin; try (exists (exist _ m H); reflexivity).
+      specialize (has_been_sent_in_trace_rev s m Hin is tr Htr Hlast) as Hex.
+      apply Exists_exists. assumption.
+    - destruct Hs as [_om Hs].
+      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
+      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
+      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit output m) as Hsm.
+        elim Hsm. assumption.
+      + exists is. exists tr. exists Htr.
+        assert (Hlst : last (List.map destination tr) is = s).
+        { destruct tr as [|i tr]; inversion Hlsts. apply last_map. }
+        exists Hlst.
+        specialize (H is tr Htr Hlst). assumption.
+  Qed.
+
+  Instance VLSM_full_validator_computable_sent_messages
+    : computable_sent_messages vlsm
+    :=
+    { sent_messages_fn := State.sent_messages;
+      sent_messages_full := sent_messages_prop;
+      sent_messages_consistency := VLSM_full_validator_sent_consistency
+    }.
+
+  Definition VLSM_full_validator_has_been_sent
+    : has_been_sent_capability vlsm
+    :=
+    computable_sent_messages_has_been_sent_capability vlsm.
+
+  Lemma get_sent_messages
+    (s : state C V)
+    (Hs : protocol_state_prop bvlsm s)
+    : incl (State.sent_messages s) (get_message_set s).
+  Proof.
+    intros m Hm.
+    apply sent_messages_prop in Hm; try assumption.
+    destruct Hm as [[m0 Hm] Heq]. simpl in Heq. subst m0.
+    apply VLSM_full_validator_sent_consistency in Hm; try assumption.
     destruct Hs as [_om Hs].
     pose (protocol_is_trace bvlsm s _om Hs) as Htr.
     destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-    + exfalso.
-      assert (Htrs : finite_protocol_trace bvlsm s []).
-      { split; try assumption. constructor. exists _om. assumption. }
-      specialize (Hbs s [] Htrs eq_refl).
-      apply Exists_exists in Hbs. destruct Hbs as [x [Hin _]]. inversion Hin.
+    + elim (selected_message_exists_in_all_traces_initial_state vlsm s Hinit output m).
+      assumption.
     + assert (Hlst : last (map destination tr) is = s).
       { destruct tr as [|i tr]; inversion Hlsts.
         apply last_map.
       }
-      specialize (Hbs is tr Htr Hlst).
-      apply Exists_exists in Hbs. destruct Hbs as [item [Hitem Hm]].
+      specialize (Hm is tr Htr Hlst).
+      apply Exists_exists in Hm. destruct Hm as [item [Hitem Hm]].
       apply in_split in Hitem.
       destruct Hitem as [l1 [l2 Hitem]]. subst tr.
       pose (finite_protocol_trace_from_app_iff bvlsm is l1 (item :: l2)) as Htr_app.
@@ -656,7 +722,7 @@ Section proper_sent_received.
     (Hitem: In item tr)
     (Hm: input item = Some m)
     (Hs: last (map destination tr) is = s)
-    : has_been_received_oracle s m = true.
+    : In m (State.received_messages s).
   Proof.
     apply in_split in Hitem.
     destruct Hitem as [l1 [l2 Hitem]]. subst tr.
@@ -680,289 +746,152 @@ Section proper_sent_received.
       assumption.
     }
     apply has_been_received_in_futures with s0; try assumption.
-    pose (has_been_sent_protocol_transition _ _ _ _ _ H3) as Hbspt.
-    specialize (Hbspt m).
+    specialize (has_been_sent_protocol_transition _ _ _ _ _ H3 m) as Hbspt.
     apply protocol_transition_inv_in in H3.
     destruct H3 as [Hs0' [Hoom [Hnin [Hincl [Hsl1 [Hm Hps0]]]]]].
-    destruct (has_been_sent_oracle sl1 m) eqn:Hnbs.
+    destruct (in_dec eq_dec m (State.sent_messages sl1)).
     - exfalso.
-      apply has_been_sent_in in Hnbs; try assumption.
+      apply get_sent_messages in i; try assumption.
       elim Hnin. assumption.
-    - specialize (Hbspt eq_refl). subst oom.
-      clear Hnbs.
-      assert (Hnbs : has_been_sent_oracle s0 m = false).
-      { destruct (has_been_sent_oracle s0 m); try reflexivity.
-        apply proj1 in Hbspt. specialize (Hbspt eq_refl). discriminate Hbspt.
+    - specialize (Hbspt n). subst oom.
+      assert (Hnbs : ~In m (State.sent_messages s0)).
+      { destruct (in_dec eq_dec m (State.sent_messages s0)); try assumption.
+        apply Hbspt in i. discriminate i.
       }
-     unfold has_been_received_oracle.
-     apply andb_true_iff.
-     rewrite negb_true_iff.
-     split; try assumption.
-     pose (proj1 (in_correct (get_message_set s0) m)) as Hin.
-     apply Hin.
-     subst s0. simpl. apply set_add_iff. left. reflexivity.
+      unfold State.received_messages.
+      apply set_diff_iff. split; try assumption.
+      subst s0. simpl.
+      apply set_add_iff. left. reflexivity.
   Qed.
 
-  Lemma get_sent_messages
-    (s : state C V)
-    (Hs : protocol_state_prop bvlsm s)
-    : incl (sent_messages s) (get_message_set s).
+  Lemma has_been_received_in_trace_rev
+    (s: state C V)
+    (m: message)
+    (Horacle: In m (State.received_messages s))
+    (is : state C V)
+    (tr: list transition_item)
+    (Htr: finite_protocol_trace bvlsm is tr)
+    (Hlast: last (map destination tr) is = s)
+    : exists item : transition_item, In item tr /\ input item = Some m.
   Proof.
-    intros m Hm.
-    apply has_been_sent_in; try assumption.
-    apply in_correct in Hm.
-    assumption.
-  Qed.
-
-  Definition has_not_been_sent_oracle
-    (s : state C V)
-    (m : message)
-    : bool
-    :=
-    negb (has_been_sent_oracle s m).
-
-  Lemma VLSM_full_validator_proper_not_sent
-    (s : state C V)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_not_been_sent_prop vlsm has_not_been_sent_oracle s m.
-  Proof.
-    unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
-    unfold has_not_been_sent_oracle. rewrite negb_true_iff.
-    split.
-    - intros.
-      rewrite <- Forall_Exists_neg.
-      apply Forall_forall.
-      intros item Hitem Hm.
-      pose (has_been_sent_in_trace s m start tr Htr item Hitem Hm Hlast).
-      rewrite e in H. discriminate H.
-    - pose (VLSM_full_validator_proper_sent s Hs m) as Hsent.
-      intro H. destruct Hs as [_om Hs].
-      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + inversion Hinit. unfold has_been_sent_oracle. unfold sent_messages. unfold inb.
-        reflexivity.
-      + assert (Hlst : last (map destination tr) is = s).
-        { destruct tr as [|i tr]; inversion Hlsts.
-          apply last_map.
-        }
-        specialize (H is tr Htr Hlst).
-        destruct (has_been_sent_oracle s m) eqn:Hbs; try reflexivity.
-        exfalso.
-        unfold has_been_sent_prop in Hsent.
-        unfold all_traces_have_message_prop in Hsent.
-        rewrite Hsent in Hbs.
-        specialize (Hbs is tr Htr Hlst).
-        elim H. assumption.
-  Qed.
-
-  Definition has_been_sent_oracle' : state_message_oracle (VLSM_full_validator v)
-    := has_been_sent_oracle.
-
-  Definition VLSM_full_validator_has_been_sent
-    : has_been_sent_capability (VLSM_full_validator v)
-    :=
-    {| has_been_sent := has_been_sent_oracle'
-     ; proper_sent := VLSM_full_validator_proper_sent
-     ; proper_not_sent := VLSM_full_validator_proper_not_sent
-    |}.
-
-  Lemma VLSM_full_validator_proper_received
-    (s : state C V)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_been_received_prop vlsm has_been_received_oracle s m.
-  Proof.
-    unfold has_been_received_prop. unfold all_traces_have_message_prop.
-    split; intros.
-    - apply Exists_exists.
-      apply andb_true_iff in H.
-      destruct H as [Hin Hns].
-      apply negb_true_iff in Hns.
-      pose (in_correct (get_message_set s) m) as Hinc. apply Hinc in Hin.
+      apply set_diff_iff in Horacle.
+      destruct Horacle as [Hin Hns].
       destruct Htr as [Htr Hinit].
-      assert (Hstart : ~In m (get_message_set start)).
+      assert (Hstart : ~In m (get_message_set is)).
       { inversion Hinit. simpl. intro n. contradiction n. }
       clear -Hin Hns Htr Hlast Hstart bvlsm.
-      generalize dependent start.
+      generalize dependent is.
       induction tr; intros.
-      + simpl in Hlast. subst start. elim Hstart. assumption.
-      + inversion Htr. clear Htr. subst s' a tl.
+      + simpl in Hlast. subst is. elim Hstart. assumption.
+      + inversion Htr. subst s' a tl.
+        assert (Hlast' := Hlast).
         rewrite map_cons in Hlast. rewrite unroll_last in Hlast. simpl in Hlast.
         assert (Hfutures : in_futures bvlsm s0 s)
           by (exists tr; split; assumption).
-        assert (Hnbs : has_been_sent_oracle s0 m = false).
-        { destruct (has_been_sent_oracle s0 m) eqn:Hs0; try reflexivity.
-          apply (has_been_sent_in_futures s0 s Hfutures) in Hs0.
-          rewrite Hns in Hs0. discriminate Hs0.
+        assert (Hnbs : ~In m (State.sent_messages s0)).
+        { destruct (in_dec eq_dec  m (State.sent_messages s0)); try assumption.
+          apply (has_been_sent_in_futures s0 s Hfutures) in i.
+          elim Hns. assumption.
         }
-        specialize (IHtr s0 H2 Hlast).
+        specialize (IHtr s0 H2).
         destruct (in_dec eq_dec m (get_message_set s0)).
-        * destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
-          exists {| l := l; input := iom; destination := s0; output := oom |}.
-          split; try (left; reflexivity). simpl.
-          destruct start as (msgs, final).
-          { destruct l as [c|].
-          - inversion Ht. subst. clear Ht.
-            simpl in *.
-            apply set_add_iff in i.
-            destruct i as [i | i]; try (elim Hstart; assumption).
-            subst m.
-            clear -Hnbs. exfalso.
-            unfold has_been_sent_oracle in Hnbs. unfold sent_messages in Hnbs.
-            simpl in Hnbs.
-            destruct final as [m|].
-            + pose
-              (proj2 (in_correct'
-                (set_add eq_dec
-                  ((c, v, LastSent C V (make_message_set msgs) m))
-                    (sent_messages_justification
-                       (LastSent C V (make_message_set msgs) m)))
-               ((c, v, LastSent C V (make_message_set msgs) m))
-              ))  as Hin.
-              apply Hin in Hnbs. elim Hnbs.
-              apply set_add_iff. left. reflexivity.
-            + pose
-              (proj2 (in_correct'
-                  (set_add eq_dec ((c, v, NoSent C V (make_message_set msgs)))
-                    (sent_messages_justification (NoSent C V (make_message_set msgs))))
-                  ((c, v, NoSent C V (make_message_set msgs)))
-              ))  as Hin.
-              apply Hin in Hnbs. elim Hnbs.
-              apply set_add_iff. left. reflexivity.
-          - destruct iom as [msg|]; inversion Ht; subst; clear Ht. simpl in *.
-            + apply set_add_iff in i.
+        * specialize (finite_ptrace_first_pstate bvlsm is _ Htr) as Hpstart.
+          destruct Hpstart as [_om Hpstart].
+          pose (protocol_is_trace bvlsm is _om Hpstart) as Htr_start.
+          assert  (Hiom : iom = Some m).
+          { destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
+            destruct is as (msgs, final).
+            destruct l as [c|].
+            - inversion Ht. subst. clear Ht.
+              simpl in *.
+              apply set_add_iff in i.
               destruct i as [i | i]; try (elim Hstart; assumption).
-              subst m. reflexivity.
-            + elim Hstart. assumption.
+              subst m.
+              clear -Hnbs. exfalso.
+              elim Hnbs.
+              destruct final as [m|].
+              + unfold State.sent_messages. simpl.
+                apply set_add_iff. left. reflexivity.
+              + unfold State.sent_messages. simpl.
+                left. reflexivity.
+            - destruct iom as [msg|]; inversion Ht; subst; clear Ht. simpl in *.
+              + apply set_add_iff in i.
+                destruct i as [i | i]; try (elim Hstart; assumption).
+                subst m. reflexivity.
+              + elim Hstart. assumption.
           }
-        * specialize (IHtr n). destruct IHtr as [item [Hitem Hm]].
-          exists item. split; try assumption. right. assumption.
-    - destruct Hs as [_om Hs].
-      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + exfalso.
-        assert (Htrs : finite_protocol_trace bvlsm s []).
-        { split; try assumption. constructor. exists _om. assumption. }
-        specialize (H s [] Htrs eq_refl).
-        apply Exists_exists in H. destruct H as [x [Hin _]]. inversion Hin.
-      + assert (Hlst : last (map destination tr) is = s).
-        { destruct tr as [|i tr]; inversion Hlsts.
-          apply last_map.
-        }
-        clear Hlsts.
-        specialize (H is tr Htr Hlst). apply Exists_exists in H.
-        destruct H as [item [Hitem Hm]].
-        apply has_been_received_in_trace with is tr item; assumption.
-(*
-        remember (length tr) as len.
-        generalize dependent tr.
-        induction len; intros
-        ; specialize (H is tr Htr Hlst); apply Exists_exists in H
-        ; destruct H as [item [Hitem Hm]].
-        * symmetry in Heqlen. apply length_zero_iff_nil in Heqlen. subst tr.
-          inversion Hitem.
-        * destruct (has_been_sent_oracle (destination item) m) eqn:Hbs
-          ; try (apply has_been_received_in_trace with is tr item; assumption).
-          apply in_split in Hitem.
-          destruct Hitem as [l1 [l2 Hitem]]. subst tr.
-          specialize (IHlen (l1 ++ l2)).
-          destruct Htr as [Htr Hinit].
-          pose (finite_protocol_trace_from_app_iff bvlsm is l1 (item :: l2)) as Htr_app.
-          simpl in Htr_app. destruct Htr_app as [_ Htr_app].
-          specialize (Htr_app Htr).
-          destruct Htr_app as [Hl1 Hl2].
-          inversion Hl2. subst item tl.
-          rewrite <- H1 in *.
-          simpl in Hm. subst iom. simpl in Hbs.
-          apply protocol_transition_inv_in in H3.
-          destruct H3 as [Hs0 [Hoom [Hnin [Hincl [Hs' [Hm Hps0]]]]]].
-          assert (Hbs' : has_been_sent_oracle s' m = true).
-          { unfold has_been_sent_oracle. unfold sent_messages.
-            rewrite Hs0 in Hbs.
-            unfold has_been_sent_oracle in Hbs.
-            unfold sent_messages in Hbs. simpl in Hbs.
-            assumption.
-          }
-          assert (Hss0 : s0 = s').
-          { pose (has_been_sent_in s' Hs' m Hbs') as Hin.
-            rewrite Hs0. destruct s' as (msgs', final').
-            simpl. f_equal.
-            pose (set_add_ignore msgs' m) as Hadd.
-            apply Hadd.
-            assumption.
-          }
-          { apply IHlen.
-          - split; try assumption.
-            apply (finite_protocol_trace_from_app_iff bvlsm is l1 l2).
-            split; try assumption.
-            clear Hs0. subst. assumption.
-          - rewrite map_app. rewrite last_app.
-            rewrite map_app in Hlst. rewrite last_app in Hlst.
-            rewrite map_cons in Hlst. rewrite unroll_last in Hlst.
-            simpl in Hlst. clear Hs0. subst. reflexivity.
-          - rewrite app_length. rewrite app_length in Heqlen.
-            simpl in Heqlen. clear -Heqlen.
-            rewrite Plus.plus_comm in Heqlen. inversion Heqlen.
-            apply Plus.plus_comm.
-          }
-*)
+          subst iom.
+          exists {| l := l; input := Some m; destination := s0; output := oom |}.
+          split; try reflexivity. left. reflexivity.
+        * specialize (IHtr Hlast n).
+          destruct IHtr as [item [Hitem Hin']]. exists item. split; try assumption.
+          right. assumption.
   Qed.
 
-  Definition has_not_been_received_oracle
-    (s : state C V)
-    (m : message)
-    : bool
-    :=
-    negb (has_been_received_oracle s m).
-
-  Lemma VLSM_full_validator_proper_not_received
+  Lemma received_messages_prop
     (s : state C V)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    : has_not_been_received_prop vlsm has_not_been_received_oracle s m.
+    : In m (State.received_messages s) <->
+    exists (sm : received_messages vlsm s), proj1_sig sm = m.
   Proof.
-    unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
-    unfold has_not_been_received_oracle. rewrite negb_true_iff.
-    split.
-    - intros.
-      rewrite <- Forall_Exists_neg.
-      apply Forall_forall.
-      intros item Hitem Hm.
-      assert (Hbr : has_been_received_oracle s m = true)
-      ; try (rewrite H in Hbr; discriminate Hbr).
-      pose (has_been_received_in_trace s m start tr Htr item Hitem Hm Hlast).
-      rewrite e in H. discriminate H.
-    - pose (VLSM_full_validator_proper_received s Hs m) as Hreceived.
-      intro H. destruct Hs as [_om Hs].
+    split; intros.
+    - assert (Hm : selected_message_exists_in_some_traces vlsm input s m)
+      ; try (exists (exist _ m Hm); reflexivity).
+      destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + inversion Hinit. unfold has_been_received_oracle.
-        reflexivity.
-      + assert (Hlst : last (map destination tr) is = s).
-        { destruct tr as [|i tr]; inversion Hlsts.
-          apply last_map.
-        }
-        specialize (H is tr Htr Hlst).
-        destruct (has_been_received_oracle s m) eqn:Hbr; try reflexivity.
-        exfalso.
-        unfold has_been_received_prop in Hreceived.
-        unfold all_traces_have_message_prop in Hreceived.
-        rewrite Hreceived in Hbr.
-        specialize (Hbr is tr Htr Hlst).
-        elim H. assumption.
+      destruct Htr as [Hinit | [start [tr [Htr [Hdest _]]]]].
+      + apply set_diff_iff in H. destruct H as [Hin Hns].
+        inversion Hinit. subst s. inversion Hin.
+      + specialize (has_been_received_in_trace_rev s m H start tr Htr) as Hbr.
+        assert (Hlast : last (List.map destination tr) start = s)
+        by (destruct tr as [|i tr]; inversion Hdest; apply last_map).
+        specialize (Hbr Hlast).
+        exists start. exists tr. exists Htr. exists Hlast. apply Exists_exists. assumption.
+    - destruct H as [[m0 H] Heq]; simpl in Heq; subst m0.
+      destruct H as [is [tr [Htr [Hlast Hitem]]]].
+      apply Exists_exists in Hitem. destruct Hitem as [item [Hitem Hin]].
+      apply (has_been_received_in_trace s m is tr Htr item Hitem Hin Hlast).
   Qed.
 
-  Definition has_been_received_oracle' : state_message_oracle (VLSM_full_validator v)
-    := has_been_received_oracle.
+  Lemma VLSM_full_validator_received_consistency
+    (s : vstate vlsm)
+    (Hs : protocol_state_prop bvlsm s)
+    (m : message)
+    : selected_message_exists_in_some_traces vlsm input s m <->
+    selected_message_exists_in_all_traces vlsm input s m.
+  Proof.
+    specialize (received_messages_prop s Hs m) as Hin.
+    split; intros.
+    - intro is; intros.
+      apply proj2 in Hin.
+      spec Hin; try (exists (exist _ m H); reflexivity).
+      specialize (has_been_received_in_trace_rev s m Hin is tr Htr Hlast) as Hex.
+      apply Exists_exists. assumption.
+    - destruct Hs as [_om Hs].
+      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
+      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
+      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit input m) as Hsm.
+        elim Hsm. assumption.
+      + exists is. exists tr. exists Htr.
+        assert (Hlst : last (List.map destination tr) is = s).
+        { destruct tr as [|i tr]; inversion Hlsts. apply last_map. }
+        exists Hlst.
+        specialize (H is tr Htr Hlst). assumption.
+  Qed.
+
+  Instance VLSM_full_validator_computable_received_messages
+    : computable_received_messages vlsm
+    :=
+    { received_messages_fn := State.received_messages;
+      received_messages_full := received_messages_prop;
+      received_messages_consistency := VLSM_full_validator_received_consistency
+    }.
 
   Definition VLSM_full_validator_has_been_received
-    : has_been_received_capability (VLSM_full_validator v)
+    : has_been_received_capability vlsm
     :=
-    {| has_been_received := has_been_received_oracle'
-     ; proper_received := VLSM_full_validator_proper_received
-     ; proper_not_received := VLSM_full_validator_proper_not_received
-    |}.
+    computable_received_messages_has_been_received_capability vlsm.
 
 End proper_sent_received.
 
