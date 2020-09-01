@@ -489,6 +489,17 @@ Context
       subst. assumption.
     Qed.
 
+    Lemma unfold_history_cons_iff
+      (s : state)
+      (i : index)
+      (s1 : state)
+      (ls : list state)
+      (Hcons : get_history s i = s1 :: ls)
+      : s1 = project s i
+      /\ ls = get_history (project s i) i.
+    Proof.
+    Admitted.
+
     Lemma history_incl_equiv_suffix
       (s1 s2 : state)
       (i : index)
@@ -2749,20 +2760,56 @@ Context
         rewrite <- H3.
         assumption.
     Qed.
-    
-    
+
+    Definition state_gt
+      (s1 s2 : state)
+      : Prop
+      := state_lt s2 s1.
+
     Lemma get_history_self_Lsorted_le
       (s : state)
       (Hprotocol : protocol_state_prop preX s) :
-      LocallySorted state_le (rev (get_history s index_self)).
+      LocallySorted state_gt (get_history s index_self).
     Proof.
       remember ((get_history s index_self)) as history.
+      symmetry in Heqhistory.
       generalize dependent s.
-      induction (rev history)  using rev_ind.
+      induction history.
       - intros.
         apply LSorted_nil.
       - intros.
-        simpl.  
+        destruct history; try apply LSorted_cons1.
+        specialize (IHhistory a).
+        specialize (in_history_is_protocol s a Hprotocol) as Hprotocola .
+        spec Hprotocola.
+        { rewrite Heqhistory. left. reflexivity. }
+        spec IHhistory Hprotocola.
+        apply LSorted_consn.
+        + apply IHhistory.
+          symmetry.
+          apply unfold_history with (s1 := s) (pref := []). assumption.
+        + apply unfold_history_cons_iff in Heqhistory.
+          destruct Heqhistory as [Ha Heqhistory].
+          subst a.
+          symmetry in Heqhistory.
+          specialize (no_bottom_in_history (project s index_self) s0 index_self) as Hnb.
+          rewrite Heqhistory in Hnb.
+          spec Hnb; try (left; reflexivity).
+          apply unfold_history_cons_iff in Heqhistory.
+          destruct Heqhistory as [Hs0 Heqhistory].
+          subst s0.
+          unfold state_gt.
+          apply state_lt_last_sent; assumption.
+    Qed.
+
+    Lemma get_history_comparable
+      (s s1 s2 : state)
+      (Hprotocol : protocol_state_prop preX s)
+      (Hs1 : In s1 (get_history s index_self))
+      (Hs2 : In s2 (get_history s index_self))
+      : state_lt s1 s2 \/ state_lt s2 s1.
+    Proof.
     Admitted.
+
       
 End Equivocation.
