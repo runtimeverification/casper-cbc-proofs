@@ -9,6 +9,7 @@ Require Import
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
+  VLSM.ObservableEquivocation
   CBC.Equivocation.
 
 Section Equivocation.
@@ -2910,7 +2911,16 @@ Context
       destruct (eq_dec (sender m1) (sender m2)).
       2: discriminate Heqv.
       destruct (eq_dec (sender m1) index_self).
-      
     Admitted.
+    
+    (*     Definition state_lt_equivocation : message_equivocation_evidence message index
+      :=
+      {|
+        sender := fst;
+        message_preceeds_fn := fun m1 m2 => state_ltb (snd m1) (snd m2)
+      |}. *)
+    
+    Definition lv_observable_equivocation : 
+      (computable_observable_equivocation_evidence state index message (@)).
     
 End Equivocation.
