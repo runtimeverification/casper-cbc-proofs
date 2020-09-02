@@ -391,7 +391,7 @@ Context
             unfold get_history.
             rewrite depth_redundancy.
             reflexivity.
-            specialize (depth_parent_child is0 b0 i).
+            specialize (@depth_parent_child _ _ Hfinite _ is0 b0 i).
             intros.
             rewrite eq_d in H.
             unfold last_recorded.
@@ -416,7 +416,7 @@ Context
             rewrite depth_redundancy in H1.
             unfold rec_history.
             assumption.
-            specialize (depth_parent_child is0 b0 i).
+            specialize (@depth_parent_child _ _ Hfinite _ is0 b0 i).
             intros.
             rewrite eq_d in H.
             unfold last_recorded.
@@ -2883,8 +2883,64 @@ Context
         sender := fst;
         message_preceeds_fn := fun m1 m2 => state_ltb (snd m1) (snd m2)
       |}. *)
+      
+    Definition comparable_states : comparable_events state := {| 
+      happens_before_fn := state_ltb  
+    |}.
     
-    Definition lv_observable_equivocation : 
-      (computable_observable_equivocation_evidence state index message (@)).
+    Existing Instance comparable_states.
     
+    (* 
+    
+    (* Current index's opinion on index i.
+       If i is equal to itself we retreive the state itself.
+       Otherwise we project it into i. *)
+    
+    Definition opinion_on (s : state) (i : index) (current : index) : state :=
+      match (eq_dec i current) with
+      | left _ => project s current
+      | right _ => @project index index_listing _ (project s current) i
+      end.
+    
+    Definition all_opinions_on (s : state) (i : index) : list state :=
+      List.map (opinion_on s i) index_listing.
+      
+    Definition obs_events (s : (@state index index_listing)) (i : index) : list (@state index index_listing) := 
+      all_opinions_on s i.*)
+      
+    Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
+      match d with
+      | 0 => [project s target]
+      | S n => let children := List.map (@project index index_listing _ s) index_listing in
+             let children_res := List.map (get_observations target n) children in
+             List.fold_right (@set_union state state_eq_dec) [] children_res ++ [project s target]
+      end.
+      
+    Definition shallow_observations (s : state) (target : index) :=
+      get_observations target 1 s.
+      
+    Definition full_observations (s : state) (target : index) :=
+      get_observations target (depth s) s.
+    
+    Definition observable_shallow : 
+      (computable_observable_equivocation_evidence 
+       (@state index index_listing) 
+       index 
+       state 
+       state_eq_dec comparable_states) := {|
+       observable_events := shallow_observations;
+      |}.
+      
+    Definition observable_full : 
+      (computable_observable_equivocation_evidence 
+       (@state index index_listing) 
+       index 
+       state 
+       state_eq_dec comparable_states) := {|
+       observable_events := full_observations;
+      |}.
+   
+   Existing Instance observable_shallow.
+   Existing Instance observable_full.
+   
 End Equivocation.
