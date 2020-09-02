@@ -2891,4 +2891,26 @@ Context
       unfold state_gt in H.
       intuition.
     Qed.
+    
+    Existing Instance state_lt_equivocation.
+    
+    Lemma evidence_of_equivocation
+        (pm1 pm2 : byzantine_message X)
+        (m1 := proj1_sig pm1)
+        (m2 := proj1_sig pm2)
+        (Heqv : equivocating_with m1 m2 = true)
+        (s : state)
+        (tr : list transition_item)
+        (Htr : finite_protocol_trace (pre_loaded_vlsm X) s tr)
+        : ~ trace_has_message X output m1 tr \/  ~ trace_has_message X output m2 tr.
+    Proof.
+      unfold equivocating_with in Heqv.
+      destruct (eq_dec m1 m2).
+      discriminate Heqv.
+      destruct (eq_dec (sender m1) (sender m2)).
+      2: discriminate Heqv.
+      destruct (eq_dec (sender m1) index_self).
+      
+    Admitted.
+    
 End Equivocation.
