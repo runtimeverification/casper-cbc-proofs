@@ -10,6 +10,7 @@ VLSM/Validating.v
 VLSM/ByzantineTraces.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
+VLSM/ObservableEquivocation.v
 VLSM/FullNode/Simple.v
 VLSM/FullNode/Client.v
 VLSM/FullNode/Validator.v
