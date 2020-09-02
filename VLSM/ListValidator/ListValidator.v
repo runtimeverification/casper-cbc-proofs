@@ -1,4 +1,4 @@
-Require Import Bool List Reals FinFun .
+Require Import Bool List Reals FinFun Program Eqdep.
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
@@ -44,11 +44,33 @@ with indexed_state : list index -> Type :=
       (s : state) (is : indexed_state l),
   indexed_state (v :: l)
 .
+Fixpoint state_eq_dec (s1 s2 : state)
+  : {s1 = s2} + {s1 <> s2}
+with
+indexed_state_eq_dec (l : list index) (ls1 : indexed_state l) (ls2 : indexed_state l)
+  : {ls1 = ls2} + {ls1 <> ls2}.
+Proof.
+- destruct s1; destruct s2.
+  + left. reflexivity.
+  + right. intro H. discriminate H.
+  + right. intro H. discriminate H.
+  + destruct (eq_dec b b0).
+    * { destruct (indexed_state_eq_dec index_listing is is0).
+      - subst. left. reflexivity.
+      - right. subst. intro H. elim n. inversion H. reflexivity.
+      }
+    * right. intro H. elim n. inversion H. reflexivity.
+- dependent destruction ls1; dependent destruction ls2.
+  + left. reflexivity.
+  + destruct (state_eq_dec s s0).
+    * { destruct (indexed_state_eq_dec l ls1 ls2).
+      - left. subst. reflexivity.
+      - right. intro H. elim n. inversion H. apply inj_pairT2 in H2. assumption.
+      }
+    * right. intro H. elim n. inversion H. reflexivity.
+Qed.
 
-Scheme state_mut_ind := Induction for state Sort Prop
-with indexed_state_mut_ind := Induction for indexed_state Sort Prop
-.
-
+Instance state_EqDec : EqDec state := { eq_dec := state_eq_dec }.
 
 Fixpoint depth (s : state) : nat :=
   match s with
@@ -340,6 +362,42 @@ Fixpoint get_all_states
   Defined.
 
 
+     (* begin hide *)
+    Lemma depth_parent_child_indexed
+      (indices : list index)
+      (i : index)
+      (Hi : In i indices)
+      (ls : indexed_state indices)
+      : depth_indexed indices ls >= depth (project_indexed indices ls i).
+    Proof.
+      generalize dependent indices.
+      induction ls.
+      - auto.
+      - simpl.
+        destruct (eq_dec v i) eqn : Heqdec.
+        + unfold depth_indexed. unfold depth. lia.
+        + pose (in_fast l i v Hi n) as Hi'.
+          specialize (IHls Hi').
+          unfold depth_indexed in *. unfold depth in *. lia.
+    Qed.
+
+
+    Lemma depth_parent_child :
+      forall (ls : indexed_state index_listing)
+         (cv : bool)
+         (i : index),
+         depth (Something cv ls) >= S (depth (project_indexed index_listing ls i)).
+
+      Proof.
+        intros.
+        specialize depth_parent_child_indexed.
+        intros.
+        specialize (H index_listing i ((proj2 Hfinite) i) ls).
+        unfold depth at 1.
+        unfold depth_indexed in H.
+        lia.
+   Qed.
+
 (** Our only initial state will be Bottom. **)
 
 Definition state00 := Bottom.
@@ -364,6 +422,29 @@ Definition state0 : {s | initial_state_prop s} :=
     the pair of [index_self] and Bottom]. **)
 
 Definition message : Type := (index * state).
+
+Lemma eq_dec_message : EqDec message.
+Proof.
+  unfold EqDec.
+  intros.
+  destruct x.
+  destruct y.
+  destruct (eq_dec i i0).
+  - destruct (eq_dec s s0).
+    + left. rewrite e. rewrite e0. reflexivity.
+    + right. 
+      intros contra. 
+      rewrite e in contra. 
+      inversion contra.
+      elim n.
+      assumption.
+   - destruct (eq_dec s s0); 
+     right;
+     intros contra;
+     inversion contra;
+     elim n;
+     assumption.
+Qed.
 
 Definition initial_message_prop (m : message) : Prop := False.
 
@@ -477,8 +558,3 @@ Instance VLSM_list_machine : VLSM_class LSM_list :=
 Definition VLSM_list : VLSM message := mk_vlsm VLSM_list_machine.
 
 End ListNode.
-
-
-
-
-
