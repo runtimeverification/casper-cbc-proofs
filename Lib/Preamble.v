@@ -363,6 +363,66 @@ Proof.
   apply compare_eq_dec.
 Qed.
 
+Definition comparable
+  {A : Type}
+  (R : A -> A -> Prop)
+  (a b : A)
+  : Prop
+  :=
+  a = b \/ R a b \/ R b a.
+
+Definition comparableb
+  {A : Type}
+  {eq_A : EqDec A}
+  (f : A -> A -> bool)
+  (a b : A)
+  : bool
+  :=
+  if eq_dec a b then true
+  else orb (f a b) (f b a).
+
+Lemma comparable_function
+  {A : Type}
+  {eq_A : EqDec A}
+  (f : A -> A -> bool)
+  (R : A -> A -> Prop)
+  (HR : PredicateFunction2 R f)
+  : PredicateFunction2 (comparable R) (comparableb f).
+Proof.
+  intros a b. unfold comparable. unfold comparableb.
+  split; intro.
+  - destruct H as [Heq | [Hab | Hba]]; destruct (eq_dec a b); try reflexivity.
+    + elim n. assumption.
+    + apply HR in Hab. rewrite Hab. reflexivity.
+    + apply HR in Hba. rewrite Hba. rewrite orb_comm. reflexivity.
+  - destruct (eq_dec a b); try (left; assumption).
+    right.
+    apply orb_true_iff in H.
+    destruct H as [H | H]; apply HR in H.
+    + left. assumption.
+    + right. assumption.
+Qed.
+
+Lemma comparable_function_neg
+  {A : Type}
+  {eq_A : EqDec A}
+  (f : A -> A -> bool)
+  (R : A -> A -> Prop)
+  (HR : PredicateFunction2 R f)
+  (a b : A)
+  (Hnc : comparableb f a b = false)
+  : a <> b /\ ~R a b /\ ~R b a.
+Proof.
+  unfold comparableb in Hnc.
+  destruct (eq_dec a b); try discriminate Hnc.
+  split; try assumption.
+  destruct (f a b) eqn:Hab; try discriminate Hnc.
+  destruct (f b a) eqn:Hba; try discriminate Hnc.
+  apply (predicate_function2_neg _ _ _ _ HR) in Hab.
+  apply (predicate_function2_neg _ _ _ _ HR) in Hba.
+  split; assumption.
+Qed.
+
 Lemma compare_two_cases
   {M} `{Hsc : StrictlyComparable M}
   : forall m1 m2 : M,

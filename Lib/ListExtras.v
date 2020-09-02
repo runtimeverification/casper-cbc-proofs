@@ -1163,8 +1163,6 @@ Proof.
   - assumption.
 Qed.
 
-Check fold_right.
-
 Lemma union_fold 
   {A : Type}
   {eq_dec_a : EqDec A}
