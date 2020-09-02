@@ -44,7 +44,6 @@ with indexed_state : list index -> Type :=
       (s : state) (is : indexed_state l),
   indexed_state (v :: l)
 .
-
 Fixpoint state_eq_dec (s1 s2 : state)
   : {s1 = s2} + {s1 <> s2}
 with

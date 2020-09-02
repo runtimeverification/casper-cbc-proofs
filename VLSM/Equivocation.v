@@ -2,7 +2,7 @@ Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus Coq.
 Import ListNotations.
 
 From CasperCBC
-Require Import Lib.Preamble VLSM.Common VLSM.Composition CBC.Common CBC.Equivocation.
+Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition CBC.Common CBC.Equivocation.
 
 (**
 *** Summary
@@ -35,7 +35,9 @@ This chapter is dedicated to building the language for discussing equivocation.
 Section Simple.
     Context
       {message : Type}
-      (vlsm : VLSM message).
+      (vlsm : VLSM message)
+      (pre_vlsm := pre_loaded_vlsm vlsm)
+      .
 
 (** We begin with a basic utility function. **)
 
@@ -71,6 +73,45 @@ Section Simple.
     Definition state_message_oracle
       := vstate vlsm -> message -> bool.
 
+    Definition selected_message_exists_in_all_traces
+      (message_selector : transition_item -> option message)
+      (s : state)
+      (m : message)
+      : Prop
+      :=
+      forall
+      (start : state)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace pre_vlsm start tr)
+      (Hlast : last (List.map destination tr) start = s),
+      List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+
+    Definition selected_message_exists_in_some_traces
+      (message_selector : transition_item -> option message)
+      (s : state)
+      (m : message)
+      : Prop
+      :=
+      exists
+      (start : state)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace pre_vlsm start tr)
+      (Hlast : last (List.map destination tr) start = s),
+      List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+
+    Definition selected_message_exists_in_no_trace
+      (message_selector : transition_item -> option message)
+      (s : state)
+      (m : message)
+      : Prop
+      :=
+      forall
+      (start : state)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace pre_vlsm start tr)
+      (Hlast : last (List.map destination tr) start = s),
+      ~List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+
 (** Checks if all [protocol_trace]s leading to a certain state contain a certain message.
     The [message_selector] argument specifices whether we're looking for received or sent
     messages.
@@ -88,13 +129,7 @@ Section Simple.
       (m : message)
       : Prop
       :=
-      oracle s m = true <->
-        forall
-        (start : state)
-        (tr : list transition_item)
-        (Htr : finite_protocol_trace (pre_loaded_vlsm vlsm) start tr)
-        (Hlast : last (List.map destination tr) start = s),
-        List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+      oracle s m = true <-> selected_message_exists_in_all_traces message_selector s m.
 
     Definition no_traces_have_message_prop
       (message_selector : transition_item -> option message)
@@ -103,13 +138,7 @@ Section Simple.
       (m : message)
       : Prop
       :=
-      oracle s m = true <->
-        forall
-        (start : state)
-        (tr : list transition_item)
-        (Htr : finite_protocol_trace (pre_loaded_vlsm vlsm) start tr)
-        (Hlast : last (List.map destination tr) start = s),
-        ~ List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+      oracle s m = true <-> selected_message_exists_in_no_trace message_selector s m.
 
     Definition has_been_sent_prop : state_message_oracle -> state -> message -> Prop
       := (all_traces_have_message_prop output).
@@ -140,7 +169,7 @@ Section Simple.
 
       proper_sent:
         forall (s : state)
-               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
+               (Hs : protocol_state_prop pre_vlsm s)
                (m : message),
                (has_been_sent_prop has_been_sent s m);
 
@@ -149,7 +178,7 @@ Section Simple.
 
       proper_not_sent:
         forall (s : state)
-               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
+               (Hs : protocol_state_prop pre_vlsm s)
                (m : message),
                has_not_been_sent_prop has_not_been_sent s m;
     }.
@@ -159,7 +188,7 @@ Section Simple.
 
       proper_received:
         forall (s : state)
-               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
+               (Hs : protocol_state_prop pre_vlsm s)
                (m : message),
                (has_been_received_prop has_been_received s m);
 
@@ -168,11 +197,351 @@ Section Simple.
 
       proper_not_received:
         forall (s : state)
-               (Hs : protocol_state_prop (pre_loaded_vlsm vlsm) s)
+               (Hs : protocol_state_prop pre_vlsm s)
                (m : message),
                has_not_been_received_prop has_not_been_received s m;
     }.
 
+    Definition sent_messages
+      (s : vstate vlsm)
+      : Type
+      :=
+      sig (fun m => selected_message_exists_in_some_traces output s m).
+
+    Lemma sent_messages_proper
+      (Hhbs : has_been_sent_capability)
+      (s : vstate vlsm)
+      (Hs : protocol_state_prop pre_vlsm s)
+      (m : message)
+      : has_been_sent s m = true <-> exists (m' : sent_messages s), proj1_sig m' = m.
+    Proof.
+      split.
+      - specialize (proper_sent s Hs m) as Hbs.
+        unfold has_been_sent_prop in Hbs. unfold all_traces_have_message_prop in Hbs.
+        intros. apply Hbs in H.
+        destruct Hs as [_om Hs].
+        specialize (protocol_is_trace pre_vlsm s _om Hs) as Htr.
+        unfold sent_messages.
+        destruct Htr as [Hinit | Htr].
+        + specialize (H s []).
+          spec H; repeat (try constructor; try assumption); try exists _om; try assumption.
+          specialize (H eq_refl).
+          apply Exists_exists in H. destruct H as [x [Hx _]]. inversion Hx.
+        + destruct Htr as [is [tr [Htr [Hdest Hout]]]].
+          assert (Hm : selected_message_exists_in_some_traces output s m).
+          { exists is. exists tr. exists Htr.
+            assert (Hlst : last (List.map destination tr) is = s).
+            { destruct tr as [|i tr]; inversion Hdest.
+              apply last_map.
+            }
+            exists Hlst.
+            specialize (H is tr Htr Hlst).
+            assumption.
+          }
+          exists (exist _ m Hm).
+          reflexivity.
+      - intros [[m0 Hm0] Hm']. simpl in Hm'. subst m0.
+        destruct (has_been_sent s m) eqn:Hbs; try reflexivity.
+        specialize (proper_not_sent s Hs m) as Hns.
+        unfold has_not_been_sent_prop in Hns. unfold no_traces_have_message_prop in Hns.
+        unfold has_not_been_sent in Hns. rewrite Bool.negb_true_iff in Hns.
+        apply Hns in Hbs.
+        destruct Hm0 as [is [tr [Htr [Hdest Hout]]]].
+        specialize (Hbs is tr Htr Hdest).
+        elim Hbs. assumption.
+    Qed.
+
+    Definition received_messages
+      (s : vstate vlsm)
+      : Type
+      :=
+      sig (fun m => selected_message_exists_in_some_traces input s m).
+
+    Lemma received_messages_proper
+      (Hhbs : has_been_received_capability)
+      (s : vstate vlsm)
+      (Hs : protocol_state_prop pre_vlsm s)
+      (m : message)
+      : has_been_received s m = true <-> exists (m' : received_messages s), proj1_sig m' = m.
+    Proof.
+      split.
+      - specialize (proper_received s Hs m) as Hbs.
+        unfold has_been_received_prop in Hbs. unfold all_traces_have_message_prop in Hbs.
+        intros. apply Hbs in H.
+        destruct Hs as [_om Hs].
+        specialize (protocol_is_trace pre_vlsm s _om Hs) as Htr.
+        unfold received_messages.
+        destruct Htr as [Hinit | Htr].
+        + specialize (H s []).
+          spec H; repeat (try constructor; try assumption); try exists _om; try assumption.
+          specialize (H eq_refl).
+          apply Exists_exists in H. destruct H as [x [Hx _]]. inversion Hx.
+        + destruct Htr as [is [tr [Htr [Hdest Hout]]]].
+          assert (Hm : selected_message_exists_in_some_traces input s m).
+          { exists is. exists tr. exists Htr.
+            assert (Hlst : last (List.map destination tr) is = s).
+            { destruct tr as [|i tr]; inversion Hdest.
+              apply last_map.
+            }
+            exists Hlst.
+            specialize (H is tr Htr Hlst).
+            assumption.
+          }
+          exists (exist _ m Hm).
+          reflexivity.
+      - intros [[m0 Hm0] Hm']. simpl in Hm'. subst m0.
+        destruct (has_been_received s m) eqn:Hbs; try reflexivity.
+        specialize (proper_not_received s Hs m) as Hns.
+        unfold has_not_been_received_prop in Hns. unfold no_traces_have_message_prop in Hns.
+        unfold has_not_been_received in Hns. rewrite Bool.negb_true_iff in Hns.
+        apply Hns in Hbs.
+        destruct Hm0 as [is [tr [Htr [Hdest Hout]]]].
+        specialize (Hbs is tr Htr Hdest).
+        elim Hbs. assumption.
+    Qed.
+
+    Class computable_sent_messages := {
+      sent_messages_fn : vstate vlsm -> list message;
+
+      sent_messages_full :
+        forall (s : vstate vlsm) (Hs : protocol_state_prop pre_vlsm s) (m : message),
+          In m (sent_messages_fn s) <-> exists (sm : sent_messages s), proj1_sig sm = m;
+
+      sent_messages_consistency :
+        forall
+          (s : vstate vlsm)
+          (Hs : protocol_state_prop pre_vlsm s)
+          (m : message),
+          selected_message_exists_in_some_traces output s m <-> selected_message_exists_in_all_traces output s m
+    }.
+
+    Lemma selected_message_exists_in_all_traces_initial_state
+      (s : vstate vlsm)
+      (Hs : vinitial_state_prop vlsm s)
+      (selector : transition_item -> option message)
+      (m : message)
+      : ~ selected_message_exists_in_all_traces selector s m.
+    Proof.
+      intro Hselected.
+      assert (Hps : protocol_state_prop pre_vlsm s).
+      { replace s with (proj1_sig (exist _ s Hs)); try reflexivity.
+        exists None. apply (protocol_initial_state pre_vlsm).
+      }
+      assert (Htr : finite_protocol_trace pre_vlsm s []).
+      { split; try assumption. constructor. assumption. }
+      specialize (Hselected s [] Htr eq_refl).
+      apply Exists_exists in Hselected.
+      destruct Hselected as [x [Hx _]].
+      contradiction Hx.
+    Qed.
+
+    Lemma computable_sent_messages_initial_state_empty
+      {Hrm : computable_sent_messages}
+      (s : vinitial_state vlsm)
+      : sent_messages_fn (proj1_sig s) = [].
+    Proof.
+      assert (Hps : protocol_state_prop pre_vlsm (proj1_sig s)).
+      { exists None. apply (@protocol_initial_state _ pre_vlsm). }
+      destruct s as [s Hs]. simpl in *.
+      destruct (sent_messages_fn s) as [|m l] eqn:Hsm; try reflexivity.
+      specialize (sent_messages_full s Hps m) as Hl. apply proj1 in Hl.
+      spec Hl; try (rewrite Hsm; left; reflexivity).
+      destruct Hl as [[m0 Hm] Heq]. simpl in Heq. subst m0.
+      apply sent_messages_consistency in Hm; try assumption.
+      specialize (selected_message_exists_in_all_traces_initial_state s Hs output m) as H.
+      elim H. assumption.
+    Qed.
+
+    Definition computable_sent_messages_has_been_sent
+      {Hsm : computable_sent_messages}
+      {eq_message : EqDec message}
+      (s : vstate vlsm)
+      (m : message)
+      : bool
+      :=
+      if inb eq_dec m (sent_messages_fn s) then true else false.
+
+    Lemma computable_sent_messages_has_been_sent_proper
+      {Hsm : computable_sent_messages}
+      {eq_message : EqDec message}
+      (s : state)
+      (Hs : protocol_state_prop pre_vlsm s)
+      (m : message)
+      : has_been_sent_prop computable_sent_messages_has_been_sent s m.
+    Proof.
+      unfold has_been_sent_prop. unfold all_traces_have_message_prop.
+      unfold computable_sent_messages_has_been_sent.
+      destruct 
+        (inb eq_dec m (sent_messages_fn s))
+        eqn: Hin; split; intros; try discriminate; try reflexivity
+        ; apply in_correct in Hin || apply in_correct' in Hin.
+      - apply sent_messages_full in Hin; try assumption.
+        destruct Hin as [[m0 Hm0] Hx].
+        simpl in Hx. subst m0. apply (sent_messages_consistency s Hs m).
+        assumption.
+      - elim Hin.
+        apply (sent_messages_consistency s Hs m) in H.
+        apply sent_messages_full; try assumption.
+        exists (exist _ m H). reflexivity.
+    Qed.
+      
+    Definition computable_sent_messages_has_not_been_sent
+      {Hsm : computable_sent_messages}
+      {eq_message : EqDec message}
+      (s : vstate vlsm)
+      (m : message)
+      : bool
+      :=
+      negb (computable_sent_messages_has_been_sent s m).
+
+    Lemma computable_sent_messages_has_not_been_sent_proper
+      {Hsm : computable_sent_messages}
+      {eq_message : EqDec message}
+      (s : state)
+      (Hs : protocol_state_prop pre_vlsm s)
+      (m : message)
+      : has_not_been_sent_prop computable_sent_messages_has_not_been_sent s m.
+    Proof.
+      unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
+      unfold computable_sent_messages_has_not_been_sent.
+      rewrite Bool.negb_true_iff.
+      unfold computable_sent_messages_has_been_sent.
+      destruct 
+        (inb eq_dec m (sent_messages_fn s))
+        eqn: Hin; split; intros; try discriminate; try reflexivity
+        ; apply in_correct in Hin || apply in_correct' in Hin.
+      - apply sent_messages_full in Hin; try assumption.
+        destruct Hin as [[m0 Hm0] Hx].
+        simpl in Hx. subst m0.
+        destruct Hm0 as [is [tr [Htr [Hlast Hexists]]]].
+        specialize (H is tr Htr Hlast).
+        elim H. assumption.
+      - intro is; intros. intro HExists. elim Hin. apply sent_messages_full; try assumption.
+        assert (Hm : selected_message_exists_in_some_traces output s m).
+        { exists is. exists tr. exists Htr. exists Hlast. assumption. }
+        exists (exist _ m Hm). reflexivity.
+    Qed.
+
+    Definition computable_sent_messages_has_been_sent_capability
+      {Hsm : computable_sent_messages}
+      {eq_message : EqDec message}
+      : has_been_sent_capability
+      :=
+      {|
+        has_been_sent := computable_sent_messages_has_been_sent;
+        proper_sent := computable_sent_messages_has_been_sent_proper;
+        proper_not_sent := computable_sent_messages_has_not_been_sent_proper
+      |}.
+
+    Class computable_received_messages := {
+      received_messages_fn : vstate vlsm -> list message;
+
+      received_messages_full :
+        forall (s : vstate vlsm) (Hs : protocol_state_prop pre_vlsm s) (m : message),
+          In m (received_messages_fn s) <-> exists (sm : received_messages s), proj1_sig sm = m;
+
+      received_messages_consistency :
+        forall
+          (s : vstate vlsm)
+          (Hs : protocol_state_prop pre_vlsm s)
+          (m : message),
+          selected_message_exists_in_some_traces input s m <-> selected_message_exists_in_all_traces input s m
+    }.
+
+    Lemma computable_received_messages_initial_state_empty
+      {Hrm : computable_received_messages}
+      (s : vinitial_state vlsm)
+      : received_messages_fn (proj1_sig s) = [].
+    Proof.
+      assert (Hps : protocol_state_prop pre_vlsm (proj1_sig s)).
+      { exists None. apply (@protocol_initial_state _ pre_vlsm). }
+      destruct s as [s Hs]. simpl in *.
+      destruct (received_messages_fn s) as [|m l] eqn:Hrcv; try reflexivity.
+      specialize (received_messages_full s Hps m) as Hl. apply proj1 in Hl.
+      spec Hl; try (rewrite Hrcv; left; reflexivity).
+      destruct Hl as [[m0 Hm] Heq]. simpl in Heq. subst m0.
+      apply received_messages_consistency in Hm; try assumption.
+      specialize (selected_message_exists_in_all_traces_initial_state s Hs input m) as H.
+      elim H. assumption.
+    Qed.
+
+    Definition computable_received_messages_has_been_received
+      {Hsm : computable_received_messages}
+      {eq_message : EqDec message}
+      (s : vstate vlsm)
+      (m : message)
+      : bool
+      :=
+      if inb eq_dec m (received_messages_fn s) then true else false.
+
+    Lemma computable_received_messages_has_been_received_proper
+      {Hsm : computable_received_messages}
+      {eq_message : EqDec message}
+      (s : state)
+      (Hs : protocol_state_prop pre_vlsm s)
+      (m : message)
+      : has_been_received_prop computable_received_messages_has_been_received s m.
+    Proof.
+      unfold has_been_received_prop. unfold all_traces_have_message_prop.
+      unfold computable_received_messages_has_been_received.
+      destruct 
+        (inb eq_dec m (received_messages_fn s))
+        eqn: Hin; split; intros; try discriminate; try reflexivity
+        ; apply in_correct in Hin || apply in_correct' in Hin.
+      - apply received_messages_full in Hin; try assumption. destruct Hin as [[m0 Hm0] Hx].
+        simpl in Hx. subst m0. apply (received_messages_consistency s Hs m).
+        assumption.
+      - elim Hin. apply received_messages_full; try assumption.
+        apply (received_messages_consistency s Hs m) in H.
+        exists (exist _ m H). reflexivity.
+    Qed.
+      
+    Definition computable_received_messages_has_not_been_received
+      {Hsm : computable_received_messages}
+      {eq_message : EqDec message}
+      (s : vstate vlsm)
+      (m : message)
+      : bool
+      :=
+      negb (computable_received_messages_has_been_received s m).
+
+    Lemma computable_received_messages_has_not_been_received_proper
+      {Hsm : computable_received_messages}
+      {eq_message : EqDec message}
+      (s : state)
+      (Hs : protocol_state_prop pre_vlsm s)
+      (m : message)
+      : has_not_been_received_prop computable_received_messages_has_not_been_received s m.
+    Proof.
+      unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
+      unfold computable_received_messages_has_not_been_received.
+      rewrite Bool.negb_true_iff.
+      unfold computable_received_messages_has_been_received.
+      destruct 
+        (inb eq_dec m (received_messages_fn s))
+        eqn: Hin; split; intros; try discriminate; try reflexivity
+        ; apply in_correct in Hin || apply in_correct' in Hin.
+      - apply received_messages_full in Hin; try assumption. destruct Hin as [[m0 Hm0] Hx].
+        simpl in Hx. subst m0.
+        destruct Hm0 as [is [tr [Htr [Hlast Hexists]]]].
+        specialize (H is tr Htr Hlast).
+        elim H. assumption.
+      - intro is; intros. intro HExists. elim Hin. apply received_messages_full; try assumption.
+        assert (Hm : selected_message_exists_in_some_traces input s m).
+        { exists is. exists tr. exists Htr. exists Hlast. assumption. }
+        exists (exist _ m Hm). reflexivity.
+    Qed.
+
+    Definition computable_received_messages_has_been_received_capability
+      {Hsm : computable_received_messages}
+      {eq_message : EqDec message}
+      : has_been_received_capability
+      :=
+      {|
+        has_been_received := computable_received_messages_has_been_received;
+        proper_received := computable_received_messages_has_been_received_proper;
+        proper_not_received := computable_received_messages_has_not_been_received_proper
+      |}.
 End Simple.
 
 (**

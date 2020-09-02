@@ -42,13 +42,6 @@ Context
                           rec_history child who (depth child)
     end.
 
-  Definition list_preceeds (m1 m2 : message) : bool :=
-    let (i1, s1) := m1 in
-    let (i2, s2) := m2 in
-    if eq_dec i1 i2
-    then inb sdec s1 (get_history s2 i1)
-    else false.
-  
   (* Definition list_message_equivocation_evidence : message_equivocation_evidence message index. *)
 
   Definition state_eqb (s1 s2 : state) : bool :=
@@ -1264,6 +1257,7 @@ Context
     Proof.
       unfold has_been_sent_prop.
       unfold all_traces_have_message_prop.
+      unfold selected_message_exists_in_all_traces.
       split.
       - intros.
         unfold send_oracle in H.
@@ -1543,6 +1537,7 @@ Context
     Proof.
       unfold has_been_received_prop.
       unfold all_traces_have_message_prop.
+      unfold selected_message_exists_in_all_traces.
       split.
       - intros.
         unfold receive_oracle in H.
@@ -1833,6 +1828,7 @@ Context
       intros.
       unfold has_not_been_sent_prop.
       unfold no_traces_have_message_prop.
+      unfold selected_message_exists_in_no_trace.
       split.
       - intros.
         unfold not_send_oracle in H.
@@ -1954,6 +1950,7 @@ Context
       intros.
       unfold has_not_been_received_prop.
       unfold no_traces_have_message_prop.
+      unfold selected_message_exists_in_no_trace.
       split.
       - intros.
         unfold not_receive_oracle in H.
