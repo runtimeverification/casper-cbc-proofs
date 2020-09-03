@@ -239,43 +239,7 @@ Context
          destruct pr_valid_prop as [Hprotocol Hothers].
          assumption.
     Qed.
-
-     (* begin hide *)
-    Lemma depth_parent_child_indexed
-      (indices : list index)
-      (i : index)
-      (Hi : In i indices)
-      (ls : indexed_state indices)
-      : depth_indexed indices ls >= @depth _ index_listing (project_indexed indices ls i).
-    Proof.
-      generalize dependent indices.
-      induction ls.
-      - auto.
-      - simpl.
-        destruct (eq_dec v i) eqn : Heqdec.
-        + unfold depth_indexed. unfold depth. lia.
-        + pose (in_fast l i v Hi n) as Hi'.
-          specialize (IHls Hi').
-          unfold depth_indexed in *. unfold depth in *. lia.
-    Qed.
-
-
-    Lemma depth_parent_child :
-      forall (ls : indexed_state index_listing)
-         (cv : bool)
-         (i : index),
-         depth (Something cv ls) >= S (depth (project_indexed index_listing ls i)).
-
-      Proof.
-        intros.
-        specialize depth_parent_child_indexed.
-        intros.
-        specialize (H index_listing i ((proj2 Hfinite) i) ls).
-        unfold depth at 1.
-        unfold depth_indexed in H.
-        lia.
-   Qed.
-
+    
     Lemma depth_redundancy :
       forall (s : state)
              (i : index)
@@ -298,7 +262,7 @@ Context
             {
               unfold last_recorded.
               pose (depth (project_indexed index_listing is i)) as dlst.
-              pose (depth_parent_child is b i) as Hdlst.
+              pose (@depth_parent_child index index_listing Hfinite _ is b i) as Hdlst.
               apply eq_trans with (rec_history (project_indexed index_listing is i) i dlst).
               -
                 apply H; lia.
@@ -379,7 +343,7 @@ Context
           simpl in *.
           assert ((depth (Something b0 is0)) >= (S (depth (project_indexed index_listing is i)))). {
             rewrite <- Hvalidity.
-            apply depth_parent_child.
+            apply (@depth_parent_child index index_listing Hfinite).
           }
 
           assert (exists x, depth (Something b0 is0) = S x /\ x >= depth (project_indexed index_listing is i)). {
@@ -426,7 +390,7 @@ Context
             unfold get_history.
             rewrite depth_redundancy.
             reflexivity.
-            specialize (depth_parent_child is0 b0 i).
+            specialize (@depth_parent_child _ _ Hfinite _ is0 b0 i).
             intros.
             rewrite eq_d in H.
             unfold last_recorded.
@@ -451,7 +415,7 @@ Context
             rewrite depth_redundancy in H1.
             unfold rec_history.
             assumption.
-            specialize (depth_parent_child is0 b0 i).
+            specialize (@depth_parent_child _ _ Hfinite _ is0 b0 i).
             intros.
             rewrite eq_d in H.
             unfold last_recorded.
@@ -985,7 +949,7 @@ Context
             inversion Heql.
 
             assert (m >= depth (last_recorded index_listing is i)). {
-               specialize (depth_parent_child is b i).
+               specialize (@depth_parent_child _ _ Hfinite _ is b i).
                intros.
                rewrite H0 in H1.
                unfold last_recorded.
