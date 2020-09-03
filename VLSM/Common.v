@@ -344,7 +344,7 @@ _protocol_ transitions:
         (l : label)
         (om1 om2 : option message)
         (Hprotocol: protocol_transition l (s1, om1) (s2, om2)),
-        R s1 s2.          
+        R s1 s2.
 
 (**
   Next three lemmas show the two definitions above are strongly related.
@@ -1418,7 +1418,7 @@ This relation is often used in stating safety and liveness properties.*)
         rewrite map_cons in H0.
         rewrite unroll_last in H0.
         assumption.
-    Qed.      
+    Qed.
 
     Instance eq_equiv : @Equivalence state eq := _.
 

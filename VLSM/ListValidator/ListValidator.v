@@ -432,13 +432,13 @@ Proof.
   destruct (eq_dec i i0).
   - destruct (eq_dec s s0).
     + left. rewrite e. rewrite e0. reflexivity.
-    + right. 
-      intros contra. 
-      rewrite e in contra. 
+    + right.
+      intros contra.
+      rewrite e in contra.
       inversion contra.
       elim n.
       assumption.
-   - destruct (eq_dec s s0); 
+   - destruct (eq_dec s s0);
      right;
      intros contra;
      inversion contra;

@@ -149,7 +149,7 @@ We say that <<v>> is [equivocating_in_state] <<s>> if it is
 
 Finally, we tie the [computable_observable_equivocation_evidence] notion
 to that of [composite_vlsm_observable_equivocation] by requiring that
-the existence of two events observable for a validator <<v>> in a state <<s>> 
+the existence of two events observable for a validator <<v>> in a state <<s>>
 which are not [comparable] w.r.t. [happens_before] relation guarantees
 that <<v>> is [equivocating_in_state] <<s>> ([evidence_implies_equivocation]).
 *)
@@ -198,7 +198,7 @@ Class composite_vlsm_observable_equivocation
           (Hvi : A v <> i)
           (He : In e (observable_events (s i) v)),
           ~ observable_event_witness is tr v e i He;
-    
+
     equivocating_in_trace
       (tr : protocol_trace X)
       (v : validator)
@@ -214,13 +214,13 @@ Class composite_vlsm_observable_equivocation
       (s : protocol_state X)
       (v : validator)
       : Prop
-      := forall 
+      := forall
         (is : vstate X)
         (tr : list transition_item)
         (Htr : finite_protocol_trace X is tr)
         (Hlast : last (map destination tr) is = proj1_sig s),
         equivocating_in_trace_last is tr v;
-    
+
     evidence_implies_equivocation
       (s : vstate X)
       (Hs : protocol_state_prop X s)
@@ -361,7 +361,7 @@ Proof.
     unfold comparableb in Hcomp.
     unfold equivocating_with.
     destruct (eq_dec m1 m2); try discriminate Hcomp.
-    rewrite e. rewrite e0. 
+    rewrite e. rewrite e0.
     rewrite eq_dec_if_true; try reflexivity.
     apply Bool.orb_false_iff in Hcomp.
     destruct Hcomp as [Hm12 Hm21].
