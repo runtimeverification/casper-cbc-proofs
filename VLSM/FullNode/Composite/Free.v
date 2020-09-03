@@ -364,14 +364,40 @@ Defined.
 
 Existing Instance full_node_message_equivocation_evidence.
 
+Lemma full_composed_free_sent_messages_comparable
+  (s : vstate VLSM_full_composed_free)
+  (tr : list transition_item)
+  (Htr : finite_protocol_trace (pre_loaded_vlsm VLSM_full_composed_free) s tr)
+  (m1 m2 : message)
+  (Hvalidator : sender m1 = sender m2)
+  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free output m1 tr)
+  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free output m2 tr)
+  : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
+Proof.
+  unfold Equivocation.trace_has_message in *.
+  apply Exists_exists in Hm1. destruct Hm1 as [item1 [Hitem1 Hm1]].
+  apply Exists_exists in Hm2. destruct Hm2 as [item2 [Hitem2 Hm2]].
+  apply in_split in Hitem1.
+  destruct Hitem1 as [prefix1 [suffix1 Hitem1]].
+  rewrite Hitem1 in Hitem2.
+  apply in_app_iff in Hitem2.
+  destruct Hitem2 as [Hitem2 | [Heq | Hitem2]]
+  ; try
+    (apply in_split in Hitem2; destruct Hitem2 as [prefix2 [suffix2 Hitem2]]
+    ; rewrite Hitem2 in Hitem1; clear Hitem2
+    ).
+  - right. right. admit.
+  - left. subst. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
+  - right. left.
+Admitted.
+
+
+
 Lemma full_composed_free_evidence_of_equivocation
-  (pm1 pm2 : byzantine_message VLSM_full_composed_free)
-  (m1 := proj1_sig pm1)
-  (m2 := proj1_sig pm2)
-  (Heqv : equivocating_with m1 m2 = true)
   (s : Common.state)
   (tr : list transition_item)
   (Htr : finite_protocol_trace (pre_loaded_vlsm VLSM_full_composed_free) s tr)
+  (m1 m2 : message)
   (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free input m1 tr)
   (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free input m2 tr)
   : Equivocation.equivocation_in_trace VLSM_full_composed_free m1 tr \/
@@ -384,8 +410,7 @@ Instance VLSM_full_composed_free_message_equivocation_evidence
 Proof.
   split.
   apply free_full_byzantine_message_preceeds_stict_order.
-  apply full_composed_free_evidence_of_equivocation.
-Defined.
+Admitted.
 
 Parameter indices : list index.
 Parameter finite_index : Listing indices.

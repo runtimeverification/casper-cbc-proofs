@@ -67,11 +67,12 @@ Section CompositeValidator.
     (m' : message)
     (Ht : vtransitionv v l (s, om) = pair s' (Some m'))
     : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
+    /\ get_justification m' = make_justification s
     /\ exists (c : C), l = Some c.
   Proof.
     unfold vtransitionv in Ht. destruct s as (msgs, final).
     destruct l as [c|].
-    - inversion Ht. split; try reflexivity. exists c. reflexivity.
+    - inversion Ht. repeat split; try reflexivity. exists c. reflexivity.
     - destruct om as [msg|]; inversion Ht.
   Qed.
 
@@ -163,6 +164,7 @@ Section proper_sent_received.
     (m' : message)
     (Ht : vtransition bvlsm l (s, om) = pair s' (Some m'))
     : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
+    /\ get_justification m' = make_justification s
     /\ exists (c : C), l = Some c.
   Proof.
     apply vtransitionv_inv_out in Ht. assumption.
@@ -175,6 +177,7 @@ Section proper_sent_received.
     (m' : message)
     (Ht : protocol_transition bvlsm l (s, om) (s', Some m'))
     : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
+    /\ get_justification m' = make_justification s
     /\ exists (c : C), l = Some c.
   Proof.
     destruct Ht as [_ Ht]. apply vtransition_inv_out in Ht. assumption.
@@ -892,6 +895,83 @@ Section proper_sent_received.
     : has_been_received_capability vlsm
     :=
     computable_received_messages_has_been_received_capability vlsm.
+  
+  Lemma VLSM_full_validator_sent_messages_comparable'
+    (s : vstate vlsm)
+    (tr : list transition_item)
+    (Htr : finite_protocol_trace bvlsm s tr)
+    (prefix middle suffix : list transition_item)
+    (item1 item2 : transition_item)
+    (Htreq: tr = prefix ++ cons item1 middle ++ item2 :: suffix)
+    (m1 m2 : message)
+    (Hm1 : output item1 = Some m1)
+    (Hm2 : output item2 = Some m2)
+    : validator_message_preceeds _ _ m1 m2.
+  Proof.
+    rewrite app_assoc in Htreq.
+    subst tr.
+    destruct Htr as [Htr Hinit].
+    apply finite_protocol_trace_from_app_iff in Htr.
+    destruct Htr as [Htr1 Htr2].
+    specialize
+      (has_been_sent_in_trace (last (map destination (prefix ++ item1 :: middle)) s)
+        m1 s (prefix ++ item1 :: middle)
+        (conj Htr1 Hinit)
+        item1
+      ) as Hm1'.
+    spec Hm1'.
+    { apply in_app_iff. right. left. reflexivity. }
+    specialize (Hm1' Hm1 eq_refl).
+    inversion Htr2. subst. simpl in Hm2. subst oom.
+    apply protocol_transition_inv_out in H3.
+    destruct H3 as [_ [Hjust _]].
+    unfold validator_message_preceeds.
+    unfold validator_message_preceeds_fn.
+    destruct m2. simpl in Hjust.
+    subst j. simpl.
+    apply in_correct.
+    apply in_unmake_message_set.
+    apply in_make_justification.
+    apply get_sent_messages; try assumption.
+    apply finite_ptrace_last_pstate. assumption.
+  Qed.
+
+  Lemma VLSM_full_validator_sent_messages_comparable
+    (s : vstate vlsm)
+    (tr : list transition_item)
+    (Htr : finite_protocol_trace bvlsm s tr)
+    (m1 m2 : message)
+    (Hm1 : Equivocation.trace_has_message vlsm output m1 tr)
+    (Hm2 : Equivocation.trace_has_message vlsm output m2 tr)
+    : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
+  Proof.
+    unfold Equivocation.trace_has_message in *.
+    apply Exists_exists in Hm1. destruct Hm1 as [item1 [Hitem1 Hm1]].
+    apply Exists_exists in Hm2. destruct Hm2 as [item2 [Hitem2 Hm2]].
+    apply in_split in Hitem1.
+    destruct Hitem1 as [prefix1 [suffix1 Hitem1]].
+    rewrite Hitem1 in Hitem2.
+    apply in_app_iff in Hitem2.
+    destruct Hitem2 as [Hitem2 | [Heq | Hitem2]]
+    ; try
+      (apply in_split in Hitem2; destruct Hitem2 as [prefix2 [suffix2 Hitem2]]
+      ; rewrite Hitem2 in Hitem1; clear Hitem2
+      ).
+    - right. right.
+      rewrite <- app_assoc in Hitem1.
+      apply
+        (VLSM_full_validator_sent_messages_comparable'
+          s tr Htr prefix2 suffix2 suffix1 item2 item1 Hitem1
+          m2 m1 Hm2 Hm1
+        ).
+    - left. subst. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
+    - right. left.
+      apply
+        (VLSM_full_validator_sent_messages_comparable'
+          s tr Htr prefix1 prefix2 suffix2 item1 item2 Hitem1
+          m1 m2 Hm1 Hm2
+        ).
+  Qed.
 
 End proper_sent_received.
 
