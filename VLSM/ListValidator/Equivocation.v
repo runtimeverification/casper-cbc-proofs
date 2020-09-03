@@ -2889,24 +2889,6 @@ Context
     |}.
     
     Existing Instance comparable_states.
-    
-    (* 
-    
-    (* Current index's opinion on index i.
-       If i is equal to itself we retreive the state itself.
-       Otherwise we project it into i. *)
-    
-    Definition opinion_on (s : state) (i : index) (current : index) : state :=
-      match (eq_dec i current) with
-      | left _ => project s current
-      | right _ => @project index index_listing _ (project s current) i
-      end.
-    
-    Definition all_opinions_on (s : state) (i : index) : list state :=
-      List.map (opinion_on s i) index_listing.
-      
-    Definition obs_events (s : (@state index index_listing)) (i : index) : list (@state index index_listing) := 
-      all_opinions_on s i.*)
       
     Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
       match d with
