@@ -236,18 +236,38 @@ End observable_equivocation_in_composition.
 
 Section message_observable_equivocation_equivalent_defnitions.
 
+(** ** Deriving observable equivocation evidence from message-based equivocation evidence
+
+In this section we show that given the [basic_equivocation] instance
+obtained through [state_encapsulating_messages_equivocation], we can turn
+it into a [basic_observable_equivocation].
+
+*)
+
 Context
   (state message validator : Type)
   `{Hmsgeqv : message_equivocation_evidence message validator}
   {Hstate : state_encapsulating_messages state message}
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
+  (message_based_equivocation := state_encapsulating_messages_equivocation state message validator)
   .
+
+(**
+First, let us fix events to be messages, and choose the [happens_before_fn] to be
+the [message_preceeds_fn].
+*)
 
 Definition message_comparable_events
   : comparable_events message
   :=
   {| happens_before_fn := message_preceeds_fn |}.
+
+(**
+If we have a [state_encapsulating_messages], then we can use the [sender]
+function to select ones having a given validator and obtain the
+corresponding [observable_events].
+*)
 
 Definition observable_messages
   (s : state)
@@ -260,6 +280,12 @@ Definition message_computable_observable_equivocation_evidence
   :=
   {| observable_events := observable_messages |}.
 
+(**
+Further, we can get all validators for a state by projecting the messages
+on [sender] and thus obtain a [basic_equivocation] instance through the
+[basic_observable_equivocation] definition.
+*)
+
 Definition message_basic_observable_equivocation
   (Hevidence := message_computable_observable_equivocation_evidence)
   (validators := fun s => set_map eq_dec sender (get_messages s))
@@ -267,13 +293,18 @@ Definition message_basic_observable_equivocation
   : basic_equivocation state validator
   := @basic_observable_equivocation state validator message _ _ Hevidence _ _ validators validators_nodup.
 
+(**
+We can now show that the [message_based_equivocation] (customly built for
+messages) and the [message_basic_observable_equivocation] (derived from it
+as an instance of event-based equivocation) yield the same
+[is_equivocating_fn].
+*)
+
 Lemma message_basic_observable_equivocation_iff
-  (Hbas_eqv_obs := message_basic_observable_equivocation)
-  (Hbas_eqv_msg := state_encapsulating_messages_equivocation state message validator)
   (s : state)
   (v : validator)
-  : @is_equivocating_fn _ _ _ _ Hbas_eqv_obs s v
-  = @is_equivocating_fn _ _ _ _ Hbas_eqv_msg s v.
+  : @is_equivocating_fn _ _ _ _ message_basic_observable_equivocation s v
+  = @is_equivocating_fn _ _ _ _ message_based_equivocation s v.
 Proof.
   simpl. unfold equivocation_evidence.
   destruct
