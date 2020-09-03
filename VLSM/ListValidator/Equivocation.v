@@ -5,6 +5,7 @@ From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
+  Lib.SortedLists
   VLSM.Common
   VLSM.Composition
   VLSM.Equivocation

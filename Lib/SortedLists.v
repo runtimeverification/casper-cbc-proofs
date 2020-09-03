@@ -284,3 +284,116 @@ Proof.
       apply (IHs1 LS1 s2 LS2) in H0. subst. reflexivity.
   - intros. subst. easy.
 Qed.
+
+
+(* Transitive isn't necessary but makes the proof simpler. *)
+
+Lemma lsorted_app
+  {A : Type}
+  (l : list A)
+  (R : A -> A -> Prop)
+  (Hsorted : LocallySorted R l)
+  (Htransitive : Transitive R)
+  (alfa beta : list A)
+  (Hconcat : l = alfa ++ beta) :
+  LocallySorted R alfa /\ LocallySorted R beta.
+Proof.
+  generalize dependent l.
+  generalize dependent beta.
+  induction alfa.
+  - intros.
+    split.
+    apply LSorted_nil.
+    simpl in *.
+    rewrite Hconcat in Hsorted.
+    assumption.
+  - intros.
+    apply Sorted_LocallySorted_iff in Hsorted.
+    apply Sorted_StronglySorted in Hsorted.
+    rewrite Hconcat in Hsorted.
+    simpl in Hsorted.
+    apply StronglySorted_inv in Hsorted.
+    destruct Hsorted.
+    specialize (IHalfa beta (alfa ++ beta)).
+    spec IHalfa.
+    apply Sorted_LocallySorted_iff.
+    apply StronglySorted_Sorted.
+    assumption.
+    specialize (IHalfa eq_refl).
+    destruct IHalfa.
+    split.
+    + destruct alfa.
+      * apply LSorted_cons1.
+      * apply LSorted_consn.
+        assumption.
+        rewrite Forall_forall in H0.
+        specialize (H0 a0).
+        spec H0.
+        left. reflexivity.
+        assumption.
+    + assumption.
+    + assumption.
+Qed.
+
+Lemma lsorted_pairwise_ordered 
+  {A : Type}
+  (l : list A)
+  (R : A -> A -> Prop)
+  (Hsorted : LocallySorted R l)
+  (Htransitive : Transitive R)
+  (x y : A)
+  (alfa beta gamma : list A)
+  (Hconcat : l = alfa ++ [x] ++ beta ++ [y] ++ gamma) :
+  R x y.
+Proof.
+  apply lsorted_app with (R0 := R) (alfa0 := alfa) in Hconcat.
+  destruct Hconcat as [_ Hneed].
+  simpl in Hneed.
+  rewrite <- Sorted_LocallySorted_iff in Hneed.
+  apply Sorted_extends in Hneed.
+  rewrite Forall_forall in Hneed.
+  specialize (Hneed y).
+  spec Hneed.
+  apply in_elt.
+  assumption.
+  assumption.
+  assumption.
+  assumption.
+Qed.
+
+Lemma lsorted_pair_wise_unordered 
+  {A : Type}
+  (l : list A)
+  (R : A -> A -> Prop)
+  (Hsorted : LocallySorted R l)
+  (Htransitive : Transitive R)
+  (x y : A)
+  (Hin_x : In x l)
+  (Hin_y : In y l) :
+  x = y \/ R x y \/ R y x.
+  
+Proof.
+  apply in_split in Hin_x.
+  destruct Hin_x as [pref1 [suf1 Hconcat1]].
+  rewrite Hconcat1 in Hin_y.
+  apply in_elt_inv in Hin_y.
+  destruct Hin_y.
+  - symmetry in H.
+    intuition.
+  - apply in_app_or in H.
+    destruct H.
+    apply in_split in H.
+    destruct H as [pref2 [suf2 Hconcat2]].
+    rewrite Hconcat2 in Hconcat1.
+    rewrite <- app_assoc in Hconcat1.
+    specialize (lsorted_pairwise_ordered l R Hsorted Htransitive y x pref2 suf2 suf1 Hconcat1).
+    intros.
+    right. right. assumption.
+
+    apply in_split in H.
+    destruct H as [pref2 [suf2 Hconcat2]].
+    rewrite Hconcat2 in Hconcat1.
+    specialize (lsorted_pairwise_ordered l R Hsorted Htransitive x y pref1 pref2 suf2 Hconcat1).
+    intros.
+    right. left. assumption.
+Qed.
