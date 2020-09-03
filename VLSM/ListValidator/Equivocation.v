@@ -9,6 +9,7 @@ Require Import
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
+  VLSM.ObservableEquivocation
   CBC.Equivocation.
 
 Section Equivocation.
@@ -2855,4 +2856,73 @@ Context
       unfold state_gt in H.
       intuition.
     Qed.
+    
+    Existing Instance state_lt_equivocation.
+    
+    Lemma evidence_of_equivocation
+        (pm1 pm2 : byzantine_message X)
+        (m1 := proj1_sig pm1)
+        (m2 := proj1_sig pm2)
+        (Heqv : equivocating_with m1 m2 = true)
+        (s : state)
+        (tr : list transition_item)
+        (Htr : finite_protocol_trace (pre_loaded_vlsm X) s tr)
+        : ~ trace_has_message X output m1 tr \/  ~ trace_has_message X output m2 tr.
+    Proof.
+      unfold equivocating_with in Heqv.
+      destruct (eq_dec m1 m2).
+      discriminate Heqv.
+      destruct (eq_dec (sender m1) (sender m2)).
+      2: discriminate Heqv.
+      destruct (eq_dec (sender m1) index_self).
+    Admitted.
+    
+    (*     Definition state_lt_equivocation : message_equivocation_evidence message index
+      :=
+      {|
+        sender := fst;
+        message_preceeds_fn := fun m1 m2 => state_ltb (snd m1) (snd m2)
+      |}. *)
+      
+    Definition comparable_states : comparable_events state := {| 
+      happens_before_fn := state_ltb  
+    |}.
+    
+    Existing Instance comparable_states.
+      
+    Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
+      match d with
+      | 0 => [project s target]
+      | S n => let children := List.map (@project index index_listing _ s) index_listing in
+             let children_res := List.map (get_observations target n) children in
+             List.fold_right (@set_union state state_eq_dec) [] children_res ++ [project s target]
+      end.
+      
+    Definition shallow_observations (s : state) (target : index) :=
+      get_observations target 1 s.
+      
+    Definition full_observations (s : state) (target : index) :=
+      get_observations target (depth s) s.
+    
+    Definition observable_shallow : 
+      (computable_observable_equivocation_evidence 
+       (@state index index_listing) 
+       index 
+       state 
+       state_eq_dec comparable_states) := {|
+       observable_events := shallow_observations;
+      |}.
+      
+    Definition observable_full : 
+      (computable_observable_equivocation_evidence 
+       (@state index index_listing) 
+       index 
+       state 
+       state_eq_dec comparable_states) := {|
+       observable_events := full_observations;
+      |}.
+   
+   Existing Instance observable_shallow.
+   Existing Instance observable_full.
+   
 End Equivocation.
