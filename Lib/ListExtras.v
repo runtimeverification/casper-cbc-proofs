@@ -1181,7 +1181,7 @@ Proof.
   - assumption.
 Qed.
 
-Lemma union_fold
+Lemma union_fold 
   {A : Type}
   {eq_dec_a : EqDec A}
   (haystack : list (list A))
