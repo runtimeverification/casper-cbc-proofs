@@ -10,6 +10,7 @@ Require Import
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ObservableEquivocation
+  CBC.Common
   CBC.Equivocation.
 
 Section Equivocation.
@@ -24,7 +25,9 @@ Context
   (preX := pre_loaded_vlsm X)
   (Xtype := type preX)
   {sdec : EqDec (@state index index_listing)}
-  {mdec : EqDec (@message index index_listing)}.
+  {mdec : EqDec (@message index index_listing)}
+  {Mindex : Measurable index}
+  {Rindex : ReachableThreshold index}.
 
   Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
     @project_indexed _ index_listing _ l ls who.
@@ -2858,7 +2861,7 @@ Context
     Qed.
     
     Existing Instance state_lt_equivocation.
-    
+    (*
     Lemma evidence_of_equivocation
         (pm1 pm2 : byzantine_message X)
         (m1 := proj1_sig pm1)
@@ -2875,7 +2878,7 @@ Context
       destruct (eq_dec (sender m1) (sender m2)).
       2: discriminate Heqv.
       destruct (eq_dec (sender m1) index_self).
-    Admitted.
+    Admitted. *)
     
     (*     Definition state_lt_equivocation : message_equivocation_evidence message index
       :=
@@ -2904,6 +2907,7 @@ Context
     Definition full_observations (s : state) (target : index) :=
       get_observations target (depth s) s.
     
+    (*
     Definition observable_shallow : 
       (computable_observable_equivocation_evidence 
        (@state index index_listing) 
@@ -2911,18 +2915,43 @@ Context
        state 
        state_eq_dec comparable_states) := {|
        observable_events := shallow_observations;
-      |}.
+      |}. *)
+   
+      (* Existing Instance observable_shallow. *)
       
     Definition observable_full : 
       (computable_observable_equivocation_evidence 
        (@state index index_listing) 
        index 
-       state 
+       (@state index index_listing)
        state_eq_dec comparable_states) := {|
        observable_events := full_observations;
       |}.
    
-   Existing Instance observable_shallow.
+
    Existing Instance observable_full.
+   
+   Definition get_validators (s : (@state index index_listing)) : list index := index_listing.
+   
+   Lemma get_validators_nodup 
+    (s : state) :
+    NoDup (get_validators s).
+   Proof.
+    unfold get_validators.
+    apply Hfinite.
+   Qed.
+   
+   Definition lv_basic_equivocation : basic_equivocation state index := 
+      @basic_observable_equivocation 
+      (@state index index_listing) 
+      index 
+      (@state index index_listing) 
+      state_eq_dec
+      comparable_states
+      observable_full
+      Mindex
+      Rindex
+      get_validators
+      get_validators_nodup. 
    
 End Equivocation.
