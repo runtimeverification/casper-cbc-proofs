@@ -244,7 +244,7 @@ Context
          destruct pr_valid_prop as [Hprotocol Hothers].
          assumption.
     Qed.
-    
+
     Lemma depth_redundancy :
       forall (s : state)
              (i : index)
@@ -369,8 +369,8 @@ Context
           rewrite <- H1.
           reflexivity.
     Qed.
-    
-    Lemma unfold_history 
+
+    Lemma unfold_history
       (s1 s2 : state)
       (i : index)
       (pref suff : list state)
@@ -404,7 +404,7 @@ Context
         unfold get_history in Hin.
         specialize (IHpref suff s2 a).
         apply IHpref.
-        
+
         destruct s1.
         + discriminate Hin.
         + unfold rec_history in Hin.
@@ -416,7 +416,7 @@ Context
             inversion Hin.
             unfold get_history.
             unfold rec_history.
-            
+
             rewrite depth_redundancy in H1.
             unfold rec_history.
             assumption.
@@ -495,13 +495,13 @@ Context
       (i : index)
       (history1 := get_history s1 i)
       (history2 := get_history s2 i) :
-      incl history1 history2 <-> 
+      incl history1 history2 <->
       exists (pref' : list state), history2 = pref' ++ history1.
    Proof.
     split.
     - intros.
       unfold incl in H.
-      destruct history1 eqn : eq_1. 
+      destruct history1 eqn : eq_1.
       + simpl in *.
         intros.
         exists history2.
@@ -512,7 +512,7 @@ Context
         assert (s = s \/ In s l). {
           left. reflexivity.
         }
-        
+
         specialize (H H0).
         apply in_split in H.
         destruct H as [pref [suff Hsplit]].
@@ -523,7 +523,7 @@ Context
         unfold history2.
         rewrite Hsplit.
         rewrite H.
-        
+
         assert (get_history s i = l). {
           unfold history1 in eq_1.
           specialize (unfold_history s1 s i [] l eq_1).
@@ -531,7 +531,7 @@ Context
           symmetry.
           assumption.
         }
-        
+
         rewrite H1.
         reflexivity.
       - intros.
@@ -539,7 +539,7 @@ Context
         assert (incl history1 history1). {
           apply incl_refl.
         }
-        
+
         apply incl_appr with (m := pref) in H.
         rewrite <- Hconcat in H.
         assumption.
@@ -568,7 +568,7 @@ Context
       (s1 s2 : state)
       : bool
       := forallb (fun i : index => inclb (get_history s1 i) (get_history s2 i)) index_listing.
-    
+
     Lemma state_le_function : PredicateFunction2 state_le state_leb.
     Proof.
       intros s1 s2. unfold state_leb. rewrite forallb_forall.
@@ -582,7 +582,7 @@ Context
       : Prop
       := state_le s1 s2 /\
       exists (i : index) (s : state), In s (get_history s2 i) /\ ~In s (get_history s1 i).
-    
+
     Definition state_ltb
       (s1 s2 : state)
       : bool
@@ -591,7 +591,7 @@ Context
         (fun i : index =>
           existsb (fun s : state => negb (inb eq_dec s (get_history s1 i))) (get_history s2 i))
         index_listing.
-    
+
     Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
     Proof.
       intros s1 s2. unfold state_ltb.
@@ -785,7 +785,7 @@ Context
       apply (in_futures_strict_preserving preX); try assumption.
       - apply state_lt_strictorder.
       - apply state_lt_transition.
-    Qed. 
+    Qed.
 
     Lemma projection_in_history
       (s : state)
@@ -2691,7 +2691,7 @@ Context
            * rewrite state_eqb_eq.
              reflexivity.
       Qed.
-    
+
     Lemma in_history_is_protocol
       (s s': state)
       (Hprotocol : protocol_state_prop preX s)
@@ -2710,7 +2710,7 @@ Context
           reflexivity.
         - elim n. reflexivity.
       }
-      
+
       specialize (send_oracle_prop s Hprotocol (index_self, s')).
       intros.
       unfold has_been_sent_prop in H0.
@@ -2736,7 +2736,7 @@ Context
         assumption.
       - destruct H1 as [si [tr [Htr [Hdest Hm]]]].
         specialize (H0 si tr Htr).
-        
+
         assert (last (map destination tr) si = s). {
           specialize (@last_map (@transition_item message (type preX)) state destination).
                intros.
@@ -2750,24 +2750,24 @@ Context
                   apply H1.
                 - discriminate Hdest.
         }
-        
+
         specialize (H0 H1).
         rewrite Exists_exists in H0.
         destruct H0 as [x [Hin_x Houtput]].
         apply in_split in Hin_x.
         destruct Hin_x as [l1 [l2 Hconcat]].
-        
+
         remember (last (List.map destination l1) si) as prev_x.
         destruct Htr.
         specialize (protocol_transition_to preX si x tr l1 l2 Hconcat H0).
         intros.
         simpl in H3.
-        
+
         unfold protocol_transition in H3.
         destruct H3 as [Hvalid Htransition].
         unfold protocol_valid in Hvalid.
         destruct Hvalid as [Hneed Hother].
-        
+
         assert (last (map destination l1) si = s'). {
           simpl in *.
           unfold vtransition in Htransition.
@@ -2793,7 +2793,7 @@ Context
       (s1 s2 : state)
       : Prop
       := state_lt s2 s1.
-      
+
     Lemma state_gt_tran
       (s1 s2 s3 : state)
       (H12 : state_gt s1 s2)
@@ -2860,7 +2860,7 @@ Context
       unfold state_gt in H.
       intuition.
     Qed.
-    
+
     Existing Instance state_lt_equivocation.
     (*
     Lemma evidence_of_equivocation
@@ -2880,20 +2880,20 @@ Context
       2: discriminate Heqv.
       destruct (eq_dec (sender m1) index_self).
     Admitted. *)
-    
+
     (*     Definition state_lt_equivocation : message_equivocation_evidence message index
       :=
       {|
         sender := fst;
         message_preceeds_fn := fun m1 m2 => state_ltb (snd m1) (snd m2)
       |}. *)
-      
-    Definition comparable_states : comparable_events state := {| 
-      happens_before_fn := state_ltb  
+
+    Definition comparable_states : comparable_events state := {|
+      happens_before_fn := state_ltb
     |}.
-    
+
     Existing Instance comparable_states.
-      
+
     Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
       match d with
       | 0 => [project s target]
@@ -2901,58 +2901,58 @@ Context
              let children_res := List.map (get_observations target n) children in
              List.fold_right (@set_union state state_eq_dec) [] children_res ++ [project s target]
       end.
-      
+
     Definition shallow_observations (s : state) (target : index) :=
       get_observations target 1 s.
-      
+
     Definition full_observations (s : state) (target : index) :=
       get_observations target (depth s) s.
-    
+
     (*
-    Definition observable_shallow : 
-      (computable_observable_equivocation_evidence 
-       (@state index index_listing) 
-       index 
-       state 
+    Definition observable_shallow :
+      (computable_observable_equivocation_evidence
+       (@state index index_listing)
+       index
+       state
        state_eq_dec comparable_states) := {|
        observable_events := shallow_observations;
       |}. *)
-   
+
       (* Existing Instance observable_shallow. *)
-      
-    Definition observable_full : 
-      (computable_observable_equivocation_evidence 
-       (@state index index_listing) 
-       index 
+
+    Definition observable_full :
+      (computable_observable_equivocation_evidence
+       (@state index index_listing)
+       index
        (@state index index_listing)
        state_eq_dec comparable_states) := {|
        observable_events := full_observations;
       |}.
-   
+
 
    Existing Instance observable_full.
-   
+
    Definition get_validators (s : (@state index index_listing)) : list index := index_listing.
-   
-   Lemma get_validators_nodup 
+
+   Lemma get_validators_nodup
     (s : state) :
     NoDup (get_validators s).
    Proof.
     unfold get_validators.
     apply Hfinite.
    Qed.
-   
-   Definition lv_basic_equivocation : basic_equivocation state index := 
-      @basic_observable_equivocation 
-      (@state index index_listing) 
-      index 
-      (@state index index_listing) 
+
+   Definition lv_basic_equivocation : basic_equivocation state index :=
+      @basic_observable_equivocation
+      (@state index index_listing)
+      index
+      (@state index index_listing)
       state_eq_dec
       comparable_states
       observable_full
       Mindex
       Rindex
       get_validators
-      get_validators_nodup. 
-   
+      get_validators_nodup.
+
 End Equivocation.

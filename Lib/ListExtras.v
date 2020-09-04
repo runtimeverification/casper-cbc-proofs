@@ -296,7 +296,7 @@ Definition incl_correct {A} {Heq : EqDec A}
   (l1 l2 : list A)
   : incl l1 l2 <-> inclb l1 l2 = true
   := incl_function l1 l2.
-  
+
 Lemma map_injective : forall A B (f : A -> B),
   Injective f -> Injective (map f).
 Proof.

@@ -895,7 +895,7 @@ Section proper_sent_received.
     : has_been_received_capability vlsm
     :=
     computable_received_messages_has_been_received_capability vlsm.
-  
+
   Lemma VLSM_full_validator_sent_messages_comparable'
     (s : vstate vlsm)
     (tr : list transition_item)

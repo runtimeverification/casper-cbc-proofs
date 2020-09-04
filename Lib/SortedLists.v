@@ -335,7 +335,7 @@ Proof.
     + assumption.
 Qed.
 
-Lemma lsorted_pairwise_ordered 
+Lemma lsorted_pairwise_ordered
   {A : Type}
   (l : list A)
   (R : A -> A -> Prop)
@@ -361,7 +361,7 @@ Proof.
   assumption.
 Qed.
 
-Lemma lsorted_pair_wise_unordered 
+Lemma lsorted_pair_wise_unordered
   {A : Type}
   (l : list A)
   (R : A -> A -> Prop)
@@ -371,7 +371,7 @@ Lemma lsorted_pair_wise_unordered
   (Hin_x : In x l)
   (Hin_y : In y l) :
   x = y \/ R x y \/ R y x.
-  
+
 Proof.
   apply in_split in Hin_x.
   destruct Hin_x as [pref1 [suf1 Hconcat1]].

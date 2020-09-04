@@ -149,11 +149,11 @@ We say that <<v>> is [equivocating_in_state] <<s>> if it is
 
 Finally, we tie the [computable_observable_equivocation_evidence] notion
 to that of [composite_vlsm_observable_equivocation] by requiring that
-the existence of two events observable for a validator <<v>> in a state <<s>> 
+the existence of two events observable for a validator <<v>> in a state <<s>>
 which are not [comparable] w.r.t. [happens_before] relation guarantees
 that <<v>> is [equivocating_in_state] <<s>> ([evidence_implies_equivocation]).
 *)
-Class composite_vlsm_observable_equivocation
+Class composite_vlsm_observable_messages
   :=
   {
     message_observable_events : message -> validator -> set event;
@@ -165,72 +165,118 @@ Class composite_vlsm_observable_equivocation
       (s : state)
       (Ht : protocol_transition X l som (s, Some m))
       : incl (message_observable_events m v) (observable_events (s (projT1 l)) v);
+    
+    option_message_observable_events
+      (om : option message)
+      (v : validator)
+      : set event
+      :=
+      match om with
+      | Some m => message_observable_events m v
+      | None => []
+      end;
 
-    observable_event_witness
+    unforgeability
+      (s s' : state)
+      (om om' : option message)
+      (l : label)
+      (Ht : protocol_transition X l (s, om) (s', om'))
+      (i := projT1 l)
+      (v : validator)
+      (Hv : A v <> i)
+      : incl
+        (observable_events (s' i) v)
+        (observable_events (s i) v ++ option_message_observable_events om v);
+
+    comparable_sent_messages_events
       (is : vstate X)
       (tr : list transition_item)
-      (s := last (map destination tr) is)
+      (Htr : finite_protocol_trace X is tr)
+      (prefix middle suffix : list transition_item)
+      (item1 item2 : transition_item)
+      (Heq : tr = prefix ++ [item1] ++ middle ++ [item2] ++ suffix)
+      (m1 m2 : message)
+      (Hm1 : output item1 = Some m1)
+      (Hm2 : output item2 = Some m2)
+      (Hsame_sender : projT1 (l item1) = projT1 (l item2))
       (v : validator)
-      (e : event)
-      (i : index)
-      (He : In e (observable_events (s i) v))
-      : Prop
-      :=
-      exists
-        (prefix middle suffix : list transition_item)
-        (sitem ritem : transition_item)
-        (Heq : tr = prefix ++ [sitem] ++ middle ++ [ritem] ++ suffix)
-        (m : message)
-        (Hsent : output sitem = Some m)
-        (Hreceived : input ritem = Some m)
-        (Hreceived_by_i : projT1 (l ritem) = i),
-        In e (message_observable_events m v);
-
-    equivocating_in_trace_last
-      (is : vstate X)
-      (tr : list transition_item)
-      (s := last (map destination tr) is)
-      (v : validator)
-      : Prop
-      := exists
-          (e : event)
-          (i : index)
-          (Hvi : A v <> i)
-          (He : In e (observable_events (s i) v)),
-          ~ observable_event_witness is tr v e i He;
-    
-    equivocating_in_trace
-      (tr : protocol_trace X)
-      (v : validator)
-      : Prop
-      :=
-      exists
-        (prefix : list transition_item)
-        (last : transition_item)
-        (Hpr : trace_prefix X (proj1_sig tr) last prefix),
-        equivocating_in_trace_last (trace_first (proj1_sig tr)) prefix v;
-
-    equivocating_in_state
-      (s : protocol_state X)
-      (v : validator)
-      : Prop
-      := forall 
-        (is : vstate X)
-        (tr : list transition_item)
-        (Htr : finite_protocol_trace X is tr)
-        (Hlast : last (map destination tr) is = proj1_sig s),
-        equivocating_in_trace_last is tr v;
-    
-    evidence_implies_equivocation
-      (s : vstate X)
-      (Hs : protocol_state_prop X s)
-      (v : validator)
+      (Hv : A v = projT1 (l item1))
       (e1 e2 : event)
-      (He1 : In e1 (observable_events s v))
-      (He2 : In e2 (observable_events s v))
-      (Heqv : comparableb happens_before_fn e1 e2 = false)
-      : equivocating_in_state (exist _ s Hs) v
+      (He1 : In e1 (message_observable_events m1 v))
+      (He2 : In e2 (message_observable_events m2 v))
+      : comparableb happens_before_fn e1 e2 = true;
   }.
+
+Context
+  {Hcomposite : composite_vlsm_observable_messages}.
+
+  Definition observable_event_witness
+    (is : vstate X)
+    (tr : list transition_item)
+    (s := last (map destination tr) is)
+    (v : validator)
+    (e : event)
+    (i : index)
+    (He : In e (observable_events (s i) v))
+    : Prop
+    :=
+    exists
+      (prefix middle suffix : list transition_item)
+      (sitem ritem : transition_item)
+      (Heq : tr = prefix ++ [sitem] ++ middle ++ [ritem] ++ suffix)
+      (m : message)
+      (Hsent : output sitem = Some m)
+      (Hreceived : input ritem = Some m)
+      (Hreceived_by_i : projT1 (l ritem) = i),
+      In e (message_observable_events m v).
+
+  Definition equivocating_in_trace_last
+    (is : vstate X)
+    (tr : list transition_item)
+    (s := last (map destination tr) is)
+    (v : validator)
+    : Prop
+    := exists
+        (e : event)
+        (i : index)
+        (Hvi : A v <> i)
+        (He : In e (observable_events (s i) v)),
+        ~ observable_event_witness is tr v e i He.
+
+  Definition equivocating_in_trace
+    (tr : protocol_trace X)
+    (v : validator)
+    : Prop
+    :=
+    exists
+      (prefix : list transition_item)
+      (last : transition_item)
+      (Hpr : trace_prefix X (proj1_sig tr) last prefix),
+      equivocating_in_trace_last (trace_first (proj1_sig tr)) prefix v.
+
+  Definition equivocating_in_state
+    (s : protocol_state X)
+    (v : validator)
+    : Prop
+    := forall
+      (is : vstate X)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace X is tr)
+      (Hlast : last (map destination tr) is = proj1_sig s),
+      equivocating_in_trace_last is tr v.
+
+  Lemma evidence_implies_equivocation
+    (s : vstate X)
+    (Hs : protocol_state_prop X s)
+    (v : validator)
+    (e1 e2 : event)
+    (He1 : In e1 (observable_events s v))
+    (He2 : In e2 (observable_events s v))
+    (Heqv : comparableb happens_before_fn e1 e2 = false)
+    : equivocating_in_state (exist _ s Hs) v.
+  Proof.
+  Admitted.
+  
 
 End observable_equivocation_in_composition.
 
@@ -361,7 +407,7 @@ Proof.
     unfold comparableb in Hcomp.
     unfold equivocating_with.
     destruct (eq_dec m1 m2); try discriminate Hcomp.
-    rewrite e. rewrite e0. 
+    rewrite e. rewrite e0.
     rewrite eq_dec_if_true; try reflexivity.
     apply Bool.orb_false_iff in Hcomp.
     destruct Hcomp as [Hm12 Hm21].

@@ -369,7 +369,7 @@ Section Simple.
     Proof.
       unfold has_been_sent_prop. unfold all_traces_have_message_prop.
       unfold computable_sent_messages_has_been_sent.
-      destruct 
+      destruct
         (inb eq_dec m (sent_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
@@ -382,7 +382,7 @@ Section Simple.
         apply sent_messages_full; try assumption.
         exists (exist _ m H). reflexivity.
     Qed.
-      
+
     Definition computable_sent_messages_has_not_been_sent
       {Hsm : computable_sent_messages}
       {eq_message : EqDec message}
@@ -404,7 +404,7 @@ Section Simple.
       unfold computable_sent_messages_has_not_been_sent.
       rewrite Bool.negb_true_iff.
       unfold computable_sent_messages_has_been_sent.
-      destruct 
+      destruct
         (inb eq_dec m (sent_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
@@ -482,7 +482,7 @@ Section Simple.
     Proof.
       unfold has_been_received_prop. unfold all_traces_have_message_prop.
       unfold computable_received_messages_has_been_received.
-      destruct 
+      destruct
         (inb eq_dec m (received_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
@@ -493,7 +493,7 @@ Section Simple.
         apply (received_messages_consistency s Hs m) in H.
         exists (exist _ m H). reflexivity.
     Qed.
-      
+
     Definition computable_received_messages_has_not_been_received
       {Hsm : computable_received_messages}
       {eq_message : EqDec message}
@@ -515,7 +515,7 @@ Section Simple.
       unfold computable_received_messages_has_not_been_received.
       rewrite Bool.negb_true_iff.
       unfold computable_received_messages_has_been_received.
-      destruct 
+      destruct
         (inb eq_dec m (received_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
