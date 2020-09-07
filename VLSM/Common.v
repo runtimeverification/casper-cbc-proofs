@@ -757,31 +757,6 @@ decompose the above properties in proofs.
         simpl in IHtr1. specialize (IHtr1 s H2). assumption.
     Qed.
 
-    Lemma finite_ptrace_middle_valid_transition
-          (s : state)
-          (tr : list transition_item)
-          (Htr : finite_protocol_trace_from s tr)
-          (prefix suffix : list transition_item)
-          (te : transition_item)
-          (Heq : tr = prefix ++ [te] ++ suffix)
-          (ste := last (List.map destination prefix) s)
-      : protocol_transition (l te) (ste, input te) (destination te, output te).
-    Proof.
-      assert (Hprefix : prefix = [] \/ prefix <> []).
-      { destruct prefix; try (left; reflexivity); right; intro contra; discriminate contra. }
-      destruct Hprefix as [Hprefix | Hprefix].
-      - subst prefix. simpl in Heq. subst tr. simpl in ste. unfold ste.
-        apply (finite_ptrace_first_valid_transition s suffix te Htr).
-      - specialize (exists_last Hprefix).
-        intros (prefix', (te0, Hprefix')). subst prefix.
-        unfold ste.
-        rewrite map_app. simpl.
-        rewrite last_is_last.
-        apply
-          (finite_ptrace_consecutive_valid_transition s tr suffix prefix' te0 te Htr).
-        rewrite <- app_assoc in Heq. assumption.
-    Qed.
-
     Lemma first_transition_valid
       (s : state)
       (te : transition_item)

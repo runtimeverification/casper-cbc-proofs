@@ -259,7 +259,7 @@ Lemma trace_generated_index
   : A v = i.
 Proof.
   destruct (eq_dec (A v) i); try assumption.
-  specialize (finite_ptrace_middle_valid_transition X is tr (proj1 Htr) prefix suffix item Heq).
+  specialize (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr)).
   intro Hpt.
   specialize (unforgeability s s' (input item) (output item) (l item) Hpt v n) as Hincl.
   apply set_diff_iff in He.
