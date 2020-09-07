@@ -6,7 +6,8 @@ From CasperCBC
   Require Import
     Preamble
     CBC.Equivocation
-    VLSM.Common Composition
+    VLSM.Common 
+    VLSM.Composition
     VLSM.Equivocation
     .
 

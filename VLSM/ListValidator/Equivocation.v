@@ -25,7 +25,6 @@ Context
   (X := @VLSM_list _ index_self index_listing idec)
   (preX := pre_loaded_vlsm X)
   (Xtype := type preX)
-  {sdec : EqDec (@state index index_listing)}
   {mdec : EqDec (@message index index_listing)}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
@@ -52,7 +51,7 @@ Context
   (* Definition list_message_equivocation_evidence : message_equivocation_evidence message index. *)
 
   Definition state_eqb (s1 s2 : state) : bool :=
-    match sdec s1 s2 with
+    match @state_eq_dec _ index_listing s1 s2 with
     | left _ => true
     | right _ => false
     end.
@@ -62,11 +61,11 @@ Context
   Proof.
     unfold state_eqb.
     split.
-    - destruct (sdec s1 s2).
+    - destruct (state_eq_dec s1 s2).
       + intuition.
       + intros. discriminate H.
     - intros.
-      destruct (sdec s1 s2);
+      destruct (state_eq_dec s1 s2);
       intuition.
   Qed.
 
@@ -75,7 +74,7 @@ Context
   Proof.
     unfold state_eqb.
     split;
-    destruct (sdec s1 s2);
+    destruct (state_eq_dec s1 s2);
     intuition.
   Qed.
 
@@ -910,7 +909,7 @@ Context
         simpl in *.
         intuition.
       - intros.
-        destruct (sdec a s').
+        destruct (state_eq_dec a s').
         + destruct s eqn : eq_s.
           * discriminate Heql.
           * unfold rec_history in Heql.
@@ -1282,7 +1281,7 @@ Context
           assumption.
         }
 
-        destruct (sdec (project s i) target) eqn : eq.
+        destruct (state_eq_dec (project s i) target) eqn : eq.
         + exists lst.
           split.
           * rewrite Hlst.
@@ -1944,7 +1943,7 @@ Context
             split.
             assumption.
             unfold state_eqb.
-            destruct (sdec (snd m) (snd m)).
+            destruct (state_eq_dec (snd m) (snd m)).
             reflexivity.
             elim n.
             reflexivity.
@@ -2907,18 +2906,32 @@ Context
 
     Definition full_observations (s : state) (target : index) :=
       get_observations target (depth s) s.
-
-    (*
-    Definition observable_shallow :
-      (computable_observable_equivocation_evidence
-       (@state index index_listing)
-       index
-       state
-       state_eq_dec comparable_states) := {|
-       observable_events := shallow_observations;
-      |}. *)
-
-      (* Existing Instance observable_shallow. *)
+    
+    Lemma get_observations_depth_redundancy
+      (target : index)
+      (d : nat)
+      (s : state)
+      (Hineq : d >= depth s) :
+      get_observations target d s = get_observations target (depth s) s.
+   Proof.
+   Admitted.
+    
+    Lemma observations_in_project
+      (s ob : state) 
+      (target i : index)
+      (Hin : In ob (full_observations (project s i) target)) :
+      In ob (full_observations s target).
+  Proof.
+  Admitted.
+    
+    Lemma observations_in_history
+      (s s' ob : state)
+      (target i : index)
+      (Hin : In ob (full_observations s' target))
+      (Hhistory: In s' (get_history s i)) :
+      In ob (full_observations s target).
+   Proof.
+   Admitted.
 
     Definition observable_full :
       (computable_observable_equivocation_evidence
@@ -2954,5 +2967,7 @@ Context
       Rindex
       get_validators
       get_validators_nodup.
+   
+   Existing Instance lv_basic_equivocation.
 
 End Equivocation.

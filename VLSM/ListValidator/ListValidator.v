@@ -70,7 +70,7 @@ Proof.
     * right. intro H. elim n. inversion H. reflexivity.
 Qed.
 
-Instance state_EqDec : EqDec state := { eq_dec := state_eq_dec }.
+Global Instance state_EqDec : EqDec state := { eq_dec := state_eq_dec }.
 
 Fixpoint depth (s : state) : nat :=
   match s with
