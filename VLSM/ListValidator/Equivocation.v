@@ -22,7 +22,7 @@ Context
   {index_listing : list index}
   {Hfinite : Listing index_listing}
   {idec : EqDec index}
-  (X := @VLSM_list _ index_self index_listing idec)
+  (X := @VLSM_list _ index_self index_listing idec ListValidator.estimator)
   (preX := pre_loaded_vlsm X)
   (Xtype := type preX)
   {mdec : EqDec (@message index index_listing)}
