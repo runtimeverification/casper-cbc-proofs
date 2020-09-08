@@ -1,0 +1,71 @@
+Require Import
+  List ListSet FinFun
+  .
+Import ListNotations.
+From CasperCBC
+Require Import
+  Lib.Preamble
+  CBC.Common
+  CBC.Equivocation
+  VLSM.Common
+  VLSM.ListValidator.ListValidator
+  VLSM.ListValidator.Equivocation
+  .
+
+Section EquivocationAwareValidator.
+
+  Context
+    {index : Type}
+    {index_self : index}
+    {index_listing : list index}
+    {Hfinite : Listing index_listing}
+    {idec : EqDec index}
+    (X := @VLSM_list _ index_self index_listing idec)
+    {Mindex : Measurable index}
+    {Rindex : ReachableThreshold index}
+    (eqv := @lv_basic_equivocation index index_listing Hfinite idec state_EqDec Mindex Rindex)
+    .
+
+  Existing Instance eqv.
+
+  Definition get_no_equivocating_states
+    (s : @state index index_listing)
+    (eqv_validators : list index)
+    : list state
+    :=
+    map (fun i: index => project s i)
+      (set_diff eq_dec index_listing eqv_validators).
+  
+  Definition no_equivocating_decisions
+    (s : @state index index_listing)
+    (eqv_validators : list index)
+    : list (option bool)
+    :=
+    match s with
+    | Bottom => []
+    | _ => List.map decision (get_no_equivocating_states s eqv_validators)
+    end.
+
+  Definition equivocation_aware_estimator (s : state) (b : bool) : Prop :=
+    let eqv_validators := equivocating_validators s in
+    let decisions := no_equivocating_decisions s eqv_validators in
+    let ob_dec := (option_eq_dec Bool.bool_dec) in
+    let none_count := List.count_occ ob_dec decisions None in
+    let our_count := List.count_occ ob_dec decisions (Some b) in
+    let other_count := List.count_occ ob_dec decisions (Some (negb b)) in
+    match s with
+    | Bottom => True
+    | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
+    end.
+  
+  Existing Instance VLSM_list_protocol.
+  Existing Instance LSM_list.
+
+  Instance VLSM_equivocation_aware_list_machine : VLSM_class (@LSM_list index index_self index_listing):=
+  { transition := @list_transition index index_self index_listing idec
+    ; valid := @list_valid index index_self index_listing idec equivocation_aware_estimator
+  }.
+
+  Definition VLSM_equivocation_aware_list : VLSM message := mk_vlsm VLSM_equivocation_aware_list_machine.
+  
+End EquivocationAwareValidator.

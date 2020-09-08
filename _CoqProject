@@ -18,6 +18,7 @@ VLSM/FullNode/Composite/Free.v
 VLSM/FullNode/Composite/LimitedEquivocation.v
 VLSM/ListValidator/ListValidator.v
 VLSM/ListValidator/Equivocation.v
+VLSM/ListValidator/EquivocationAwareListValidator.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v

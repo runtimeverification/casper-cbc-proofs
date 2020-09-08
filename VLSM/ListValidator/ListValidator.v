@@ -506,7 +506,7 @@ Inductive label_list : Type :=
                  No message is emitted.
 **)
 
-Definition transition (l : label_list) (som : state * option message) : state * option message :=
+Definition list_transition (l : label_list) (som : state * option message) : state * option message :=
   let (s, om) := som in
      match l with
      | update c => ((update_consensus (update_state s s index_self) c), Some (index_self, s))
@@ -522,13 +522,14 @@ Definition transition (l : label_list) (som : state * option message) : state * 
                  The sender's state in his own state list
                  should match our view of it in our state list. **)
 
-Definition valid
+Definition list_valid
+  (est : state -> bool -> Prop)
   (l : label_list)
   (som : state * option message)
   :=
   let (s, om) := som in
   match l with
-  | update c => estimator s c /\ om = None
+  | update c => est s c /\ om = None
   | receive => match om with
                | None => False
                | Some m => project s (fst m) = project (snd m) (fst m) /\ (snd m) <> Bottom /\ index_self <> (fst m)
@@ -551,8 +552,8 @@ Instance LSM_list : VLSM_sign VLSM_list_protocol :=
   }.
 
 Instance VLSM_list_machine : VLSM_class LSM_list :=
-  { transition := transition
-    ; valid := valid
+  { transition := list_transition
+    ; valid := list_valid estimator
   }.
 
 Definition VLSM_list : VLSM message := mk_vlsm VLSM_list_machine.
