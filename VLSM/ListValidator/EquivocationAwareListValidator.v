@@ -23,7 +23,7 @@ Section EquivocationAwareValidator.
     (X := @VLSM_list _ index_self index_listing idec)
     {Mindex : Measurable index}
     {Rindex : ReachableThreshold index}
-    (eqv := @lv_basic_equivocation index index_listing Hfinite idec state_EqDec Mindex Rindex)
+    (eqv := @lv_basic_equivocation index index_listing Hfinite idec Mindex Rindex)
     .
 
   Existing Instance eqv.
