@@ -22,7 +22,8 @@ Context
   {index_listing : list index}
   {Hfinite : Listing index_listing}
   {idec : EqDec index}
-  (X := @VLSM_list _ index_self index_listing idec ListValidator.estimator)
+  (est : state -> bool -> Prop)
+  (X := @VLSM_list _ index_self index_listing idec est)
   (preX := pre_loaded_vlsm X)
   (Xtype := type preX)
   {mdec : EqDec (@message index index_listing)}
@@ -2902,10 +2903,9 @@ Context
    Admitted.
     
     Lemma observations_in_project
-      (s ob : state) 
+      (s : state) 
       (target i : index)
-      (Hin : In ob (full_observations (project s i) target)) :
-      In ob (full_observations s target).
+      : incl (full_observations (project s i) target) (full_observations s target).
   Proof.
   Admitted.
     

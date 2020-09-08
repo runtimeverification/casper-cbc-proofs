@@ -8,6 +8,7 @@ Require Import
   Lib.SortedLists
   VLSM.Common
   VLSM.Composition
+  VLSM.ProjectionTraces
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
@@ -17,6 +18,7 @@ Require Import
   
 Section Composition.
 
+Print composed_computable_observable_equivocation_evidence.
 
 Context
   {index : Type}
@@ -24,27 +26,28 @@ Context
   {index_listing : list index}
   {Hfinite : Listing index_listing}
   {idec : EqDec index}
+  (message := @ListValidator.message index index_listing)
+  (state := @ListValidator.state index index_listing)
   (est : state -> bool -> Prop)
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec est)
-  {constraint : composite_label IM_index -> (composite_state IM_index) * option (@message index index_listing) -> Prop}
+  {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
   (X := composite_vlsm IM_index i0 constraint)
   (preX := pre_loaded_vlsm X)
-  (Hevidence : forall (i : index),
-    computable_observable_equivocation_evidence
-        (vstate (IM_index i)) 
-        index 
-        (@state index index_listing) 
-        state_eq_dec 
-        (@comparable_states index index_listing idec))
+  (Hevidence := fun (i : index) => @observable_full index index_listing idec)
   {Mindex : Measurable index}
-  {Rindex : ReachableThreshold index}.
+  {Rindex : ReachableThreshold index}
+  .
   
-  Definition composed_computable_observable_equivocation_evidence
+  Definition composed_eqv_evidence
   : computable_observable_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
   :=
-  {| observable_events := (@composed_observable_events _ _ _ state_eq_dec _ _ _ index_listing IM_index Hevidence i0 constraint)|}.
+  (@composed_computable_observable_equivocation_evidence
+    message index state
+    state_eq_dec comparable_states
+    index idec index_listing IM_index Hevidence i0 constraint
+  ).
 
-  Existing Instance composed_computable_observable_equivocation_evidence.
+  Existing Instance composed_eqv_evidence.
   
   Definition message_observable_events_lv (m : message) (target : index) : set state :=
     @full_observations index index_listing idec (snd m) target. 
@@ -57,44 +60,33 @@ Context
       (dest : vstate X)
       (Ht : protocol_transition X l som (dest, Some m))
       : incl (message_observable_events_lv m i)
-      (@observable_events _ _ _ _ _ observable_full (dest (projT1 l)) i).
-   
+      (@observable_events _ _ _ _ _ (Hevidence i) (dest (projT1 l)) i).
    Proof.
     unfold message_observable_events_lv.
     unfold observable_events.
+    unfold Hevidence.
     unfold observable_full.
-    unfold incl.
-    intros.
-    unfold protocol_transition in Ht.
-    destruct Ht as [Hvalid Htransition].
-    simpl in *.
-    unfold composite_transition in Htransition.
-    destruct som as [source om] in Htransition.
-    destruct l as [t_index l'] in Htransition.
-    unfold vtransition in Htransition.
-    simpl in *.
-    destruct l' eqn: eq_label.
-    - inversion Htransition.
-      rewrite <- H2 in H.
-      inversion H1.
-      destruct (eq_dec t_index i).
-      + assert (source t_index = project (dest t_index) i). {
-          admit.
-        }
-        rewrite H0.
-        assert (projT1 l = t_index). {
-          admit.
-        }
-        rewrite H4.
-        simpl in H.
-        rewrite H3 in H.
-        specialize (@observations_in_project _ i index_listing Hfinite idec message_eq_dec Mindex Rindex).
-        intros.
-        specialize (H5 (dest t_index) a i i).
-        apply H5.
-        assumption.
-      + 
-      
-   Admitted.
+    destruct Ht as [Hv Ht].
+    simpl in Ht. unfold composite_transition in Ht.
+    destruct som as (s, om). destruct l as (il, l).
+    simpl in *.  unfold vtransition in Ht. simpl in Ht.
+    destruct l as [c|].
+    - inversion Ht. subst m. simpl.
+      rewrite state_update_eq.
+      replace (s il) with (project (update_consensus (update_state (s il) (s il) il) c) il) at 1.
+      + apply @observations_in_project with Mindex; try assumption.
+        apply message_eq_dec.
+      + rewrite <- update_consensus_clean.
+        apply @project_same; try assumption.
+        apply @protocol_prop_no_bottom with il idec est.
+        destruct Hv as [Hs _].
+        apply
+          (@protocol_state_projection message index idec IM_index i0 constraint il)
+          in Hs.
+        destruct Hs as [_om Hs].
+        apply proj_pre_loaded_protocol_prop in Hs.
+        exists _om. assumption.
+    - destruct om as [im|]; inversion Ht.
+   Qed.
  
 End Composition.
