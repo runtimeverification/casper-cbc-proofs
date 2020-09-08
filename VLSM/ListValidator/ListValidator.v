@@ -423,7 +423,7 @@ Definition state0 : {s | initial_state_prop s} :=
 
 Definition message : Type := (index * state).
 
-Lemma eq_dec_message : EqDec message.
+Lemma message_eq_dec : EqDec message.
 Proof.
   unfold EqDec.
   intros.
@@ -445,6 +445,9 @@ Proof.
      elim n;
      assumption.
 Qed.
+
+Global Instance message_EqDec : EqDec message := { eq_dec := message_eq_dec }.
+
 
 Definition initial_message_prop (m : message) : Prop := False.
 

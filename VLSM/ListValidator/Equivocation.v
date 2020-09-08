@@ -2486,6 +2486,18 @@ Context
             assumption.
         + reflexivity.
     Qed.
+    
+    Global Instance has_been_sent_lv : (has_been_sent_capability X) := {
+      has_been_sent := send_oracle;
+      proper_sent := send_oracle_prop;
+      proper_not_sent := not_send_oracle_prop;
+    }.
+    
+   Global Instance has_been_received_lv : (has_been_received_capability X) := {
+      has_been_received := receive_oracle;
+      proper_received := receive_oracle_prop;
+      proper_not_received := not_receive_oracle_prop;
+    }.
 
     Definition get_messages_from_history (s : state) (i : index) : set message :=
       List.map (pair i) (get_history s i).
@@ -2941,7 +2953,6 @@ Context
        state_eq_dec comparable_states) := {|
        observable_events := full_observations;
       |}.
-
 
    Existing Instance observable_full.
 
