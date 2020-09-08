@@ -1238,3 +1238,92 @@ Proof.
          split;
          assumption.
 Qed.
+
+Fixpoint one_element_decompositions
+  {A : Type}
+  (l : list A)
+  : list (list A * A * list A)
+  :=
+  match l with
+  | [] => []
+  | a :: l' =>
+    ([], a, l')
+    :: map
+      (fun t => match t with (l1, b, l2) => (a :: l1, b, l2) end)
+      (one_element_decompositions l')
+  end.
+
+Lemma in_one_element_decompositions_iff
+  {A : Type}
+  (l : list A)
+  (pre suf : list A)
+  (x : A)
+  : In (pre, x, suf) (one_element_decompositions l)
+  <-> pre ++ [x] ++ suf = l.
+Proof.
+  revert suf. revert x. revert pre.
+  induction l; intros pre x suf; split; simpl; intro H.
+  - inversion H.
+  - specialize (app_cons_not_nil pre suf x)
+    ; intro contra; elim contra. symmetry. assumption.
+  - destruct H as [Heq | Hin].
+    + inversion Heq. subst. simpl. reflexivity.
+    + apply in_map_iff in Hin.
+      destruct Hin as [x0 [Heq Hin]].
+      destruct x0 as ((prex0,x0),sufx0).
+      specialize (IHl prex0 x0 sufx0).
+      apply IHl in Hin.
+      subst l.
+      inversion Heq. reflexivity.
+  - destruct pre.
+    + left. inversion H. reflexivity.
+    + right. apply in_map_iff.
+      rewrite <- app_comm_cons in H.
+      inversion H. subst. clear H.
+      exists (pre, x, suf).
+      split; try reflexivity.
+      apply IHl. reflexivity.
+Qed.
+
+Definition two_element_decompositions
+  {A : Type}
+  (l : list A)
+  : list (list A * A * list A * A * list A)
+  :=
+  flat_map
+    (fun t =>
+      match t with
+        (l1, e1, l2) =>
+        map
+          (fun t => match t with (l2',e2, l3) => (l1, e1, l2', e2, l3) end)
+          (one_element_decompositions l2)
+      end
+    )
+    (one_element_decompositions l).
+
+Lemma in_two_element_decompositions_iff
+  {A : Type}
+  (l : list A)
+  (pre mid suf : list A)
+  (x y : A)
+  : In (pre, x, mid, y, suf) (two_element_decompositions l)
+  <-> pre ++ [x] ++ mid ++ [y] ++ suf = l.
+Proof.
+  unfold two_element_decompositions.
+  rewrite in_flat_map.
+  split.
+  - intros [((pre', x'), sufx) [Hdecx Hin]].
+    apply in_map_iff in Hin.
+    destruct Hin as [((mid', y'), suf') [Hdec Hin]].
+    inversion Hdec. subst. clear Hdec.
+    apply in_one_element_decompositions_iff in Hdecx.
+    apply in_one_element_decompositions_iff in Hin.
+    subst sufx l. reflexivity.
+  - remember (mid ++ [y] ++ suf) as sufx.
+    intro H.
+    exists (pre, x, sufx). apply in_one_element_decompositions_iff in H.
+    split; try assumption.
+    apply in_map_iff. exists (mid, y, suf).
+    split; try reflexivity.
+    apply in_one_element_decompositions_iff. symmetry. assumption.
+Qed.
