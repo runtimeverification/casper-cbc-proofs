@@ -6,6 +6,7 @@ Require Import
   Lib.Preamble
   Lib.ListExtras
   Lib.List
+  Lib.ListSetExtras
   Lib.SortedLists
   VLSM.Common
   VLSM.Composition
@@ -2972,6 +2973,42 @@ Context
       In ob (full_observations s target).
    Proof.
    Admitted.
+
+    Lemma observations_disregards_cv
+      (s : vstate X)
+      (cv : bool)
+      (target : index)
+      : full_observations (update_consensus s cv) target
+      = full_observations s target.
+    Proof.
+    Admitted.
+
+    Lemma observations_update_eq
+      (s s' : vstate X)
+      (target : index)
+      : set_eq
+        (full_observations (update_state s s' target) target)
+        (set_add eq_dec s'
+          (set_union eq_dec
+            (full_observations s target)
+            (full_observations s' target)
+          )
+        ).
+    Proof.
+    Admitted.
+
+    Lemma observations_update_neq
+      (s s' : vstate X)
+      (target i : index)
+      (Hi : i <> target)
+      : set_eq
+        (full_observations (update_state s s' i) target)
+        (set_union eq_dec
+          (full_observations s target)
+          (full_observations s' target)
+        ).
+    Proof.
+    Admitted.
 
     Definition observable_full :
       (computable_observable_equivocation_evidence
