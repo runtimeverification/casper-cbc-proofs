@@ -5,6 +5,7 @@ From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
+  Lib.List
   Lib.SortedLists
   VLSM.Common
   VLSM.Composition
@@ -2881,10 +2882,11 @@ Context
 
     Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
       match d with
-      | 0 => [project s target]
+      | 0 => set_remove eq_dec Bottom [project s target]
       | S n => let children := List.map (@project index index_listing _ s) index_listing in
              let children_res := List.map (get_observations target n) children in
-             List.fold_right (@set_union state state_eq_dec) [] children_res ++ [project s target]
+             set_remove eq_dec Bottom
+             (set_union eq_dec (List.fold_right (set_union eq_dec) [] children_res) [project s target])
       end.
 
     Definition shallow_observations (s : state) (target : index) :=
@@ -2900,6 +2902,22 @@ Context
       (Hineq : d >= depth s) :
       get_observations target d s = get_observations target (depth s) s.
    Proof.
+    remember (depth s) as dpth.
+    generalize dependent s.
+    generalize dependent d.
+    induction dpth using (well_founded_induction lt_wf).
+    intros.
+    unfold get_observations at 1.
+    destruct s.
+    - unfold depth in Heqdpth.
+      rewrite Heqdpth.
+      destruct d.
+      + reflexivity.
+      + simpl in *.
+        
+        
+        
+        
    Admitted.
     
     Lemma observations_in_project
@@ -2907,6 +2925,43 @@ Context
       (target i : index)
       : incl (full_observations (project s i) target) (full_observations s target).
   Proof.
+    unfold incl.
+    intros.
+    unfold full_observations.
+    unfold get_observations at 1.
+    destruct s eqn : eq_s.
+    - simpl in *.
+      assumption.
+    - destruct (depth (Something b is)) eqn : eq_depth.
+      + apply depth_zero_bottom in eq_depth.
+        discriminate eq_depth.
+      + specialize (@set_union_in_iterated (@state index index_listing) state_eq_dec).
+        intros.
+        specialize (H0 (map (get_observations target n) (map (project (Something b is)) index_listing))).
+        specialize (H0 a).
+        destruct H0 as [_ Hneed].
+        admit.
+        (*
+        apply set_union_iff.
+        left.
+        apply Hneed.
+        rewrite Exists_exists.
+        exists (get_observations target n (project (Something b is) i)).
+        * rewrite in_map_iff.
+          exists (project (Something b is) i).
+          intuition.
+          rewrite in_map_iff.
+          exists i.
+          intuition.
+          apply ((proj2 Hfinite) i). 
+        * unfold full_observations in H.
+          rewrite get_observations_depth_redundancy.
+          assumption.
+          specialize (@depth_parent_child index index_listing Hfinite idec is b i).
+          intros.
+          rewrite eq_depth in H0.
+          unfold project.
+          lia. *)
   Admitted.
     
     Lemma observations_in_history
