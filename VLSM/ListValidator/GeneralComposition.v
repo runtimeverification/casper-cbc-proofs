@@ -15,10 +15,8 @@ Require Import
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.
-  
-Section Composition.
 
-Print composed_computable_observable_equivocation_evidence.
+Section Composition.
 
 Context
   {index : Type}
@@ -37,7 +35,7 @@ Context
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
   .
-  
+
   Definition composed_eqv_evidence
   : computable_observable_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
   :=
@@ -50,8 +48,8 @@ Context
   Existing Instance composed_eqv_evidence.
   
   Definition message_observable_events_lv (m : message) (target : index) : set state :=
-    @full_observations index index_listing idec (snd m) target. 
-  
+    @full_observations index index_listing idec (snd m) target.
+
   Lemma message_observable_consistency_lv
       (m : message)
       (i : index)
@@ -88,5 +86,46 @@ Context
         exists _om. assumption.
     - destruct om as [im|]; inversion Ht.
    Qed.
+
+  Program Instance Hcomposite
+    : composite_vlsm_observable_messages index_listing IM_index Hevidence i0 constraint (fun i:index => i)
+    :=
+    { message_observable_events := message_observable_events_lv;
+      message_observable_consistency := message_observable_consistency_lv;
+    }.
+  Next Obligation.
+  Admitted.
+  Next Obligation.
+  Admitted.
  
+  Let id := fun i : index => i.
+  Existing Instance comparable_states.
+  Let trace_generated_event_lv := trace_generated_event index_listing IM_index Hevidence i0 constraint id.
+  Let trace_generated_index_lv := trace_generated_index index_listing IM_index Hevidence i0 constraint id.
+
+  Lemma comparable_generated_events
+    (is : vstate X)
+    (tr : list transition_item)
+    (Htr : finite_protocol_trace X is tr)
+    (v : index)
+    (e1 e2 : state)
+    (He1 : trace_generated_event_lv is tr v e1)
+    (He2 : trace_generated_event_lv is tr v e2)
+    : comparableb happens_before_fn e1 e2 = true.
+  Proof.
+    destruct He1 as [prefix1 [suffix1 [item1 [Heq1 He1]]]].
+    destruct He2 as [prefix2 [suffix2 [item2 [Heq2 He2]]]].
+    specialize (trace_generated_index_lv is tr Htr v).
+    assert (trace_generated_index_lv2 := trace_generated_index_lv).
+    specialize (trace_generated_index_lv e1 prefix1 suffix1 item1 Heq1 He1).
+    specialize (trace_generated_index_lv2 e2 prefix2 suffix2 item2 Heq2 He2).
+    unfold id in trace_generated_index_lv.
+    unfold id in trace_generated_index_lv2.
+    rewrite <- trace_generated_index_lv in He1.
+    rewrite <- trace_generated_index_lv2 in He2.
+    apply set_diff_iff in He1. destruct He1 as [Hin1 Hnin1].
+    apply set_diff_iff in He2. destruct He2 as [Hin2 Hnin2].
+  Admitted.
+  
+
 End Composition.

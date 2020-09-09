@@ -116,8 +116,9 @@ Definition composed_computable_observable_equivocation_evidence
 Existing Instance composed_computable_observable_equivocation_evidence.
 
 (**
-Below we're trying to define some notions of equivocation for composite
-machines based on observable events.
+Let us now factor [VLSM]s into the event observability framework.
+
+[message_observable_events] can be extracted from any message.
 *)
 Class composite_vlsm_observable_messages
   :=
@@ -139,9 +140,9 @@ states.
 
 To formalize that, we willl assume a function [message_observable_events]
 yielding the events which can be observed in a message for a validator,
-and we will require that this set is a subset of the [observable_events]
-corresponding to the validator in any state obtained upon sending that
-message ([message_observable_consistency]).
+and we will require that we cannot observe in a sent message events which
+were not available in the transition that generated it
+([message_observable_consistency]).
 *)
     message_observable_events : message -> validator -> set event;
     message_observable_consistency
@@ -164,11 +165,9 @@ message ([message_observable_consistency]).
       end;
 
 (**
-The [unforgeability] assumptions requires that no machine can generate
-events for a different validator than its own.  Formally, for any
-[protocol_transition], the [observable_events] of the resulting state
-corresponding to <<v>> can only be selected from those corresponding
-to <<v>> from the previous state or from the received message.
+We'll also assume a weak form of [unforgeability]: that a machine can only
+produce events for its own validator; for other validators it can only
+gather information through the messages it receives.
 *)
     unforgeability
       (s s' : state)
@@ -181,6 +180,12 @@ to <<v>> from the previous state or from the received message.
       : incl
         (observable_events (s' i) v)
         (observable_events (s i) v ++ option_message_observable_events om v);
+  }.
+
+Context
+  {Hcomposite : composite_vlsm_observable_messages}
+  {message_eq : EqDec message}
+  .
 
 (**
 We call [trace_generated_event] a new event for validator <<v>> which
@@ -188,48 +193,28 @@ appeared as result of a transition in a trace, that is, which it was
 not in the state prior to the transition, nor in the received message,
 but it is in the state resulted after the transition.
 *)
-    trace_generated_event
-      (is : vstate X)
-      (tr : list (vtransition_item X))
-      (v : validator)
-      (e : event)
-      : Prop
-      :=
-      exists
-      (prefix suffix : list transition_item)
-      (item : transition_item)
-      (Heq : tr = prefix ++ [item] ++ suffix)
-      (i := projT1 (l item))
-      (s := last (map destination prefix) is)
-      (s' := destination item),
-      In e
-        (set_diff eq_dec
-          (observable_events (s' i) v)
-          (set_union eq_dec
-            (observable_events (s i) v)
-            (option_message_observable_events (input item) v)
-          )
-        );
-
-(**
-We require that [trace_generated_event]s for the same validator
-are [comparable] through the [happens_before_fn].
-*)
-    comparable_generated_events
-      (is : vstate X)
-      (tr : list transition_item)
-      (Htr : finite_protocol_trace X is tr)
-      (v : validator)
-      (e1 e2 : event)
-      (He1 : trace_generated_event is tr v e1)
-      (He2 : trace_generated_event is tr v e2)
-      : comparableb happens_before_fn e1 e2 = true;
-  }.
-
-Context
-  {Hcomposite : composite_vlsm_observable_messages}
-  {message_eq : EqDec message}
-  .
+  Definition trace_generated_event
+    (is : vstate X)
+    (tr : list (vtransition_item X))
+    (v : validator)
+    (e : event)
+    : Prop
+    :=
+    exists
+    (prefix suffix : list transition_item)
+    (item : transition_item)
+    (Heq : tr = prefix ++ [item] ++ suffix)
+    (i := projT1 (l item))
+    (s := last (map destination prefix) is)
+    (s' := destination item),
+    In e
+      (set_diff eq_dec
+        (observable_events (s' i) v)
+        (set_union eq_dec
+          (observable_events (s i) v)
+          (option_message_observable_events (input item) v)
+        )
+      ).
 
 (**
 If a new event is [trace_generated_event] for a validator, then it must be
@@ -384,11 +369,11 @@ Definition equivocating_in_trace
     equivocating_in_trace_last (trace_first (proj1_sig tr)) prefix v.
 
 (**
-We say that <<v>> is [equivocating_in_state] <<s>> if it is
+We say that <<v>> is [equivocating_in_all_traces_ending_in_state] <<s>> if it is
 [equivocating_in_trace_last] w.r.t. all [protocol_trace]s ending in <<s>>.
 *)
 
-Definition equivocating_in_state
+Definition equivocating_in_all_traces_ending_in_state
   (s : protocol_state X)
   (v : validator)
   : Prop
@@ -398,6 +383,31 @@ Definition equivocating_in_state
     (Htr : finite_protocol_trace X is tr)
     (Hlast : last (map destination tr) is = proj1_sig s),
     equivocating_in_trace_last is tr v.
+
+(**
+The class below links [composite_vlsm_observable_messages] with 
+[computable_observable_equivocation_evidence] by requiring that all
+[trace_generated_event]s for the same validator are [comparable] through
+the [happens_before_fn].
+*)
+Class composite_vlsm_comparable_generated_events
+  :=
+  {
+(**
+*)
+    comparable_generated_events
+      (is : vstate X)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace X is tr)
+      (v : validator)
+      (e1 e2 : event)
+      (He1 : trace_generated_event is tr v e1)
+      (He2 : trace_generated_event is tr v e2)
+      : comparableb happens_before_fn e1 e2 = true;
+  }.
+
+Context
+  {Hcomparable_generated_events : composite_vlsm_comparable_generated_events}.
 
 Lemma uncomparable_with_generated_event_equivocation
   (is : vstate X)
@@ -426,7 +436,7 @@ Finally, we tie the [computable_observable_equivocation_evidence] notion
 to that of [composite_vlsm_observable_equivocation] by showing that
 the existence of two events observable for a validator <<v>> in a state <<s>>
 which are not [comparable] w.r.t. [happens_before_fn] relation guarantees
-that <<v>> is [equivocating_in_state] <<s>>.
+that <<v>> is [equivocating_in_all_traces_ending_in_state] <<s>>.
 *)
 Lemma evidence_implies_equivocation
   (s : vstate X)
@@ -436,7 +446,7 @@ Lemma evidence_implies_equivocation
   (He1 : In e1 (observable_events s v))
   (He2 : In e2 (observable_events s v))
   (Heqv : comparableb happens_before_fn e1 e2 = false)
-  : equivocating_in_state (exist _ s Hs) v.
+  : equivocating_in_all_traces_ending_in_state (exist _ s Hs) v.
 Proof.
   intro is; intros. simpl in Hlast.
   subst s.
@@ -458,7 +468,7 @@ Lemma no_equivocation_in_initial_state
   (Hs : vinitial_state_prop X is)
   (v : validator)
   (Hps := initial_is_protocol X is Hs)
-  : ~ equivocating_in_state (exist _ is Hps) v.
+  : ~ equivocating_in_all_traces_ending_in_state (exist _ is Hps) v.
 Proof.
   intro contra.
   specialize (contra is []).
