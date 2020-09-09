@@ -48,7 +48,8 @@ Context
   Existing Instance composed_eqv_evidence.
   
   Definition message_observable_events_lv (m : message) (target : index) : set state :=
-    @full_observations index index_listing idec (snd m) target.
+    let obs := @full_observations index index_listing idec (snd m) target in
+    if (eq_dec (fst m) target) then set_add eq_dec (snd m) obs else obs.
 
   Lemma message_observable_consistency_lv
       (m : message)
@@ -71,19 +72,19 @@ Context
     destruct l as [c|].
     - inversion Ht. subst m. simpl.
       rewrite state_update_eq.
-      replace (s il) with (project (update_consensus (update_state (s il) (s il) il) c) il) at 1.
-      + apply @observations_in_project with Mindex; try assumption.
-        apply message_eq_dec.
-      + rewrite <- update_consensus_clean.
-        apply @project_same; try assumption.
-        apply @protocol_prop_no_bottom with il idec est.
-        destruct Hv as [Hs _].
-        apply
-          (@protocol_state_projection message index idec IM_index i0 constraint il)
-          in Hs.
-        destruct Hs as [_om Hs].
-        apply proj_pre_loaded_protocol_prop in Hs.
-        exists _om. assumption.
+      rewrite (@observations_disregards_cv index i index_listing Hfinite idec est message_eq_dec
+        Mindex Rindex).
+      destruct (eq_dec il i).
+      + subst il. intros ob Hob.
+        apply (@observations_update_eq index i index_listing Hfinite idec est message_eq_dec
+          Mindex Rindex).
+        apply set_add_iff. apply set_add_iff in Hob.
+        destruct Hob as [Hob | Hob]; try (left; assumption).
+        right. apply set_union_iff. left. assumption.
+      + intros ob Hob.
+       apply (@observations_update_neq index i index_listing Hfinite idec est message_eq_dec
+          Mindex Rindex); try assumption.
+        apply set_union_iff. left. assumption.
     - destruct om as [im|]; inversion Ht.
    Qed.
 
@@ -103,6 +104,98 @@ Context
   Let trace_generated_event_lv := trace_generated_event index_listing IM_index Hevidence i0 constraint id.
   Let trace_generated_index_lv := trace_generated_index index_listing IM_index Hevidence i0 constraint id.
 
+  Lemma generated_events_lv_sent
+    (is : vstate X)
+    (tr : list transition_item)
+    (Htr : finite_protocol_trace X is tr)
+    (v : index)
+    (e : state)
+    (He : trace_generated_event_lv is tr v e)
+    : exists
+      (prefix suffix : list transition_item)
+      (item : transition_item)
+      (Heq : tr = prefix ++ [item] ++ suffix),
+      v = projT1 (l item) /\ output item = Some (v, e).
+  Proof.
+    destruct He as [prefix [suffix [item [Heq He]]]].
+    exists prefix. exists suffix. exists item. exists Heq.
+    specialize (trace_generated_index_lv is tr Htr v e prefix suffix item Heq He).
+    unfold id in trace_generated_index_lv.
+    split; try assumption.
+    rewrite <- trace_generated_index_lv in He.
+    apply set_diff_iff in He. destruct He as [He Hne].
+    specialize (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr))
+      as Ht.
+    destruct Ht as [Hv Ht]. simpl in Ht.
+    destruct
+      ( @l (@ListValidator.message index index_listing)
+      (@composite_type (@ListValidator.message index index_listing)
+         index IM_index) item)
+      as (i, li) eqn:Hl.
+    replace (l item) with (existT (fun n : index => vlabel (IM_index n)) i li)
+      in trace_generated_index_lv. simpl in trace_generated_index_lv. subst i.
+    unfold vtransition in Ht. simpl in Ht.
+    destruct li as [c|].
+    - inversion Ht.
+      replace
+        ((@output (@ListValidator.message index index_listing)
+        (@type (@ListValidator.message index index_listing) X) item))
+        with (Some (v, last (map destination prefix) is v)).
+      f_equal. f_equal.
+      replace
+        (@destination (@ListValidator.message index index_listing)
+        (@type (@ListValidator.message index index_listing)
+           (@composite_vlsm (@ListValidator.message index index_listing)
+              index idec IM_index i0 constraint)) item)
+        with
+          (state_update IM_index (last (map destination prefix) is) v
+          (update_consensus
+             (update_state (last (map destination prefix) is v)
+                (last (map destination prefix) is v) v) c))
+        in He.
+      rewrite state_update_eq in He.
+      unfold observable_events in He. simpl in He.
+      unfold observable_events in Hne. simpl in Hne.
+      rewrite (@observations_disregards_cv index v index_listing Hfinite idec est message_eq_dec
+        Mindex Rindex) in He.
+      apply (@observations_update_eq index v index_listing Hfinite idec est message_eq_dec
+        Mindex Rindex) in He.
+      apply set_add_iff in He. symmetry.
+      destruct He as [He | He]; try assumption.
+      elim Hne. apply set_union_iff. left.
+      apply set_union_iff in He. destruct He; assumption.
+    - elim Hne. apply set_union_iff.
+      destruct
+        (@input (@ListValidator.message index index_listing)
+        (@composite_type (@ListValidator.message index index_listing)
+           index IM_index) item)
+        as [m|] eqn:Hinput; inversion Ht.
+      + replace
+          (@destination (@ListValidator.message index index_listing)
+            (@type (@ListValidator.message index index_listing)
+               (@composite_vlsm (@ListValidator.message index index_listing)
+                  index idec IM_index i0 constraint)) item)
+          with
+            (state_update IM_index (last (map destination prefix) is) v
+            (update_state (last (map destination prefix) is v) (snd m) (fst m)))
+          in He.
+        rewrite state_update_eq in He.
+        unfold observable_events in He. simpl in He.
+        replace
+          ((@input (@ListValidator.message index index_listing)
+          (@type (@ListValidator.message index index_listing)
+             (@composite_vlsm (@ListValidator.message index index_listing)
+                index idec IM_index i0 constraint)) item))
+          with (Some m).
+        unfold option_message_observable_events. unfold message_observable_events.
+        simpl. unfold message_observable_events_lv.
+        destruct (eq_dec (fst m) v).
+        * subst v.
+          apply (@observations_update_eq index (fst m) index_listing Hfinite idec est message_eq_dec
+              Mindex Rindex) in He.
+  Admitted.
+      
+
   Lemma comparable_generated_events
     (is : vstate X)
     (tr : list transition_item)
@@ -113,18 +206,8 @@ Context
     (He2 : trace_generated_event_lv is tr v e2)
     : comparableb happens_before_fn e1 e2 = true.
   Proof.
-    destruct He1 as [prefix1 [suffix1 [item1 [Heq1 He1]]]].
-    destruct He2 as [prefix2 [suffix2 [item2 [Heq2 He2]]]].
-    specialize (trace_generated_index_lv is tr Htr v).
-    assert (trace_generated_index_lv2 := trace_generated_index_lv).
-    specialize (trace_generated_index_lv e1 prefix1 suffix1 item1 Heq1 He1).
-    specialize (trace_generated_index_lv2 e2 prefix2 suffix2 item2 Heq2 He2).
-    unfold id in trace_generated_index_lv.
-    unfold id in trace_generated_index_lv2.
-    rewrite <- trace_generated_index_lv in He1.
-    rewrite <- trace_generated_index_lv2 in He2.
-    apply set_diff_iff in He1. destruct He1 as [Hin1 Hnin1].
-    apply set_diff_iff in He2. destruct He2 as [Hin2 Hnin2].
+    
+
   Admitted.
   
 
