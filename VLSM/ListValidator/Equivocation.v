@@ -2881,12 +2881,15 @@ Context
     Existing Instance comparable_states.
 
     Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
-      match d with
-      | 0 => set_remove eq_dec Bottom [project s target]
-      | S n => let children := List.map (@project index index_listing _ s) index_listing in
+      match s with
+      | Bottom => []
+      | _ => match d with
+             | 0 => set_remove eq_dec Bottom [project s target]
+             | S n => let children := List.map (@project index index_listing _ s) index_listing in
              let children_res := List.map (get_observations target n) children in
              set_remove eq_dec Bottom
              (set_union eq_dec (List.fold_right (set_union eq_dec) [] children_res) [project s target])
+             end
       end.
 
     Definition shallow_observations (s : state) (target : index) :=
@@ -2914,7 +2917,50 @@ Context
       destruct d.
       + reflexivity.
       + simpl in *.
-   Admitted.
+        reflexivity.
+     - unfold get_observations.
+       destruct dpth eqn : eq_dpth.
+       + destruct d eqn: eq_d.
+         * reflexivity.
+         * symmetry in Heqdpth.
+           apply depth_zero_bottom in Heqdpth.
+           discriminate Heqdpth.
+       + destruct d.
+         lia.
+         simpl.
+         f_equal.
+         f_equal.
+         f_equal.
+         apply map_ext_in.
+         intros.
+         rewrite in_map_iff in H0.
+         destruct H0 as [j [Heq Hin]].
+         assert (depth a < S n). {
+           rewrite Heqdpth.
+           specialize (@depth_parent_child index index_listing Hfinite eq_dec is b j).
+           intros.
+           unfold project in Heq.
+           replace (@project_indexed index index_listing (@eq_dec index idec) index_listing is j) 
+           with a in H0.
+           lia.
+         }
+         
+        assert (d >= depth a). {
+          lia.
+        }
+        
+         assert (get_observations target (depth a) a = get_observations target n a). {
+          symmetry.
+          apply H.
+          lia.
+          lia.
+          reflexivity.
+         }
+         
+         specialize (H (depth a) H0 d H1 a eq_refl).
+         rewrite H2 in H.
+         intuition.
+   Qed.
     
     Lemma get_observations_nodup 
       (target : index)
@@ -2930,35 +2976,44 @@ Context
           simpl.
          destruct (project s target).
          + rewrite eq_dec_if_true.
+           symmetry in Heqd.
+           apply depth_zero_bottom in Heqd.
+           rewrite Heqd.
            apply NoDup_nil.
            reflexivity.
          + rewrite eq_dec_if_false.
-           apply NoDup_cons.
-           simpl.
-           tauto.
+           symmetry in Heqd.
+           apply depth_zero_bottom in Heqd.
+           rewrite Heqd.
            apply NoDup_nil.
            intros contra.
            discriminate contra.
        - intros.
          simpl.
+         destruct s.
+         simpl in Heqd. discriminate Heqd.
          apply set_remove_nodup.
          apply set_add_nodup.
          specialize (@set_union_iterated_nodup (@state index index_listing) eq_dec).
          intros.
          specialize (H0 (map
-        ((fix get_observations (target0 : index) (d0 : nat) (s0 : state) {struct d0} :
+        ((fix get_observations (target0 : index) (d0 : nat) (s : state) {struct d0} :
               set state :=
-            match d0 with
-            | 0 =>
-                if eq_dec Bottom (project s0 target0)
-                then []
-                else project s0 target0 :: empty_set state
-            | S n =>
-                set_remove eq_dec Bottom
-                  (set_add eq_dec (project s0 target0)
-                     (fold_right (set_union eq_dec) []
-                        (map (get_observations target0 n) (map (project s0) index_listing))))
-            end) target d) (map (project s) index_listing))).
+            match s with
+            | Bottom => []
+            | Something _ _ =>
+                match d0 with
+                | 0 =>
+                    if eq_dec Bottom (project s target0)
+                    then []
+                    else project s target0 :: empty_set state
+                | S n =>
+                    set_remove eq_dec Bottom
+                      (set_add eq_dec (project s target0)
+                         (fold_right (set_union eq_dec) []
+                            (map (get_observations target0 n) (map (project s) index_listing))))
+                end
+            end) target d) (map (project (Something b is)) index_listing))).
         apply H0.
         intros.
         rewrite in_map_iff in H1.
@@ -2968,19 +3023,15 @@ Context
           apply in_map_iff in Hright.
           destruct Hright as [i [Hi _]].
           rewrite <- Hi.
-          destruct s.
-          - discriminate Heqd.
-          - specialize (@depth_parent_child index index_listing Hfinite eq_dec is b i).
-            intros.
-            unfold project.
-            intuition.
+          specialize (@depth_parent_child index index_listing Hfinite eq_dec is b i).
+          intros.
+          unfold project.
+          intuition.
         }
         rewrite <- Hleft.
         specialize H.
         rewrite get_observations_depth_redundancy.
         specialize (H (depth x)).
-
-        
         specialize (H H1).
         specialize (H x eq_refl).
         assumption.
@@ -3007,6 +3058,10 @@ Context
         specialize (H0 (map (get_observations target n) (map (project (Something b is)) index_listing))).
         specialize (H0 a).
         destruct H0 as [_ Hneed].
+        assert (a <> Bottom). {
+          admit.
+        }
+        apply set_remove_3.
         admit.
         (*
         apply set_union_iff.
@@ -3043,7 +3098,9 @@ Context
       rewrite <- depth_consensus_clean with (value := cv).
       destruct (depth s) eqn : eq_d.
       - rewrite <- update_consensus_clean.
-        reflexivity.
+        destruct s.
+        simpl. reflexivity.
+        simpl. reflexivity.
       - rewrite <- update_consensus_clean.
         assert (map (project (update_consensus s cv)) index_listing = map (project s) index_listing). {
           apply map_ext_in.
@@ -3052,6 +3109,9 @@ Context
           apply update_consensus_clean.
         }
         rewrite H.
+        destruct s.
+        simpl. reflexivity.
+        simpl.
         reflexivity.
     Qed.
 
@@ -3068,6 +3128,11 @@ Context
           )
         ).
     Proof.
+     unfold set_eq.
+     split; unfold incl; intros.
+     - destruct (eq_dec a s').
+       + apply set_add_intro2. 
+         assumption.
     Admitted.
 
     Lemma observations_update_neq
