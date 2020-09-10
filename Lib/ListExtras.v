@@ -1327,3 +1327,35 @@ Proof.
     split; try reflexivity.
     apply in_one_element_decompositions_iff. symmetry. assumption.
 Qed.
+
+Lemma order_decompositions
+  {A : Type}
+  (pre1 suf1 pre2 suf2 : list A)
+  (Heq : pre1 ++ suf1 = pre2 ++ suf2)
+  : pre1 = pre2
+  \/ (exists suf1', pre1 = pre2 ++ suf1')
+  \/ (exists suf2', pre2 = pre1 ++ suf2').
+Proof.
+  remember (pre1 ++ suf1) as l.
+  generalize dependent Heq.
+  generalize dependent Heql.
+  revert pre1 suf1 pre2 suf2.
+  induction l; intros.
+  - left.
+    symmetry in Heql. apply app_eq_nil in Heql. destruct Heql as [Hpre1 _]. subst pre1.
+    symmetry in Heq. apply app_eq_nil in Heq. destruct Heq as [Hpre2 _]. subst pre2.
+    reflexivity.
+  - destruct pre1 as [| a1 pre1]; destruct pre2 as [|a2 pre2].
+    + left. reflexivity.
+    + right. right. exists (a2 :: pre2). reflexivity.
+    + right. left. exists (a1 :: pre1). reflexivity.
+    + inversion Heql. subst a1. clear Heql.
+      inversion Heq. subst a2. clear Heq.
+      specialize (IHl pre1 suf1 pre2 suf2 H1 H2).
+      destruct IHl as [Heq | [Hgt | Hlt]].
+      * left. f_equal. assumption.
+      * destruct Hgt as [suf1' Hgt].
+        right. left. exists suf1'. simpl. f_equal. assumption.
+      * destruct Hlt as [suf2' Hlt].
+        right. right. exists suf2'. simpl. f_equal. assumption.
+Qed.

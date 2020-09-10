@@ -112,21 +112,19 @@ Context
     (e : state)
     (He : trace_generated_event_lv is tr v e)
     : exists
-      (prefix suffix : list transition_item)
-      (item : transition_item)
-      (Heq : tr = prefix ++ [item] ++ suffix),
-      v = projT1 (l item) /\ output item = Some (v, e).
+      (prefix suffix : list (transition_item))
+      (Heq : tr = prefix ++ suffix),
+      e = last (map destination prefix) is v.
   Proof.
     destruct He as [prefix [suffix [item [Heq He]]]].
-    exists prefix. exists suffix. exists item. exists Heq.
+    exists prefix. exists ([item] ++ suffix). exists Heq.
     specialize (trace_generated_index_lv is tr Htr v e prefix suffix item Heq He).
     unfold id in trace_generated_index_lv.
-    split; try assumption.
     rewrite <- trace_generated_index_lv in He.
     apply set_diff_iff in He. destruct He as [He Hne].
     specialize (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr))
       as Ht.
-    destruct Ht as [Hv Ht]. simpl in Ht.
+    destruct Ht as [[_ [_ [Hv _]]] Ht]. simpl in Ht. simpl in Hv. 
     destruct
       ( @l (@ListValidator.message index index_listing)
       (@composite_type (@ListValidator.message index index_listing)
@@ -134,14 +132,9 @@ Context
       as (i, li) eqn:Hl.
     replace (l item) with (existT (fun n : index => vlabel (IM_index n)) i li)
       in trace_generated_index_lv. simpl in trace_generated_index_lv. subst i.
-    unfold vtransition in Ht. simpl in Ht.
+    unfold vtransition in Ht. simpl in Ht. unfold vvalid in Hv. simpl in Hv.
     destruct li as [c|].
     - inversion Ht.
-      replace
-        ((@output (@ListValidator.message index index_listing)
-        (@type (@ListValidator.message index index_listing) X) item))
-        with (Some (v, last (map destination prefix) is v)).
-      f_equal. f_equal.
       replace
         (@destination (@ListValidator.message index index_listing)
         (@type (@ListValidator.message index index_listing)
@@ -160,7 +153,7 @@ Context
         Mindex Rindex) in He.
       apply (@observations_update_eq index v index_listing Hfinite idec est message_eq_dec
         Mindex Rindex) in He.
-      apply set_add_iff in He. symmetry.
+      apply set_add_iff in He.
       destruct He as [He | He]; try assumption.
       elim Hne. apply set_union_iff. left.
       apply set_union_iff in He. destruct He; assumption.
@@ -192,11 +185,23 @@ Context
         destruct (eq_dec (fst m) v).
         * subst v.
           apply (@observations_update_eq index (fst m) index_listing Hfinite idec est message_eq_dec
-              Mindex Rindex) in He.
-  Admitted.
-      
+            Mindex Rindex) in He.
+          rewrite set_add_iff.
+          apply set_add_iff in He.
+          rewrite set_union_iff in He.
+          destruct He as [He | [He | He]]
+          ; try (left; assumption)
+          ; try (right; left; assumption)
+          ; try (right; right; assumption)
+          .
+        * apply (@observations_update_neq index v index_listing Hfinite idec est message_eq_dec
+            Mindex Rindex) in He; try assumption.
+          apply set_union_iff in He.
+          assumption.
+      + inversion Hv.
+  Qed.
 
-  Lemma comparable_generated_events
+  Lemma comparable_generated_events_lv
     (is : vstate X)
     (tr : list transition_item)
     (Htr : finite_protocol_trace X is tr)
@@ -206,9 +211,75 @@ Context
     (He2 : trace_generated_event_lv is tr v e2)
     : comparableb happens_before_fn e1 e2 = true.
   Proof.
-    
+    apply generated_events_lv_sent in He1; try assumption.
+    apply generated_events_lv_sent in He2; try assumption.
+    destruct He1 as [pre1 [suf1 [Heq1 He1]]].
+    destruct He2 as [pre2 [suf2 [Heq2 He2]]].
+    assert (Heq := Heq2).
+    rewrite Heq1 in Heq.
+    apply order_decompositions in Heq.
+    unfold comparableb.
+    destruct (eq_dec e1 e2); try reflexivity.
+    destruct Heq as [Heq | [Hgt | Hlt]]
+    ; try (elim n; subst; reflexivity)
+    ; apply orb_true_iff.
+    - right.
+      apply @state_lt_function; try assumption.
+      apply
+        (@state_lt_in_futures index v index_listing Hfinite idec est e2 e1)
+      ; try (intro contra; elim n; symmetry; assumption).
+      remember (composite_vlsm_constrained_projection IM_index i0 constraint v) as Xj.
+      apply
+        (VLSM_incl_in_futures
+          (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
+          (pre_loaded_vlsm_machine (@VLSM_list index v index_listing idec est))
+        )
+      ; try apply (proj_pre_loaded_incl IM_index i0 constraint v).
+      subst e1 e2.
+      apply (in_futures_projection IM_index i0 constraint v).
+      destruct Hgt as [suf1' Hgt].
+      exists suf1'.
+      split.
+      + clear Heq2. subst tr. subst pre1.
+        destruct Htr as [Htr Hinit].
+        apply (finite_protocol_trace_from_app_iff X) in Htr.
+        destruct Htr as [Htr _].
+        apply (finite_protocol_trace_from_app_iff X) in Htr.
+        destruct Htr as [_ Htr].
+        assumption.
+      + subst pre1. rewrite map_app. rewrite last_app. reflexivity.
+    - left.
+      apply @state_lt_function; try assumption.
+      apply
+        (@state_lt_in_futures index v index_listing Hfinite idec est e1 e2)
+      ; try assumption.
+      remember (composite_vlsm_constrained_projection IM_index i0 constraint v) as Xj.
+      apply
+        (VLSM_incl_in_futures
+          (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
+          (pre_loaded_vlsm_machine (@VLSM_list index v index_listing idec est))
+        )
+      ; try apply (proj_pre_loaded_incl IM_index i0 constraint v).
+      subst e1 e2.
+      apply (in_futures_projection IM_index i0 constraint v).
+      destruct Hlt as [suf2' Hlt].
+      exists suf2'.
+      split.
+      + clear Heq1. subst tr. subst pre2.
+        destruct Htr as [Htr Hinit].
+        apply (finite_protocol_trace_from_app_iff X) in Htr.
+        destruct Htr as [Htr _].
+        apply (finite_protocol_trace_from_app_iff X) in Htr.
+        destruct Htr as [_ Htr].
+        assumption.
+      + subst pre2. rewrite map_app. rewrite last_app. reflexivity.
+  Qed.
 
-  Admitted.
-  
+  Instance composite_vlsm_comparable_generated_events_lv
+    : composite_vlsm_comparable_generated_events index_listing IM_index Hevidence i0 constraint (fun i:index => i)
+    :=
+    {
+      comparable_generated_events := comparable_generated_events_lv
+    }.
 
 End Composition.
