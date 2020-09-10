@@ -276,6 +276,15 @@ Proof.
   - unfold project. reflexivity.
 Qed.
 
+Lemma depth_consensus_clean
+  (s : state)
+  (value : bool) :
+  depth s = depth (update_consensus s value).
+Proof.
+  unfold depth.
+  destruct s; simpl; reflexivity.
+Qed.
+
 Lemma project_same
   (s : state)
   (news : state)

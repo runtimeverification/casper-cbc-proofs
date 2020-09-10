@@ -5,7 +5,6 @@ From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
-  Lib.List
   Lib.ListSetExtras
   Lib.SortedLists
   VLSM.Common
@@ -2915,11 +2914,78 @@ Context
       destruct d.
       + reflexivity.
       + simpl in *.
-        
-        
-        
-        
    Admitted.
+    
+    Lemma get_observations_nodup 
+      (target : index)
+      (s : state) :
+      (NoDup (get_observations target (depth s) s)).
+    Proof.
+      remember(depth s) as d.
+      generalize dependent s.
+       induction d using (well_founded_induction lt_wf).
+       unfold get_observations.
+       destruct d.
+       - intros.
+          simpl.
+         destruct (project s target).
+         + rewrite eq_dec_if_true.
+           apply NoDup_nil.
+           reflexivity.
+         + rewrite eq_dec_if_false.
+           apply NoDup_cons.
+           simpl.
+           tauto.
+           apply NoDup_nil.
+           intros contra.
+           discriminate contra.
+       - intros.
+         simpl.
+         apply set_remove_nodup.
+         apply set_add_nodup.
+         specialize (@set_union_iterated_nodup (@state index index_listing) eq_dec).
+         intros.
+         specialize (H0 (map
+        ((fix get_observations (target0 : index) (d0 : nat) (s0 : state) {struct d0} :
+              set state :=
+            match d0 with
+            | 0 =>
+                if eq_dec Bottom (project s0 target0)
+                then []
+                else project s0 target0 :: empty_set state
+            | S n =>
+                set_remove eq_dec Bottom
+                  (set_add eq_dec (project s0 target0)
+                     (fold_right (set_union eq_dec) []
+                        (map (get_observations target0 n) (map (project s0) index_listing))))
+            end) target d) (map (project s) index_listing))).
+        apply H0.
+        intros.
+        rewrite in_map_iff in H1.
+        destruct H1 as [x [Hleft Hright]].
+        assert (depth x < S d). {
+          rewrite Heqd.
+          apply in_map_iff in Hright.
+          destruct Hright as [i [Hi _]].
+          rewrite <- Hi.
+          destruct s.
+          - discriminate Heqd.
+          - specialize (@depth_parent_child index index_listing Hfinite eq_dec is b i).
+            intros.
+            unfold project.
+            intuition.
+        }
+        rewrite <- Hleft.
+        specialize H.
+        rewrite get_observations_depth_redundancy.
+        specialize (H (depth x)).
+
+        
+        specialize (H H1).
+        specialize (H x eq_refl).
+        assumption.
+        lia.
+ Qed.
     
     Lemma observations_in_project
       (s : state) 
@@ -2964,15 +3030,6 @@ Context
           unfold project.
           lia. *)
   Admitted.
-    
-    Lemma observations_in_history
-      (s s' ob : state)
-      (target i : index)
-      (Hin : In ob (full_observations s' target))
-      (Hhistory: In s' (get_history s i)) :
-      In ob (full_observations s target).
-   Proof.
-   Admitted.
 
     Lemma observations_disregards_cv
       (s : vstate X)
@@ -2981,11 +3038,27 @@ Context
       : full_observations (update_consensus s cv) target
       = full_observations s target.
     Proof.
-    Admitted.
+      unfold full_observations.
+      unfold get_observations.
+      rewrite <- depth_consensus_clean with (value := cv).
+      destruct (depth s) eqn : eq_d.
+      - rewrite <- update_consensus_clean.
+        reflexivity.
+      - rewrite <- update_consensus_clean.
+        assert (map (project (update_consensus s cv)) index_listing = map (project s) index_listing). {
+          apply map_ext_in.
+          intros.
+          symmetry.
+          apply update_consensus_clean.
+        }
+        rewrite H.
+        reflexivity.
+    Qed.
 
     Lemma observations_update_eq
       (s s' : vstate X)
       (target : index)
+      (Hvalid : project s' target = project s target)
       : set_eq
         (full_observations (update_state s s' target) target)
         (set_add eq_dec s'
@@ -3000,6 +3073,7 @@ Context
     Lemma observations_update_neq
       (s s' : vstate X)
       (target i : index)
+      (Hvalid : project s' target = project s target)
       (Hi : i <> target)
       : set_eq
         (full_observations (update_state s s' i) target)

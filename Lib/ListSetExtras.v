@@ -273,6 +273,31 @@ Proof.
       apply set_union_incl_right.
 Qed.
 
+Lemma set_union_iterated_nodup {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  
+  (ss : list (list A))
+  (H : forall s, In s ss -> NoDup s) :
+  NoDup (fold_right (set_union Aeq_dec) nil ss).
+Proof.
+  intros.
+  generalize dependent ss.
+  induction ss.
+  - intros. simpl. apply NoDup_nil.
+  - intros.
+    simpl.
+    apply set_union_nodup.
+    specialize (H a).
+    apply H.
+    intuition.
+    apply IHss.
+    intros.
+    specialize (H s).
+    spec H.
+    simpl.
+    right.
+    assumption.
+    assumption.
+Qed.
+
 Lemma set_union_in_iterated
   {A : Type}
   (Aeq_dec : forall x y:A, {x = y} + {x <> y})
