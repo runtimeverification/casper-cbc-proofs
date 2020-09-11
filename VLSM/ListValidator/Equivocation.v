@@ -3112,11 +3112,13 @@ Context
       rewrite in_map_iff in Hinx.
       destruct Hinx as [i [Hproject _]].
       rewrite <- Heq.
+      admit
+      (*  
       rewrite (@get_observations_depth_redundancy).
       apply NoDup_cons.
       intuition.
       apply NoDup_nil.
-      assumption.
+      assumption. *)
   Admitted.
     
     Lemma observations_in_project
