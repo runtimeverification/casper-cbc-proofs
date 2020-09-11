@@ -3086,8 +3086,8 @@ Context
                 [project (Something b is) target])).
       apply H.
       apply set_union_nodup.
-      clear.
       specialize (@set_union_iterated_nodup (@state index index_listing) eq_dec).
+      clear H.
       intros.
       specialize (H (map
         ((fix get_observations (target0 : index) (d0 : nat) (s : state) {struct d0} :
@@ -3112,9 +3112,8 @@ Context
       rewrite in_map_iff in Hinx.
       destruct Hinx as [i [Hproject _]].
       rewrite <- Heq.
-      admit
-      (*  
-      rewrite (@get_observations_depth_redundancy).
+      (*
+      specialize (@get_observations_depth_redundancy).
       apply NoDup_cons.
       intuition.
       apply NoDup_nil.
@@ -3447,7 +3446,7 @@ Context
     Lemma observations_update_neq
       (s s' : vstate X)
       (target i : index)
-      (Hvalid : project s' target = project s target)
+      (Hvalid : project s' i = project s i)
       (Hi : i <> target)
       : set_eq
         (full_observations (update_state s s' i) target)

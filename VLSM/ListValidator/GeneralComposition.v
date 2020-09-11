@@ -72,37 +72,39 @@ Context
     destruct l as [c|].
     - inversion Ht. subst m. simpl.
       rewrite state_update_eq.
-      rewrite (@observations_disregards_cv index i index_listing Hfinite idec est message_eq_dec
-        Mindex Rindex).
+      rewrite (@observations_disregards_cv index i index_listing idec est).
       destruct (eq_dec il i).
       + subst il. intros ob Hob.
         apply (@observations_update_eq index i index_listing Hfinite idec est message_eq_dec
-          Mindex Rindex).
+          Mindex Rindex); try reflexivity.
         apply set_add_iff. apply set_add_iff in Hob.
         destruct Hob as [Hob | Hob]; try (left; assumption).
         right. apply set_union_iff. left. assumption.
       + intros ob Hob.
        apply (@observations_update_neq index i index_listing Hfinite idec est message_eq_dec
-          Mindex Rindex); try assumption.
+          Mindex Rindex); try assumption; try reflexivity.
         apply set_union_iff. left. assumption.
     - destruct om as [im|]; inversion Ht.
    Qed.
 
   Program Instance Hcomposite
-    : composite_vlsm_observable_messages index_listing IM_index Hevidence i0 constraint (fun i:index => i)
+    : composite_vlsm_observable_messages index_listing IM_index Hevidence i0 constraint
     :=
     { message_observable_events := message_observable_events_lv;
       message_observable_consistency := message_observable_consistency_lv;
     }.
   Next Obligation.
   Admitted.
+
+  Program Instance Hunforgeable
+    : unforgeable_messages index_listing IM_index Hevidence i0 constraint (fun i:index => i)
+    := {}.
   Next Obligation.
   Admitted.
- 
-  Let id := fun i : index => i.
+
   Existing Instance comparable_states.
-  Let trace_generated_event_lv := trace_generated_event index_listing IM_index Hevidence i0 constraint id.
-  Let trace_generated_index_lv := trace_generated_index index_listing IM_index Hevidence i0 constraint id.
+  Let trace_generated_event_lv := trace_generated_event index_listing IM_index Hevidence i0 constraint.
+  Let trace_generated_index_lv := trace_generated_index index_listing IM_index Hevidence i0 constraint (fun i:index => i).
 
   Lemma generated_events_lv_sent
     (is : vstate X)
@@ -149,10 +151,9 @@ Context
       rewrite state_update_eq in He.
       unfold observable_events in He. simpl in He.
       unfold observable_events in Hne. simpl in Hne.
-      rewrite (@observations_disregards_cv index v index_listing Hfinite idec est message_eq_dec
-        Mindex Rindex) in He.
+      rewrite (@observations_disregards_cv index v index_listing idec est) in He.
       apply (@observations_update_eq index v index_listing Hfinite idec est message_eq_dec
-        Mindex Rindex) in He.
+        Mindex Rindex) in He; try reflexivity.
       apply set_add_iff in He.
       destruct He as [He | He]; try assumption.
       elim Hne. apply set_union_iff. left.
@@ -184,17 +185,11 @@ Context
         simpl. unfold message_observable_events_lv.
         destruct (eq_dec (fst m) v).
         * subst v.
-          apply (@observations_update_eq index (fst m) index_listing Hfinite idec est message_eq_dec
-            Mindex Rindex) in He.
-          rewrite set_add_iff.
-          apply set_add_iff in He.
-          rewrite set_union_iff in He.
-          destruct He as [He | [He | He]]
-          ; try (left; assumption)
-          ; try (right; left; assumption)
-          ; try (right; right; assumption)
-          .
-        * apply (@observations_update_neq index v index_listing Hfinite idec est message_eq_dec
+          destruct Hv as [_ [_ contra]].
+          elim contra. reflexivity.
+        * destruct Hv as [Hv [Hsnd Hfst]].
+          symmetry in Hv.
+          apply (@observations_update_neq index v index_listing Hfinite idec est message_eq_dec
             Mindex Rindex) in He; try assumption.
           apply set_union_iff in He.
           assumption.
@@ -276,7 +271,7 @@ Context
   Qed.
 
   Instance composite_vlsm_comparable_generated_events_lv
-    : composite_vlsm_comparable_generated_events index_listing IM_index Hevidence i0 constraint (fun i:index => i)
+    : composite_vlsm_comparable_generated_events index_listing IM_index Hevidence i0 constraint
     :=
     {
       comparable_generated_events := comparable_generated_events_lv
