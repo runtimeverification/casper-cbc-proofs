@@ -5,6 +5,7 @@ From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
+  Lib.ListSetExtras
   Lib.SortedLists
   VLSM.Common
   VLSM.Composition
@@ -61,6 +62,8 @@ Context
       : incl (message_observable_events_lv m i)
       (@observable_events _ _ _ _ _ (Hevidence i) (dest (projT1 l)) i).
    Proof.
+   Admitted.
+   (* 
     unfold message_observable_events_lv.
     unfold observable_events.
     unfold Hevidence.
@@ -72,12 +75,10 @@ Context
     destruct l as [c|].
     - inversion Ht. subst m. simpl.
       rewrite state_update_eq.
-      rewrite (@observations_disregards_cv index i index_listing Hfinite idec est message_eq_dec
-        Mindex Rindex).
+      rewrite (@observations_disregards_cv index i index_listing idec est).
       destruct (eq_dec il i).
       + subst il. intros ob Hob.
-        apply (@observations_update_eq index i index_listing Hfinite idec est message_eq_dec
-          Mindex Rindex).
+        apply (@observations_update_eq index i index_listing Hfinite idec est).
         apply set_add_iff. apply set_add_iff in Hob.
         destruct Hob as [Hob | Hob]; try (left; assumption).
         right. apply set_union_iff. left. assumption.
@@ -86,7 +87,7 @@ Context
           Mindex Rindex); try assumption.
         apply set_union_iff. left. assumption.
     - destruct om as [im|]; inversion Ht.
-   Qed.
+   Qed. *)
 
   Program Instance Hcomposite
     : composite_vlsm_observable_messages index_listing IM_index Hevidence i0 constraint (fun i:index => i)
@@ -95,7 +96,51 @@ Context
       message_observable_consistency := message_observable_consistency_lv;
     }.
   Next Obligation.
-  Admitted.
+  unfold composed_observable_events.
+  unfold vinitial_state_prop in His.
+  simpl in His.
+  unfold composite_initial_state_prop in His.
+  unfold vinitial_state_prop in His.
+  simpl in His.
+  unfold initial_state_prop in His.
+  apply set_union_iterated_empty.
+  intros.
+  rewrite in_map_iff in H.
+  destruct H.
+  unfold observable_events in H.
+  unfold Hevidence in H.
+  unfold observable_full in H.
+  specialize (His x).
+  destruct His as [cv Heq].
+  rewrite Heq in H.
+  destruct H as [H _].
+  unfold full_observations in H.
+  destruct s0.
+  reflexivity.
+  assert (In s0 (get_observations v (@depth index index_listing (Something cv all_bottom)) (Something cv all_bottom))). {
+    rewrite H.
+    intuition.
+  }
+  assert (s0 <> Bottom). {
+    apply (@no_bottom_in_observations index index_listing Hfinite) in H0.
+    assumption.
+  }
+  apply (@quick_maffs index index_listing Hfinite) in H0.
+  destruct H0.
+  simpl in H0.
+  rewrite project_all_bottom in H0.
+  elim H1.
+  intuition.
+  destruct H0 as [i Hin].
+  simpl in Hin.
+  rewrite project_all_bottom in Hin.
+  simpl in Hin.
+  exfalso.
+  assumption.
+  intros contra.
+  discriminate contra.
+  assumption.
+  Qed.
   Next Obligation.
   Admitted.
  

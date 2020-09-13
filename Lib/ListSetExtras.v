@@ -634,4 +634,34 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma set_union_iterated_empty    {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : 
+   forall ss, 
+   (forall s, 
+   In s ss -> s = []) -> (fold_right (set_union Aeq_dec) nil ss) = [].
+Proof.
+   intros.
+   induction ss.
+   - simpl.
+     reflexivity.
+   - simpl.
+     assert (fold_right (set_union Aeq_dec) [] ss = []). {
+        apply IHss.
+        simpl in H.
+        intros.
+        specialize (H s).
+        apply H.
+        right.
+        assumption.
+     }
+     rewrite H0.
+     assert (a = []). {
+      specialize (H a).
+      apply H.
+      intuition.
+     }
+  rewrite H1.
+  simpl.
+  reflexivity.
+Qed.
+     
 Unset Implicit Arguments.
