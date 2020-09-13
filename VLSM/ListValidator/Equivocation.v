@@ -3488,12 +3488,108 @@ Context
               apply H1.
               rewrite <- H0 in H.
               assumption.
-    Qed.   
+    Qed.
+    
+    Lemma quick_maffs
+      (s s' : state)
+      (Hsnot_bottom : s <> Bottom)
+      (Hs'not_bottom : s' <> Bottom)
+      (target : index) :
+      In s' (full_observations s target) <->
+      project s target = s' \/
+      (exists (i : index), (In s' (full_observations (project s i) target))).
+    Proof.
+      split.
+      - intros.
+        unfold full_observations in H.
+        unfold get_observations in H.
+        destruct s.
+        simpl in *.
+        exfalso.
+        assumption.
+        destruct (depth (Something b is)) eqn : eq_d.
+        apply depth_zero_bottom in eq_d.
+        discriminate eq_d.
+        apply set_remove_1 in H.
+        apply set_union_elim in H.
+        destruct H.
+        + apply set_union_in_iterated in H.
+          rewrite Exists_exists in H.
+          destruct H as [child_res [Heq_child_res Hin_child_res]].
+          rewrite in_map_iff in Heq_child_res.
+          destruct Heq_child_res as [child [Heq_child Hin_child]].
+          rewrite in_map_iff in Hin_child.
+          destruct Hin_child as [i [Hproject Hini]].
+          right.
+          exists i.
+          rewrite get_observations_depth_redundancy in Heq_child.
+          rewrite <- Heq_child in Hin_child_res.
+          rewrite <- Hproject in Hin_child_res.
+          assumption.
+          specialize (@depth_parent_child index index_listing Hfinite idec is b i).
+          intros Hdpc.
+          rewrite <- Hproject.
+          unfold project.
+          lia.
+        + simpl in H.
+          left.
+          intuition.
+      - intros.
+        destruct H.
+        unfold full_observations.
+        unfold get_observations.
+        destruct s.
+        elim Hsnot_bottom.
+        reflexivity.
+        destruct (depth (Something b is)) eqn : eq_d.
+        apply depth_zero_bottom in eq_d.
+        discriminate eq_d.
+        apply set_remove_3.
+        apply set_union_intro.
+        right.
+        simpl.
+        intuition.
+        assumption.
+        unfold full_observations.
+        unfold get_observations.
+        destruct s.
+        elim Hsnot_bottom.
+        reflexivity.
+        destruct (depth (Something b is)) eqn : eq_d.
+        apply depth_zero_bottom in eq_d.
+        discriminate eq_d.
+        apply set_remove_3.
+        apply set_union_intro.
+        left.
+        apply set_union_in_iterated.
+        rewrite Exists_exists.
+        destruct H as [i Hin_i].
+        exists (full_observations (project (Something b is) i) target).
+        split.
+        rewrite in_map_iff.
+        exists (project (Something b is) i).
+        split.
+        rewrite get_observations_depth_redundancy.
+        unfold full_observations.
+        reflexivity.
+        specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hdpc.
+        unfold project.
+        lia.
+        rewrite in_map_iff.
+        exists i.
+        split.
+        reflexivity.
+        apply ((proj2 Hfinite) i).
+        assumption.
+        assumption.
+    Qed.
 
     Lemma observations_update_neq
       (s s' : vstate X)
+      (Hsnot : s <> Bottom)
+      (Hs'not : s' <> Bottom)
       (target i : index)
-      (Hvalid : project s' target = project s target)
+      (Hvalid : project s' i = project s i)
       (Hi : i <> target)
       : set_eq
         (full_observations (update_state s s' i) target)
@@ -3502,7 +3598,120 @@ Context
           (full_observations s' target)
         ).
     Proof.
-    Admitted.
+      remember (update_state s s' i) as u.
+    
+      assert (Hproj_ui : project u i = s'). {
+        rewrite Hequ.
+        apply (@project_same index index_listing Hfinite).
+        assumption.
+      }
+      
+      assert (Hproj_utarget : project u target = project s target). {
+        rewrite Hequ.
+        apply (@project_different index index_listing Hfinite).
+        intuition.
+        assumption.
+      }
+      
+            assert (Hu_not_bottom : u <> Bottom). {
+         destruct u.
+          simpl in *.
+          elim Hs'not.
+          intuition.
+          intros contra.
+          discriminate contra.
+      }
+    
+      split;
+      unfold incl;
+      intros.
+      - assert (Ha : a <> Bottom). {
+          apply no_bottom_in_observations in H.
+          assumption.
+        }
+        apply quick_maffs in H.
+        destruct H.
+        apply set_union_intro.
+        left.
+        apply quick_maffs.
+        assumption.
+        assumption.
+        left.
+        rewrite <- Hproj_utarget.
+        assumption.
+        destruct H as [j Hin_j].
+        apply set_union_intro.
+        destruct (eq_dec i j).
+        + right.
+          rewrite e in Hproj_ui.
+          rewrite Hproj_ui in Hin_j.
+          assumption.
+        + left.
+          apply quick_maffs.
+          assumption.
+          assumption.
+          right.
+          exists j.
+          assert (Hsame_uj : (project u j) = (project s j)). {
+            rewrite Hequ.
+            apply (@project_different index index_listing Hfinite).
+            intuition.
+            assumption.
+          }
+          rewrite <- Hsame_uj.
+          assumption.
+        + assumption.
+        + assumption.
+      - apply set_union_elim in H.
+        assert (Ha : a <> Bottom). {
+          destruct H;
+          apply no_bottom_in_observations in H;
+          assumption.
+        }
+        destruct H.
+        apply quick_maffs in H.
+        destruct H.
+        apply quick_maffs.
+        assumption.
+        assumption.
+        left.
+        rewrite Hproj_utarget.
+        assumption.
+        destruct H as [j Hin_j].
+        apply quick_maffs.
+        assumption.
+        assumption.
+        right.
+        destruct (eq_dec i j).
+        exists i.
+        rewrite Hproj_ui.
+        apply quick_maffs.
+        assumption.
+        assumption.
+        right.
+        exists i.
+        rewrite Hvalid.
+        rewrite <- e in Hin_j.
+        assumption.
+        exists j.
+        assert (Hproj_uj : project u j = project s j). {
+          rewrite Hequ.
+          apply (@project_different index index_listing Hfinite).
+          intuition.
+          assumption.
+        }
+        rewrite Hproj_uj.
+        assumption.
+        assumption.
+        assumption.
+        apply quick_maffs.
+        assumption.
+        assumption.
+        right.
+        exists i.
+        rewrite Hproj_ui.
+        assumption.
+    Qed.
 
     Definition observable_full :
       (computable_observable_equivocation_evidence
