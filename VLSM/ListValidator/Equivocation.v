@@ -3042,84 +3042,39 @@ Context
   Lemma no_bottom_in_observations 
     (s s': state)
     (target : index) 
-    (d : nat)
-    (Hins' : In s' (get_observations target d s)) :
+    (Hins' : In s' (get_observations target (depth s) s)) :
     s' <> Bottom.
   Proof.
    unfold get_observations in Hins'.
    destruct s.
    - simpl in *.
-     destruct d;
      intuition.
-   - destruct d.
-     simpl in *.
-     destruct (eq_dec Bottom (project_indexed index_listing is target)).
-     + intuition.
+   - simpl in *.
+     destruct (depth (Something b is)) eqn : eq_d'.
+     + apply depth_zero_bottom in eq_d'.
+       discriminate eq_d'.
      + simpl in *.
-       destruct Hins'.
-       rewrite H in n.
-       intuition.
-       exfalso.
+       apply set_remove_2 in Hins'.
        assumption.
-     + specialize (set_remove_2 (@state_eq_dec index index_listing)).
+       clear Hins'.
+       apply set_add_nodup.
+       apply (set_union_iterated_nodup).
        intros.
-       specialize (H s' Bottom).
-       specialize (H (set_union eq_dec
-                (fold_right (set_union eq_dec) []
-                   (map
-                      ((fix get_observations (target : index) (d : nat) (s : state) {struct d} :
-                            set state :=
-                          match s with
-                          | Bottom => []
-                          | Something _ _ =>
-                              match d with
-                              | 0 => set_remove eq_dec Bottom [project s target]
-                              | S n =>
-                                  set_remove eq_dec Bottom
-                                    (set_union eq_dec
-                                       (fold_right (set_union eq_dec) []
-                                          (map (get_observations target n)
-                                             (map (project s) index_listing))) [
-                                       project s target])
-                              end
-                          end) target d) (map (project (Something b is)) index_listing)))
-                [project (Something b is) target])).
-      apply H.
-      apply set_union_nodup.
-      clear.
-      specialize (@set_union_iterated_nodup (@state index index_listing) eq_dec).
-      intros.
-      specialize (H (map
-        ((fix get_observations (target0 : index) (d0 : nat) (s : state) {struct d0} :
-              set state :=
-            match s with
-            | Bottom => []
-            | Something _ _ =>
-                match d0 with
-                | 0 => set_remove eq_dec Bottom [project s target0]
-                | S n =>
-                    set_remove eq_dec Bottom
-                      (set_union eq_dec
-                         (fold_right (set_union eq_dec) []
-                            (map (get_observations target0 n) (map (project s) index_listing)))
-                         [project s target0])
-                end
-            end) target d) (map (project (Something b is)) index_listing))).
-      apply H.
-      intros.
-      rewrite in_map_iff in H0.
-      destruct H0 as [child [Heq Hinx]].
-      rewrite in_map_iff in Hinx.
-      destruct Hinx as [i [Hproject _]].
-      rewrite <- Heq.
-      admit
-      (*  
-      rewrite (@get_observations_depth_redundancy).
-      apply NoDup_cons.
-      intuition.
-      apply NoDup_nil.
-      assumption. *)
-  Admitted.
+       rewrite in_map_iff in H.
+       destruct H as [child [Heq_child Hin_child]].
+       rewrite in_map_iff in Hin_child.
+       destruct Hin_child as [i [Heq_project _]].
+       rewrite <- Heq_child.
+       specialize (get_observations_nodup target child).
+       intros.
+       rewrite get_observations_depth_redundancy.
+       apply H.
+       specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hparent_child.
+       rewrite eq_d' in Hparent_child.
+       rewrite <- Heq_project.
+       unfold project.
+       lia.
+  Qed.
     
     Lemma observations_in_project
       (s : state) 
@@ -3144,7 +3099,6 @@ Context
         assert (a <> Bottom). {
           specialize (no_bottom_in_observations (project (Something b is) i) a target).
           intros.
-          specialize (H0 (depth (project (Something b is) i))).
           apply H0.
           unfold full_observations in H.
           assumption.
@@ -3206,6 +3160,8 @@ Context
 
     Lemma observations_update_eq
       (s s' : vstate X)
+      (Hsnot : s <> Bottom)
+      (Hs'not : s' <> Bottom)
       (target : index)
       (Hvalid : project s' target = project s target)
       : set_eq
@@ -3237,7 +3193,7 @@ Context
              specialize (@project_same index index_listing Hfinite eq_dec s s' target).
              intros.
              apply H0.
-             admit.
+             assumption.
            }
            rewrite H0 in H.
            apply set_union_elim in H.
@@ -3301,7 +3257,7 @@ Context
               rewrite <- eq_up.
               apply H3.
               assumption.
-              admit.
+              assumption.
             }
             
             specialize (observations_in_project s target j).
@@ -3323,126 +3279,216 @@ Context
             assumption.
             exfalso.
             assumption.
-        - destruct (eq_dec a s').
-          + rewrite e.
-          specialize (@project_same index index_listing Hfinite idec s s' target).
-          intros.
-          assert (s <> Bottom). {
-            admit.
-          } 
-          specialize (H0 H1).
-          unfold full_observations.
-          unfold get_observations.
-          destruct (update_state s s' target) eqn : eq_up.
-          simpl in *.
-          admit.
-          destruct (depth (Something b is)) eqn : eq_d.
-          * apply depth_zero_bottom in eq_d.
+        - remember (update_state s s' target) as u.
+          assert (project u target = s'). {
+            specialize (@project_same index index_listing Hfinite idec s s' target).
+            intros.
+            rewrite <- Hequ in H0.
+            apply H0.
+            assumption.
+          }
+          apply set_add_elim in H.
+          destruct (eq_dec a s').
+          (* a = s' *)
+          + unfold full_observations.
+            unfold get_observations.
+            destruct u.
+            simpl in *.
+            intuition.
+            destruct (depth (Something b is)) eqn: eq_d.
+            apply depth_zero_bottom in eq_d.
             discriminate eq_d.
-          * apply set_remove_3.
-            apply set_union_intro2.
+            apply set_remove_3.
+            apply set_union_intro.
+            right.
             rewrite H0.
+            rewrite e.
             simpl.
             intuition.
-            admit.
-          + apply set_add_iff in H.
+            rewrite e.
+            assumption.
+          + unfold ListSet.set_In in H.
             destruct H.
-            elim n. assumption.
+            elim n.
+            assumption. 
             apply set_union_elim in H.
             destruct H.
-            * unfold full_observations in H.
+            * (* In a (get_observations s)). *)
+              unfold full_observations in H.
+              assert (a <> Bottom) as Hanot_bottom. {
+                apply no_bottom_in_observations in H.
+                assumption.
+              }
               unfold get_observations in H.
               destruct s.
-              simpl in *.
-              assumption.
+              elim Hsnot.
+              reflexivity.
               destruct (depth (Something b is)) eqn : eq_d.
-              apply depth_zero_bottom in eq_d. 
+              apply depth_zero_bottom in eq_d.
               discriminate eq_d.
               apply set_remove_1 in H.
               apply set_union_elim in H.
               destruct H.
-              specialize (@set_union_in_iterated (@state index index_listing) eq_dec).
+              apply set_union_in_iterated in H.
+              rewrite Exists_exists in H.
+              destruct H as [child_result [Heq_child_result Hin_a]].
+              rewrite in_map_iff in Heq_child_result.
+              destruct Heq_child_result as [child [Heq_child Hin_child]].
+              rewrite in_map_iff in Hin_child.
+              destruct Hin_child as [i [Hproject _]]. 
+              destruct (eq_dec i target).
+              { (* found originally in target projection *)
+                rewrite e in Hproject.
+                rewrite <- Hvalid in Hproject.
+                specialize (observations_in_project u target target).
+                intros.
+                unfold incl in H.
+                specialize (H a).
+                apply H.
+                clear H.
+                rewrite H0.
+                specialize (observations_in_project s' target target).
+                intros.
+                unfold incl in H.
+                specialize (H a).
+                apply H.
+                rewrite Hproject.
+                rewrite get_observations_depth_redundancy in Heq_child.
+                rewrite <- Heq_child in Hin_a.
+                unfold full_observations.
+                assumption.
+                specialize (@depth_parent_child index index_listing Hfinite idec is b target) as Hdpc.
+                rewrite eq_d in Hdpc.
+                rewrite <- Hproject.
+                simpl in Hvalid.
+                rewrite Hvalid.
+                lia.
+              }
+              { (* found originally in different projection *)
+               assert (n0 >= depth child) as Hn0child. {
+                   specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hdpc.
+                   simpl in Hproject.
+                   rewrite Hproject in Hdpc.
+                   lia.
+                }
+                unfold full_observations.
+                unfold get_observations.
+                destruct u.
+                discriminate Hequ.
+                destruct (depth (Something b0 is0)) eqn : eq_du.
+                apply depth_zero_bottom in eq_du.
+                discriminate eq_du.
+                apply set_remove_3.
+                apply set_union_intro.
+                left.
+                assert (project (Something b is) i = project (Something b0 is0) i) as Hsame. {
+                  specialize (@project_different index index_listing Hfinite idec).
+                  intros.
+                  specialize (H (Something b is) s' i target).
+                  rewrite Hequ.
+                  symmetry.
+                  apply H.
+                  assumption.
+                  intros contra.
+                  discriminate contra.
+                }
+
+                apply set_union_in_iterated.
+                rewrite Exists_exists.
+                exists child_result.
+                rewrite in_map_iff.
+                split.
+                exists child.
+                split.
+                rewrite get_observations_depth_redundancy.
+                rewrite get_observations_depth_redundancy in Heq_child.
+                assumption.
+                assumption.
+
+                specialize (@depth_parent_child index index_listing Hfinite idec is0 b0 i) as Hdpc'.
+                simpl in H0.
+                
+                rewrite Hsame in Hproject.
+                rewrite <- Hproject.
+                unfold project.
+                lia.
+                rewrite in_map_iff.
+                exists i.
+                split.
+                rewrite Hsame in Hproject.
+                assumption.
+                apply ((proj2 Hfinite) i).
+                assumption.
+                rewrite get_observations_depth_redundancy in Heq_child.
+                rewrite <- Heq_child in Hin_a.
+                apply no_bottom_in_observations in Hin_a.
+                assumption.
+                assumption.
+                }
+                (* a = project s target *)
+                simpl in H.
+                simpl in Hvalid.
+                rewrite <- Hvalid in H.
+                destruct H.
+                unfold full_observations.
+                unfold get_observations.
+                destruct u.
+                simpl in *.
+                discriminate Hequ.
+                destruct (depth (Something b0 is0)) eqn : eq_du.
+                apply depth_zero_bottom in eq_du.
+                discriminate eq_du.
+                apply set_remove_3.
+                apply set_union_intro.
+                left.
+                apply set_union_in_iterated.
+                rewrite Exists_exists.
+                exists (full_observations s' target).
+                rewrite in_map_iff.
+                split.
+                exists s'.
+                rewrite get_observations_depth_redundancy.
+                split.
+                unfold full_observations.
+                reflexivity.
+                rewrite in_map_iff.
+                exists target.
+                split.
+                assumption.
+                apply ((proj2 Hfinite) target).
+                specialize (@depth_parent_child index index_listing Hfinite idec is0 b0 target).
+                intros.
+                simpl in H0.
+                rewrite <- H0.
+                lia.
+                rewrite <- H.
+                unfold full_observations.
+                unfold get_observations.
+                destruct s'.
+                elim Hs'not.
+                reflexivity.
+                destruct (depth (Something b1 is1)) eqn : eq_d1.
+                apply depth_zero_bottom in eq_d1.
+                discriminate eq_d1.
+                apply set_remove_3.
+                apply set_union_intro.
+                right.
+                simpl.
+                intuition.
+                rewrite H.
+                assumption.
+                assumption.
+                exfalso.
+                assumption.
+            * (* In a (get_observation s') *)
+              specialize (observations_in_project u target target).
               intros.
-              specialize (H0 (map
-            ((fix get_observations (target : index) (d : nat) (s : state) {struct d} :
-                  set state :=
-                match s with
-                | Bottom => []
-                | Something _ _ =>
-                    match d with
-                    | 0 => set_remove eq_dec Bottom [project s target]
-                    | S n =>
-                        set_remove eq_dec Bottom
-                          (set_union eq_dec
-                             (fold_right (set_union eq_dec) []
-                                (map (get_observations target n) (map (project s) index_listing)))
-                             [project s target])
-                    end
-                end) target n0) (map (project (Something b is)) index_listing))).
-            specialize (H0 a).
-            destruct H0 as [H0 _].
-            specialize (H0 H).
-            rewrite Exists_exists in H0.
-            destruct H0 as [child_result [Hinx Hina]].
-            rewrite in_map_iff in Hinx.
-            destruct Hinx as [child [Heq Hinx]].
-            rewrite in_map_iff in Hinx.
-            destruct Hinx as [j [Hproject _]].
-            destruct (eq_dec j target).
-            unfold full_observations.
-            unfold get_observations.
-            rewrite e in Hproject.
-            rewrite <- Hvalid in Hproject.
-            destruct (update_state (Something b is) s' target) eqn : eq_up.
-            simpl in *.
-            discriminate eq_up.
-            destruct (depth (update_state (Something b is) s' target)) eqn : eq_dup.
-            rewrite eq_up in eq_dup.
-            apply depth_zero_bottom in eq_dup.
-            discriminate eq_dup.
-            simpl.
-            rewrite <- eq_up.
-            rewrite eq_dup.
-            rewrite eq_up.
-            apply set_remove_3.
-            apply set_add_intro.
-            right.
-            specialize (@set_union_in_iterated (@state index index_listing) eq_dec).
-            intros.
-            specialize (H0 (map
-        ((fix get_observations (target0 : index) (d : nat) (s : state) {struct d} : set state :=
-            match s with
-            | Bottom => []
-            | Something _ _ =>
-                match d with
-                | 0 =>
-                    if eq_dec Bottom (project s target0)
-                    then []
-                    else project s target0 :: empty_set state
-                | S n2 =>
-                    set_remove eq_dec Bottom
-                      (set_add eq_dec (project s target0)
-                         (fold_right (set_union eq_dec) []
-                            (map (get_observations target0 n2) (map (project s) index_listing))))
-                end
-            end) target n1) (map (project (Something b0 is0)) index_listing)) a).
-            destruct H0 as [_ Hneed].
-            apply Hneed.
-            rewrite Exists_exists.
-            exists (get_observations target n1 (project (Something b0 is0) target)).
-            rewrite in_map_iff.
-            split.
-            exists (project (Something b0 is0) target).
-            unfold get_observations.
-            split.
-            reflexivity.
-            rewrite in_map_iff.
-            exists target.
-            split.
-            reflexivity.
-            apply ((proj2 Hfinite) target).
-            admit.
-    Admitted.   
+              unfold incl in H1.
+              specialize (H1 a).
+              apply H1.
+              rewrite <- H0 in H.
+              assumption.
+    Qed.   
 
     Lemma observations_update_neq
       (s s' : vstate X)
