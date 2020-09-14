@@ -62,8 +62,6 @@ Context
       : incl (message_observable_events_lv m i)
       (@observable_events _ _ _ _ _ (Hevidence i) (dest (projT1 l)) i).
    Proof.
-   Admitted.
-   (* 
     unfold message_observable_events_lv.
     unfold observable_events.
     unfold Hevidence.
@@ -73,21 +71,44 @@ Context
     destruct som as (s, om). destruct l as (il, l).
     simpl in *.  unfold vtransition in Ht. simpl in Ht.
     destruct l as [c|].
-    - inversion Ht. subst m. simpl.
+    - assert ((s i) <> Bottom). {
+          apply (@protocol_prop_no_bottom index i _ _ est).
+          destruct Hv as [Hv _].
+          apply (protocol_state_projection IM_index i0 constraint i) in Hv.
+          destruct Hv as [_oms Hv].
+          apply proj_pre_loaded_protocol_prop in Hv.
+          unfold protocol_state_prop.
+          exists _oms.
+          assumption.
+      }
+      assert ((s il) <> Bottom). {
+          apply (@protocol_prop_no_bottom index il _ _ est).
+          destruct Hv as [Hv _].
+          apply (protocol_state_projection IM_index i0 constraint il) in Hv.
+          destruct Hv as [_oms Hv].
+          apply proj_pre_loaded_protocol_prop in Hv.
+          unfold protocol_state_prop.
+          exists _oms.
+          assumption.
+      }
+      inversion Ht. subst m. simpl.
       rewrite state_update_eq.
       rewrite (@observations_disregards_cv index i index_listing idec est).
       destruct (eq_dec il i).
       + subst il. intros ob Hob.
         apply (@observations_update_eq index i index_listing Hfinite idec est).
+        assumption.
+        assumption.
+        reflexivity.
         apply set_add_iff. apply set_add_iff in Hob.
         destruct Hob as [Hob | Hob]; try (left; assumption).
         right. apply set_union_iff. left. assumption.
       + intros ob Hob.
-       apply (@observations_update_neq index i index_listing Hfinite idec est message_eq_dec
-          Mindex Rindex); try assumption.
+       apply (@observations_update_neq index i index_listing Hfinite idec est); try assumption.
+       reflexivity.
         apply set_union_iff. left. assumption.
     - destruct om as [im|]; inversion Ht.
-   Qed. *)
+   Qed.
 
   Program Instance Hcomposite
     : composite_vlsm_observable_messages index_listing IM_index Hevidence i0 constraint (fun i:index => i)
@@ -151,7 +172,14 @@ Context
     destruct l as (il, l).
     simpl in *.  unfold vtransition in Ht. simpl in Ht.
         assert (Hnb : (s il) <> Bottom). {
-          admit.
+          apply (@protocol_prop_no_bottom index il _ _ est).
+          destruct Hvalid as [Hvalid _].
+          apply (protocol_state_projection IM_index i0 constraint il) in Hvalid.
+          destruct Hvalid as [_oms Hvalid].
+          apply proj_pre_loaded_protocol_prop in Hvalid.
+          unfold protocol_state_prop.
+          exists _oms.
+          assumption.
         }
     destruct l as [c|] eqn : eq_l.
     - inversion Ht.
@@ -236,8 +264,14 @@ Context
           apply in_or_app.
           apply set_union_elim in H2.
           assumption.
-       + admit.
-  Admitted.
+       + unfold constrained_composite_valid in Hvalid.
+         unfold free_composite_valid in Hvalid.
+         unfold vvalid in Hvalid.
+         unfold valid in Hvalid.
+         unfold machine in Hvalid.
+         simpl in Hvalid.
+         intuition.
+  Qed.
  
   Let id := fun i : index => i.
   Existing Instance comparable_states.
@@ -264,7 +298,16 @@ Context
     apply set_diff_iff in He. destruct He as [He Hne].
     specialize (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr))
       as Ht.
-    destruct Ht as [[_ [_ [Hv _]]] Ht]. simpl in Ht. simpl in Hv. 
+    destruct Ht as [[Ha [_ [Hv _]]] Ht]. simpl in Ht. simpl in Hv.
+    assert (Hnb : last (map destination prefix) is v <> Bottom). {
+        apply (@protocol_prop_no_bottom index v _ _ est).
+          apply (protocol_state_projection IM_index i0 constraint v) in Ha.
+          destruct Ha as [_oms Ha].
+          apply proj_pre_loaded_protocol_prop in Ha.
+          unfold protocol_state_prop.
+          exists _oms.
+          assumption.
+      }
     destruct
       ( @l (@ListValidator.message index index_listing)
       (@composite_type (@ListValidator.message index index_listing)
@@ -289,14 +332,15 @@ Context
       rewrite state_update_eq in He.
       unfold observable_events in He. simpl in He.
       unfold observable_events in Hne. simpl in Hne.
-      rewrite (@observations_disregards_cv index v index_listing Hfinite idec est message_eq_dec
-        Mindex Rindex) in He.
-      apply (@observations_update_eq index v index_listing Hfinite idec est message_eq_dec
-        Mindex Rindex) in He.
+      rewrite (@observations_disregards_cv index v index_listing idec est) in He.
+      apply (@observations_update_eq index v index_listing Hfinite idec est) in He.
       apply set_add_iff in He.
       destruct He as [He | He]; try assumption.
       elim Hne. apply set_union_iff. left.
       apply set_union_iff in He. destruct He; assumption.
+      assumption.
+      assumption.
+      reflexivity.
     - elim Hne. apply set_union_iff.
       destruct
         (@input (@ListValidator.message index index_listing)
@@ -324,20 +368,12 @@ Context
         simpl. unfold message_observable_events_lv.
         destruct (eq_dec (fst m) v).
         * subst v.
-          apply (@observations_update_eq index (fst m) index_listing Hfinite idec est message_eq_dec
-            Mindex Rindex) in He.
-          rewrite set_add_iff.
-          apply set_add_iff in He.
-          rewrite set_union_iff in He.
-          destruct He as [He | [He | He]]
-          ; try (left; assumption)
-          ; try (right; left; assumption)
-          ; try (right; right; assumption)
-          .
-        * apply (@observations_update_neq index v index_listing Hfinite idec est message_eq_dec
-            Mindex Rindex) in He; try assumption.
+          intuition.
+        * apply (@observations_update_neq index v index_listing Hfinite idec est) in He; try assumption.
           apply set_union_iff in He.
           assumption.
+          intuition.
+          intuition.
       + inversion Hv.
   Qed.
 
