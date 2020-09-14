@@ -666,6 +666,23 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma in_list_annotate_forget
+  {A : Type}
+  (P : A -> Prop)
+  (l : list A)
+  (Hs : Forall P l)
+  (xP : sig P)
+  (Hin : In xP (list_annotate P l Hs))
+  : In (proj1_sig xP) l.
+Proof.
+  induction l.
+  - inversion Hin.
+  - rewrite list_annotate_unroll in Hin.
+    destruct Hin as [Heq | Hin].
+    + subst xP. left. reflexivity.
+    + right. specialize (IHl (Forall_tl Hs)). apply IHl. assumption.
+Qed.
+
 Lemma nth_error_list_annotate
   {A : Type}
   (P : A -> Prop)
