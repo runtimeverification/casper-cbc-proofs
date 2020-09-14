@@ -552,7 +552,7 @@ a message <<m>> which was received but not sent in the trace
 [VLSM.Equivocation.equivocation_in_trace].
 
 Note that this result does not guarantee that the sender of <<m>> is <<v>>.
-To achieve that we would need additional [unforgeability] assumptions.
+To achieve that we would need additional [unforgeable_messages] assumptions.
 *)
 Lemma event_equivocation_implies_message_equivocation
   (is : vstate X)
@@ -1058,7 +1058,7 @@ We'll also assume a weak form of [unforgeability]: that a machine can only
 produce events for its own validator; for other validators it can only
 gather information through the messages it receives.
 *)
-    unforgeability
+    sent_messages_unforgeability
       (s s' : state)
       (om om' : option message)
       (l : label)
@@ -1107,7 +1107,7 @@ Proof.
   destruct (eq_dec (A v) i); try assumption.
   specialize (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr)).
   intro Hpt.
-  specialize (unforgeability s s' (input item) (output item) (l item) Hpt v n) as Hincl.
+  specialize (sent_messages_unforgeability s s' (input item) (output item) (l item) Hpt v n) as Hincl.
   apply set_diff_iff in He.
   destruct He as [He Hne].
   apply Hincl in He. elim Hne. assumption.
