@@ -142,6 +142,101 @@ Context
   assumption.
   Qed.
   Next Obligation.
+    unfold message_observable_events_lv.
+    unfold observable_events.
+    unfold Hevidence.
+    unfold observable_full.
+    destruct Ht as [Hvalid Ht].
+    simpl in Ht. unfold composite_transition in Ht.
+    destruct l as (il, l).
+    simpl in *.  unfold vtransition in Ht. simpl in Ht.
+        assert (Hnb : (s il) <> Bottom). {
+          admit.
+        }
+    destruct l as [c|] eqn : eq_l.
+    - inversion Ht.
+      unfold incl.
+      intros. 
+      destruct om as [m|] eqn : eq_om.
+      + destruct Hvalid as [_ [_ Hcvalid]].
+        unfold constrained_composite_valid in Hcvalid.
+        unfold free_composite_valid in Hcvalid.
+        unfold vvalid in Hcvalid.
+        unfold valid in Hcvalid.
+        unfold machine in Hcvalid.
+        simpl in Hcvalid.
+        destruct Hcvalid.
+        destruct H2 as [_ contra].
+        discriminate contra.
+      + rewrite state_update_eq in H. 
+        rewrite (@observations_disregards_cv index il index_listing idec est) in H.
+        specialize (@observations_update_neq index il index_listing Hfinite idec est).
+        intros.
+        specialize (H2 (s il) (s il) Hnb Hnb v il eq_refl).
+        spec H2.
+        intuition.
+        unfold set_eq in H2.
+        destruct H2 as [H2 _].
+        unfold incl in H2.
+        specialize (H2 a H).
+        apply set_union_elim in H2.
+        destruct H2; intuition.
+    - destruct om as [m|] eqn : eq_om.
+      + inversion Ht.
+        destruct Hvalid as [_ [_ Hcvalid]].
+          unfold constrained_composite_valid in Hcvalid.
+          unfold free_composite_valid in Hcvalid.
+          unfold vvalid in Hcvalid.
+          unfold valid in Hcvalid.
+          unfold machine in Hcvalid.
+          simpl in Hcvalid.
+          destruct Hcvalid as [Hcvalid _].
+          destruct Hcvalid as [Hproject [Hnb2 Hother]].
+        destruct (eq_dec (fst m) v).
+        * rewrite state_update_eq.
+          unfold incl.
+          intros.
+          specialize (@observations_update_eq index v index_listing Hfinite idec est (s il)).
+          intros.
+          specialize (H2 (snd m) Hnb).
+          rewrite e in Hproject.
+          symmetry in Hproject.
+          specialize (H2 Hnb2 v Hproject).
+          unfold set_eq in H2.
+          destruct H2 as [H2 _].
+          unfold incl in H2.
+          rewrite e in H.
+          specialize (H2 a H).
+          apply set_add_elim in H2.
+          destruct H2.
+          apply in_or_app.
+          right.
+          apply set_add_intro2.
+          assumption.
+          apply set_union_elim in H2.
+          destruct H2.
+          apply in_or_app.
+          left.
+          assumption.
+          apply in_or_app.
+          right.
+          apply set_add_intro1.
+          assumption.
+        * rewrite state_update_eq.
+          unfold incl.
+          intros.
+          specialize (@observations_update_neq index v index_listing Hfinite idec est (s il) (snd m)).
+          intros.
+          symmetry in Hproject.
+          specialize (H2 Hnb Hnb2 v (fst m) Hproject n).
+          unfold set_eq in H2.
+          destruct H2 as [H2 _].
+          unfold incl in H2.
+          specialize (H2 a H).
+          apply in_or_app.
+          apply set_union_elim in H2.
+          assumption.
+       + admit.
   Admitted.
  
   Let id := fun i : index => i.
