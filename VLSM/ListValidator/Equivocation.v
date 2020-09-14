@@ -2488,13 +2488,13 @@ Context
             assumption.
         + reflexivity.
     Qed.
-    
+
     Global Instance has_been_sent_lv : (has_been_sent_capability X) := {
       has_been_sent := send_oracle;
       proper_sent := send_oracle_prop;
       proper_not_sent := not_send_oracle_prop;
     }.
-    
+
    Global Instance has_been_received_lv : (has_been_received_capability X) := {
       has_been_received := receive_oracle;
       proper_received := receive_oracle_prop;
@@ -2897,7 +2897,7 @@ Context
 
     Definition full_observations (s : state) (target : index) :=
       get_observations target (depth s) s.
-    
+
     Lemma get_observations_depth_redundancy
       (target : index)
       (d : nat)
@@ -2940,15 +2940,15 @@ Context
            specialize (@depth_parent_child index index_listing Hfinite eq_dec is b j).
            intros.
            unfold project in Heq.
-           replace (@project_indexed index index_listing (@eq_dec index idec) index_listing is j) 
+           replace (@project_indexed index index_listing (@eq_dec index idec) index_listing is j)
            with a in H0.
            lia.
          }
-         
+
         assert (d >= depth a). {
           lia.
         }
-        
+
          assert (get_observations target (depth a) a = get_observations target n a). {
           symmetry.
           apply H.
@@ -2956,13 +2956,13 @@ Context
           lia.
           reflexivity.
          }
-         
+
          specialize (H (depth a) H0 d H1 a eq_refl).
          rewrite H2 in H.
          intuition.
    Qed.
-    
-    Lemma get_observations_nodup 
+
+    Lemma get_observations_nodup
       (target : index)
       (s : state) :
       (NoDup (get_observations target (depth s) s)).
@@ -3037,11 +3037,11 @@ Context
         assumption.
         lia.
  Qed.
-    
-    
-  Lemma no_bottom_in_observations 
+
+
+  Lemma no_bottom_in_observations
     (s s': state)
-    (target : index) 
+    (target : index)
     (Hins' : In s' (get_observations target (depth s) s)) :
     s' <> Bottom.
   Proof.
@@ -3075,9 +3075,9 @@ Context
        unfold project.
        lia.
   Qed.
-    
+
     Lemma observations_in_project
-      (s : state) 
+      (s : state)
       (target i : index)
       : incl (full_observations (project s i) target) (full_observations s target).
   Proof.
@@ -3152,7 +3152,7 @@ Context
         }
         rewrite H.
         destruct s.
-        simpl. 
+        simpl.
         reflexivity.
         simpl.
         reflexivity.
@@ -3176,13 +3176,13 @@ Context
      unfold set_eq.
      split; unfold incl; intros.
      - destruct (eq_dec a s').
-       + apply set_add_intro2. 
+       + apply set_add_intro2.
          assumption.
        + apply set_add_intro1.
          unfold full_observations in H.
          unfold get_observations in H.
          destruct (update_state s s' target) eqn : eq_up.
-         * simpl in *. 
+         * simpl in *.
            intuition.
          * destruct (depth (Something b is)) eqn : eq_d.
            apply depth_zero_bottom in eq_d.
@@ -3250,7 +3250,7 @@ Context
             rewrite Hproject.
             assumption.
             apply set_union_intro1.
-            
+
             assert (project (Something b is) j = project s j). {
               specialize (@project_different index index_listing Hfinite idec s s' j target).
               intros.
@@ -3259,7 +3259,7 @@ Context
               assumption.
               assumption.
             }
-            
+
             specialize (observations_in_project s target j).
             intros.
             rewrite Hproject in H3.
@@ -3310,7 +3310,7 @@ Context
           + unfold ListSet.set_In in H.
             destruct H.
             elim n.
-            assumption. 
+            assumption.
             apply set_union_elim in H.
             destruct H.
             * (* In a (get_observations s)). *)
@@ -3335,7 +3335,7 @@ Context
               rewrite in_map_iff in Heq_child_result.
               destruct Heq_child_result as [child [Heq_child Hin_child]].
               rewrite in_map_iff in Hin_child.
-              destruct Hin_child as [i [Hproject _]]. 
+              destruct Hin_child as [i [Hproject _]].
               destruct (eq_dec i target).
               { (* found originally in target projection *)
                 rewrite e in Hproject.
@@ -3407,7 +3407,7 @@ Context
 
                 specialize (@depth_parent_child index index_listing Hfinite idec is0 b0 i) as Hdpc'.
                 simpl in H0.
-                
+
                 rewrite Hsame in Hproject.
                 rewrite <- Hproject.
                 unfold project.
@@ -3489,7 +3489,7 @@ Context
               rewrite <- H0 in H.
               assumption.
     Qed.
-    
+
     Lemma unfold_full_observations
       (s s' : state)
       (Hsnot_bottom : s <> Bottom)
@@ -3599,20 +3599,20 @@ Context
         ).
     Proof.
       remember (update_state s s' i) as u.
-    
+
       assert (Hproj_ui : project u i = s'). {
         rewrite Hequ.
         apply (@project_same index index_listing Hfinite).
         assumption.
       }
-      
+
       assert (Hproj_utarget : project u target = project s target). {
         rewrite Hequ.
         apply (@project_different index index_listing Hfinite).
         intuition.
         assumption.
       }
-      
+
             assert (Hu_not_bottom : u <> Bottom). {
          destruct u.
           simpl in *.
@@ -3621,7 +3621,7 @@ Context
           intros contra.
           discriminate contra.
       }
-    
+
       split;
       unfold incl;
       intros.
@@ -3747,7 +3747,7 @@ Context
       Rindex
       get_validators
       get_validators_nodup.
-   
+
    Existing Instance lv_basic_equivocation.
 
 End Equivocation.

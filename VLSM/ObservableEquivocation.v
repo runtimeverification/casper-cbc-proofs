@@ -535,7 +535,7 @@ Proof.
       unfold last_error in eq.
       destruct tr; try discriminate eq.
       inversion eq.
-      rewrite last_map. reflexivity.      
+      rewrite last_map. reflexivity.
     }
     exists is. exists tr. exists Htr. exists Hlst.
     specialize (Hall is tr Htr Hlst). assumption.
@@ -586,7 +586,7 @@ Proof.
     - subst pre. simpl.
       specialize (no_events_in_initial_state is His v) as Hno.
       replace (composed_observable_events is v) with (@nil event).
-      intro contra. inversion contra. 
+      intro contra. inversion contra.
     - destruct (exists_last Hpre0) as [pre' [item' Heq']].
       subst pre.
       rewrite map_app. simpl. rewrite last_last.
@@ -665,7 +665,7 @@ Qed.
 
 
 (**
-The class below links [composite_vlsm_observable_messages] with 
+The class below links [composite_vlsm_observable_messages] with
 [computable_observable_equivocation_evidence] by requiring that all
 [trace_generated_event]s for the same validator are [comparable] through
 the [happens_before_fn].
@@ -746,7 +746,7 @@ Qed.
 The counter-positive of the above says that if there exists a trace
 leading to <<s>> which is not equivocating, then all events observed
 for <<v>> in <<s>> must be comparable w.r.t. the [happens_before_fn].
-*) 
+*)
 Lemma evidence_implies_equivocation_converse
   (s : vstate X)
   (Hs : protocol_state_prop X s)
@@ -837,7 +837,7 @@ Proof.
   simpl in Hitem.
   apply filter_In in Hitem.
   destruct Hitem. assumption.
-Qed. 
+Qed.
 
 (**
 As a corollary, if the composition constraint subsumes the
@@ -1046,7 +1046,7 @@ Context
   (X := composite_vlsm IM i0 constraint)
   (PreX := pre_loaded_vlsm X)
   {Hobservable_messages :
-    @composite_vlsm_observable_messages _ _ _ event_eq event_comparable _ IndEqDec 
+    @composite_vlsm_observable_messages _ _ _ event_eq event_comparable _ IndEqDec
     index_listing IM Hevidence i0 constraint}
   .
 

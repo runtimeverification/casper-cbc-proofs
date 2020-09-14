@@ -14,7 +14,7 @@ Require Import
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.
-  
+
 Section Composition.
 
 Context
@@ -30,5 +30,5 @@ Context
   (preX := pre_loaded_vlsm X)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
-  
+
 End Composition.

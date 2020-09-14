@@ -303,7 +303,7 @@ the [free_composite_valid]ity.
       (constraint : composite_label -> composite_state * option message -> Prop)
       : VLSM message
       := mk_vlsm (composite_vlsm_machine constraint).
-    
+
     Lemma composite_transition_state_neq
       {constraint : composite_label -> composite_state * option message -> Prop}
       (l : composite_label)
@@ -318,7 +318,7 @@ the [free_composite_valid]ity.
       destruct (vtransition (IM il) l (s il, om)) as (si', omi') eqn:Ht'.
       inversion Ht. subst omi'. apply state_update_neq. assumption.
     Qed.
-    
+
     Lemma composite_transition_state_eq
       {constraint : composite_label -> composite_state * option message -> Prop}
       (l : composite_label)

@@ -35,7 +35,7 @@ Section EquivocationAwareValidator.
     :=
     map (fun i: index => project s i)
       (set_diff eq_dec index_listing eqv_validators).
-  
+
   Definition no_equivocating_decisions
     (s : @state index index_listing)
     (eqv_validators : list index)
@@ -57,9 +57,9 @@ Section EquivocationAwareValidator.
     | Bottom => True
     | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
     end.
-  
+
   Definition VLSM_equivocation_aware_list : VLSM message
     :=
     @VLSM_list index index_self index_listing idec equivocation_aware_estimator.
-  
+
 End EquivocationAwareValidator.

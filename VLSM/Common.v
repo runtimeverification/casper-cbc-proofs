@@ -1948,7 +1948,7 @@ is also available to Y.
       :=
       forall t : Trace,
         protocol_trace_prop X t -> protocol_trace_prop Y t.
-    
+
     Lemma VLSM_incl_in_futures
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)

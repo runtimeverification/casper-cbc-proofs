@@ -47,7 +47,7 @@ Context
   ).
 
   Existing Instance composed_eqv_evidence.
-  
+
   Definition message_observable_events_lv (m : message) (target : index) : set state :=
     let obs := @full_observations index index_listing idec (snd m) target in
     if (eq_dec (fst m) target) then set_add eq_dec (snd m) obs else obs.
@@ -188,7 +188,7 @@ Context
     destruct l as [c|] eqn : eq_l.
     - inversion Ht.
       unfold incl.
-      intros. 
+      intros.
       destruct om as [m|] eqn : eq_om.
       + destruct Hvalid as [_ [_ Hcvalid]].
         unfold constrained_composite_valid in Hcvalid.
@@ -200,7 +200,7 @@ Context
         destruct Hcvalid.
         destruct H2 as [_ contra].
         discriminate contra.
-      + rewrite state_update_eq in H. 
+      + rewrite state_update_eq in H.
         rewrite (@observations_disregards_cv index il index_listing idec est) in H.
         specialize (@observations_update_neq index il index_listing Hfinite idec est).
         intros.
@@ -284,7 +284,7 @@ Context
          simpl in Hvalid.
          intuition.
   Qed.
- 
+
   Let id := fun i : index => i.
   Existing Instance comparable_states.
   Let trace_generated_event_lv := trace_generated_event index_listing IM_index Hevidence i0 constraint.

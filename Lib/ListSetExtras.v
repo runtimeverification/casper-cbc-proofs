@@ -273,7 +273,7 @@ Proof.
       apply set_union_incl_right.
 Qed.
 
-Lemma set_union_iterated_nodup {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  
+Lemma set_union_iterated_nodup {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})
   (ss : list (list A))
   (H : forall s, In s ss -> NoDup s) :
   NoDup (fold_right (set_union Aeq_dec) nil ss).
@@ -634,9 +634,9 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma set_union_iterated_empty    {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : 
-   forall ss, 
-   (forall s, 
+Lemma set_union_iterated_empty    {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  :
+   forall ss,
+   (forall s,
    In s ss -> s = []) -> (fold_right (set_union Aeq_dec) nil ss) = [].
 Proof.
    intros.
@@ -663,5 +663,5 @@ Proof.
   simpl.
   reflexivity.
 Qed.
-     
+
 Unset Implicit Arguments.
