@@ -3490,7 +3490,7 @@ Context
               assumption.
     Qed.
     
-    Lemma quick_maffs
+    Lemma unfold_full_observations
       (s s' : state)
       (Hsnot_bottom : s <> Bottom)
       (Hs'not_bottom : s' <> Bottom)
@@ -3629,11 +3629,11 @@ Context
           apply no_bottom_in_observations in H.
           assumption.
         }
-        apply quick_maffs in H.
+        apply unfold_full_observations in H.
         destruct H.
         apply set_union_intro.
         left.
-        apply quick_maffs.
+        apply unfold_full_observations.
         assumption.
         assumption.
         left.
@@ -3647,7 +3647,7 @@ Context
           rewrite Hproj_ui in Hin_j.
           assumption.
         + left.
-          apply quick_maffs.
+          apply unfold_full_observations.
           assumption.
           assumption.
           right.
@@ -3669,23 +3669,23 @@ Context
           assumption.
         }
         destruct H.
-        apply quick_maffs in H.
+        apply unfold_full_observations in H.
         destruct H.
-        apply quick_maffs.
+        apply unfold_full_observations.
         assumption.
         assumption.
         left.
         rewrite Hproj_utarget.
         assumption.
         destruct H as [j Hin_j].
-        apply quick_maffs.
+        apply unfold_full_observations.
         assumption.
         assumption.
         right.
         destruct (eq_dec i j).
         exists i.
         rewrite Hproj_ui.
-        apply quick_maffs.
+        apply unfold_full_observations.
         assumption.
         assumption.
         right.
@@ -3704,7 +3704,7 @@ Context
         assumption.
         assumption.
         assumption.
-        apply quick_maffs.
+        apply unfold_full_observations.
         assumption.
         assumption.
         right.

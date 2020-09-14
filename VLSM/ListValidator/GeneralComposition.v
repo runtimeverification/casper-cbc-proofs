@@ -146,7 +146,7 @@ Context
     apply (@no_bottom_in_observations index index_listing Hfinite) in H0.
     assumption.
   }
-  apply (@quick_maffs index index_listing Hfinite) in H0.
+  apply (@unfold_full_observations index index_listing Hfinite) in H0.
   destruct H0.
   simpl in H0.
   rewrite project_all_bottom in H0.
@@ -241,18 +241,24 @@ Context
           specialize (H2 a H).
           apply set_add_elim in H2.
           destruct H2.
-          apply in_or_app.
+          apply set_union_intro.
           right.
+          simpl.
+          unfold message_observable_events_lv.
+          rewrite eq_dec_if_true.
+          rewrite H2.
           apply set_add_intro2.
+          reflexivity.
           assumption.
+          simpl.
+          unfold message_observable_events_lv.
+          rewrite eq_dec_if_true.
+          apply set_union_intro.
           apply set_union_elim in H2.
           destruct H2.
-          apply in_or_app.
-          left.
+          left. assumption.
+          right. apply set_add_intro1.
           assumption.
-          apply in_or_app.
-          right.
-          apply set_add_intro1.
           assumption.
         * rewrite state_update_eq.
           unfold incl.
@@ -265,8 +271,10 @@ Context
           destruct H2 as [H2 _].
           unfold incl in H2.
           specialize (H2 a H).
-          apply in_or_app.
-          apply set_union_elim in H2.
+          simpl.
+          unfold message_observable_events_lv.
+          rewrite eq_dec_if_false.
+          assumption.
           assumption.
        + unfold constrained_composite_valid in Hvalid.
          unfold free_composite_valid in Hvalid.
