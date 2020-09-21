@@ -35,7 +35,7 @@ Section EquivocationAwareValidator.
     :=
     map (fun i: index => project s i)
       (set_diff eq_dec index_listing eqv_validators).
-  
+
   Definition no_equivocating_decisions
     (s : @state index index_listing)
     (eqv_validators : list index)
@@ -57,15 +57,9 @@ Section EquivocationAwareValidator.
     | Bottom => True
     | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
     end.
-  
-  Existing Instance VLSM_list_protocol.
-  Existing Instance LSM_list.
 
-  Instance VLSM_equivocation_aware_list_machine : VLSM_class (@LSM_list index index_self index_listing):=
-  { transition := @list_transition index index_self index_listing idec
-    ; valid := @list_valid index index_self index_listing idec equivocation_aware_estimator
-  }.
+  Definition VLSM_equivocation_aware_list : VLSM message
+    :=
+    @VLSM_list index index_self index_listing idec equivocation_aware_estimator.
 
-  Definition VLSM_equivocation_aware_list : VLSM message := mk_vlsm VLSM_equivocation_aware_list_machine.
-  
 End EquivocationAwareValidator.

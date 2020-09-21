@@ -666,6 +666,23 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma in_list_annotate_forget
+  {A : Type}
+  (P : A -> Prop)
+  (l : list A)
+  (Hs : Forall P l)
+  (xP : sig P)
+  (Hin : In xP (list_annotate P l Hs))
+  : In (proj1_sig xP) l.
+Proof.
+  induction l.
+  - inversion Hin.
+  - rewrite list_annotate_unroll in Hin.
+    destruct Hin as [Heq | Hin].
+    + subst xP. left. reflexivity.
+    + right. specialize (IHl (Forall_tl Hs)). apply IHl. assumption.
+Qed.
+
 Lemma nth_error_list_annotate
   {A : Type}
   (P : A -> Prop)
@@ -1326,4 +1343,36 @@ Proof.
     apply in_map_iff. exists (mid, y, suf).
     split; try reflexivity.
     apply in_one_element_decompositions_iff. symmetry. assumption.
+Qed.
+
+Lemma order_decompositions
+  {A : Type}
+  (pre1 suf1 pre2 suf2 : list A)
+  (Heq : pre1 ++ suf1 = pre2 ++ suf2)
+  : pre1 = pre2
+  \/ (exists suf1', pre1 = pre2 ++ suf1')
+  \/ (exists suf2', pre2 = pre1 ++ suf2').
+Proof.
+  remember (pre1 ++ suf1) as l.
+  generalize dependent Heq.
+  generalize dependent Heql.
+  revert pre1 suf1 pre2 suf2.
+  induction l; intros.
+  - left.
+    symmetry in Heql. apply app_eq_nil in Heql. destruct Heql as [Hpre1 _]. subst pre1.
+    symmetry in Heq. apply app_eq_nil in Heq. destruct Heq as [Hpre2 _]. subst pre2.
+    reflexivity.
+  - destruct pre1 as [| a1 pre1]; destruct pre2 as [|a2 pre2].
+    + left. reflexivity.
+    + right. right. exists (a2 :: pre2). reflexivity.
+    + right. left. exists (a1 :: pre1). reflexivity.
+    + inversion Heql. subst a1. clear Heql.
+      inversion Heq. subst a2. clear Heq.
+      specialize (IHl pre1 suf1 pre2 suf2 H1 H2).
+      destruct IHl as [Heq | [Hgt | Hlt]].
+      * left. f_equal. assumption.
+      * destruct Hgt as [suf1' Hgt].
+        right. left. exists suf1'. simpl. f_equal. assumption.
+      * destruct Hlt as [suf2' Hlt].
+        right. right. exists suf2'. simpl. f_equal. assumption.
 Qed.

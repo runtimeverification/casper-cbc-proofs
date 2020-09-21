@@ -273,6 +273,31 @@ Proof.
       apply set_union_incl_right.
 Qed.
 
+Lemma set_union_iterated_nodup {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})
+  (ss : list (list A))
+  (H : forall s, In s ss -> NoDup s) :
+  NoDup (fold_right (set_union Aeq_dec) nil ss).
+Proof.
+  intros.
+  generalize dependent ss.
+  induction ss.
+  - intros. simpl. apply NoDup_nil.
+  - intros.
+    simpl.
+    apply set_union_nodup.
+    specialize (H a).
+    apply H.
+    intuition.
+    apply IHss.
+    intros.
+    specialize (H s).
+    spec H.
+    simpl.
+    right.
+    assumption.
+    assumption.
+Qed.
+
 Lemma set_union_in_iterated
   {A : Type}
   (Aeq_dec : forall x y:A, {x = y} + {x <> y})
@@ -607,6 +632,36 @@ Proof.
     destruct (eq_dec v hd).
     contradiction.
     reflexivity.
+Qed.
+
+Lemma set_union_iterated_empty    {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  :
+   forall ss,
+   (forall s,
+   In s ss -> s = []) -> (fold_right (set_union Aeq_dec) nil ss) = [].
+Proof.
+   intros.
+   induction ss.
+   - simpl.
+     reflexivity.
+   - simpl.
+     assert (fold_right (set_union Aeq_dec) [] ss = []). {
+        apply IHss.
+        simpl in H.
+        intros.
+        specialize (H s).
+        apply H.
+        right.
+        assumption.
+     }
+     rewrite H0.
+     assert (a = []). {
+      specialize (H a).
+      apply H.
+      intuition.
+     }
+  rewrite H1.
+  simpl.
+  reflexivity.
 Qed.
 
 Unset Implicit Arguments.

@@ -304,6 +304,36 @@ the [free_composite_valid]ity.
       : VLSM message
       := mk_vlsm (composite_vlsm_machine constraint).
 
+    Lemma composite_transition_state_neq
+      {constraint : composite_label -> composite_state * option message -> Prop}
+      (l : composite_label)
+      (s s' : composite_state)
+      (om om' : option message)
+      (Ht : protocol_transition (composite_vlsm constraint) l (s, om) (s', om'))
+      (i : index)
+      (Hi : i <> projT1 l)
+      : s' i = s i.
+    Proof.
+      destruct Ht as [_ Ht]. simpl in Ht. destruct l as (il, l). simpl in Hi.
+      destruct (vtransition (IM il) l (s il, om)) as (si', omi') eqn:Ht'.
+      inversion Ht. subst omi'. apply state_update_neq. assumption.
+    Qed.
+
+    Lemma composite_transition_state_eq
+      {constraint : composite_label -> composite_state * option message -> Prop}
+      (l : composite_label)
+      (s s' : composite_state)
+      (om om' : option message)
+      (Ht : protocol_transition (composite_vlsm constraint) l (s, om) (s', om'))
+      (il := projT1 l)
+      : s' il = fst (vtransition (IM il) (projT2 l) (s il, om)).
+    Proof.
+      destruct Ht as [_ Ht]. simpl in Ht.
+      unfold il in *. clear il. destruct l as (il, l). simpl.
+      destruct (vtransition (IM il) l (s il, om)) as (si', omi') eqn:Ht'.
+      inversion Ht. apply state_update_eq.
+    Qed.
+
     Section constraint_subsumption.
 (**
 

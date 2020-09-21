@@ -276,6 +276,15 @@ Proof.
   - unfold project. reflexivity.
 Qed.
 
+Lemma depth_consensus_clean
+  (s : state)
+  (value : bool) :
+  depth s = depth (update_consensus s value).
+Proof.
+  unfold depth.
+  destruct s; simpl; reflexivity.
+Qed.
+
 Lemma project_same
   (s : state)
   (news : state)
@@ -554,11 +563,15 @@ Instance LSM_list : VLSM_sign VLSM_list_protocol :=
   ; l0 := receive
   }.
 
-Instance VLSM_list_machine : VLSM_class LSM_list :=
+Instance VLSM_list_machine
+  (est : state -> bool -> Prop)
+  : VLSM_class LSM_list :=
   { transition := list_transition
-    ; valid := list_valid estimator
+    ; valid := list_valid est
   }.
 
-Definition VLSM_list : VLSM message := mk_vlsm VLSM_list_machine.
+Definition VLSM_list
+  (est : state -> bool -> Prop)
+  : VLSM message := mk_vlsm (VLSM_list_machine est).
 
 End ListNode.

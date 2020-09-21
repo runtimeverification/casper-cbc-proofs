@@ -1949,6 +1949,22 @@ is also available to Y.
       forall t : Trace,
         protocol_trace_prop X t -> protocol_trace_prop Y t.
 
+    Lemma VLSM_incl_in_futures
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (Hincl : VLSM_incl MX MY)
+      (s1 s2 : vstate X)
+      (Hfuture: in_futures X s1 s2)
+      : in_futures Y s1 s2.
+    Proof.
+      apply in_futures_witness in Hfuture.
+      destruct Hfuture as [[tr Htr] [n1 [n2 [Hle [Hs1 Hs2]]]]].
+      simpl in Hs1. simpl in Hs2.
+      apply Hincl in Htr.
+      apply (in_futures_witness_reverse Y s1 s2 (exist _ tr Htr) n1 n2 Hle Hs1 Hs2).
+    Qed.
+
     (* begin hide *)
 
     Lemma VLSM_eq_incl_l
