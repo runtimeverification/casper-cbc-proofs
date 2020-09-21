@@ -13,6 +13,8 @@ From CasperCBC
     Validator.State
     Validator.Equivocation
     VLSM.Equivocation
+    VLSM.ObservableEquivocation
+    VLSM.FullNode.Client
     .
 
 Section CompositeValidator.
@@ -24,8 +26,48 @@ Section CompositeValidator.
     {Hmeasurable : Measurable V}
     {Hrt : ReachableThreshold V}
     {Hestimator : Estimator (state C V) C}
+    (eq_V := strictly_comparable_eq_dec about_V)
     (message := State.message C V)
+    (message_events := full_node_message_comparable_events C V)
     .
+
+  Existing Instance eq_V.
+  Existing Instance message_events.
+
+  Definition full_node_validator_observable_events
+    (s : state C V)
+    (v : V)
+    : set message
+    :=
+    full_node_client_observable_events (get_message_set s) v.
+
+  Definition full_node_validator_computable_observable_equivocation_evidence
+    : computable_observable_equivocation_evidence (state C V) V message message_eq message_events
+    :=
+    {|
+      observable_events := full_node_validator_observable_events
+    |}.
+
+  Existing Instance full_node_validator_computable_observable_equivocation_evidence.
+
+  Definition full_node_validator_state_validators
+    (s : state C V)
+    : set V
+    :=
+    full_node_client_state_validators (get_message_set s).
+
+  Lemma full_node_validator_state_validators_nodup
+    (s : state C V)
+    : NoDup (full_node_validator_state_validators s).
+  Proof.
+    apply set_map_nodup.
+  Qed.
+
+  Definition validator_basic_equivocation
+    : basic_equivocation (state C V) V
+    := basic_observable_equivocation (state C V) V message
+        full_node_validator_state_validators full_node_validator_state_validators_nodup.
+
 
   (** * Full-node validator VLSM instance
 
@@ -68,6 +110,7 @@ Section CompositeValidator.
     (Ht : vtransitionv v l (s, om) = pair s' (Some m'))
     : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
     /\ get_justification m' = make_justification s
+    /\ sender m' = v
     /\ exists (c : C), l = Some c.
   Proof.
     unfold vtransitionv in Ht. destruct s as (msgs, final).
@@ -165,6 +208,7 @@ Section proper_sent_received.
     (Ht : vtransition bvlsm l (s, om) = pair s' (Some m'))
     : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
     /\ get_justification m' = make_justification s
+    /\ sender m' = v
     /\ exists (c : C), l = Some c.
   Proof.
     apply vtransitionv_inv_out in Ht. assumption.
@@ -178,6 +222,7 @@ Section proper_sent_received.
     (Ht : protocol_transition bvlsm l (s, om) (s', Some m'))
     : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
     /\ get_justification m' = make_justification s
+    /\ sender m' = v
     /\ exists (c : C), l = Some c.
   Proof.
     destruct Ht as [_ Ht]. apply vtransition_inv_out in Ht. assumption.

@@ -611,13 +611,6 @@ Context
         rewrite contra in Hs1. discriminate Hs1.
     Qed.
 
-    Definition state_lt_equivocation : message_equivocation_evidence message index
-      :=
-      {|
-        sender := fst;
-        message_preceeds_fn := fun m1 m2 => state_ltb (snd m1) (snd m2)
-      |}.
-
     Lemma state_le_refl
       (s1 : state)
       : state_le s1 s1.
@@ -1895,22 +1888,8 @@ Context
         + destruct H0 as [s0 [tr [Hfinite_protocol [Hdest Hmessage]]]].
           destruct Hmessage.
           specialize (H s0 tr Hfinite_protocol).
-          assert (last (List.map destination tr) s0 = s). {
-            specialize (@last_map (@transition_item message (type preX)) state destination).
-            intros.
-            unfold option_map in Hdest.
-            destruct (last_error tr) eqn : eq.
-            - inversion Hdest.
-              unfold last_error in eq.
-              destruct tr.
-              + discriminate eq.
-              + inversion eq.
-                apply H0.
-           - discriminate Hdest.
-
-          }
-
-          specialize (H H0).
+          assert (Hlst := last_error_destination_last tr s Hdest s0).
+          specialize (H Hlst).
           assert (can_emit preX m). {
             specialize (can_emit_from_protocol_trace preX s0 m tr Hfinite_protocol H).
             intros.
@@ -1928,14 +1907,14 @@ Context
               assumption.
             }
 
-            destruct s. elim H3. reflexivity.
+            destruct s. elim H2. reflexivity.
 
             (* Rewrite it as Prop involving In. *)
 
             assert (In (snd m) (get_history (Something b is) (fst m))). {
               specialize (output_to_history (Something b is) s0 m tr).
               intros.
-              specialize (H4 Hfinite_protocol H0 H).
+              specialize (H3 Hfinite_protocol Hlst H).
               rewrite e.
               assumption.
             }
@@ -1949,7 +1928,7 @@ Context
             reflexivity.
             elim n.
             reflexivity.
-           * rewrite H2 in n.
+           * rewrite H1 in n.
               elim n.
               reflexivity.
     Qed.
@@ -2136,20 +2115,8 @@ Context
         + destruct e as [start [tr [Hprotocol_tr [Hdest Hothers]]]].
           destruct trace_eq.
           specialize (H start tr Hprotocol_tr).
-          assert (last (List.map destination tr) start = s). {
-            specialize (@last_map (@transition_item message (type preX)) state destination).
-            intros.
-            unfold option_map in Hdest.
-            destruct (last_error tr) eqn : eq.
-            - inversion Hdest.
-              unfold last_error in eq.
-              destruct tr.
-              + discriminate eq.
-              + inversion eq.
-                apply H0.
-           - discriminate Hdest.
-          }
-          specialize (H H0).
+          assert (Hlst := last_error_destination_last tr s Hdest start).
+          specialize (H Hlst).
           rewrite Exists_exists in H.
           destruct H as [x [Hin Hm]].
           apply in_split in Hin.
@@ -2214,10 +2181,10 @@ Context
               split.
               destruct Happ.
               destruct Hprotocol_tr.
-              rewrite Hconcat in H3.
-              rewrite <- app_assoc in H2.
-              specialize (H2 H3).
-              destruct H2.
+              rewrite Hconcat in H2.
+              rewrite <- app_assoc in H1.
+              specialize (H1 H2).
+              destruct H1.
 
               assert (last (List.map destination (l1 ++ [x])) start = destination x). {
                  rewrite map_app.
@@ -2226,13 +2193,13 @@ Context
                  reflexivity.
               }
 
-              rewrite <- H6.
+              rewrite <- H5.
               assumption.
-              rewrite Hconcat in H0.
-              rewrite map_app in H0.
-              rewrite last_app in H0.
-              rewrite map_cons in H0.
-              rewrite unroll_last in H0.
+              rewrite Hconcat in Hlst.
+              rewrite map_app in Hlst.
+              rewrite last_app in Hlst.
+              rewrite map_cons in Hlst.
+              rewrite unroll_last in Hlst.
               assumption.
             }
 
@@ -2341,21 +2308,9 @@ Context
             assumption.
           * destruct H2 as [start [tr [Htr Hothers]]].
             destruct Hothers as [Hdest Houtput].
-            assert (last (List.map destination tr) start = s). {
-               specialize (@last_map (@transition_item message (type preX)) state destination).
-               intros.
-               unfold option_map in Hdest.
-               destruct (last_error tr) eqn : eq.
-                - inversion Hdest.
-                  unfold last_error in eq.
-                  destruct tr.
-                  + discriminate eq.
-                  + inversion eq.
-                  apply H2.
-                - discriminate Hdest.
-            }
-            specialize (H start tr Htr H2).
-            specialize (H0 start tr Htr H2).
+            assert (Hlst := last_error_destination_last tr s Hdest start).
+            specialize (H start tr Htr Hlst).
+            specialize (H0 start tr Htr Hlst).
             rewrite Exists_exists in H0.
             destruct H0 as [x [Hin Hm]].
             rewrite <- Forall_Exists_neg in H.
@@ -2464,21 +2419,9 @@ Context
             assumption.
           * destruct H2 as [start [tr [Htr Hothers]]].
             destruct Hothers as [Hdest Houtput].
-            assert (last (List.map destination tr) start = s). {
-              specialize (@last_map (@transition_item message (type preX)) state destination).
-               intros.
-               unfold option_map in Hdest.
-               destruct (last_error tr) eqn : eq.
-                - inversion Hdest.
-                  unfold last_error in eq.
-                  destruct tr.
-                  + discriminate eq.
-                  + inversion eq.
-                  apply H2.
-                - discriminate Hdest.
-            }
-            specialize (H start tr Htr H2).
-            specialize (H0 start tr Htr H2).
+            assert (Hlst := last_error_destination_last tr s Hdest start).
+            specialize (H start tr Htr Hlst).
+            specialize (H0 start tr Htr Hlst).
             rewrite Exists_exists in H0.
             destruct H0 as [x [Hin Hm]].
             rewrite <- Forall_Exists_neg in H.
@@ -2750,21 +2693,9 @@ Context
       - destruct H1 as [si [tr [Htr [Hdest Hm]]]].
         specialize (H0 si tr Htr).
 
-        assert (last (map destination tr) si = s). {
-          specialize (@last_map (@transition_item message (type preX)) state destination).
-               intros.
-               unfold option_map in Hdest.
-               destruct (last_error tr) eqn : eq.
-                - inversion Hdest.
-                  unfold last_error in eq.
-                  destruct tr.
-                  + discriminate eq.
-                  + inversion eq.
-                  apply H1.
-                - discriminate Hdest.
-        }
+        assert (Hlst := last_error_destination_last tr s Hdest si).
 
-        specialize (H0 H1).
+        specialize (H0 Hlst).
         rewrite Exists_exists in H0.
         destruct H0 as [x [Hin_x Houtput]].
         apply in_split in Hin_x.
@@ -2774,10 +2705,10 @@ Context
         destruct Htr.
         specialize (protocol_transition_to preX si x tr l1 l2 Hconcat H0).
         intros.
-        simpl in H3.
+        simpl in H2.
 
-        unfold protocol_transition in H3.
-        destruct H3 as [Hvalid Htransition].
+        unfold protocol_transition in H2.
+        destruct H2 as [Hvalid Htransition].
         unfold protocol_valid in Hvalid.
         destruct Hvalid as [Hneed Hother].
 
@@ -2787,18 +2718,18 @@ Context
           simpl in *.
           destruct (l x) eqn : eq_l.
           - inversion Htransition.
-            rewrite Houtput in H5.
-            inversion H5.
+            rewrite Houtput in H4.
+            inversion H4.
             reflexivity.
           - destruct (input x).
             + inversion Htransition.
-              rewrite Houtput in H5.
-              discriminate H5.
+              rewrite Houtput in H4.
+              discriminate H4.
             + inversion Htransition.
-              rewrite Houtput in H5.
-              discriminate H5.
+              rewrite Houtput in H4.
+              discriminate H4.
         }
-        rewrite <- H3.
+        rewrite <- H2.
         assumption.
     Qed.
 

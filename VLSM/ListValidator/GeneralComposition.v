@@ -43,7 +43,7 @@ Context
   (@composed_computable_observable_equivocation_evidence
     message index state
     state_eq_dec comparable_states
-    index idec index_listing IM_index Hevidence i0 constraint
+    index index_listing IM_index Hevidence
   ).
 
   Existing Instance composed_eqv_evidence.

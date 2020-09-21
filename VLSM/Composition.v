@@ -1134,6 +1134,80 @@ All results from regular projections carry to these "free" projections.
       + rewrite state_update_neq; try assumption. apply Hs.
   Qed.
 
+  Lemma pre_loaded_projection_protocol_transition_eq
+    (s1 s2 : vstate X)
+    (om1 om2 : option message)
+    (l : label)
+    (Ht : protocol_transition (pre_loaded_vlsm X) l (s1, om1) (s2, om2))
+    (i := projT1 l)
+    : protocol_transition (pre_loaded_vlsm (IM i)) (projT2 l) (s1 i, om1) (s2 i, om2).
+  Proof.
+    destruct Ht as [[Hs1 [Hom1 [Hv _]]] Ht].
+    simpl in Hv. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
+    destruct l as [il l]. simpl in *. unfold i in *. clear i.
+    destruct (vtransition (IM il) l (s1 il, om1)) as (si', om') eqn:Htj.
+    inversion Ht. subst; clear Ht.
+    rewrite state_update_eq.
+    repeat split; try assumption.
+    - apply preloaded_composed_protocol_state. assumption.
+    - destruct om1 as [m1|]; exists (proj1_sig (vs0 (IM il))).
+      + assert (Hm1 : vinitial_message_prop (pre_loaded_vlsm (IM il)) m1) by exact I.
+        replace m1 with (proj1_sig (exist _ m1 Hm1)) by reflexivity.
+        apply (protocol_initial_message (pre_loaded_vlsm (IM il))).
+      + apply (protocol_initial_state (pre_loaded_vlsm (IM il))).
+  Qed.
+
+  Lemma pre_loaded_projection_protocol_transition_neq
+    (s1 s2 : vstate X)
+    (om1 om2 : option message)
+    (l : label)
+    (Ht : protocol_transition (pre_loaded_vlsm X) l (s1, om1) (s2, om2))
+    (i : index)
+    (Hi : i <> projT1 l)
+    : s1 i = s2 i.
+  Proof.
+    destruct Ht as [[Hs1 [Hom1 [Hv _]]] Ht].
+    simpl in Hv. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
+    destruct l as [il l]. simpl in *.
+    destruct (vtransition (IM il) l (s1 il, om1)) as (si', om') eqn:Htj.
+    inversion Ht. subst; clear Ht.
+    rewrite state_update_neq; try assumption.
+    reflexivity.
+  Qed.
+
+  Lemma pre_loaded_projection_in_futures
+    (s1 s2 : vstate X)
+    (Hfutures : in_futures (pre_loaded_vlsm X) s1 s2)
+    (i : index)
+    : in_futures (pre_loaded_vlsm (IM i))  (s1 i) (s2 i).
+  Proof.
+    destruct Hfutures as [tr [Htr Hlast]].
+    generalize dependent s1.
+    induction tr; intros.
+    - exists []. simpl in Hlast. subst.
+      split; try constructor; simpl; try reflexivity.
+      inversion Htr.
+      apply preloaded_composed_protocol_state. assumption.
+    - rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
+      inversion Htr. subst. simpl in *.
+      specialize (IHtr s H2 eq_refl).
+      destruct (eq_dec  i (projT1 l)).
+      + subst. apply pre_loaded_projection_protocol_transition_eq in H3.
+        destruct IHtr as [tri [Htri Hlasti]].
+        exists
+          ({| l := projT2 l; input := iom; destination := s (projT1 l); output := oom |}
+          ::tri
+          ).
+        split; try apply (finite_ptrace_extend (pre_loaded_vlsm (IM (projT1 l))))
+        ; try assumption.
+        rewrite map_cons. rewrite unroll_last. simpl.
+        assumption.
+      + specialize
+          (pre_loaded_projection_protocol_transition_neq _ _ _ _ _ H3 _ n) as Hs1i.
+        rewrite Hs1i. assumption.
+  Qed.
+
+
 End free_projections.
 
 Section binary_free_composition.
@@ -1180,3 +1254,4 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
     := composite_vlsm_free_projection binary_IM first second.
 
 End binary_free_composition.
+

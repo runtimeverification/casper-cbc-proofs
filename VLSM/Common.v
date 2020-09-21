@@ -130,6 +130,22 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
       | Infinite _ _ => None
       end.
 
+  Lemma last_error_destination_last
+    (tr : list transition_item)
+    (s : state)
+    (Hlast : option_map destination (last_error tr) = Some s)
+    (default : state)
+    : last (List.map destination tr) default = s.
+  Proof.
+    unfold option_map in Hlast.
+    destruct (last_error tr) eqn : eq; try discriminate Hlast.
+    inversion Hlast.
+    unfold last_error in eq.
+    destruct tr; try discriminate eq.
+    inversion eq.
+    rewrite last_map. reflexivity.
+  Qed.
+
 End Traces.
 
 Section vlsm_projections.
@@ -2207,6 +2223,17 @@ Byzantine fault tolerance analysis. *)
     := sig byzantine_message_prop.
 
   (* begin hide *)
+  Lemma pre_loaded_message_protocol_prop
+    (om : option message)
+    : protocol_prop pre_loaded_vlsm (proj1_sig (vs0 X), om).
+  Proof.
+    destruct om as [m|]; try apply (protocol_initial_state pre_loaded_vlsm).
+    assert (Hm : vinitial_message_prop pre_loaded_vlsm m) by exact I.
+    pose (exist _ m Hm) as im.
+    replace m with (proj1_sig im) by reflexivity.
+    apply (protocol_initial_message pre_loaded_vlsm).
+  Qed.
+
   Lemma pre_loaded_protocol_prop
     (s : state)
     (om : option message)

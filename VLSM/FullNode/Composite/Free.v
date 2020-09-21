@@ -1,4 +1,4 @@
-Require Import PeanoNat Lia FinFun Fin List ListSet RelationClasses.
+Require Import PeanoNat Lia FinFun Fin List ListSet RelationClasses Reals.
 
 Import ListNotations.
 
@@ -6,11 +6,12 @@ From CasperCBC
   Require Import
     Preamble
     ListExtras
+    ListSetExtras
     CBC.Common
     VLSM.Common
     VLSM.Composition
     VLSM.ProjectionTraces
-    VLSM.PreceedsEquivocation
+    VLSM.ObservableEquivocation
     Validator.State
     FullNode.Client
     FullNode.Validator
@@ -31,6 +32,7 @@ Section ClientsAndValidators.
     {Hrt : ReachableThreshold V}
     {Hestimator : Estimator (state C V) C}
     (message := State.message C V)
+    (message_events := full_node_message_comparable_events C V)
     .
 Parameter clients : Type.
 Parameter clients_eq_dec : EqDec clients.
@@ -88,6 +90,61 @@ Definition project
   | inl v => s (inl v)
   | inr c => pair (s (inr c)) None
   end.
+
+Lemma pre_free_protocol_transition_out
+  (l : label)
+  (is os : vstate VLSM_full_composed_free)
+  (iom : option message)
+  (m : message)
+  (Ht :
+    protocol_transition (pre_loaded_vlsm VLSM_full_composed_free)
+      l (is, iom) (os, Some m)
+  )
+  : projT1 l = inl (State.sender m)
+  /\ State.get_justification m = make_justification (project is (projT1 l))
+  /\ In m (State.get_message_set (project os (projT1 l))).
+Proof.
+  destruct Ht as [Hv Ht]. simpl in Ht. unfold vtransition in Ht.
+  simpl in Ht.
+  destruct l as [il l].
+  destruct (vtransition (IM_index il) l (is il, iom)) as (os', om') eqn:Hvt.
+  inversion Ht. subst. clear Ht. simpl in *.
+  destruct il; simpl in Hvt.
+  - apply vtransitionv_inv_out in Hvt.
+    destruct Hvt as [Hos' [Hj [Hsender _]]].
+    subst.
+    repeat split; try reflexivity; try assumption.
+    simpl. rewrite state_update_eq. simpl. apply set_add_iff. left. reflexivity.
+  - unfold vtransition in Hvt. simpl in Hvt.
+    destruct iom; inversion Hvt.
+Qed.
+
+Lemma free_protocol_transition_out
+  (l : label)
+  (is os : vstate VLSM_full_composed_free)
+  (iom : option message)
+  (m : message)
+  (Ht :
+    protocol_transition VLSM_full_composed_free
+      l (is, iom) (os, Some m)
+  )
+  : projT1 l = inl (State.sender m)
+  /\ State.get_justification m = make_justification (project is (projT1 l))
+  /\ In m (State.get_message_set (project os (projT1 l))).
+Proof.
+  destruct Ht as [Hv Ht]. simpl in Ht.
+  destruct l as [il l].
+  destruct (vtransition (IM_index il) l (is il, iom)) as (os', om') eqn:Hvt.
+  inversion Ht. subst. clear Ht. simpl in *.
+  destruct il; simpl in Hvt.
+  - apply vtransitionv_inv_out in Hvt.
+    destruct Hvt as [Hos' [Hj [Hsender _]]].
+    subst.
+    repeat split; try reflexivity; try assumption.
+    simpl. rewrite state_update_eq. simpl. apply set_add_iff. left. reflexivity.
+  - unfold vtransition in Hvt. simpl in Hvt.
+    destruct iom; inversion Hvt.
+Qed.
 
 Lemma VLSM_full_protocol_state_nodup
   (s : vstate VLSM_full_composed_free)
@@ -362,7 +419,58 @@ Proof.
   apply free_full_byzantine_message_preceeds_transitive.
 Defined.
 
-Existing Instance full_node_message_equivocation_evidence.
+Lemma full_composed_free_sent_messages_comparable'
+  (s : vstate VLSM_full_composed_free)
+  (tr : list (vtransition_item VLSM_full_composed_free))
+  (Htr : finite_protocol_trace (pre_loaded_vlsm VLSM_full_composed_free) s tr)
+  (m1 m2 : message)
+  (Hvalidator : State.sender m1 = State.sender m2)
+  (item1 item2 : vtransition_item VLSM_full_composed_free)
+  (prefix middle suffix: list (vtransition_item VLSM_full_composed_free))
+  (Heq: tr = prefix ++ [item1] ++ middle ++ [item2] ++ suffix)
+  (Hm1: output item1 = Some m1)
+  (Hm2: output item2 = Some m2)
+  : validator_message_preceeds _ _ m1 m2.
+Proof.
+  unfold validator_message_preceeds.
+  unfold validator_message_preceeds_fn.
+  destruct m2 as (c2, v2, j2).
+  subst tr.
+  destruct Htr as [Htr Hinit].
+  rewrite <- finite_protocol_trace_from_app_iff in Htr.
+  destruct Htr as [Hpre Htr].
+  rewrite app_assoc  in Htr.
+  rewrite <- finite_protocol_trace_from_app_iff in Htr.
+  destruct Htr as [Htr1 Htr2].
+  inversion Htr1. subst. clear Htr1.
+  simpl in Hm1. subst.
+  rewrite map_app in Htr2.
+  rewrite last_app in Htr2. simpl in Htr2.
+  apply pre_free_protocol_transition_out in H3.
+  destruct H3 as [Hl [_ Hm1]].
+  simpl in Hvalidator. rewrite Hvalidator in Hl.
+  destruct l as [il l1]. simpl in Hl. subst il. simpl in *.
+  apply in_correct.
+  inversion Htr2; subst. clear Htr2 H3. simpl in Hm2. subst oom.
+  apply pre_free_protocol_transition_out in H4.
+  destruct H4 as [Hl [Hj2 Hm2]].
+  destruct l as [il l2]. simpl in Hl. subst il. simpl in *.
+  subst j2.
+  apply in_unmake_message_set.
+  apply in_make_justification.
+  apply
+    (@get_messages_in_futures C V about_C about_V Hestimator
+      (State.sender m1) (s0 (inl (State.sender m1)))
+      (last (map destination middle) s0 (inl (State.sender m1)))
+    ); try assumption.
+  specialize
+    (pre_loaded_projection_in_futures IM_index i0 s0 (last (map destination middle) s0))
+    as Hproj.
+  spec Hproj; try (specialize (Hproj (inl (State.sender m1))); apply Hproj).
+  exists middle.
+  split; try assumption.
+  reflexivity.
+Qed.
 
 Lemma full_composed_free_sent_messages_comparable
   (s : vstate VLSM_full_composed_free)
@@ -381,39 +489,107 @@ Proof.
   destruct Hitem1 as [prefix1 [suffix1 Hitem1]].
   rewrite Hitem1 in Hitem2.
   apply in_app_iff in Hitem2.
+  specialize (full_composed_free_sent_messages_comparable' s tr Htr) as Hcomparable.
   destruct Hitem2 as [Hitem2 | [Heq | Hitem2]]
   ; try
     (apply in_split in Hitem2; destruct Hitem2 as [prefix2 [suffix2 Hitem2]]
     ; rewrite Hitem2 in Hitem1; clear Hitem2
     ).
-  - right. right. admit.
+  - right. right. symmetry in Hvalidator. rewrite <- app_assoc in Hitem1. subst tr.
+    apply
+      (Hcomparable m2 m1 Hvalidator item2 item1 prefix2 suffix2 suffix1 eq_refl Hm2 Hm1).
   - left. subst. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
-  - right. left.
-Admitted.
+  - right. left. subst tr.
+    apply
+      (Hcomparable m1 m2 Hvalidator item1 item2 prefix1 prefix2 suffix2 eq_refl Hm1 Hm2).
+Qed.
 
-
-
-Lemma full_composed_free_evidence_of_equivocation
-  (s : Common.state)
-  (tr : list transition_item)
-  (Htr : finite_protocol_trace (pre_loaded_vlsm VLSM_full_composed_free) s tr)
-  (m1 m2 : message)
-  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free input m1 tr)
-  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free input m2 tr)
-  : Equivocation.equivocation_in_trace VLSM_full_composed_free m1 tr \/
-    Equivocation.equivocation_in_trace VLSM_full_composed_free m2 tr.
+Definition free_computable_observable_equivocation_evidence_index
+  (i : index)
+  : computable_observable_equivocation_evidence
+        (vstate (IM_index i)) V message message_eq (full_node_message_comparable_events C V).
 Proof.
-Admitted.
-
-Instance VLSM_full_composed_free_message_equivocation_evidence
-  : vlsm_message_equivocation_evidence V VLSM_full_composed_free.
-Proof.
-  split.
-  apply free_full_byzantine_message_preceeds_stict_order.
-Admitted.
+  destruct i.
+  - apply full_node_validator_computable_observable_equivocation_evidence.
+  - apply full_node_client_computable_observable_equivocation_evidence.
+Defined.
 
 Parameter indices : list index.
 Parameter finite_index : Listing indices.
+
+Definition validators : list V
+  := flat_map (fun i : index => match i with inl v => [v] | _ => [] end) indices.
+
+Lemma finite_validators : Listing validators.
+Proof.
+  split.
+  - unfold validators. assert (Hnodup := proj1 finite_index).
+    induction indices.
+    + constructor.
+    + simpl. inversion Hnodup; subst. specialize (IHl H2).
+      destruct a; try assumption.
+      simpl. constructor; try assumption.
+      intro contra.
+      apply in_flat_map in contra.
+      destruct contra as [[iv| ic] [Hi Hv]].
+      * destruct Hv as [Heq | Hcontra]; try inversion Hcontra.
+        subst iv. elim H1. assumption.
+      * inversion Hv.
+  - intro v. specialize (proj2 finite_index (inl v)) as Hv.
+    apply in_flat_map. exists (inl v).
+    split; try assumption. left. reflexivity.
+Qed.
+
+Definition composed_equivocation_evidence
+  : computable_observable_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq  (full_node_message_comparable_events C V)
+  := @composed_computable_observable_equivocation_evidence message V message message_eq (full_node_message_comparable_events C V) index indices IM_index free_computable_observable_equivocation_evidence_index.
+
+Existing Instance composed_equivocation_evidence.
+
+Definition composed_basic_observable_equivocation
+  : basic_equivocation (vstate VLSM_full_composed_free) V
+  := @composed_observable_basic_equivocation
+      message V message message_eq (full_node_message_comparable_events C V)
+      index indices IM_index
+      free_computable_observable_equivocation_evidence_index
+      Hmeasurable Hrt
+      (fun s => validators)
+      (fun s => proj1 finite_validators).
+
+
+Program Instance free_composite_vlsm_observable_messages
+  : composite_vlsm_observable_messages indices IM_index free_computable_observable_equivocation_evidence_index i0 (free_constraint IM_index)
+  :=
+  {
+    message_observable_events := full_message_observable_messages
+  }.
+Next Obligation.
+  apply set_union_iterated_empty. intros msgsi Hmsgsi.
+  apply in_map_iff in Hmsgsi. destruct Hmsgsi as [i [Hmsgsi _]].
+  subst.
+  specialize (free_computable_observable_equivocation_evidence_index i) as Hev.
+  specialize (His i). unfold IM_index in *.
+  destruct i; inversion His; rewrite H0; reflexivity.
+Qed.
+Next Obligation.
+  apply free_protocol_transition_out in Ht.
+  destruct Ht as [Hl [Hj Hm]].
+  destruct l as (i, l). unfold full_message_observable_messages.
+  simpl in *.
+
+  destruct i as [v0|c]; try discriminate Hl.
+  inversion Hl. subst. clear Hl.
+  destruct (eq_dec v (sender m)); try apply incl_nil_l.
+  subst. simpl.
+  intros m' Hm'.
+  destruct Hm' as [Hm' | contra]; try inversion contra.
+  subst m'.
+  apply filter_In. split; try assumption.
+  rewrite eq_dec_if_true; reflexivity.
+Qed.
+
+Existing Instance message_eq.
+Existing Instance message_events.
 
 (**
 Equivocation is defined as non-heaviness of the full set of exchanged messages.
@@ -424,16 +600,169 @@ Definition state_union
   (s : vstate VLSM_full_composed_free)
   : set message
   :=
-  let state_list := List.map (project s) indices in
   fold_right (set_union compare_eq_dec) []
-    (List.map get_message_set state_list).
+    (map (fun v : V => observable_events s v) validators).
 
-Instance VLSM_full_composed_free_state_encapsulating_messages
-  : state_encapsulating_messages (vstate VLSM_full_composed_free) message
-  :=
-  {| get_messages := state_union |}.
+Lemma state_union_nodup
+  (s : vstate VLSM_full_composed_free)
+  (Hs : protocol_state_prop (pre_loaded_vlsm VLSM_full_composed_free) s)
+  : NoDup (state_union s).
+Proof.
+  apply set_union_iterated_nodup.
+  intros msgsi Hmsgsi.
+  apply in_map_iff in Hmsgsi.
+  destruct Hmsgsi as [v [Hmsgsv _]]. subst.
+  simpl. unfold composed_observable_events.
+  apply set_union_iterated_nodup.
+  intros msgsi Hmsgsi.
+  apply in_map_iff in Hmsgsi.
+  destruct Hmsgsi as [i [Hmsgsi _]]. subst.
+  pose (preloaded_composed_protocol_state IM_index i0 s Hs i) as Hi.
+  destruct i; simpl; apply NoDup_filter.
+  + apply validator_protocol_state_nodup with v0. assumption.
+  + apply client_protocol_state_nodup. assumption.
+Qed.
 
-Definition VLSM_full_composed_free_basic_equivocation
-  := state_encapsulating_messages_equivocation (vstate VLSM_full_composed_free) message V.
+Lemma state_union_iff
+  (s : vstate VLSM_full_composed_free)
+  (m : message)
+  : In m (state_union s)
+    <-> ex (fun v : V => In m (get_message_set (s (inl v))))
+    \/ ex (fun client : clients => In m (s (inr client))).
+Proof.
+  split.
+  - intros Hm.
+    apply set_union_in_iterated in Hm.
+    apply Exists_exists in Hm.
+    destruct Hm as [msgs [Hmsgs Hm]].
+    apply in_map_iff in Hmsgs.
+    destruct Hmsgs as [v [Heq _]]. subst msgs.
+    simpl in Hm.
+    apply set_union_in_iterated in Hm.
+    apply Exists_exists in Hm.
+    destruct Hm as [msgs [Hmsgs Hm]].
+    apply in_map_iff in Hmsgs.
+    destruct Hmsgs as [i [Heq _]]. subst msgs.
+    destruct i; simpl in Hm; apply filter_In in Hm; destruct Hm as [Hm Hsender].
+    + left. exists v0. assumption.
+    + right. exists c. assumption.
+  - intro H.
+    apply set_union_in_iterated.
+    apply Exists_exists.
+    exists (@observable_events _ _ _ _ _ composed_equivocation_evidence s (sender m)).
+    split.
+    + apply in_map_iff. exists (sender m). split; try reflexivity.
+      apply (proj2 finite_validators).
+    + simpl. apply set_union_in_iterated. apply Exists_exists.
+      destruct H as [[v Hm] | [client Hm]]
+      ; exists (@observable_events _ _ _ _ _ full_node_validator_computable_observable_equivocation_evidence (s (inl v)) (sender m))
+      || exists (@observable_events _ _ _ _ _ full_node_client_computable_observable_equivocation_evidence (s (inr client)) (sender m))
+      ; split; try (apply in_map_iff; exists (inl v) || exists (inr client); split; try reflexivity; apply (proj2 finite_index))
+      ; simpl; apply filter_In; split; try assumption
+      ; rewrite eq_dec_if_true; reflexivity.
+Qed.
+
+Lemma state_union_initially_empty
+  (is : vinitial_state VLSM_full_composed_free)
+  : state_union (proj1_sig is) = [].
+Proof.
+  apply incl_l_nil.
+  intros m Hm.
+  apply state_union_iff in Hm.
+  destruct Hm as [[v Hm] | [client Hm]]
+  ; destruct is as [is His]
+  ; simpl in Hm
+  ; specialize (His (inl v)) || specialize (His (inr client))
+  ; simpl in His
+  ; unfold initial_state_prop in His
+  ;  rewrite His in Hm
+  ; inversion Hm.
+Qed.
+
+Existing Instance composed_basic_observable_equivocation.
+
+Let client_equivocation := @client_basic_equivocation C V about_C about_V Hmeasurable Hrt.
+
+Existing Instance client_equivocation.
+
+Lemma observable_event_sender
+  (s : vstate VLSM_full_composed_free)
+  (v : V)
+  (m : message)
+  (Hm : In m (observable_events s v))
+  : sender m = v.
+Proof.
+  simpl in Hm. unfold composed_observable_events in Hm.
+  apply set_union_in_iterated in Hm. apply Exists_exists in Hm.
+  destruct Hm as [msgsi [Hmsgsi Hm]].
+  apply in_map_iff in Hmsgsi. destruct Hmsgsi as [i [Heq _]]. subst.
+  destruct i as [v0 | client]; simpl in Hm; apply filter_In in Hm
+  ; destruct Hm as [Hm Hsender]
+  ; destruct (eq_dec (sender m) v); try discriminate Hsender
+  ; assumption.
+Qed.
+
+Lemma observable_events_commute
+  (s : vstate VLSM_full_composed_free)
+  (v : V)
+  : set_eq (observable_events s v) (@observable_events _ _ _ _ _  full_node_client_computable_observable_equivocation_evidence (state_union s) v).
+Proof.
+  split; intros m Hm.
+  - simpl.
+    apply filter_In.
+    split.
+    + apply set_union_in_iterated. apply Exists_exists.
+      exists (@observable_events _ _ _ _ _  composed_equivocation_evidence s v).
+      split; try assumption.
+      apply in_map_iff. exists v. split; try reflexivity.
+      apply (proj2 finite_validators).
+    + rewrite eq_dec_if_true; try reflexivity. apply observable_event_sender with s.
+      assumption.
+  - simpl in Hm. apply filter_In in Hm.
+    destruct Hm as [Hm Hsender].
+    apply set_union_in_iterated in Hm. apply Exists_exists in Hm.
+    destruct Hm as [msgsi [Hmsgsi Hm]].
+    apply in_map_iff in Hmsgsi. destruct Hmsgsi as [v0 [Heq _]]. subst.
+    replace v with v0; try assumption.
+    destruct (eq_dec (sender m) v); try discriminate Hsender. subst.
+    symmetry. apply  observable_event_sender with s. assumption.
+Qed.
+
+Lemma not_heavy_commute
+  (s : vstate VLSM_full_composed_free)
+  (Hnheavy : not_heavy s)
+  : not_heavy (state_union s).
+Proof.
+  unfold not_heavy in *.
+  apply Rle_trans with (equivocation_fault s); try assumption.
+  clear Hnheavy.
+  unfold equivocation_fault in *.
+  apply sum_weights_incl
+  ; unfold equivocating_validators
+  ; try apply NoDup_filter
+  ; unfold state_validators
+  ; simpl
+  ; try apply (proj1 finite_validators)
+  ; unfold full_node_client_state_validators
+  ; try apply set_map_nodup
+  .
+  assert (Hincl : incl (set_map eq_dec sender (state_union s)) validators)
+    by (intros v Hv; apply (proj2 finite_validators)).
+  apply incl_tran with
+    (@filter V
+      (@equivocation_evidence (set (State.message C V)) V
+         (State.message C V) (@message_eq C V about_C about_V)
+         (@full_node_message_comparable_events C V about_C about_V)
+         (@full_node_client_computable_observable_equivocation_evidence C V
+            about_C about_V) (state_union s))
+      validators
+    ); try (apply filter_incl; assumption).
+  apply filter_incl_fn.
+  intro v. unfold equivocation_evidence.
+  repeat rewrite existsb_exists. intros [e1 [He1 He2]]. exists e1.
+  split; try (apply observable_events_commute; assumption).
+  rewrite existsb_exists in *. destruct He2 as [e2 [He2 Heqv]]. exists e2.
+  split; try apply observable_events_commute; assumption.
+Qed.
 
 End ClientsAndValidators.

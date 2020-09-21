@@ -12,6 +12,15 @@ Class Measurable V := { weight : V -> pos_R}.
 Definition sum_weights {V} `{Measurable V} (l : list V) : R :=
   fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R l.
 
+Lemma sum_weights_positive
+  {V} `{Measurable V} (l : list V)
+  : (0 <= sum_weights l)%R.
+Proof.
+  induction l; try apply Rle_refl.
+  simpl. apply  Rplus_le_le_0_compat; try assumption.
+  destruct (weight a). simpl.
+  apply Rlt_le. assumption.
+Qed.
 
 Class ReachableThreshold V `{Hm : Measurable V} :=
   { threshold : {r | (r >= 0)%R}
@@ -76,8 +85,6 @@ Proof.
     apply Rplus_eq_compat_l. apply IHvs; assumption.
 Qed.
 
-
-
 Lemma sum_weights_incl
   {V} `{HscV : EqDec V} `{Hm : Measurable V}
   : forall vs vs',
@@ -86,25 +93,18 @@ Lemma sum_weights_incl
   incl vs vs' ->
   (sum_weights vs <= sum_weights vs')%R.
 Proof.
-  intros vs vs'. generalize dependent vs.
-  induction vs'; intros.
-  - apply incl_empty in H1; subst. apply Rle_refl.
-  - inversion H0; subst; clear H0.
-    destruct (in_dec eq_dec a vs).
-    + apply sum_weights_in in i. rewrite i. simpl.
-      apply Rplus_le_compat_l. apply IHvs'.
-      * apply (set_remove_nodup eq_dec a). assumption.
-      * assumption.
-      * intros x Hrem. apply set_remove_iff in Hrem; try assumption.
-        destruct Hrem as [Hin Hxa].
-        apply H1 in Hin. destruct Hin; try assumption.
-        exfalso; subst. apply Hxa. reflexivity.
-      * assumption.
-    + simpl. apply Rle_trans with (sum_weights vs').
-      * apply IHvs'; try assumption.
-        intros x Hin. apply H1 in Hin as Hin'. destruct Hin'; try assumption.
-        exfalso; subst. apply n. assumption.
-      * rewrite <- Rplus_0_l at 1. apply Rplus_le_compat_r. left. destruct weight. simpl. auto.
+  induction vs; intros; try apply sum_weights_positive.
+  specialize (sum_weights_in a vs' H0) as Hvs'.
+  spec Hvs'; try (apply H1; left; reflexivity).
+  rewrite Hvs'. simpl.
+  apply Rplus_le_compat_l.
+  inversion H. subst.  clear H.
+  apply IHvs; try assumption.
+  - apply set_remove_nodup. assumption.
+  - intros v Hv. apply set_remove_iff; try assumption.
+    split.
+    + apply H1. right. assumption.
+    + intro contra. elim H4. subst. assumption.
 Qed.
 
 Lemma set_eq_nodup_sum_weight_eq

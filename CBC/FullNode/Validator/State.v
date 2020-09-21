@@ -1084,4 +1084,13 @@ Definition received_messages
 
 End message_oracles.
 
+Instance eq_v : EqDec V := compare_eq_dec.
+
+Definition full_message_observable_messages
+  (m : message C V)
+  (v : V)
+  : set (message C V)
+  :=
+  if eq_dec v (sender m) then [m] else [].
+
 End FullNodeStateProperties.

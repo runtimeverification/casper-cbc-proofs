@@ -6,12 +6,14 @@ From CasperCBC
   Require Import
     Lib.Preamble
     Lib.ListExtras
+    Lib.ListSetExtras
     VLSM.Common
     CBC.Common
     CBC.Equivocation
     Validator.State
     Validator.Equivocation
     VLSM.Equivocation
+    VLSM.ObservableEquivocation
     .
 
 Section CompositeClient.
@@ -31,19 +33,45 @@ messages, implementing a limited equivocation tolerance policy.
     {Hrt : ReachableThreshold V}
     (eq_V := strictly_comparable_eq_dec about_V)
     (message := State.message C V)
+    (message_events := full_node_message_comparable_events C V)
     .
 
   Existing Instance eq_V.
+  Existing Instance message_events.
 
-  Existing Instance full_node_message_equivocation_evidence.
-
-  Instance client_state_encapsulating_messages
-    : state_encapsulating_messages (set message) message
+  Definition full_node_client_observable_events
+    (s : set message)
+    (v : V)
+    : set message
     :=
-    {| get_messages := fun s => s |}.
+    filter (fun m => if eq_dec (sender m) v then true else false) s.
+
+  Definition full_node_client_computable_observable_equivocation_evidence
+    : computable_observable_equivocation_evidence (set message) V message message_eq message_events
+    :=
+    {|
+      observable_events := full_node_client_observable_events
+    |}.
+
+  Existing Instance full_node_client_computable_observable_equivocation_evidence.
+
+  Definition full_node_client_state_validators
+    (s : set message)
+    : set V
+    :=
+    set_map eq_dec sender s.
+
+  Lemma full_node_client_state_validators_nodup
+    (s : set message)
+    : NoDup (full_node_client_state_validators s).
+  Proof.
+    apply set_map_nodup.
+  Qed.
 
   Definition client_basic_equivocation
-    := state_encapsulating_messages_equivocation (set message) message V.
+    : basic_equivocation (set message) V
+    := basic_observable_equivocation (set message) V message
+        full_node_client_state_validators full_node_client_state_validators_nodup.
 
   Existing Instance client_basic_equivocation.
 

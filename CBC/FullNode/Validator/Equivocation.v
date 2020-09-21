@@ -12,6 +12,7 @@ From CasperCBC
       Validator.State
       CBC.Common
       CBC.Equivocation
+      VLSM.ObservableEquivocation
     .
 
 Import ListNotations.
@@ -38,7 +39,6 @@ Context
     {measurable_V : Measurable V}
     {reachable_threshold : ReachableThreshold V}
     (eq_V := strictly_comparable_eq_dec about_V)
-    (eq_message := strictly_comparable_eq_dec about_V)
     .
 
 Existing Instance eq_V.
@@ -132,16 +132,11 @@ Proof.
   apply justification_incl_refl.
 Qed.
 
-Definition full_node_message_equivocation_evidence
-  : message_equivocation_evidence (State.message C V) V
+Definition full_node_message_comparable_events
+  : comparable_events (State.message C V)
   :=
-    {| sender := State.sender
-    ; message_preceeds_fn := validator_message_preceeds_fn
-    |}.
-
-Definition validator_state_encapsulating_messages
-  : state_encapsulating_messages (State.state C V) (State.message C V)
-  :=
-  {| get_messages := get_message_set |}.
+  {|
+    happens_before_fn := validator_message_preceeds_fn
+  |}.
 
 End Equivocation.
