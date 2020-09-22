@@ -8,6 +8,7 @@ VLSM/ProjectionTraces.v
 VLSM/CommonFutures.v
 VLSM/Validating.v
 VLSM/ByzantineTraces.v
+VLSM/Equivocators.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
 VLSM/ObservableEquivocation.v

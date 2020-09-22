@@ -1,4 +1,4 @@
-Require Import List ListSet FinFun Wf_nat
+Require Import List ListSet FinFun
   Reals.
 Import ListNotations.
 From CasperCBC
