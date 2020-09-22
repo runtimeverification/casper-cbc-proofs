@@ -1,4 +1,4 @@
-Require Import Bool List Reals FinFun Program Eqdep.
+Require Import Bool List Reals FinFun Program.
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
