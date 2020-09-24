@@ -1,16 +1,18 @@
-Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting.
+Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Basics.
 Require Import Lia.
 Import ListNotations.
 From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
+  Lib.ListSetExtras
   Lib.SortedLists
   VLSM.Common
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
+  VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.
@@ -30,5 +32,5 @@ Context
   (preX := pre_loaded_vlsm X)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
-
+    
 End Composition.

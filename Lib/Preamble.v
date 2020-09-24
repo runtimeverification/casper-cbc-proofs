@@ -86,6 +86,15 @@ Proof.
      reflexivity.
 Qed.
 
+Lemma ob_eq_dec : EqDec (option bool).
+apply option_eq_dec.
+exact bool_dec.
+Qed.
+
+Global Instance ob_EqDec : EqDec (option bool) := {
+  eq_dec := ob_eq_dec;
+}.
+
 Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
   snd (fst xyz).
 

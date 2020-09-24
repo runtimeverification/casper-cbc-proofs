@@ -2897,6 +2897,9 @@ Context
 
     Definition full_observations (s : state) (target : index) :=
       get_observations target (depth s) s.
+      
+    Definition complete_observations (s : state) :=
+      fold_right (set_union eq_dec) [] (List.map (full_observations s) index_listing).
 
     Lemma get_observations_depth_redundancy
       (target : index)

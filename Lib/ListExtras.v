@@ -1,4 +1,5 @@
 Require Import Coq.Bool.Bool.
+Require Import Arith.
 Require Import List ListSet.
 Require Import Lia.
 Import ListNotations.
@@ -1376,3 +1377,111 @@ Proof.
       * destruct Hlt as [suf2' Hlt].
         right. right. exists suf2'. simpl. f_equal. assumption.
 Qed.
+
+Fixpoint zip_apply 
+  {A B : Type}
+  (lf : list (A -> B))
+  (la : list A) :
+  list B :=
+  match lf, la with 
+  | _, [] => []
+  | [], _ => []
+  | (hf :: tlf), (ha :: tla) => (hf ha) :: (zip_apply tlf tla)
+  end.
+
+Lemma list_max_exists
+   (l : list nat) 
+   (nz : list_max l > 0) :
+   In (list_max l) l.
+Proof.
+  induction l.
+  - simpl in nz. lia.
+  - simpl in *.
+    destruct (a <=? (list_max l)) eqn : eq_leb.
+    + assert (Init.Nat.max a (list_max l) = list_max l). {
+         apply max_r.
+         apply Nat.leb_le.
+         assumption.
+      }
+      rewrite H in *.
+      right.
+      apply IHl.
+      assumption.
+    + assert (Init.Nat.max a (list_max l) = a). {
+        apply leb_iff_conv in eq_leb.
+        apply max_l.
+        lia.
+      }
+      rewrite H in *.
+      left.
+      reflexivity. 
+Qed.
+
+Definition mode
+  {A : Type}
+  `{EqDec A}
+  (l : list A) : list A  :=
+  let mode_value := list_max (List.map (count_occ eq_dec l) l) in
+  filter (fun a => beq_nat (count_occ eq_dec l a) mode_value) l.
+
+Lemma mode_not_empty
+  {A : Type}
+  `{EqDec A}
+  (l : list A)
+  (Hne : l <> []) :
+  mode l <> []. 
+Proof.
+  destruct l.
+  elim Hne. reflexivity.
+  remember (a :: l) as l'.
+  remember (List.map (count_occ eq_dec l') l') as occurrences.
+  
+  assert (Hmaxp: list_max occurrences > 0). {
+    rewrite Heqoccurrences.
+    rewrite Heql'.
+    simpl.
+    rewrite eq_dec_if_true.
+    lia.
+    reflexivity.
+  }
+  
+  assert (exists a, (count_occ eq_dec l' a) = list_max occurrences). {
+    assert (In (list_max occurrences) occurrences). {
+      apply list_max_exists.
+      rewrite Heqoccurrences.
+      rewrite Heql'.
+      rewrite Heqoccurrences in Hmaxp.
+      rewrite Heql' in Hmaxp.
+      assumption.
+    }
+    rewrite Heqoccurrences in H0.
+    rewrite in_map_iff in H0.
+    destruct H0 as [x [Heq Hin]].
+    exists x.
+    rewrite Heqoccurrences.
+    assumption.
+  }
+  
+  assert (exists a, In a (mode l')). {
+    destruct H0.
+    exists x.
+    specialize (count_occ_In eq_dec l' x).
+    intros.
+    destruct H1 as [_ H1].
+    rewrite H0 in H1.
+    specialize (H1 Hmaxp).
+    unfold mode.
+    apply filter_In.
+    split.
+    assumption.
+    rewrite Heqoccurrences in H0.
+    rewrite H0.
+    symmetry.
+    apply beq_nat_refl.
+  }
+  destruct H1.
+  intros contra.
+  rewrite contra in H1.
+  intuition.  
+Qed.
+  

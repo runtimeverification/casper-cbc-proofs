@@ -493,14 +493,21 @@ Definition global_decisions (s : state) : list (option bool) :=
     taken into account).
 **)
 
+Definition in_mode_b (modes : list (option bool)) (b : bool) : bool :=
+  match (inb (option_eq_dec bool_dec) (Some b) modes) with
+  | true => true
+  | false => (inb (option_eq_dec bool_dec) None modes)
+  end.
+  
+Definition in_mode (modes : list (option bool)) (b : bool) : Prop :=
+  in_mode_b modes b = true.
+  
 Definition estimator (s : state) (b : bool) : Prop :=
   let ob_dec := (option_eq_dec bool_dec) in
-  let none_count := List.count_occ ob_dec (global_decisions s) None in
-  let our_count := List.count_occ ob_dec (global_decisions s) (Some b) in
-  let other_count := List.count_occ ob_dec (global_decisions s) (Some (negb b)) in
+  let decision_modes := mode (global_decisions s) in
   match s with
   | Bottom => True
-  | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
+  | Something c some => in_mode decision_modes b 
   end.
 
 (** Labels describe the type of transitions: either updates (with boolean values) or receiving of messages. **)
