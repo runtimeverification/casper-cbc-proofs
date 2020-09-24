@@ -219,6 +219,29 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       - exact (lift_to_composite_state j destination).
       - exact output.
     Defined.
+    
+    Definition lift_to_composite_state'
+      (s : composite_state)
+      (j : index)
+      (sj : vstate (IM j))
+      : composite_state
+      := state_update s j sj.
+    
+    Check @state.
+    
+    Definition lift_to_composite_transition_item'
+      (s : composite_state)
+      (j : index)
+      (item : vtransition_item (IM j))
+      : @transition_item _ composite_type.
+    Proof.
+      destruct item.
+      split.
+      - exact (existT _ j l).
+      - exact input.
+      - exact (lift_to_composite_state' s j destination).
+      - exact output.
+    Defined.
 
     Definition lift_to_composite_trace
       (j : index)

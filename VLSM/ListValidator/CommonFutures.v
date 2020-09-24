@@ -25,12 +25,14 @@ Context
   {index_listing : list index}
   {Hfinite : Listing index_listing}
   {idec : EqDec index}
-  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec ListValidator.estimator)
-  (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec ListValidator.estimator)
-  (X := composite_vlsm IM_index i0 True)
-  (preX := pre_loaded_vlsm X)
   {Mindex : Measurable index}
-  {Rindex : ReachableThreshold index}.
+  {Rindex : ReachableThreshold index}
+  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec 
+    (@EquivocationAwareListValidator.equivocation_aware_estimator _ _ Hfinite _ _ _ ))
+  (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec ListValidator.estimator)
+  (X := free_composite_vlsm IM_index i0)
+  (preX := pre_loaded_vlsm X).
+
   
   Definition component_list (s : vstate X) :=
     List.map s index_listing.
@@ -150,32 +152,30 @@ Context
     @Build_transition_item _ (type (IM_index who)) (update cv) None (fst res) (snd res).
   
   Definition feasible_update_composite (s : vstate X) (who : index) : (@transition_item _ (type X)) :=
-    lift_to_composite_transition_item IM_index who (feasible_update_single (s who) who).
+    lift_to_composite_transition_item' IM_index s who (feasible_update_single (s who) who).
   
   (* pair (stare, transition_item) *)
   
-  Fixpoint chain_updates (li : list index) (s : vstate X) : list (@transition_item _ (type X)) :=
+  Fixpoint chain_updates (li : list index) (s : vstate X) : (vstate X) * (list (@transition_item _ (type X))) :=
     match li with
-    | [] => []
-    | (h :: tl) => let tmp_lst := chain_updates tl s in
-                   let tmp_s := match tmp_lst with 
-                               | [] => s
-                               | h' :: tl' => (destination h')
-                               end in
-                   (feasible_update_composite tmp_s h :: tmp_lst)
+    | [] => (s, [])
+    | (h :: tl) => let new_transition := feasible_update_composite s h in
+                   let new_s := destination new_transition in
+                   let res_tl := chain_updates tl new_s in
+                   (fst res_tl, new_transition :: (snd res_tl))
     end.
   
-  Definition phase_one_transitions (s : vstate X) : list transition_item :=
+  Definition phase_one_transitions (s : vstate X) : (vstate X) * list transition_item :=
     chain_updates index_listing s.
  
   Definition phase_one (s : vstate X) :=
-    last (List.map destination (phase_one_transitions s)) s. 
+    fst (phase_one_transitions s).
   
   Lemma chain_updates_protocol 
     (s : vstate X)
     (Hspr : protocol_state_prop _ s)
     (li : list index) :
-    finite_protocol_trace_from _ s (chain_updates li s).
+    finite_protocol_trace_from _ s (snd (chain_updates li s)).
   Proof.
     generalize dependent s.
     induction li.
@@ -184,9 +184,67 @@ Context
       apply finite_ptrace_empty.
       assumption.
     - intros.
+      remember (feasible_update_composite s a) as item.
+      assert (protocol_transition X (l item) (s, input item) (destination item, output item)). {
+        unfold protocol_transition.
+        unfold protocol_valid.
+        repeat split.
+        assumption.
+        rewrite Heqitem.
+        simpl.
+        apply option_protocol_message_None.
+        unfold free_composite_valid.
+        unfold vvalid.
+        unfold valid.
+        simpl.
+        rewrite Heqitem.
+        simpl.
+        split.
+        apply feasible_update_value_correct.
+        reflexivity.
+        rewrite Heqitem.
+        simpl.
+        reflexivity.
+      }
+      apply finite_ptrace_extend.
+      + specialize (IHli (destination item)).
+        rewrite <- Heqitem.
+        spec IHli.
+        apply protocol_transition_destination with (l := (l item)) (s0 := s) (om := input item) (om' := output item).
+        assumption.
+        unfold chain_updates in IHli.
+        rewrite Heqitem in IHli.
+        unfold feasible_update_composite in IHli.
+        simpl in IHli.
+        simpl.
+        rewrite Heqitem.
+        assumption.
+      + rewrite Heqitem in H.
+        assumption.
+        (* 
+        unfold protocol_transition.
+        unfold protocol_valid.
+        repeat split.
+        assumption.
+        apply option_protocol_message_None.
+        apply feasible_update_value_correct.
+        *)
+  Qed.
+  
+  Lemma chain_updates_fst
+    (s : vstate X)
+    (li : list index)
+    (u := chain_updates li s)  :
+    last (List.map destination (snd u)) s = fst u.
+  Proof.
+    induction li.
+    - simpl. reflexivity.
+    - unfold u.
       unfold chain_updates.
-      admit.
-  Admitted.
+      simpl.
+      
+  Qed.
+  
   
   Lemma phase_one_future 
     (s : vstate X)
@@ -196,15 +254,16 @@ Context
   Proof.
     unfold in_futures.
     unfold phase_one in s'.
-    exists (phase_one_transitions s).
+    exists (snd (phase_one_transitions s)).
     split.
     - unfold phase_one_transitions.
       unfold s'.
       apply chain_updates_protocol.
       assumption.
     - unfold s'.
-      reflexivity.
-  Qed.
+      unfold phase_one_transitions.
+      
+  Admitted.
   
   Lemma everything_in_projections 
     (s : vstate X) :

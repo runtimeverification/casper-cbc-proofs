@@ -21,6 +21,7 @@ VLSM/ListValidator/Equivocation.v
 VLSM/ListValidator/GeneralComposition.v
 VLSM/ListValidator/NoEquivocationComposition.v
 VLSM/ListValidator/EquivocationAwareListValidator.v
+VLSM/ListValidator/CommonFutures.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
