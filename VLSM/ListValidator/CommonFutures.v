@@ -35,8 +35,8 @@ Context
   (preX := pre_loaded_vlsm X).
 
   
-  Definition component_list (s : vstate X) :=
-    List.map s index_listing.
+  Definition component_list (s : vstate X) (li : list index) :=
+    List.map s li.
   
   Definition unite_observations (ls : list state) : list (@state index index_listing) := 
     fold_right (set_union eq_dec) [] (List.map complete_observations ls).
@@ -239,14 +239,6 @@ Context
         assumption.
       + rewrite Heqitem in H.
         assumption.
-        (* 
-        unfold protocol_transition.
-        unfold protocol_valid.
-        repeat split.
-        assumption.
-        apply option_protocol_message_None.
-        apply feasible_update_value_correct.
-        *)
   Qed.
   
   Lemma phase_one_future 
@@ -432,10 +424,12 @@ Context
   
   Lemma everything_in_projections 
     (s : vstate X)
+    (Hprs : protocol_state_prop _ s)
+    (li : list index)
     (s' := phase_one s) :
     set_eq 
-    (unite_observations (component_list s))
-    (unite_observations (zip_apply (List.map project (component_list s')) index_listing)).
+    (unite_observations (component_list s li))
+    (unite_observations (zip_apply (List.map project (component_list s' li)) li)).
   Proof.
     split.
     - unfold incl.
@@ -449,19 +443,70 @@ Context
       destruct Hinx as [si [Heq Hinsi]].
       unfold component_list in Hinsi.
       rewrite in_map_iff in Hinsi.
-      destruct Hinsi as [i [Heqi _]].
+      destruct Hinsi as [i [Heqi Hini]].
       exists (complete_observations (project (s' i) i)).
       split.
       rewrite in_map_iff.
       exists (project (s' i) i).
       split.
       reflexivity.
-      admit.
+      apply In_nth_error in Hini.
+      destruct Hini as [n Hn].
+      apply in_zip_apply_if with (n0 := n).
+      remember (component_list s' li) as f.
+      rewrite nth_error_map.
+      rewrite Heqf.
+      unfold component_list.
+      rewrite nth_error_map.
+      rewrite Hn.
+      simpl.
+      reflexivity.
+      assumption.
       unfold s'.
       rewrite phase_one_projections.
       rewrite Heqi.
       rewrite Heq.
       assumption.
-  Admitted.
+      assumption.
+    - unfold incl.
+      intros.
+      unfold unite_observations in *.
+      apply set_union_in_iterated in H.
+      apply set_union_in_iterated.
+      rewrite Exists_exists in H.
+      destruct H as [x [Hinx Hina]].
+      rewrite in_map_iff in Hinx.
+      destruct Hinx as [x0 [Heqx Hinx]].
+      rewrite Exists_exists.
+      apply in_zip_apply_if2 in Hinx.
+      destruct Hinx as [pr [i [n H]]].
+      exists (complete_observations (s i)).
+      split.
+      rewrite in_map_iff.
+      exists (s i).
+      intuition.
+      unfold component_list.
+      rewrite in_map_iff.
+      exists i.
+      intuition.
+      apply nth_error_In in H.
+      assumption.
+      rewrite <- Heqx in Hina.
+      assert (x0 = (s i)). {
+        destruct H as [alfa [beta caroten]].
+        rewrite nth_error_map in alfa.
+        unfold component_list in alfa.
+        rewrite nth_error_map in alfa.
+        rewrite beta in alfa.
+        simpl in alfa.
+        inversion alfa.
+        rewrite <- H0 in caroten.
+        rewrite <- caroten.
+        apply phase_one_projections.
+        assumption.
+      }
+      rewrite H0 in Hina.
+      assumption.
+  Qed.
     
 End Composition.

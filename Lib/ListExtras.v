@@ -1393,7 +1393,7 @@ Lemma in_zip_apply_if
   {A B : Type}
   (lf : list (A -> B))
   (la : list A) 
-  (f : (A -> B))
+  (f : (A -> B)) 
   (a : A)
   (n : nat)
   (Hf : nth_error lf n = Some f)
@@ -1423,6 +1423,39 @@ Proof.
     specialize (IHn la Ha lf Hf).
     right.
     apply IHn.
+Qed.
+
+Lemma in_zip_apply_if2
+  {A B : Type}
+  (lf : list (A -> B))
+  (la : list A) 
+  (b : B)
+  (Hin : In b (zip_apply lf la)) :
+  exists (f : (A -> B))
+         (a : A)
+         (n : nat),
+         nth_error lf n = Some f /\
+         nth_error la n = Some a /\
+         f a = b.
+Proof.
+  generalize dependent la.
+  induction lf as [|f lf].
+  - destruct la; simpl in *; intuition.
+  - intros. 
+    destruct la eqn : eq_la. simpl in *. intuition.
+    simpl in *.
+    destruct Hin.
+    + exists f. 
+      exists a.
+      exists 0.
+      repeat split.
+      assumption.
+    + specialize (IHlf l H).
+      destruct IHlf as [f' [a' [n' H']]].
+      exists f'.
+      exists a'.
+      exists (S n').
+      repeat split; simpl; intuition.
 Qed.
 
 Lemma list_max_exists
