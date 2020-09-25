@@ -156,26 +156,29 @@ Context
   
   (* pair (stare, transition_item) *)
   
-  Fixpoint chain_updates (li : list index) (s : vstate X) : (vstate X) * (list (@transition_item _ (type X))) :=
+  Fixpoint chain_updates (li : list index) (s : vstate X) : (list (@transition_item _ (type X))) :=
     match li with
-    | [] => (s, [])
+    | [] => []
     | (h :: tl) => let new_transition := feasible_update_composite s h in
                    let new_s := destination new_transition in
                    let res_tl := chain_updates tl new_s in
-                   (fst res_tl, new_transition :: (snd res_tl))
+                   new_transition :: res_tl
     end.
   
-  Definition phase_one_transitions (s : vstate X) : (vstate X) * list transition_item :=
+  Definition phase_one_transitions (s : vstate X) : list transition_item :=
     chain_updates index_listing s.
+    
+  Definition resulting_state (s : vstate X) (l : list transition_item) :=
+    last (List.map destination l) s.
  
   Definition phase_one (s : vstate X) :=
-    fst (phase_one_transitions s).
+    resulting_state s (phase_one_transitions s).
   
   Lemma chain_updates_protocol 
     (s : vstate X)
     (Hspr : protocol_state_prop _ s)
     (li : list index) :
-    finite_protocol_trace_from _ s (snd (chain_updates li s)).
+    finite_protocol_trace_from _ s (chain_updates li s).
   Proof.
     generalize dependent s.
     induction li.
@@ -231,46 +234,187 @@ Context
         *)
   Qed.
   
-  Lemma chain_updates_fst
-    (s : vstate X)
-    (li : list index)
-    (u := chain_updates li s)  :
-    last (List.map destination (snd u)) s = fst u.
-  Proof.
-    induction li.
-    - simpl. reflexivity.
-    - unfold u.
-      unfold chain_updates.
-      simpl.
-      
-  Qed.
-  
-  
   Lemma phase_one_future 
     (s : vstate X)
-    (Hspr : protocol_state_prop _ s)
-    (s' := phase_one s) :
-    in_futures _ s s'.
+    (Hspr : protocol_state_prop _ s) :
+    in_futures _ s (phase_one s).
   Proof.
     unfold in_futures.
-    unfold phase_one in s'.
-    exists (snd (phase_one_transitions s)).
+    exists (phase_one_transitions s).
     split.
     - unfold phase_one_transitions.
-      unfold s'.
       apply chain_updates_protocol.
       assumption.
-    - unfold s'.
-      unfold phase_one_transitions.
+    - unfold phase_one_transitions.
+      reflexivity.
+  Qed.
+  
+  Lemma chain_updates_projections_out 
+    (s : vstate X)
+    (li : list index)
+    (i : index)
+    (Hi : ~In i li)
+    (s' := resulting_state s (chain_updates li s)) :
+    (s' i) = (s i).
+  Proof.
+    generalize dependent s.
+    induction li.
+    - intros. 
+      unfold resulting_state in *.
+      simpl in *.
+      unfold s'.
+      reflexivity.
+    - intros.
+      spec IHli.
+      apply not_in_cons in Hi.
+      intuition.
+      simpl in IHli.
+      unfold chain_updates in s'.
+      unfold resulting_state in s'.
+      remember ((fix chain_updates (li : list index) (s : vstate X) {struct li} :
+                    list transition_item :=
+                  match li with
+                  | [] => []
+                  | h :: tl =>
+                      feasible_update_composite s h
+                      :: chain_updates tl (destination (feasible_update_composite s h))
+                  end) li (destination (feasible_update_composite s a))) as y.
+      remember (feasible_update_composite s a) as x.
+      unfold s'.
+      rewrite map_cons.
+      rewrite unroll_last.
+      unfold resulting_state in IHli.
+      unfold chain_updates in IHli.
+      rewrite Heqy.
       
+      assert ((destination x) i = (s i)). {
+        rewrite Heqx.
+        apply not_in_cons in Hi.
+        destruct Hi as [Hi1 Hi2].
+        unfold feasible_update_composite.
+        unfold lift_to_composite_transition_item'.
+        unfold feasible_update_single.
+        simpl.
+        unfold lift_to_composite_state'.
+        rewrite state_update_neq.
+        reflexivity.
+        assumption.
+      }
+      simpl.
+      specialize (IHli (destination x)).
+      rewrite H in IHli.
+      assumption.
+  Qed.
+  
+  Lemma chain_updates_projections_in 
+    (s : vstate X)
+    (li : list index)
+    (Hnodup: NoDup li)
+    (i : index)
+    (Hi : In i li)
+    (s' := resulting_state s (chain_updates li s)) :
+    project (s' i) i = (s i).
+  Proof.
+    generalize dependent s.
+    induction li.
+    - simpl in *.
+      intuition.
+    - simpl in IHli.
+      destruct (eq_dec i a).
+      + intros. 
+        unfold s'.
+        unfold resulting_state.
+        unfold chain_updates.
+        rewrite map_cons.
+        rewrite unroll_last.
+        remember (feasible_update_composite s a) as x.
+        assert (project ((destination x) i) i = s i). {
+          rewrite Heqx.
+          unfold feasible_update_composite.
+          unfold lift_to_composite_transition_item'.
+          simpl.
+          unfold lift_to_composite_state'.
+          remember (update_consensus (update_state (s a) (s a) a) (feasible_update_value (s a))) as su.
+          rewrite e.
+          rewrite state_update_eq.
+          rewrite Heqsu.
+          rewrite <- update_consensus_clean with (value := (feasible_update_value (s a))).
+          rewrite (@project_same index index_listing Hfinite).
+          reflexivity.
+          admit.
+        }
+        assert (~In i li /\ NoDup li). {
+          rewrite e.
+          apply NoDup_cons_iff in Hnodup.
+          intuition.
+        }
+        destruct H0 as [H0 H0'].
+        specialize (chain_updates_projections_out (destination x) li i H0) as Hno_i.
+        simpl in Hno_i.
+        unfold resulting_state in Hno_i.
+        unfold chain_updates in Hno_i.
+        replace (last
+     (map destination
+        ((fix chain_updates (li0 : list index) (s0 : vstate X) {struct li0} :
+              list transition_item :=
+            match li0 with
+            | [] => []
+            | h :: tl =>
+                feasible_update_composite s0 h
+                :: chain_updates tl (destination (feasible_update_composite s0 h))
+            end) li (destination x))) (destination x) i) with (destination x i).
+         assumption.
+      + intros.
+        spec IHli.
+        apply NoDup_cons_iff in Hnodup.
+        intuition.
+        simpl in Hi.
+        destruct Hi.
+        elim n. symmetry. assumption.
+        specialize (IHli H).
+        admit.
+  Admitted.
+  
+  Lemma phase_one_projections 
+    (s : vstate X)
+    (i : index)
+    (s' := phase_one s) :
+    project (s' i) i = (s i).
+  Proof.
   Admitted.
   
   Lemma everything_in_projections 
-    (s : vstate X) :
+    (s : vstate X)
+    (s' := phase_one s) :
     set_eq 
     (unite_observations (component_list s))
-    (unite_observations (zip_apply (List.map project (component_list s)) index_listing)).
+    (unite_observations (zip_apply (List.map project (component_list s')) index_listing)).
   Proof.
+    split.
+    - unfold incl.
+      intros.
+      unfold unite_observations in H.
+      apply set_union_in_iterated in H.
+      apply set_union_in_iterated.
+      rewrite Exists_exists in *.
+      destruct H as [x [Hinx Hinax]].
+      rewrite in_map_iff in Hinx.
+      destruct Hinx as [si [Heq Hinsi]].
+      unfold component_list in Hinsi.
+      rewrite in_map_iff in Hinsi.
+      destruct Hinsi as [i [Heqi _]].
+      exists (complete_observations (project (s' i) i)).
+      split.
+      rewrite in_map_iff.
+      exists (project (s' i) i).
+      split.
+      reflexivity.
+      admit.
+      unfold s'.
+      rewrite phase_one_projections.
+      rewrite Heqi.
+      rewrite Heq.
+      assumption.
   Admitted.
     
 End Composition.

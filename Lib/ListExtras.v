@@ -1389,6 +1389,42 @@ Fixpoint zip_apply
   | (hf :: tlf), (ha :: tla) => (hf ha) :: (zip_apply tlf tla)
   end.
 
+Lemma in_zip_apply_if
+  {A B : Type}
+  (lf : list (A -> B))
+  (la : list A) 
+  (f : (A -> B))
+  (a : A)
+  (n : nat)
+  (Hf : nth_error lf n = Some f)
+  (Ha : nth_error la n = Some a) : 
+  In (f a) (zip_apply lf la).
+Proof.
+  generalize dependent lf.
+  generalize dependent la.
+  induction n.
+  - intros.
+    simpl in *.
+    destruct la; destruct lf.
+    discriminate Ha.
+    discriminate Ha.
+    discriminate Hf.
+    simpl.
+    inversion Hf.
+    inversion Ha.
+    left.
+    reflexivity.
+  - intros.
+    destruct la; destruct lf;
+    simpl in *.
+    discriminate Ha.
+    discriminate Ha.
+    discriminate Hf.
+    specialize (IHn la Ha lf Hf).
+    right.
+    apply IHn.
+Qed.
+
 Lemma list_max_exists
    (l : list nat) 
    (nz : list_max l > 0) :
