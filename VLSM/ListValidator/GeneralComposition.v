@@ -37,6 +37,23 @@ Context
   {Rindex : ReachableThreshold index}
   .
 
+  
+  Lemma protocol_state_component_no_bottom 
+    (s : vstate X)
+    (i : index)
+    (Hprs : protocol_state_prop _ s) :
+    (s i) <> Bottom.
+  Proof.
+    apply (@protocol_prop_no_bottom index i _ _ est).
+    apply (protocol_state_projection IM_index i0 constraint i) in Hprs.
+    unfold protocol_state_prop in Hprs.
+    destruct Hprs as [om Hprs] in Hprs.
+    apply (proj_pre_loaded_protocol_prop IM_index i0 constraint i) in Hprs.
+    unfold protocol_state_prop.
+    exists om.
+    assumption.
+  Qed.  
+  
   Definition composed_eqv_evidence
   : computable_observable_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
   :=
@@ -50,8 +67,8 @@ Context
 
   Definition message_observable_events_lv (m : message) (target : index) : set state :=
     let obs := @full_observations index index_listing idec (snd m) target in
-    if (eq_dec (fst m) target) then set_add eq_dec (snd m) obs else obs.
-
+    if (eq_dec (fst m) target) then set_add eq_dec (snd m) obs else obs.  
+  
   Lemma message_observable_consistency_lv
       (m : message)
       (i : index)
@@ -72,24 +89,12 @@ Context
     simpl in *.  unfold vtransition in Ht. simpl in Ht.
     destruct l as [c|].
     - assert ((s i) <> Bottom). {
-          apply (@protocol_prop_no_bottom index i _ _ est).
-          destruct Hv as [Hv _].
-          apply (protocol_state_projection IM_index i0 constraint i) in Hv.
-          destruct Hv as [_oms Hv].
-          apply proj_pre_loaded_protocol_prop in Hv.
-          unfold protocol_state_prop.
-          exists _oms.
-          assumption.
+          apply protocol_state_component_no_bottom.
+          intuition.
       }
       assert ((s il) <> Bottom). {
-          apply (@protocol_prop_no_bottom index il _ _ est).
-          destruct Hv as [Hv _].
-          apply (protocol_state_projection IM_index i0 constraint il) in Hv.
-          destruct Hv as [_oms Hv].
-          apply proj_pre_loaded_protocol_prop in Hv.
-          unfold protocol_state_prop.
-          exists _oms.
-          assumption.
+          apply protocol_state_component_no_bottom.
+          intuition.
       }
       inversion Ht. subst m. simpl.
       rewrite state_update_eq.

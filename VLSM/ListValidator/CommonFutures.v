@@ -13,6 +13,7 @@ Require Import
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
   VLSM.ListValidator.EquivocationAwareListValidator
+  VLSM.ListValidator.GeneralComposition
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.
@@ -154,6 +155,20 @@ Context
   Definition feasible_update_composite (s : vstate X) (who : index) : (@transition_item _ (type X)) :=
     lift_to_composite_transition_item' IM_index s who (feasible_update_single (s who) who).
   
+  Lemma feasible_update_protocol 
+    (s : vstate X)
+    (Hprs : protocol_state_prop _ s)
+    (who : index) 
+    (item := feasible_update_composite s who) :
+    protocol_transition X (l item) (s, input item) (destination item, output item).
+  Proof.
+    unfold protocol_transition.
+    repeat split.
+    assumption.
+    simpl.
+    apply option_protocol_message_None.
+    apply feasible_update_value_correct.
+  Qed.
   (* pair (stare, transition_item) *)
   
   Fixpoint chain_updates (li : list index) (s : vstate X) : (list (@transition_item _ (type X))) :=
@@ -308,6 +323,7 @@ Context
   
   Lemma chain_updates_projections_in 
     (s : vstate X)
+    (Hprs : protocol_state_prop _ s)
     (li : list index)
     (Hnodup: NoDup li)
     (i : index)
@@ -341,7 +357,8 @@ Context
           rewrite <- update_consensus_clean with (value := (feasible_update_value (s a))).
           rewrite (@project_same index index_listing Hfinite).
           reflexivity.
-          admit.
+          apply protocol_state_component_no_bottom.
+          assumption.
         }
         assert (~In i li /\ NoDup li). {
           rewrite e.
@@ -371,17 +388,47 @@ Context
         simpl in Hi.
         destruct Hi.
         elim n. symmetry. assumption.
-        specialize (IHli H).
-        admit.
-  Admitted.
+        unfold s'.
+        unfold resulting_state.
+        unfold chain_updates.
+        remember (feasible_update_composite s a) as x.
+        specialize (IHli H (destination x)).
+        assert ((destination x i) = s i). {
+          rewrite Heqx.
+          simpl.
+          unfold lift_to_composite_state'.
+          rewrite state_update_neq.
+          reflexivity.
+          assumption.
+        }
+        rewrite map_cons.
+        rewrite unroll_last.
+        unfold resulting_state in IHli.
+        unfold chain_updates in IHli.
+        rewrite H0 in IHli.
+        spec IHli.
+        assert (protocol_transition X (l x) (s, input x) (destination x, output x)). {
+          rewrite Heqx.
+          apply feasible_update_protocol.
+          assumption.
+        }
+        apply protocol_transition_destination with (l := (l x)) (s0 := s) (om := input x) (om' := output x).
+        assumption.
+        assumption.
+  Qed.
   
   Lemma phase_one_projections 
     (s : vstate X)
+    (Hprss : protocol_state_prop _ s)
     (i : index)
     (s' := phase_one s) :
     project (s' i) i = (s i).
   Proof.
-  Admitted.
+    apply chain_updates_projections_in.
+    assumption.
+    apply (proj1 Hfinite).
+    apply ((proj2 Hfinite) i).
+  Qed.
   
   Lemma everything_in_projections 
     (s : vstate X)
