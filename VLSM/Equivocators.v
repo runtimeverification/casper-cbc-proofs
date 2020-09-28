@@ -17,8 +17,8 @@ TODO: Rename this "equivocation simulator vlsm"
 A [equivocator_vlsm] for a given [VLSM] <<X>> is a VLSM which
 - maintains multiple internal copies of the same machine
 - can perform [valid] [transition]s using any of the internal machines
-- can fork any of its current copies.
-- can perform a "hard fork", starting a new machine in a (potentially)
+- can equivocate any of its current copies by duplicating it.
+- can starting a new machine in a (potentially)
   different initial state.
 
 The state of such a machine will be abstracted using
@@ -27,7 +27,7 @@ The state of such a machine will be abstracted using
 2. A state of <<X>> for each 1..n
 
 To preserve determinism we need to update the labels to indicate what copy
-of the machine will be used for a transition / a fork.
+of the machine will be used for a transition.
 To achieve this, we'll extend the labels of <<X>>, say <<L_X>> as follows
 
 [L = <<L_X>> x MachineDescriptor]
@@ -37,14 +37,14 @@ used for performing the transition. It can be one of the following:
 * [NewMachine <<s>>] where <<s>> is an state of <<X>>, will
   extend the state with a new machine initialized with <<s>>
   and will perform the transition on that machine.
-* [Existing <<i>> <<flag>>] perform transition on internal machine <<i>>
-  but may equivocate, depending on the <<flag>> as follows:
+* [Existing <<i>> <<is_equiv>>] perform transition on internal machine <<i>>
+  but may equivocate, depending on the <<is_equiv>> as follows:
 
-  * if <<flag>> is empty, update the state of machine <<i>>
-  * if <<flag>> is [true], save state of internal machine <<i>> in new
+  * if <<is_equiv>> is [false], update the state of machine <<i>>
+  * if <<is_equiv>> is [true], save state of internal machine <<i>> in new
     fork, but update the original machine
-  * if <<flag>> is [false], keep original state of internal machine <<i>>
-    but save the resulting state in new fork
+  * if <<is_equiv>> is [true], duplicate the state of machine <<i>> and
+    perform transition on the copy
 
 These changes are reflected in the validity and transition functions.
 
@@ -63,7 +63,7 @@ Inductive MachineDescriptor : Type
   :=
   | NewMachine : vstate X -> MachineDescriptor
   | Existing : nat -> bool -> MachineDescriptor.
-  
+
 
 Definition equivocator_type : VLSM_type message :=
   {| state := {n : nat & Fin.t n -> vstate X};
@@ -76,7 +76,7 @@ Definition mk_singleton_state
   (s : vstate X)
   : equivocator_state
   :=
-  existT _ 1 (fun _ => s). 
+  existT _ 1 (fun _ => s).
 
 Definition equivocator_label : Type := @label message equivocator_type.
 
@@ -148,7 +148,7 @@ Definition equivocator_s0 : equivocator_initial_state
   := mk_initial_state (vs0 X).
 
 Definition equivocator_l0 : equivocator_label :=
-  (vl0 X, Existing 0 None).
+  (vl0 X, Existing 0 false).
 
 Definition equivocator_sig
   : VLSM_sign equivocator_type
@@ -173,16 +173,15 @@ Definition equivocator_transition
   | NewMachine sn  =>
     let (sn', om') := vtransition X l (sn, om) in
     (equivocator_state_extend bs sn', om')
-  | Existing i oflag =>
+  | Existing i is_equiv =>
     match (le_lt_dec n i) with
     | right lt_in =>
       let ni := of_nat_lt lt_in in
       let si := s ni in
       let (si', om') := vtransition X l (si, om) in
-      match oflag with
-      | None => (equivocator_state_update bs ni si', om')
-      | Some true => (equivocator_state_extend (equivocator_state_update bs ni si') si, om')
-      | Some false => (equivocator_state_extend bs si', om')
+      match is_equiv with
+      | false => (equivocator_state_update bs ni si', om')
+      | true => (equivocator_state_extend bs si', om')
       end
     | _ =>  bsom
     end
@@ -201,7 +200,7 @@ Definition equivocator_valid
   | NewMachine sn  =>
     vinitial_state_prop X sn
     /\ vvalid X l (sn, om)
-  | Existing i oflag =>
+  | Existing i is_equiv =>
     exists (Hi : i < n), vvalid X l (s (of_nat_lt Hi), om)
   end.
 
@@ -238,7 +237,7 @@ Definition equivocator_vlsm_transition_item_project
   (descriptor : MachineDescriptor)
   : option (option (vtransition_item X) * MachineDescriptor)
   :=
-  match descriptor with 
+  match descriptor with
   | NewMachine _ => Some (None, descriptor)
   | Existing j _ =>
     match item with {| l := (lx, descriptor); input := im; output := om; destination := s |} =>
@@ -251,23 +250,17 @@ Definition equivocator_vlsm_transition_item_project
         | NewMachine s =>
           if nat_eq_dec (S j) n then (* this is the first state *)
             Some ( Some item', descriptor)
-          else Some (None, Existing j None)
-        | Existing i flag =>
-          match flag with
-          | None => (* no forking *)
+          else Some (None, Existing j false)
+        | Existing i is_equiv =>
+          match is_equiv with
+          | false => (* no forking *)
             if nat_eq_dec i j then
               Some ( Some item', descriptor)
-            else Some (None, Existing j None)
-          | Some true => (* forking, transition happens on original copy *)
-            if nat_eq_dec i j then
-              Some (Some item', descriptor)
-            else if nat_eq_dec (S j) n then (* must get history before fork *)
-              Some (None, Existing i None)
-            else Some (None, Existing j None)
-          | Some false => (* forking, transition happens on forked copy *)
+            else Some (None, Existing j false)
+          | true => (* forking, transition happens on forked copy *)
             if nat_eq_dec (S j) n then
               Some (Some item', descriptor)
-            else Some (None, Existing j None)
+            else Some (None, Existing j false)
           end
         end
       | _ => None
@@ -279,7 +272,7 @@ Lemma equivocator_vlsm_transition_item_project_some_inj
   {item : vtransition_item equivocator_vlsm}
   {itemX itemX' : vtransition_item X}
   {i i' : nat}
-  {fi fi' : option bool}
+  {fi fi' : bool}
   (idescriptor := Existing i fi)
   (idescriptor' := Existing i' fi')
   {odescriptor odescriptor' : MachineDescriptor}
@@ -300,14 +293,7 @@ Proof.
     inversion e. subst. inversion HitemX'. subst. clear HitemX'.
     replace (of_nat_lt l0) with (of_nat_lt l) by apply of_nat_ext.
     repeat split; reflexivity.
-  - destruct fj as [[|]|].
-    + destruct (nat_eq_dec j i)
-      ; try (destruct (nat_eq_dec (S i) ndest); discriminate HitemX).
-      destruct (nat_eq_dec j i')
-      ; try (destruct (nat_eq_dec (S i') ndest); discriminate HitemX').
-      inversion HitemX. inversion HitemX'. subst.
-      replace (of_nat_lt l0) with (of_nat_lt l) by apply of_nat_ext.
-      repeat split; reflexivity.
+  - destruct fj as [|] eqn:Hfj.
     + destruct (nat_eq_dec (S i) ndest); try discriminate HitemX.
       inversion HitemX; subst. clear HitemX.
       destruct (nat_eq_dec (S i') (S i)); try discriminate HitemX'.
@@ -321,27 +307,25 @@ Proof.
       replace (of_nat_lt l0) with (of_nat_lt l) by apply of_nat_ext.
       repeat split; reflexivity.
 Qed.
-      
+
 Lemma equivocator_transition_item_project_inv_none
   (item : vtransition_item equivocator_vlsm)
   (descriptor : MachineDescriptor)
   (Hitem: equivocator_vlsm_transition_item_project item descriptor = None)
   : exists
     (i : nat)
-    (oflag : option bool)
-    (Hdescriptor : descriptor = Existing i oflag),
+    (is_equiv : bool)
+    (Hdescriptor : descriptor = Existing i is_equiv),
     projT1 (destination item) <= i.
 Proof.
   destruct item.
-  destruct descriptor as [s|i oflag]; try discriminate Hitem.
-  exists i. exists oflag. exists eq_refl.
+  destruct descriptor as [s|i is_equiv]; try discriminate Hitem.
+  exists i. exists is_equiv. exists eq_refl.
   simpl in  *.
   destruct destination as (n, bs).
   destruct (le_lt_dec n i); try assumption.
-  destruct l as (ls, [is | ix [[|]|]]).
-  - destruct (nat_eq_dec (S i) n); discriminate Hitem. 
-  - destruct (nat_eq_dec ix i); try discriminate Hitem.
-    destruct (nat_eq_dec (S i) n); discriminate Hitem.
+  destruct l as (ls, [is | ix [|]]).
+  - destruct (nat_eq_dec (S i) n); discriminate Hitem.
   - destruct (nat_eq_dec (S i) n); discriminate Hitem.
   - destruct (nat_eq_dec ix i); discriminate Hitem.
 Qed.
@@ -353,8 +337,8 @@ Lemma equivocator_transition_item_project_inv_messages
   (Hitem : equivocator_vlsm_transition_item_project item idescriptor = Some (Some itemX, odescriptor))
   : exists
     (i : nat)
-    (oflag : option bool)
-    (Hdescriptor : idescriptor = Existing i oflag),
+    (is_equiv : bool)
+    (Hdescriptor : idescriptor = Existing i is_equiv),
     input item = input itemX /\ output item = output itemX.
 Proof.
   destruct idescriptor as [s|j fj]; try discriminate Hitem.
@@ -363,11 +347,9 @@ Proof.
   destruct destination as (n, bs).
   destruct l as (lx, descriptorx).
   destruct (le_lt_dec n j); try discriminate Hitem.
-  destruct descriptorx as [s | i' [[|]|]] eqn:Hl; simpl.
+  destruct descriptorx as [s | i' [|]] eqn:Hl; simpl.
   - destruct (nat_eq_dec (S j) n); try discriminate Hitem.
     inversion Hitem. subst. clear Hitem. repeat split; reflexivity.
-  - destruct (nat_eq_dec i' j); try (destruct (nat_eq_dec (S j) n); discriminate Hitem).
-    inversion Hitem. subst. repeat split; reflexivity.
   - destruct (nat_eq_dec (S j) n); try discriminate Hitem.
     inversion Hitem. subst. repeat split; reflexivity.
   - destruct (nat_eq_dec i' j); try discriminate Hitem.
@@ -513,7 +495,7 @@ Proof.
     specialize (protocol_generated X) as Hgen.
     simpl in Hv.
     destruct l as (l, descriptor). simpl in *.
-    destruct descriptor as [sn| i flag].
+    destruct descriptor as [sn| i is_equiv].
     + destruct s as (n, bs'); simpl in *.
       destruct IHHbs2 as [Hom _].
       clear Hbs2 _s.
@@ -555,7 +537,7 @@ Proof.
         by reflexivity.
       destruct (vtransition X l (bs' (of_nat_lt Hi), om)) as (si', om') eqn:Ht.
       exists si'.
-      destruct flag as [[|]|]; inversion H0; subst; clear H0; assumption.
+      destruct is_equiv as [|]; inversion H0; subst; clear H0; assumption.
   - destruct bs as (n, bs).
     intro j.
     specialize (IHHbs1 s _om eq_refl).
@@ -563,7 +545,7 @@ Proof.
     specialize (IHHbs2 _s om eq_refl).
     specialize (protocol_generated X) as Hgen.
     destruct l as (l, descriptor). simpl in H0.
-    destruct descriptor as [sn | i oflag].
+    destruct descriptor as [sn | i is_equiv].
     + destruct Hv as [Hsn Hv].
       destruct s as (n0, bs0); simpl in *.
       destruct IHHbs2 as [(_som, Hom) _].
@@ -602,13 +584,8 @@ Proof.
         in Hgen
         by reflexivity.
       destruct (vtransition X l (bs0 (of_nat_lt Hi), om)) as (si', om') eqn:Ht.
-      destruct oflag as [[|]|]; inversion H0; clear H0
+      destruct is_equiv as [|]; inversion H0; clear H0
       ; subst n om'; apply inj_pairT2 in H2; subst.
-      * destruct (to_nat j) as (nj, Hnj).
-        try destruct (nat_eq_dec  nj n0); try (exists _om0; assumption).
-        destruct (Fin.eq_dec (of_nat_lt Hi) (of_nat_lt (equivocator_state_extend_obligation_1 n0 nj Hnj n)))
-        ; try (exists om0; assumption).
-        apply IHHbs1.
       * destruct (to_nat j) as (nj, Hnj).
         try destruct (nat_eq_dec  nj n0); try (exists om0; assumption).
         apply IHHbs1.
@@ -653,7 +630,7 @@ Lemma equivocator_protocol_transition_item_project_inv2
   (Hitem: equivocator_vlsm_transition_item_project item di = Some (Some item', di'))
   : exists
     (i : nat)
-    (fi : option bool)
+    (fi : bool)
     (Hdi : di = Existing i fi)
     (Hi : i < projT1 s)
     (sx := projT2 s (of_nat_lt Hi))
@@ -679,7 +656,7 @@ Proof.
   destruct s as (ns, bs).
   destruct (le_lt_dec ns i); try discriminate Hitem.
   exists l. simpl in Ht. simpl in Hv.
-  destruct descriptor as [sn| j flag].
+  destruct descriptor as [sn| j is_equiv].
   - destruct (nat_eq_dec (S i) ns); try discriminate Hitem. subst ns.
     inversion Hitem. clear Hitem. exists eq_refl.
     destruct Hv as [Hsn Hv].
@@ -698,20 +675,10 @@ Proof.
       as (si', om') eqn:Htx.
     destruct s' as (n', bs').
     simpl in *.
-    destruct flag as [[|]|].
-    + inversion Ht. subst. clear Ht. 
-      apply inj_pairT2 in H1. subst.
-      rewrite to_nat_of_nat in *.
-      destruct (nat_eq_dec j i).
-      * subst. inversion Hitem. subst di' item'.  exists eq_refl. clear Hitem.
-        exists Hj. split; try assumption.
-        destruct (nat_eq_dec i n'). { lia. }
-        rewrite eq_dec_if_true; try apply of_nat_ext.
-        assumption.
-      * destruct (nat_eq_dec (S i) (S n')); discriminate Hitem.
+    destruct is_equiv as [|].
     + destruct (nat_eq_dec (S i) ns); try discriminate Hitem.
       inversion Hitem. subst di' item'. clear Hitem.
-      exists eq_refl. 
+      exists eq_refl.
       exists Hj. split; try assumption.
       inversion Ht. subst. clear Ht. inversion H0. subst i. clear H0.
       apply inj_pairT2 in H1. subst.
@@ -720,7 +687,7 @@ Proof.
       elim n. reflexivity.
     + destruct (nat_eq_dec j i); try discriminate Hitem. subst.
       inversion Hitem. subst di' item'. clear Hitem.
-      exists eq_refl. 
+      exists eq_refl.
       exists Hj. split; try assumption.
       inversion Ht. subst. clear Ht.
       apply inj_pairT2 in H1. subst.
@@ -737,13 +704,13 @@ Lemma equivocator_protocol_transition_item_project_inv3
   (item := {| l := l; input := iom; destination := s; output := oom |})
   (di di' : MachineDescriptor)
   (Hitem: equivocator_vlsm_transition_item_project item di = Some (None, di'))
-  : match di with 
+  : match di with
     | NewMachine sn => di' = di
     | Existing i fi =>
       exists
         (Hi : i < projT1 s)
         (i' : nat)
-        (fi' : option bool)
+        (fi' : bool)
         (Hdi' : di' = Existing i' fi')
         (Hi' : i' < projT1 s'),
         projT2 s' (of_nat_lt Hi') = projT2 s (of_nat_lt Hi)
@@ -751,14 +718,14 @@ Lemma equivocator_protocol_transition_item_project_inv3
 Proof.
   unfold vvalid in Hv. unfold vtransition in Ht.
   destruct l as (lx, d).
-  simpl in Hv. simpl in Ht. 
+  simpl in Hv. simpl in Ht.
   destruct di as [si | i fi]; try (inversion Hitem; reflexivity).
   simpl in Hv.
   destruct d as [sd | id fd]; simpl in Hitem.
   - destruct s as (ns, bs). destruct (le_lt_dec ns i); try discriminate Hitem.
     destruct (nat_eq_dec (S i) ns); try discriminate Hitem.
     simpl. exists l. inversion Hitem. subst. clear Hitem.
-    exists i. exists None. exists eq_refl.
+    exists i. exists false. exists eq_refl.
     destruct (vtransition X lx (sd, iom)) as (sn', om').
     destruct s' as (ns', bs'). simpl in Ht.
     inversion Ht. subst.
@@ -779,28 +746,10 @@ Proof.
     exists l.
     destruct (vtransition X lx (bs' (of_nat_lt Hj), iom))
       as (si', om') eqn:Htx.
-    destruct fd as [[|]|].
-    + destruct (nat_eq_dec id i); try discriminate Hitem.
-      inversion Ht. subst. clear Ht. 
-      apply inj_pairT2 in H1. subst.
-      rewrite to_nat_of_nat in *.
-      destruct (nat_eq_dec i n').
-      * subst. rewrite eq_dec_if_true in Hitem; try reflexivity.
-        inversion Hitem. subst. clear Hitem.
-        exists id. exists None. exists eq_refl. exists Hj.
-        reflexivity.
-      * rewrite eq_dec_if_false in Hitem; try (intro contra; elim n; inversion contra; reflexivity).
-        inversion Hitem. subst di'. clear Hitem.
-        exists i. exists None. exists eq_refl.
-        assert (Hi : i < n') by lia.
-        exists Hi.
-        rewrite eq_dec_if_false; try (f_equal; apply of_nat_ext).
-        intro contra. apply (f_equal to_nat) in contra.
-        repeat rewrite to_nat_of_nat in contra.
-        inversion contra. elim n0. assumption.
+    destruct fd as [|].
     + destruct (nat_eq_dec (S i) n); try discriminate Hitem.
       inversion Hitem. subst di'. clear Hitem.
-      exists i. exists None. exists eq_refl.
+      exists i. exists false. exists eq_refl.
       inversion Ht. subst. clear Ht.
       assert (Hi : i < n') by lia.
       exists Hi.
@@ -811,7 +760,7 @@ Proof.
       apply of_nat_ext.
     + destruct (nat_eq_dec id i); try discriminate Hitem.
       inversion Hitem. subst di'. clear Hitem.
-      exists i. exists None. exists eq_refl.
+      exists i. exists false. exists eq_refl.
       inversion Ht. subst. exists l.
       apply inj_pairT2 in H1. subst.
       rewrite eq_dec_if_false; try reflexivity.
@@ -827,11 +776,11 @@ Lemma equivocator_protocol_transition_item_project_inv4
   (Hv: vvalid equivocator_vlsm l (s', iom))
   (Ht: vtransition equivocator_vlsm l (s', iom) = (s, oom))
   (i' : nat)
-  (fi' : option bool)
+  (fi' : bool)
   (Hi' : i' < projT1 s')
   : exists
     (Hi'' : i' < projT1 s)
-    (fi'' : option bool)
+    (fi'' : bool)
     (oitem : option (vtransition_item X))
     (item := {| l := l; input := iom; destination := s; output := oom |}),
     equivocator_vlsm_transition_item_project item (Existing i' fi') = Some (oitem, Existing i' fi'').
@@ -841,7 +790,7 @@ Proof.
   destruct l as (lx, descriptor). simpl in *.
   destruct s as (ns, bs).
   destruct s' as (n', bs').
-  destruct descriptor as [sn | j flag].
+  destruct descriptor as [sn | j is_equiv].
   - destruct (vtransition X lx (sn, iom)) as (sn', om') eqn:Htx.
     simpl in Ht. inversion Ht. subst. simpl in Hi'.
     assert (Hi'' : i' < S n') by lia.
@@ -849,7 +798,7 @@ Proof.
     destruct (le_lt_dec (S n') i'). { lia. }
     replace (of_nat_lt l) with (of_nat_lt Hi'') in *; try apply of_nat_ext. clear l.
     rewrite eq_dec_if_false.
-    + exists None. exists None. reflexivity.
+    + exists false. exists None. reflexivity.
     + lia.
   - destruct Hv as [Hj Hv]. simpl in *.
     destruct (le_lt_dec n' j). { lia. }
@@ -857,33 +806,21 @@ Proof.
     destruct (vtransition X lx (bs' (of_nat_lt Hj), iom))
       as (si', om') eqn:Htx.
     assert (Hi'' : i' < S n') by lia.
-    destruct flag as [[|]|] eqn:Hflag
-    ; inversion Ht; subst ns om'; clear Ht 
+    destruct is_equiv as [|] eqn:Hflag
+    ; inversion Ht; subst ns om'; clear Ht
     ; apply inj_pairT2 in H1; subst bs.
     + destruct (le_lt_dec (S n') i'). { lia. }
-      destruct (nat_eq_dec j i').
-      * subst j.
-        rewrite to_nat_of_nat.
-        destruct (nat_eq_dec i' n'). { lia. }
-        rewrite eq_dec_if_true; try apply of_nat_ext.
-        exists Hi''. exists (Some true). 
-        exists (Some {| l := lx; input := iom; destination := si'; output := oom |}).
-        reflexivity.
-      * destruct (nat_eq_dec (S i') (S n')). { lia. }
-        exists Hi''. exists None.
-        exists None. reflexivity.
-    + destruct (le_lt_dec (S n') i'). { lia. }
       destruct (nat_eq_dec (S i') (S n')). { lia. }
-      exists Hi''. exists None.
+      exists Hi''. exists false.
       exists None. reflexivity.
     + destruct (le_lt_dec n' i'). { lia. }
       destruct (nat_eq_dec j i').
       * subst j.
-        rewrite eq_dec_if_true; try apply of_nat_ext. 
-        exists Hi'. exists None.
+        rewrite eq_dec_if_true; try apply of_nat_ext.
+        exists Hi'. exists false.
         exists (Some {| l := lx; input := iom; destination := si'; output := oom |}).
         reflexivity.
-      * exists Hi'. exists None. exists None. reflexivity.
+      * exists Hi'. exists false. exists None. reflexivity.
 Qed.
 
 Lemma equivocator_protocol_transition_item_project_inv5
@@ -892,7 +829,7 @@ Lemma equivocator_protocol_transition_item_project_inv5
   (iom oom : option message)
   (Hv: vvalid equivocator_vlsm l (s', iom))
   (Ht: vtransition equivocator_vlsm l (s', iom) = (s, oom))
-  (fi : option bool)
+  (fi : bool)
   : exists
     (i : nat)
     (Hi : i < projT1 s)
@@ -905,7 +842,7 @@ Proof.
   destruct s' as (ns', bs').
   unfold vtransition in Ht. simpl in Ht.
   unfold vvalid in Hv. simpl in Hv.
-  destruct l as (lx, [sn | i flag]); simpl in *.
+  destruct l as (lx, [sn | i is_equiv]); simpl in *.
   - destruct (vtransition X lx (sn, iom)) as (sn', om').
     inversion Ht. subst; clear Ht.
     apply inj_pairT2 in H1. subst.
@@ -917,18 +854,13 @@ Proof.
     destruct (le_lt_dec ns' i). { lia. }
     replace (of_nat_lt l) with (of_nat_lt Hi) in *; try apply of_nat_ext. clear l.
     destruct (vtransition X lx (bs' (of_nat_lt Hi), iom)) as (sn', om').
-    destruct flag as [[|]|]; inversion Ht; subst; clear Ht; apply inj_pairT2 in H1; subst.
-    + exists i. split. { lia. }
-      exists (Existing i (Some true)).
-      destruct (le_lt_dec (S ns') i). { lia. }
-      rewrite eq_dec_if_true; try reflexivity.
-      eexists _; reflexivity.
+    destruct is_equiv as [|]; inversion Ht; subst; clear Ht; apply inj_pairT2 in H1; subst.
     + exists ns'. split. { lia. }
-      exists (Existing i (Some false)).
+      exists (Existing i true).
       destruct (le_lt_dec (S ns') ns'). { lia. }
       rewrite eq_dec_if_true; try reflexivity.
       eexists _; reflexivity.
-    + exists i. exists Hi. exists (Existing i None).
+    + exists i. exists Hi. exists (Existing i false).
       destruct (le_lt_dec ns i). { lia. }
       rewrite eq_dec_if_true; try reflexivity.
       eexists _; reflexivity.
@@ -953,7 +885,7 @@ Proof.
   - destruct Ht as [[Hps [_ Hv]] Ht].
     destruct l as (l, description).
     simpl in Ht. unfold vtransition in Ht. simpl in Ht.
-    destruct description as [sn| j flag].
+    destruct description as [sn| j is_equiv].
     + destruct Hv as [Hsn Hv].
       destruct (vtransition X l (sn, om)) as (sn', snom') eqn:Htx.
       inversion Ht. subst . clear Ht.
@@ -981,15 +913,7 @@ Proof.
         with (vtransition X l (projT2 s (of_nat_lt Hj), om))
         in Hgen by reflexivity.
       destruct (vtransition X l (projT2 s (of_nat_lt Hj), om)) as (sj', omj').
-      destruct flag as [[|]|]; inversion Ht; subst; clear Ht; simpl in *.
-      * destruct (to_nat i) as [ni Hni].
-        destruct (nat_eq_dec ni (projT1 s)); try (exists _omj; assumption).
-        destruct
-          ( Fin.eq_dec (Fin2Restrict.n2f Hj)
-          (Fin2Restrict.n2f
-             (equivocator_state_extend_obligation_1 (projT1 s) ni Hni n)))
-        ; try apply Hs.
-        exists om'. assumption.
+      destruct is_equiv as [|]; inversion Ht; subst; clear Ht; simpl in *.
       * destruct s as (ns, bs). simpl in *.
         destruct (to_nat i) as (ni, Hni).
         destruct (nat_eq_dec ni ns); try (exists om'; assumption).
@@ -1004,13 +928,13 @@ Lemma equivocator_vlsm_trace_project_protocol
   (Hbtr : finite_protocol_trace_from equivocator_vlsm bs btr)
   (j : nat)
   (Hj : j < projT1 (last (map destination btr) bs))
-  (jf : option bool)
+  (jf : bool)
   : exists
     (tr : list (vtransition_item X))
     (di : MachineDescriptor)
     (Htr : equivocator_vlsm_trace_project btr (Existing j jf) = Some (tr, di)),
     match di with
-    | NewMachine sn => 
+    | NewMachine sn =>
       vinitial_state_prop X sn
       /\ projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) sn
       /\ finite_protocol_trace_from X sn tr
@@ -1048,7 +972,7 @@ Proof.
         ; try assumption.
         destruct Hitem as [_i [_fi [Heq [Hi [Heqitem' Hitem]]]]].
         inversion Heq. subst _i _fi. clear Heq.
-        destruct Hdi as [_Hi Hlst]. 
+        destruct Hdi as [_Hi Hlst].
         replace (of_nat_lt _Hi) with (of_nat_lt Hi) in *; try apply of_nat_ext. clear _Hi.
         simpl in Hlst. destruct Hlst as [Hlst Htr].
         repeat rewrite map_cons.
@@ -1085,13 +1009,13 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol
   (Hbtr : finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) bs btr)
   (j : nat)
   (Hj : j < projT1 (last (map destination btr) bs))
-  (jf : option bool)
+  (jf : bool)
   : exists
     (tr : list (vtransition_item X))
     (di : MachineDescriptor)
     (Htr : equivocator_vlsm_trace_project btr (Existing j jf) = Some (tr, di)),
     match di with
-    | NewMachine sn => 
+    | NewMachine sn =>
       vinitial_state_prop X sn
       /\ projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) sn
       /\ finite_protocol_trace_from (pre_loaded_vlsm X) sn tr
@@ -1145,7 +1069,7 @@ Proof.
         ; try assumption.
         destruct Hitem as [_i [_fi [Heq [Hi [Heqitem' Hitem]]]]].
         inversion Heq. subst _i _fi. clear Heq.
-        destruct Hdi as [_Hi Hlst]. 
+        destruct Hdi as [_Hi Hlst].
         replace (of_nat_lt _Hi) with (of_nat_lt Hi) in *; try apply of_nat_ext. clear _Hi.
         simpl in Hlst. destruct Hlst as [Hlst Htr].
         repeat rewrite map_cons.
@@ -1185,9 +1109,9 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_inv
   (Hbtr : finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) bs btr)
   (i : nat)
   (Hi : i < projT1 bs)
-  (fi : option bool)
+  (fi : bool)
   : exists
-    (fii : option bool)
+    (fii : bool)
     (tr : list (vtransition_item X)),
     equivocator_vlsm_trace_project btr (Existing i fi) = Some (tr, Existing i fii).
 Proof.
@@ -1204,7 +1128,7 @@ Proof.
     replace
       (@Build_transition_item message (@type message equivocator_vlsm) l iom s oom)
       with item in Hitem.
-    destruct (Hitem None Hi) as [Hi' _].
+    destruct (Hitem false Hi) as [Hi' _].
     spec IHHbtr i Hi' fi.
     destruct IHHbtr as [fii' [tr Htr]].
     rewrite Htr.
@@ -1222,7 +1146,7 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
   (Hbtr : finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) bs btr)
   (bitem : vtransition_item equivocator_vlsm)
   (Hitem : In bitem btr)
-  (fi : option bool)
+  (fi : bool)
   : exists
     (d d' : MachineDescriptor)
     (item : vtransition_item X)
@@ -1260,20 +1184,10 @@ Proof.
   replace (@Build_transition_item message (@type message equivocator_vlsm) l iom s oom)
     with bitem in Hpitem.
   rewrite H in *.
-  destruct (Hpitem None) as [i [Hi [d' [itemx _Hitemx]]]].
-(*
-  rewrite  H.
-  destruct l as (lx, [sn| i' oflag]).
-  - simpl in Ht. unfold vtransition in Ht. simpl in Ht.
-    destruct lst as (nlst, blst).
-    destruct (vtransition X lx (sn, iom)) as (sn', om') eqn:Htx.
-    simpl in Ht. inversion Ht. subst om'.
-    assert (Hilasteq : S nlst = projT1 s) by (subst; simpl; lia).
-    assert (Hilast : nlst < projT1 s) by lia.
-*)
-  pose (dfinal := Existing i None).
+  destruct (Hpitem false) as [i [Hi [d' [itemx _Hitemx]]]].
+  pose (dfinal := Existing i false).
   destruct
-    (preloaded_equivocator_vlsm_trace_project_protocol_inv _ _ H2 _ Hi None)
+    (preloaded_equivocator_vlsm_trace_project_protocol_inv _ _ H2 _ Hi false)
     as [fsuffix [suffix Hsuffix]].
   specialize (Hpitem fsuffix).
   destruct Hpitem as [_i [_Hi [_d' [_itemx Hitemx]]]].
@@ -1308,7 +1222,7 @@ Proof.
     subst lbitem.
     simpl in Htr.
     exists (itemx :: suffix).
-    exists dfinal. exists (NewMachine sn). exists Htr. left. reflexivity. 
+    exists dfinal. exists (NewMachine sn). exists Htr. left. reflexivity.
   - destruct Hd' as [Hid [Hvs' Hts']].
     subst lst.
     destruct
@@ -1330,13 +1244,13 @@ Lemma preloaded_equivocator_vlsm_project_protocol_trace
   (Hbtr : finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) bs btr)
   (j : nat)
   (Hj : j < projT1 (last (map destination btr) bs))
-  (jf : option bool)
+  (jf : bool)
   : exists
     (tr : list (vtransition_item X))
     (di : MachineDescriptor)
     (Htr : equivocator_vlsm_trace_project btr (Existing j jf) = Some (tr, di)),
     match di with
-    | NewMachine sn => 
+    | NewMachine sn =>
       vinitial_state_prop X sn
       /\ projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) sn
       /\ finite_protocol_trace (pre_loaded_vlsm X) sn tr
@@ -1370,6 +1284,40 @@ Proof.
     + lia.
 Qed.
 
+Definition preloaded_protocol_equivocator_vlsm_trace_project'
+  (bs : vstate equivocator_vlsm)
+  (btr : list (vtransition_item equivocator_vlsm))
+  (Hbtr : finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) bs btr)
+  (nj : Fin.t (projT1 (last (map destination btr) bs)))
+  : vstate X * list (vtransition_item X).
+refine (
+  let (j, _) := to_nat nj in
+  match equivocator_vlsm_trace_project btr (Existing j false) as e return (_ = e -> _) with
+  | None => fun _ => _
+  | Some (trx, NewMachine sn) => fun _ => (sn, trx)
+  | Some (trx, Existing i _) => fun _ =>
+    let ni := @of_nat_lt i (projT1 bs) _ in
+    (projT2 bs ni, trx)
+  end (refl_equal _)
+).
+- abstract
+  (destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ l false)
+    as [tr [di [Htr Hdi]]];
+  rewrite Htr in e;
+  inversion e; subst tr di; clear e;
+  destruct Hdi as [Hi _]; subst;
+  destruct Hbtr as [Hbtr Hinit];
+  destruct bs as [nbs bs];
+  simpl in *; unfold vinitial_state_prop in Hinit; simpl in Hinit;
+  destruct nbs; try inversion Hinit;
+  destruct nbs; try inversion Hinit;
+  lia).
+- abstract
+  (exfalso; destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ l false)
+     as [tr [di [Htr _]]];
+   rewrite e in Htr; discriminate Htr).
+Defined.
+
 Program Definition preloaded_protocol_equivocator_vlsm_trace_project
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
@@ -1378,7 +1326,7 @@ Program Definition preloaded_protocol_equivocator_vlsm_trace_project
   : vstate X * list (vtransition_item X)
   :=
   let (j, _) := to_nat nj in
-  match equivocator_vlsm_trace_project btr (Existing j None) with
+  match equivocator_vlsm_trace_project btr (Existing j false) with
   | None => _
   | Some (trx, NewMachine sn) => (sn, trx)
   | Some (trx, Existing i _) =>
@@ -1387,12 +1335,12 @@ Program Definition preloaded_protocol_equivocator_vlsm_trace_project
   end.
 Next Obligation.
   exfalso.
-  destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ H None)
+  destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ H false)
     as [tr [di [Htr _]]].
   rewrite <- Heq_anonymous in Htr. discriminate Htr.
 Defined.
 Next Obligation.
-  destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ H None)
+  destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ H false)
     as [tr [di [Htr Hdi]]].
   rewrite Htr in Heq_anonymous.
   inversion Heq_anonymous. subst tr di. clear Heq_anonymous.
@@ -1400,8 +1348,8 @@ Next Obligation.
   destruct Hbtr as [Hbtr Hinit].
   destruct bs as [nbs bs].
   simpl in *. unfold vinitial_state_prop in Hinit. simpl in Hinit.
-  destruct nbs; try inversion Hinit. 
-  destruct nbs; try inversion Hinit. 
+  destruct nbs; try inversion Hinit.
+  destruct nbs; try inversion Hinit.
   lia.
 Defined.
 
@@ -1412,15 +1360,14 @@ Lemma preloaded_protocol_equivocator_vlsm_trace_project_project
   (nj : Fin.t (projT1 (last (map destination btr) bs)))
   : exists d,
   let (j, _) := to_nat nj in
-  equivocator_vlsm_trace_project btr (Existing j None)
+  equivocator_vlsm_trace_project btr (Existing j false)
   = Some (snd (preloaded_protocol_equivocator_vlsm_trace_project bs btr Hbtr nj) ,d).
 Proof.
   destruct (to_nat nj) as [j Hj] eqn:Hnj. simpl.
-  remember (equivocator_vlsm_trace_project btr (Existing j None)) as project.
+  remember (equivocator_vlsm_trace_project btr (Existing j false)) as project.
   unfold preloaded_protocol_equivocator_vlsm_trace_project.
   rewrite Hnj.
   simpl in *.
-  rewrite <- Heqproject.
 Admitted.
 
 (*
@@ -1476,7 +1423,7 @@ Proof.
   apply Exists_exists in Hbbs.
   destruct Hbbs as [item [Hin Houtput]].
   destruct
-    (preloaded_equivocator_vlsm_trace_project_protocol_item _ _ Htr _ Hin None)
+    (preloaded_equivocator_vlsm_trace_project_protocol_item _ _ Htr _ Hin false)
     as [i [i' [itemx [Hitemx [trx [ifinal [ifirst [Htrx Hinx]]]]]]]].
   exists ifinal. exists ifirst. exists trx. exists Htrx.
   apply Exists_exists. exists itemx. split; try assumption.
@@ -1489,7 +1436,7 @@ Lemma equivocator_vlsm_trace_project_inv
   (tr: list transition_item)
   (Hntr : tr <> [])
   (j: nat)
-  (fj : option bool)
+  (fj : bool)
   (HtrX: equivocator_vlsm_trace_project tr (Existing j fj) <> None)
   (is: state)
   : j < projT1 (last (map destination tr) is).
@@ -1524,7 +1471,7 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_inv2
   (Hntr : tr <> [])
   (Htr: finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) is tr)
   (j : nat)
-  (fj : option bool)
+  (fj : bool)
   (di : MachineDescriptor)
   (trX: list (vtransition_item X))
   (HtrX: equivocator_vlsm_trace_project tr (Existing j fj) = Some (trX, di))
@@ -1582,7 +1529,7 @@ Qed.
 
 Section trace_mixer.
 
-Context 
+Context
   (goal_state : vstate equivocator_vlsm)
   (n := projT1 goal_state)
   (Hn : 0 < n)
@@ -1591,7 +1538,7 @@ Context
     finite_protocol_trace (pre_loaded_vlsm X) (fst (traces i)) (snd (traces i)))
   (Hne_traces : forall i : Fin.t n, snd (traces i) <> [])
   (Hs
-    : forall i : Fin.t n, 
+    : forall i : Fin.t n,
       match traces i with (isi, tri) =>
         last (map destination tri) isi = projT2 goal_state i
       end
@@ -1612,7 +1559,7 @@ Definition lift_trace_to_equivocator
     :: fold_right
       (fun lab tr =>
         match lab with {| l := lx; input := iom; output := oom; destination := sx |} =>
-          {| l := mk_label lx  (Existing i None); input := iom; output := oom; destination := equivocator_state_extend start sx |}
+          {| l := mk_label lx  (Existing i false); input := iom; output := oom; destination := equivocator_state_extend start sx |}
           :: tr
         end)
       [] tri
@@ -1627,7 +1574,7 @@ Definition lift_first_trace_to_equivocator
   fold_right
     (fun lab tr =>
       match lab with {| l := lx; input := iom; output := oom; destination := sx |} =>
-        {| l := mk_label lx  (Existing 0 None); input := iom; output := oom; destination := mk_singleton_state sx |}
+        {| l := mk_label lx  (Existing 0 false); input := iom; output := oom; destination := mk_singleton_state sx |}
         :: tr
       end)
     [] trz.
@@ -1638,27 +1585,27 @@ Definition lift_traces_to_equivocator
   match fin_t_listing n with
   | [] => []
   | i0 :: is =>
-    let is0 := proj1_sig (fst (traces (of_nat_lt Hn))) in
+    let is0 := fst (traces (of_nat_lt Hn)) in
     let tr0 := lift_first_trace_to_equivocator in
     let lst0 := last (map destination tr0) (mk_singleton_state is0) in
     fst
       (fold_left
         (fun rez i =>
           let tracei := traces i in
-          let isxi := proj1_sig (fst tracei) in
+          let isxi := fst tracei in
           let trxi := snd tracei in
           match rez with (tr, s) =>
             let tri := lift_trace_to_equivocator s isxi trxi in
             (tr ++ tri, last (map destination tri) s)
           end
-        ) is (tr0, lst0) 
+        ) is (tr0, lst0)
       )
   end.
 
 Lemma lift_traces_to_equivocator_last
   : last
     (map destination lift_traces_to_equivocator)
-    (mk_singleton_state (proj1_sig (fst (traces (of_nat_lt Hn)))))
+    (mk_singleton_state (fst (traces (of_nat_lt Hn))))
     = goal_state.
 Admitted.
 
@@ -1708,19 +1655,19 @@ Proof.
       in Hpre.
     simpl in Hpre.
     destruct (to_nat j) as [nj Hnj].  simpl in *.
-    specialize (Hpre nj Hnj None).
+    specialize (Hpre nj Hnj false).
     destruct Hpre as [trX [di [Hproject Hdi]]].
     destruct di as [sn | zero fzero].
     + destruct Hdi as [Hsn [HlastX HtrX]].
       symmetry in HlastX.
       rewrite Hj in HlastX.
       spec Hjbs sn trX HtrX HlastX.
-      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing nj None) (NewMachine sn)
+      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing nj false) (NewMachine sn)
       ; assumption.
     + destruct Hdi as [Hzero [sX [HsX [HlastX HtrX]]]]. subst.
       spec Hjbs sX trX HtrX. symmetry in HlastX.
       spec Hjbs HlastX.
-      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing nj None) (Existing 0 fzero)
+      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing nj false) (Existing 0 fzero)
       ; assumption.
   - intro Hbbs. assert (Hbbs' := Hbbs).
     unfold equivocator_has_been_sent.
@@ -1777,7 +1724,7 @@ Definition equivocator_sent_messages_fn
   :=
   fold_right (set_union eq_dec) []
     (map (fun i => sent_messages_fn X (projT2 s i)) (fin_t_listing (projT1 s))).
-  
+
 Lemma equivocator_sent_messages_full
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
@@ -1811,12 +1758,20 @@ Proof.
       exists is. exists tr. exists Htr. exists Hlst.
       subst s.
       destruct
-        (preloaded_equivocator_vlsm_project_protocol_trace _ _ Htr _ Hi)
-        as [trX [Hzero [His [HtrX [Hlast HptrX]]]]].
+        (preloaded_equivocator_vlsm_project_protocol_trace _ _ Htr _ Hi false)
+        as [trX [di [Hzero Hdi]]].
+      destruct di as [sn | zero fzero].
+      *
+      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing ni false) (NewMachine sn)
+      ; try assumption.
+      destruct Hdi as [Hsn [Hlast HtrX]].
+      symmetry in Hlast.
+      apply (Hm _ _ HtrX Hlast).
+      * destruct Hdi as [Heqzero [isx [Hisx [Hlast HptrX]]]].
       symmetry in Hlast.
       specialize (Hm  _ _ HptrX Hlast).
       destruct HptrX as [HptrX Hinit].
-      apply equivocator_vlsm_trace_project_output_reflecting with trX ni 0
+      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing ni false) (Existing zero fzero)
       ; assumption.
   - intros [[m' Hm] Heq]. simpl in Heq. subst m'.
     destruct Hm as [is [tr [Htr [Hlst Hexists]]]].
@@ -1824,27 +1779,39 @@ Proof.
       (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Htr) _ Hexists)
       as [ifinal [istart [trX [Hproject HexistsX]]]].
     assert (Hntr : tr <> []) by (intro contra; subst; inversion Hexists).
+    destruct ifinal as [sfinal | i ffinal]
+    ; try (
+      rewrite equivocator_vlsm_trace_project_on_hard_fork in Hproject
+      ; inversion Hproject; subst; inversion HexistsX
+      ).
     specialize
-      (preloaded_equivocator_vlsm_trace_project_protocol_inv2 _ _ Hntr (proj1 Htr) _ _ _ Hproject)
+      (preloaded_equivocator_vlsm_trace_project_protocol_inv2 _ _ Hntr (proj1 Htr) _ _ _ _ Hproject)
       as HpreX.
     rewrite Hlst in HpreX.
-    destruct HpreX as [Hi [Hj [Hlstx HtrX]]].
+    destruct HpreX as [Hi Histart].
     apply set_union_in_iterated. apply Exists_exists.
-    exists (sent_messages_fn X (projT2 s (of_nat_lt Hj))).
+    exists (sent_messages_fn X (projT2 s (of_nat_lt Hi))).
     split.
-    + apply in_map_iff. exists (of_nat_lt Hj).
+    + apply in_map_iff. exists (of_nat_lt Hi).
       split; try reflexivity. apply fin_t_full.
     + apply (sent_messages_full X); try apply HpsX.
-      assert (Hm : selected_message_exists_in_some_traces X output (projT2 s (of_nat_lt Hj)) m)
+      assert (Hm : selected_message_exists_in_some_traces X output (projT2 s (of_nat_lt Hi)) m)
       ; try (exists (exist _ m Hm); reflexivity).
-      exists (projT2 is (of_nat_lt Hi)).
-      assert (HtrX' : finite_protocol_trace (pre_loaded_vlsm X) (projT2 is (of_nat_lt Hi)) trX).
+      destruct istart as [sstart | istart fstart].
+      * destruct Histart as [Hsstart [Hlast HtrX]].
+        assert (HtrX' : finite_protocol_trace (pre_loaded_vlsm X) sstart trX)
+          by (split; assumption).
+        exists sstart. exists trX. exists HtrX'. symmetry in Hlast. exists Hlast.
+        assumption.
+      * destruct Histart as [Histart [Hlast HtrX]].
+      exists (projT2 is (of_nat_lt Histart)).
+      assert (HtrX' : finite_protocol_trace (pre_loaded_vlsm X) (projT2 is (of_nat_lt Histart)) trX).
       {
         split; try assumption. apply proj2 in Htr.
         apply equivocator_initial_state_project. assumption.
       }
       exists trX. exists HtrX'.
-      symmetry in Hlstx. exists Hlstx.
+      symmetry in Hlast. exists Hlast.
       assumption.
 Qed.
 
@@ -1919,11 +1886,18 @@ Definition simple_equivocator_constraint
   :=
   let (bs, om) := som in
   let (i, bli) := l in
-  match bli with (li, n, _) =>
+  match bli with
+  | (li, Existing _ n _) =>
     exists
       (s : vstate X)
       (Hs : in_composite_equivocator_state s bs)
       (Hsi : equivocator_state_project (IM i) (bs i) n = Some (s i)),
+      constraint (existT _ i li) (s, om)
+ | (li, NewMachine _ sn) =>
+     exists
+      (s : vstate X)
+      (Hs : in_composite_equivocator_state s bs)
+      (Hsi : sn = s i),
       constraint (existT _ i li) (s, om)
   end.
 
