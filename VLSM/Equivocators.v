@@ -1370,6 +1370,40 @@ Proof.
     + lia.
 Qed.
 
+Definition preloaded_protocol_equivocator_vlsm_trace_project'
+  (bs : vstate equivocator_vlsm)
+  (btr : list (vtransition_item equivocator_vlsm))
+  (Hbtr : finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) bs btr)
+  (nj : Fin.t (projT1 (last (map destination btr) bs)))
+  : vstate X * list (vtransition_item X).
+refine (
+  let (j, _) := to_nat nj in
+  match equivocator_vlsm_trace_project btr (Existing j None) as e return (_ = e -> _) with
+  | None => fun _ => _
+  | Some (trx, HardFork sn) => fun _ => (sn, trx)
+  | Some (trx, Existing i _) => fun _ =>
+    let ni := @of_nat_lt i (projT1 bs) _ in
+    (projT2 bs ni, trx)
+  end (refl_equal _)
+).
+- abstract
+  (destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ l None)
+    as [tr [di [Htr Hdi]]];
+  rewrite Htr in e;
+  inversion e; subst tr di; clear e;
+  destruct Hdi as [Hi _]; subst;
+  destruct Hbtr as [Hbtr Hinit];
+  destruct bs as [nbs bs];
+  simpl in *; unfold vinitial_state_prop in Hinit; simpl in Hinit;
+  destruct nbs; try inversion Hinit;
+  destruct nbs; try inversion Hinit;
+  lia).
+- abstract
+  (exfalso; destruct (preloaded_equivocator_vlsm_project_protocol_trace _ _ Hbtr _ l None)
+     as [tr [di [Htr _]]];
+   rewrite e in Htr; discriminate Htr).
+Defined.
+
 Program Definition preloaded_protocol_equivocator_vlsm_trace_project
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
