@@ -1553,4 +1553,72 @@ Proof.
   rewrite contra in H1.
   intuition.  
 Qed.
-  
+
+Fixpoint complete_prefix 
+  {A : Type}
+  `{EqDec A}
+  (l pref : list A) : option (list A) :=
+  match l, pref with
+  | [], [] => Some []
+  | [], (b :: pref') => None
+  | (a :: l'), [] => let res' := complete_prefix l' [] in
+                     match res' with
+                     | None => None
+                     | Some s => Some (a :: s)
+                     end
+  | (a :: l'), (b :: pref') => match (eq_dec a b) with
+                               | right _ => None
+                               | _ => let res' := complete_prefix l' pref' in
+                                      match res' with
+                                      | None => None
+                                      | Some s => Some s
+                                      end
+                               end
+  end.
+
+Lemma complete_prefix_correct 
+  {A : Type}
+  `{EqDec A}
+  (l pref suff : list A) :
+  l = pref ++ suff <->
+  complete_prefix l pref = Some suff.
+Proof.
+  split.
+  - generalize dependent suff.
+    generalize dependent pref.
+    induction l.
+    + intros. simpl in *.
+      destruct pref; destruct suff;
+      try reflexivity;
+      try discriminate H0.
+    + intros.
+      unfold complete_prefix.
+      destruct pref.
+      * specialize (IHl [] l).
+        spec IHl.
+        intuition.
+        unfold complete_prefix in IHl.
+        rewrite IHl.
+        rewrite H0.
+        f_equal.
+      * destruct (eq_dec a a0) eqn : eq_d.
+        specialize (IHl pref suff).
+        unfold complete_prefix in IHl.
+        rewrite IHl.
+        reflexivity.
+        simpl in H0.
+        inversion H0.
+        reflexivity.
+        inversion H0.
+        elim n. assumption.
+   - generalize dependent suff.
+     generalize dependent pref.
+     induction l; intros.
+     + destruct pref; destruct suff;
+       try intuition;
+       try discriminate H0.
+     + unfold complete_prefix in H0.
+       destruct pref.
+       specialize (IHl [] suff).
+       destruct (complete_prefix l []). 
+Qed.

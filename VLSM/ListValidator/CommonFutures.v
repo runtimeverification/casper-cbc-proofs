@@ -28,12 +28,22 @@ Context
   {idec : EqDec index}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
-  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec 
-    (@EquivocationAwareListValidator.equivocation_aware_estimator _ _ Hfinite _ _ _ ))
+  (est' := (@EquivocationAwareListValidator.equivocation_aware_estimator _ _ Hfinite _ _ _ ))
+  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec est')
   (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec ListValidator.estimator)
   (X := free_composite_vlsm IM_index i0)
-  (preX := pre_loaded_vlsm X).
-
+  (preX := pre_loaded_vlsm X)
+  (Hevidence := fun (i : index) => @observable_full index index_listing idec)
+  (ce := @composed_computable_observable_equivocation_evidence
+    message index state
+    state_eq_dec comparable_states
+    index idec index_listing IM_index Hevidence i0 (free_constraint IM_index)).
+  
+  (* 
+  (ce := @composed_eqv_evidence index i0 index_listing _ est' (free_constraint IM_index)) 
+  (Hc := @Hcomposite index i0 index_listing Hfinite _ est' (free_constraint IM_index))
+  (cvcgel := @composite_vlsm_comparable_generated_events_lv index i0 index_listing Hfinite _ est' (free_constraint IM_index)).
+  *)
   
   Definition component_list (s : vstate X) (li : list index) :=
     List.map s li.
@@ -41,6 +51,14 @@ Context
   Definition unite_observations (ls : list state) : list (@state index index_listing) := 
     fold_right (set_union eq_dec) [] (List.map complete_observations ls).
   
+  Check @equivocation_evidence.
+  
+  Definition GH (s : vstate X) : list index := 
+    List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index state _ comparable_states ce s i)) index_listing.
+  
+  Definition GE (s : vstate X) : list index :=
+    set_diff idec index_listing (GH s).
+    
   Definition can_receive_prop (to : index) (s : state) (m : message) :=
     @list_valid index to index_listing eq_dec (ListValidator.estimator) receive (s, (Some m)).
   
@@ -91,13 +109,10 @@ Context
   Definition can_receive_extended (to : index) (s : (@state index index_listing)) (m : message) : bool :=
     let s' := snd m in
     let from := fst m in
-    match eq_dec s' Bottom with
-    | left _ => false
-    | right _ => match eq_dec s Bottom with
-                 | left _ => true 
-                 | right _ => inb eq_dec (project s from) (get_history s' from)
-                 end
-    end. 
+    match eq_dec s Bottom with
+    | left _ => true 
+    | right _ => state_ltb (project s from) s'
+    end.
 
   Definition latest_versions (s : vstate X) (i : index) : list state :=
     let sc := List.map s index_listing in
@@ -107,7 +122,22 @@ Context
     let latest_messages := List.map (pair from) (latest_versions s from) in
     find (can_receive_extended to (s to)) latest_messages.
   
-  Definition sync_with (s : vstate X) (from to : index) : list (@transition_item message (type X)) :=
+  Definition sync_component'
+    (s target : (@state index index_listing))
+    (i : index) : list (@transition_item message (type X)) :=
+    
+  
+  Definition sync_component 
+    (s : vstate X) 
+    (to from : index) 
+    (target : state) :
+    option (list (@transition_item message (type X))) :=
+    match (can_receive_extended to s (from, target)) with
+    | false => None
+    | true => Some (sync_component' (s to) target)
+    end.
+    
+  Definition sync (s : vstate X) (from to : index) : list (@transition_item message (type X)) :=
     let candidates := latest_versions s from in
     let goal := (pick_version s from to) in 
     match goal with

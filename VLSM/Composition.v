@@ -2,7 +2,7 @@ Require Import List Streams Nat Bool.
 Import ListNotations.
 Require Import Logic.FunctionalExtensionality.
 
-Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
+Require Import Coq.Logic.FinFun Coq.Logic.Eqdep Coq.Program.Basics List ListSet.
 
 From CasperCBC
   Require Import
@@ -1155,6 +1155,23 @@ All results from regular projections carry to these "free" projections.
           apply (protocol_initial_message (pre_loaded_vlsm (IM i)) im).
         * apply (protocol_initial_state (pre_loaded_vlsm (IM i))).
       + rewrite state_update_neq; try assumption. apply Hs.
+  Qed.
+  
+  Definition independent_traces
+    (a b : (list (@transition_item message (type X)))) : Prop :=
+    let ind_a := List.map (@projT1 (composite_label IM) _) (List.map l a) in
+    let ind_b := List.map (@projT1 (composite_label IM) _) (List.map l b) in
+    set_diff ind_a ind_b = [].
+  
+  Lemma free_trace_reordering 
+    (s : vstate X)
+    (Hs : protocol_state_prop X s)
+    (a b : list transition_item)
+    (Ha : finite_protocol_trace_from _ s a)
+    (Hb : finite_protocol_trace_from _ s b)
+    (Hindependent : independent_traces a b) :
+    finite_protocol_trace_from _ s (a ++ b).
+  Proof.
   Qed.
 
 End free_projections.

@@ -36,7 +36,6 @@ Context
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
   .
-
   
   Lemma protocol_state_component_no_bottom 
     (s : vstate X)
