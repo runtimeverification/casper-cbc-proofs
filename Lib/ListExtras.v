@@ -1088,6 +1088,45 @@ Definition map_option
     )
     [].
 
+Lemma map_option_length
+  {A B : Type}
+  (f : A -> option B)
+  (l : list A)
+  (Hfl : Forall (fun a => f a <> None) l)
+  : length (map_option f l) = length l.
+Proof.
+  induction l; try reflexivity.
+  inversion Hfl; subst.
+  spec IHl H2.
+  simpl.
+  destruct (f a); try (elim H1; reflexivity).
+  simpl. f_equal. assumption.
+Qed.
+
+Lemma map_option_nth
+  {A B : Type}
+  (f : A -> option B)
+  (l : list A)
+  (Hfl : Forall (fun a => f a <> None) l)
+  (n := length l)
+  (i : nat)
+  (Hi : i < n)
+  (dummya : A)
+  (dummyb : B)
+  : Some (nth i (map_option f l) dummyb) = f (nth i l dummya).
+Proof.
+  generalize dependent i.
+  induction l; intros; simpl in *. { lia. }
+  inversion Hfl. subst. spec IHl H2.
+  destruct (f a) eqn: Hfa; try (elim H1; reflexivity).
+  symmetry in Hfa.
+  destruct i; try assumption.
+  spec IHl i.
+  spec IHl. { lia. }
+  assumption.
+Qed.
+
+
 Lemma in_map_option
   {A B : Type}
   (f : A -> option B)
