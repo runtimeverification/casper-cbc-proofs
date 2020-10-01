@@ -137,19 +137,68 @@ Proof.
   contradiction.
 Qed.
 
+Lemma dec_if_true
+  {X Y B: Type}
+  {P : X -> Y -> Prop}
+  (dec : forall (x : X) (y : Y), {P x y} + {~P x y})
+  (x : X) (y : Y) (t e : B)
+  (Hp : P x y)
+  : (if dec x y then t else e) = t.
+Proof.
+  destruct (dec x y) eqn:Hcmp; try reflexivity.
+  elim n. assumption.
+Qed.
+
+Lemma dec_if_false
+  {X Y B: Type}
+  {P : X -> Y -> Prop}
+  (dec : forall (x : X) (y : Y), {P x y} + {~P x y})
+  (x : X) (y : Y) (t e : B)
+  (Hnp : ~P x y)
+  : (if dec x y then t else e) = e.
+Proof.
+  destruct (dec x y) eqn:Hcmp; try reflexivity.
+  elim Hnp. assumption.
+Qed.
+
 Lemma eq_dec_if_true {A B: Type} (eq_dec : forall x y : A, {x = y} + {x <> y}) : forall (x y : A) (t e : B),
   x = y -> (if eq_dec x y then t else e) = t.
 Proof.
-  intros. destruct (eq_dec x y) eqn:Hcmp; try reflexivity.
-  exfalso. apply n; apply H.
+  apply dec_if_true.
 Qed.
-
 
 Lemma eq_dec_if_false {A B: Type} (eq_dec : forall x y : A, {x = y} + {x <> y}) : forall (x y : A) (t e : B),
   x <> y -> (if eq_dec x y then t else e) = e.
 Proof.
-  intros. destruct (eq_dec x y) eqn:Hcmp; try reflexivity.
-  exfalso. apply H; assumption.
+  apply dec_if_false.
+Qed.
+
+Lemma dec_match_left
+  {X Y B: Type}
+  {P : X -> Y -> Prop}
+  (dec : forall (x : X) (y : Y), {P x y} + {~P x y})
+  (x : X) (y : Y) (t : P x y -> B) (e : ~P x y -> B)
+  (Hp : P x y)
+  (Hirrelevance : forall p : P x y, p = Hp)
+  : (match dec x y with | left p => t p | right np => e np end) = t Hp.
+Proof.
+  destruct (dec x y) eqn:Hcmp.
+  - rewrite Hirrelevance at 1. reflexivity.
+  - elim n. assumption.
+Qed.
+
+Lemma dec_match_right
+  {X Y B: Type}
+  {P : X -> Y -> Prop}
+  (dec : forall (x : X) (y : Y), {P x y} + {~P x y})
+  (x : X) (y : Y) (t : P x y -> B) (e : ~P x y -> B)
+  (Hp : ~P x y)
+  (Hirrelevance : forall p : ~P x y, p = Hp)
+  : (match dec x y with | left p => t p | right np => e np end) = e Hp.
+Proof.
+  destruct (dec x y) eqn:Hcmp.
+  - elim Hp. assumption.
+  - rewrite Hirrelevance at 1. reflexivity.
 Qed.
 
 Class TotalOrder {A} (lt : relation A) : Prop :=
