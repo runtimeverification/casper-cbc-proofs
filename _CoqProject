@@ -11,6 +11,7 @@ VLSM/ByzantineTraces.v
 VLSM/Equivocators/Common.v
 VLSM/Equivocators/Projections.v
 VLSM/Equivocators/MessageProperties.v
+VLSM/Equivocators/MergeProjections.v
 VLSM/Equivocators/Composition.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v

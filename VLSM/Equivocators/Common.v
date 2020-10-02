@@ -12,19 +12,16 @@ From CasperCBC
 
 (** * Equivocator VLSMs
 
-TODO: Rename this "equivocation simulator vlsm"
-
-A [equivocator_vlsm] for a given [VLSM] <<X>> is a VLSM which
-- maintains multiple internal copies of the same machine
-- can perform [valid] [transition]s using any of the internal machines
+An [equivocator_vlsm] for a given [VLSM] <<X>> is a VLSM which
+- starts as a regular machine X
 - can equivocate any of its current copies by duplicating it.
-- can starting a new machine in a (potentially)
-  different initial state.
+- can start a new machine in a (potentially) different initial state.
+- can perform [valid] [transition]s using any of the internal machines
 
 The state of such a machine will be abstracted using
 
-1. a non-zero [nat]ural <<n>>, stating the number of copies
-2. A state of <<X>> for each 1..n
+1. A [nat]ural <<n>>, stating the number of copies of the original machine
+2. A state of <<X>> for each 1..n+1
 
 To preserve determinism we need to update the labels to indicate what copy
 of the machine will be used for a transition.
@@ -41,13 +38,10 @@ used for performing the transition. It can be one of the following:
   but may equivocate, depending on the <<is_equiv>> as follows:
 
   * if <<is_equiv>> is [false], update the state of machine <<i>>
-  * if <<is_equiv>> is [true], save state of internal machine <<i>> in new
-    fork, but update the original machine
   * if <<is_equiv>> is [true], duplicate the state of machine <<i>> and
     perform transition on the copy
 
 These changes are reflected in the validity and transition functions.
-
 For validity we additionaly require that the machine descriptor refers
 to a valid internal machine, or to an initial state of <<X>>.
 
@@ -86,6 +80,11 @@ Definition mk_label
   : equivocator_label
   := (lx, d).
 
+(**
+Attempts to obtain the state of the internal machine with index <<i>>
+from an [equivocator_state]. Fails with index <<i>> does not refer to a
+machine.
+*)
 Definition equivocator_state_project
   (bs : equivocator_state)
   (i : nat)
@@ -107,6 +106,9 @@ Definition equivocator_state_update
   existT _ n
     (fun j => if Fin.eq_dec i j then si else projT2 bs j).
 
+(**
+Extends an [equivocator_state] with a new state of the original machine.
+*)
 Program Definition equivocator_state_extend
   (bs : equivocator_state)
   (s : vstate X)
@@ -125,6 +127,9 @@ Defined.
 Lemma Hzero (s : equivocator_state) : 0 < S (projT1 s).
 Proof. lia. Qed.
 
+(* An [equivocator_state] has the [initial_state_prop]erty if it only
+contains one state of original machine, and that state is initial.
+*)
 Definition equivocator_initial_state_prop
   (bs : equivocator_state)
   : Prop
@@ -165,18 +170,18 @@ Definition equivocator_transition
   let s := projT2 bs in
   let l := fst bl in
   match snd bl with
-  | NewMachine sn  =>
+  | NewMachine sn  => (* transition from a new machine with initial state sn*)
     let (sn', om') := vtransition X l (sn, om) in
     (equivocator_state_extend bs sn', om')
-  | Existing i is_equiv =>
+  | Existing i is_equiv => (* transition using the state of machine i *)
     match (le_lt_dec (S n) i) with
     | right lt_in =>
       let ni := of_nat_lt lt_in in
       let si := s ni in
       let (si', om') := vtransition X l (si, om) in
       match is_equiv with
-      | false => (equivocator_state_update bs ni si', om')
-      | true => (equivocator_state_extend bs si', om')
+      | false => (equivocator_state_update bs ni si', om') (* not equivocating *)
+      | true => (equivocator_state_extend bs si', om') (* equivocating in a new copy *)
       end
     | _ =>  bsom
     end
@@ -192,10 +197,10 @@ Definition equivocator_valid
   let s := projT2 bs in
   let l := fst bl in
   match snd bl with
-  | NewMachine sn  =>
+  | NewMachine sn  => (* state is initial and it's valid to transition from it *)
     vinitial_state_prop X sn
     /\ vvalid X l (sn, om)
-  | Existing i is_equiv =>
+  | Existing i is_equiv => (* the index is good, and transition valid for it *)
     exists (Hi : i < S n), vvalid X l (s (of_nat_lt Hi), om)
   end.
 
@@ -229,6 +234,11 @@ Local Tactic Notation "unfold_transition"  hyp(H) :=
   ; unfold projT2 in H; unfold equivocator_vlsm_machine in H
   ; unfold equivocator_transition in H).
 
+(**
+Protocol messages in the [equivocator_vlsm] are also protocol in the
+original machine.  All components of a protocol state in the
+[equivocator_vlsm] are also protocol in the original machine.
+*)
 Lemma equivocator_state_project_protocol
   (bs : vstate equivocator_vlsm)
   (om : option message)
@@ -384,6 +394,11 @@ Proof.
   assumption.
 Qed.
 
+(**
+All components of a protocol states of the [pre_loaded_vlsm] corresponding
+to an [equivocator_vlsm] are also protocol for the [pre_loaded_vlsm]
+corresponding to the original machine.
+*)
 Lemma preloaded_equivocator_state_project_protocol_state
   (bs : vstate equivocator_vlsm)
   (Hbs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) bs)

@@ -86,6 +86,9 @@ Proof.
      reflexivity.
 Qed.
 
+Definition option_bool_eq : EqDec (option bool)
+  := option_eq_dec Bool.bool_dec.
+
 Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
   snd (fst xyz).
 

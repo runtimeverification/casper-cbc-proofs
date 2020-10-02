@@ -13,6 +13,16 @@ From CasperCBC
 
 Section equivocator_vlsm_message_properties.
 
+(** * Lifting properties about sent messages to the equivocators
+
+In this section we first prove some general properties about sent messages
+being preserved and reflected by the [equivocator_vlsm], and then we show
+that the [has_been_sent_capability] and the [computable_sent_messages]
+can be lifted (each separately) from the original machine to the
+[equivocator_vlsm].
+*)
+
+
 Context
   {message : Type}
   (X : VLSM message)
@@ -20,6 +30,73 @@ Context
   (MachineDescriptor := MachineDescriptor X)
   .
 
+(**
+If [equivocator_vlsm_transition_item_project] produces a transition item,
+then that item has the same [input] and [output] as the argument item.
+*)
+Lemma equivocator_transition_item_project_inv_messages
+  (item : vtransition_item equivocator_vlsm)
+  (itemX : vtransition_item X)
+  (idescriptor odescriptor : MachineDescriptor)
+  (Hitem : equivocator_vlsm_transition_item_project _ item idescriptor = Some (Some itemX, odescriptor))
+  : exists
+    (i : nat)
+    (is_equiv : bool)
+    (Hdescriptor : idescriptor = Existing _ i is_equiv),
+    input item = input itemX /\ output item = output itemX.
+Proof.
+  unfold equivocator_vlsm_transition_item_project in Hitem.
+  destruct idescriptor as [s|j fj]; try discriminate Hitem.
+  exists j. exists fj. exists eq_refl.
+  destruct item.
+  destruct destination as (n, bs).
+  destruct l as (lx, descriptorx).
+  destruct (le_lt_dec (S n) j); try discriminate Hitem.
+  destruct descriptorx as [s | i' [|]] eqn:Hl; simpl.
+  - destruct (nat_eq_dec (S j) (S n)); try discriminate Hitem.
+    inversion Hitem. subst. clear Hitem. repeat split; reflexivity.
+  - destruct (nat_eq_dec (S j) (S n)); try discriminate Hitem.
+    inversion Hitem. subst. repeat split; reflexivity.
+  - destruct (nat_eq_dec i' j); try discriminate Hitem.
+    inversion Hitem. subst. repeat split; reflexivity.
+Qed.
+
+(**
+If a projection of an [equivocator_vlsm] trace [output]s a message, then
+the original trace must do so too.
+*)
+Lemma equivocator_vlsm_trace_project_output_reflecting
+  (tr: list (vtransition_item equivocator_vlsm))
+  (trX: list (vtransition_item X))
+  (j i : MachineDescriptor)
+  (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
+  (m : message)
+  (Hjbs: Exists (fun elem : vtransition_item X => output elem = Some m) trX)
+  : Exists (fun elem : transition_item => output elem = Some m) tr.
+Proof.
+  generalize dependent i. generalize dependent trX.
+  induction tr; intros.
+  - inversion HtrX. subst. inversion Hjbs.
+  - simpl in HtrX.
+    destruct (equivocator_vlsm_trace_project _ tr j) as [(trX', i')|]
+      eqn:Htr; try discriminate HtrX.
+    specialize (IHtr trX').
+    destruct (equivocator_vlsm_transition_item_project _ a i') as [[[item'|] i'']|]
+      eqn:Hitem'; try discriminate HtrX
+    ; inversion HtrX; subst; clear HtrX.
+    + apply equivocator_transition_item_project_inv_messages in Hitem'.
+      destruct Hitem' as [_ [_ [_ [_ Ha]]]].
+      inversion Hjbs; subst.
+      * left. rewrite Ha. assumption.
+      * specialize (IHtr H0 i' eq_refl). right. assumption.
+    + specialize (IHtr Hjbs i' eq_refl). right. assumption.
+Qed.
+
+(**
+For any [transition_item] in a protocol trace segment of an
+[equivocator_vlsm] there exists a projection of that trace containing
+the projection of the item.
+*)
 Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
@@ -94,8 +171,8 @@ Proof.
   destruct d' as [sn | id fd].
   - destruct Hd' as [Hsn [Hvsn Htsn]].
     assert
-      (Hprefix : equivocator_vlsm_trace_project _ bprefix (NewMachine _ sn) = Some ([], NewMachine _ sn))
-      by apply equivocator_vlsm_trace_project_on_hard_fork.
+      (Hprefix : equivocator_vlsm_trace_project  _ bprefix (NewMachine _ sn) = Some ([], NewMachine _ sn))
+      by apply equivocator_vlsm_trace_project_on_new_machine.
     specialize
       (equivocator_vlsm_trace_project_app_inv _ _ _ _ _ _ _ _ Hprefix Hsuffix')
       as Htr.
@@ -118,6 +195,10 @@ Proof.
     apply in_app_iff. right. left. reflexivity.
 Qed.
 
+(**
+If an [equivocator_vlsm]'s protocol trace segment [output]s a message, then
+one of its projections must do so too.
+*)
 Lemma equivocator_vlsm_trace_project_output_reflecting_inv
   (is: vstate equivocator_vlsm)
   (tr: list (vtransition_item equivocator_vlsm))
@@ -144,180 +225,19 @@ Proof.
   rewrite Hitemx in Houtput. assumption.
 Qed.
 
-Section trace_mixer.
-
-Definition preloaded_protocol_equivocator_vlsm_trace_oproject
-  (is : vstate equivocator_vlsm)
-  (btr : list (vtransition_item equivocator_vlsm))
-  (nj : Fin.t (S (projT1 (last (map destination btr) is))))
-  : option (vstate X * list (vtransition_item X))
-  :=
-  let (j, _) := to_nat nj in
-  match equivocator_vlsm_trace_project _ btr (Existing _ j false) with
-  | Some (trx, NewMachine _ sn) => Some (sn, trx)
-  | Some (trx, Existing _ i _) =>
-    match (le_lt_dec (S (projT1 is)) i) with
-    | left _ => None
-    | right Hi => Some (projT2 is (of_nat_lt Hi), trx)
-    end
-  | _ => None
-  end.
-
-Definition equivocator_vlsm_projector_type
-  (is : vstate equivocator_vlsm)
-  (btr : list (vtransition_item equivocator_vlsm))
-  : Type
-  :=
-  forall
-    (nj : Fin.t (S (projT1 (last (map destination btr) (is))))),
-    option (vstate X * list (vtransition_item X)).
-
-Definition equivocator_projection_update
-  (is : vstate equivocator_vlsm)
-  (btr : list (vtransition_item equivocator_vlsm))
-  (projector : equivocator_vlsm_projector_type is btr)
-  (ni : Fin.t (S (projT1 (last (map destination btr) is))))
-  (ni_trace : option (vstate X * list (vtransition_item X)))
-  (nj : Fin.t (S (projT1 (last (map destination btr) is))))
-  : option (vstate X * list (vtransition_item X))
-  := 
-  if Fin.eq_dec ni nj then ni_trace else projector nj.
-
-Definition preloaded_protocol_equivocator_vlsm_trace_oproject_update
-  (is : vstate equivocator_vlsm)
-  (btr : list (vtransition_item equivocator_vlsm))
-  (ni : Fin.t (S (projT1 (last (map destination btr) is))))
-  (isi : vstate X)
-  (tri : list (vtransition_item X))
-  : equivocator_vlsm_projector_type is btr
-  :=
-  equivocator_projection_update is btr
-    (preloaded_protocol_equivocator_vlsm_trace_oproject is btr)
-    ni (Some (isi, tri)).
-
-Definition projection_traces
-  (is : vstate equivocator_vlsm)
-  (btr : list (vtransition_item equivocator_vlsm))
-  (projector : equivocator_vlsm_projector_type is btr)
-  (n := projT1 (last (map destination btr) is))
-  : list (vstate X * list (vtransition_item X))
-  :=
-  map_option projector (fin_t_listing (S n)).
-
-Definition projection_traces_replace_one
-  (is : vstate equivocator_vlsm)
-  (btr : list (vtransition_item equivocator_vlsm))
-  (ni : Fin.t (S (projT1 (last (map destination btr) is))))
-  (isi : vstate X)
-  (tri : list (vtransition_item X))
-  : list (vstate X * list (vtransition_item X))
-  :=
-  projection_traces is btr
-    (preloaded_protocol_equivocator_vlsm_trace_oproject_update is btr ni isi tri).
-
-Lemma projection_traces_replace_one_length
-  (is : vstate equivocator_vlsm)
-  (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) is btr)
-  (n := projT1 (last (map destination btr) is))
-  (ni : Fin.t (S n))
-  (isi : vstate X)
-  (tri : list (vtransition_item X))
-  : length (projection_traces_replace_one is btr ni isi tri) = S n.
-Proof.
-  unfold projection_traces_replace_one.
-  unfold projection_traces.
-  rewrite map_option_length; try apply fin_t_listing_length.
-  apply Forall_forall.
-  intros nj Hnj.
-  unfold preloaded_protocol_equivocator_vlsm_trace_oproject_update.
-  unfold equivocator_projection_update.
-  destruct (Fin.eq_dec ni nj).
-  - rewrite eq_dec_if_true; try assumption.
-    intro contra. discriminate contra.
-  - rewrite eq_dec_if_false; try assumption.
-    unfold preloaded_protocol_equivocator_vlsm_trace_oproject.
-    destruct (to_nat nj) as [j Hj] eqn:Heqnj.
-    destruct
-      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ Hbtr _ Hj false)
-      as [trX [di [Hproject Hdi]]].
-    rewrite Hproject.
-    destruct di as [sn | i fi].
-    + intro contra. discriminate contra.
-    + destruct Hdi as [Hi [HlstX [HtrX]]].
-      destruct (le_lt_dec (S (projT1 is)) i). { lia. }
-      intro contra. discriminate contra.
-Qed.
-
-Context
-  (goal_state : vstate equivocator_vlsm)
-  (n := projT1 goal_state)
-  (traces : list (vstate X * list (vtransition_item X)))
-  (Hn : length traces = S n)
-  (Htraces : Forall
-    (fun trace => 
-      finite_protocol_trace (pre_loaded_vlsm X) (fst trace) (snd trace)
-    )
-    traces)
-  (Hne_traces : Forall (fun trace => snd trace <> []) traces)
-  (Hs
-    : forall i : Fin.t (S n),
-      let (ni, _) := to_nat i in
-      match nth ni traces (proj1_sig (vs0 X), []) with (isi, tri) =>
-        last (map destination tri) isi = projT2 goal_state i
-      end
-  )
-  .
-
-Definition lift_trace_to_equivocator
-  (start : vstate equivocator_vlsm)
-  (i := projT1 start)
-  (isi : vstate X)
-  (tri : list (vtransition_item X))
-  : list (vtransition_item equivocator_vlsm)
-  :=
-  match tri with
-  | [] => []
-  | {| l := lx; input := iom; output := oom; destination := sx |} :: tri' =>
-    {| l := mk_label _ lx (NewMachine _ isi); input := iom; output := oom; destination := equivocator_state_extend _ start sx |}
-    :: fold_right
-      (fun lab tr =>
-        match lab with {| l := lx; input := iom; output := oom; destination := sx |} =>
-          {| l := mk_label _ lx  (Existing _ (S i) false); input := iom; output := oom; destination := equivocator_state_extend _ start sx |}
-          :: tr
-        end)
-      [] tri
-  end.
-
-Definition lift_traces_to_equivocator
-  : list (vtransition_item equivocator_vlsm)
-  :=
-  fst
-    (fold_left
-      (fun rez tracei =>
-        let isxi := fst tracei in
-        let trxi := snd tracei in
-        match rez with (tr, s) =>
-          let tri := lift_trace_to_equivocator s isxi trxi in
-          (tr ++ tri, last (map destination tri) s)
-        end
-      ) traces ([], proj1_sig (vs0 equivocator_vlsm))
-    ).
-
-Lemma lift_traces_to_equivocator_protocol_trace
-  : finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm)
-          (proj1_sig (vs0 equivocator_vlsm)) lift_traces_to_equivocator.
-Admitted.
-
-End trace_mixer.
-
-
 Section has_been_sent_lifting.
+
+(** ** Lifting the [has_been_sent_capability]
+*)
+
 
 Context
   {Hbs : has_been_sent_capability X}
   .
 
+(** We define [has_been_sent] for the [equivocator_vlsm] as being sent by any
+of the internal machines.
+*)
 Definition equivocator_has_been_sent
   (s : vstate equivocator_vlsm)
   (m : message)
@@ -328,6 +248,11 @@ Definition equivocator_has_been_sent
     (fun i => has_been_sent X (bs i) m)
     (fin_t_listing (S n)).
 
+(**
+The [equivocator_vlsm] has the [selected_messages_consistency_prop]
+for [output] messages, meaning that if a message is sent in a trace leading
+to state s, then it must be seen in all traces.
+*)
 Lemma equivocator_has_been_sent_consistency
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
@@ -340,7 +265,7 @@ Proof.
       as [j [i [trX [Hproject Hsomex]]]].
     destruct j as [sj | j fj]
     ; try
-      (rewrite equivocator_vlsm_trace_project_on_hard_fork in Hproject
+      (rewrite equivocator_vlsm_trace_project_on_new_machine in Hproject
       ; inversion Hproject; subst; inversion Hsomex
       ).
     assert (Hntr : btr <> []) by (intro contra; subst; inversion Hsome).
@@ -376,7 +301,7 @@ Proof.
       (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ Hbtr _ Hj false)
       as [trX [di [Hproject Hdi]]].
     apply
-      (equivocator_vlsm_trace_project_output_reflecting _  _ _ _ _ Hproject m).
+      (equivocator_vlsm_trace_project_output_reflecting  _ _ _ _ Hproject m).
     destruct di as [sn | i fi].
     + destruct Hdi as [Hlast HtrX].
       symmetry in Hlast.
@@ -396,6 +321,9 @@ Proof.
     apply (Hall _ _ Htr Hlst).
 Qed.
 
+(**
+[equivocator_has_been_sent] has [proper_sent] property.
+*)
 Lemma equivocator_proper_sent
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
@@ -436,7 +364,6 @@ Proof.
     destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
     ; try (elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit output m)
       ; assumption).
-    specialize (lift_traces_to_equivocator_protocol_trace s) as Hlift_protocol_trace.
     assert (Hlst := last_error_destination_last _ _ Hlast is).
     spec Hbbs is tr Htr Hlst.
     destruct
@@ -445,7 +372,7 @@ Proof.
     assert (Hntr : tr <> []) by (intro contra; subst; inversion Hbbs).
     destruct j as [sj | j fj]
     ; try
-      (rewrite equivocator_vlsm_trace_project_on_hard_fork in HtrX
+      (rewrite equivocator_vlsm_trace_project_on_new_machine in HtrX
       ; inversion HtrX; subst; inversion Hjbs
       ).
     specialize
@@ -455,7 +382,7 @@ Proof.
     rewrite Hlst in HpreX. simpl in HpreX.
     destruct HpreX as [Hj Hi].
     unfold equivocator_has_been_sent.
-    destruct s as (ns, bs). simpl in Hlift_protocol_trace.
+    destruct s as (ns, bs).
     apply existsb_exists.
     exists (of_nat_lt Hj). split; try apply fin_t_full.
     assert (Hbsj : protocol_state_prop (pre_loaded_vlsm X) (bs (of_nat_lt Hj))).
@@ -480,6 +407,9 @@ Proof.
       assumption.
 Qed.
 
+(**
+[equivocator_has_been_sent] has [proper_not_sent] property.
+*)
 Lemma equivocator_proper_not_sent
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
@@ -492,6 +422,8 @@ Proof.
   - apply equivocator_has_been_sent_consistency. assumption.
 Qed.
 
+(** Finally we define the [has_been_sent_capability] for the [equivocator_vlsm].
+*)
 Definition equivocator_has_been_sent_capability
   : has_been_sent_capability equivocator_vlsm
   :=
@@ -505,6 +437,8 @@ End has_been_sent_lifting.
 
 Section computable_sent_messages_lifting.
 
+(** ** Lifting the [computable_sent_messages] property
+*)
 
 Context
   {Hsent_messages : computable_sent_messages X}
@@ -512,6 +446,9 @@ Context
   (Hbeen_sent_X := @computable_sent_messages_has_been_sent_capability message X Hsent_messages message_eq)
   .
 
+(** We define the [sent_messages_fn] for the [equivocator_vlsm] as the 
+union of all [sent_messages_fn] for its internal machines.
+*)
 Definition equivocator_sent_messages_fn
   (s : vstate equivocator_vlsm)
   : set message
@@ -519,6 +456,8 @@ Definition equivocator_sent_messages_fn
   fold_right (set_union eq_dec) []
     (map (fun i => sent_messages_fn X (projT2 s i)) (fin_t_listing (S (projT1 s)))).
 
+(** [equivocator_sent_messages_fn] captures all [sent_messages] for that state.
+*)
 Lemma equivocator_sent_messages_full
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
@@ -577,7 +516,7 @@ Proof.
     assert (Hntr : tr <> []) by (intro contra; subst; inversion Hexists).
     destruct ifinal as [sfinal | i ffinal]
     ; try (
-      rewrite equivocator_vlsm_trace_project_on_hard_fork in Hproject
+      rewrite equivocator_vlsm_trace_project_on_new_machine in Hproject
       ; inversion Hproject; subst; inversion HexistsX
       ).
     specialize
@@ -605,6 +544,11 @@ Proof.
         assumption.
 Qed.
 
+(** Finally, we define the [computable_sent_messages] instance for the
+[equivocator_vlsm].
+Note that we can reuse the consistency property proved above since 
+[computable_sent_messages] for <<X>> implies [has_been_sent_capability].
+*)
 Definition equivocator_computable_sent_messages
   : computable_sent_messages equivocator_vlsm
   :=
