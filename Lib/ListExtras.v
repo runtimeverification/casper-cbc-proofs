@@ -1576,6 +1576,22 @@ Fixpoint complete_prefix
                                end
   end.
 
+Lemma complete_prefix_empty 
+  {A : Type}
+  `{EqDec A}
+  (l : list A) :
+  complete_prefix l [] = Some l.
+
+Proof.
+  induction l.
+  - simpl. reflexivity.
+  - simpl.
+    destruct (complete_prefix l []).
+    inversion IHl.
+    reflexivity.
+    discriminate IHl.
+Qed.
+
 Lemma complete_prefix_correct 
   {A : Type}
   `{EqDec A}
@@ -1617,8 +1633,22 @@ Proof.
      + destruct pref; destruct suff;
        try intuition;
        try discriminate H0.
-     + unfold complete_prefix in H0.
-       destruct pref.
-       specialize (IHl [] suff).
-       destruct (complete_prefix l []). 
+     + destruct pref eqn : eq_pref.
+       rewrite complete_prefix_empty in H0.
+       inversion H0.
+       intuition.
+       simpl.
+       simpl in H0.
+       destruct (eq_dec a a0).
+       destruct (complete_prefix l l0) eqn : eq_cp.
+       inversion H0.
+       rewrite e.
+       f_equal.
+       specialize (IHl l0 suff).
+       spec IHl.
+       rewrite eq_cp.
+       f_equal. assumption.
+       assumption.
+       discriminate H0.
+       discriminate H0.
 Qed.

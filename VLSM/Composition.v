@@ -1159,9 +1159,9 @@ All results from regular projections carry to these "free" projections.
   
   Definition independent_traces
     (a b : (list (@transition_item message (type X)))) : Prop :=
-    let ind_a := List.map (@projT1 (composite_label IM) _) (List.map l a) in
-    let ind_b := List.map (@projT1 (composite_label IM) _) (List.map l b) in
-    set_diff ind_a ind_b = [].
+    let ind_a := List.map (@projT1 _ _) (List.map l a) in
+    let ind_b := List.map (@projT1 _ _) (List.map l b) in
+    set_inter eq_dec ind_a ind_b = [].
   
   Lemma free_trace_reordering 
     (s : vstate X)
@@ -1172,8 +1172,51 @@ All results from regular projections carry to these "free" projections.
     (Hindependent : independent_traces a b) :
     finite_protocol_trace_from _ s (a ++ b).
   Proof.
-  Qed.
-
+    apply finite_protocol_trace_from_app_iff.
+    split.
+    assumption.
+    generalize dependent s.
+    induction b.
+    - intros.
+      apply finite_ptrace_empty.
+      apply finite_ptrace_last_pstate.
+      assumption.
+    - intros.
+      destruct a0 as [l' input dest output].
+      apply finite_ptrace_extend.
+      inversion Hb.
+      assumption.
+      inversion Hb.
+      unfold protocol_transition in *.
+      unfold protocol_valid in *.
+      destruct H6 as [Hvalid Htransition].
+      destruct Hvalid as [Hprot [Ho Hvalid]].
+      repeat split.
+      apply finite_ptrace_last_pstate.
+      assumption.
+      intuition.
+      unfold free_composite_valid.
+      destruct l'.
+      assert (last (map destination a) s x = s x) as Hpres. {
+        admit.
+      }
+      rewrite Hpres.
+      simpl in Hvalid.
+      unfold constrained_composite_valid in Hvalid.
+      simpl in Hvalid.
+      intuition.
+      simpl.
+      destruct l'.
+      assert (last (map destination a) s x = s x) as Hpres. {
+        admit.
+      }
+      simpl.
+      unfold vtransition.
+      unfold transition.
+      unfold machine.
+      
+      replace (last (map destination a) s x, input) with (s x, input).
+ Admitted.
 End free_projections.
 
 Section binary_free_composition.

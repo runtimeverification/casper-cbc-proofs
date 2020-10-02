@@ -2252,3 +2252,62 @@ Byzantine fault tolerance analysis. *)
 
 End pre_loaded_vlsm.
 
+Section actions.
+
+  Context
+      {message : Type}
+      (X : VLSM message)
+      (TypeX := type X)
+      (SignX := sign X)
+      (MachineX := machine X).
+
+  Record action_item :=
+    {   label_a : @label message TypeX;   
+        input_a : option message
+    }.
+    
+  Definition action := list action_item.
+  
+  Fixpoint apply_action'
+    (a : action)
+    (s : state) 
+    : list transition_item :=
+    match a with
+    | [] => []
+    | {| label_a := l'; input_a := input' |} :: tl =>
+      let res := (@transition _ _ SignX MachineX l' (s, input')) in
+      let dest := fst res in 
+      let out := snd res in
+      {| l := l';
+         input := input';
+         output := out;
+         destination := dest
+       |} :: apply_action' tl dest
+    end. 
+  
+  Definition apply_action 
+    (a : action)
+    (s : state)
+    : (state * list transition_item) :=
+      let tr := apply_action' a s in
+      let res := last (List.map destination tr) s in
+      (res, tr).
+  
+  Definition protocol_action
+    (a : action)
+    (s : state) : Prop :=
+    finite_protocol_trace_from _ s (snd (apply_action a s)).
+   
+  Class PropertyPreservingAction
+  (property : state -> Prop) :=
+  {
+    preserves_q 
+      (s : state)
+      (a : action)
+      (H : property s)
+      (Hpr : protocol_action a s) :
+      property (fst (apply_action a s));
+  }.
+
+
+End actions.

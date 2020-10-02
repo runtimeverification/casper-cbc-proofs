@@ -51,8 +51,6 @@ Context
   Definition unite_observations (ls : list state) : list (@state index index_listing) := 
     fold_right (set_union eq_dec) [] (List.map complete_observations ls).
   
-  Check @equivocation_evidence.
-  
   Definition GH (s : vstate X) : list index := 
     List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index state _ comparable_states ce s i)) index_listing.
   
@@ -124,17 +122,16 @@ Context
   
   Definition sync_component'
     (s target : (@state index index_listing))
-    (i : index) : list (@transition_item message (type X)) :=
-    
+    (i : index) : list (@transition_item message (type X)) := [].
   
   Definition sync_component 
     (s : vstate X) 
     (to from : index) 
     (target : state) :
     option (list (@transition_item message (type X))) :=
-    match (can_receive_extended to s (from, target)) with
+    match (can_receive_extended to (s from) (from, target)) with
     | false => None
-    | true => Some (sync_component' (s to) target)
+    | true => Some (sync_component' (s to) target from)
     end.
     
   Definition sync (s : vstate X) (from to : index) : list (@transition_item message (type X)) :=
