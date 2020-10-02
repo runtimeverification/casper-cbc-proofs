@@ -8,7 +8,8 @@ VLSM/ProjectionTraces.v
 VLSM/CommonFutures.v
 VLSM/Validating.v
 VLSM/ByzantineTraces.v
-VLSM/Equivocators.v
+VLSM/Equivocators/Common.v
+VLSM/Equivocators/Projections.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
 VLSM/ObservableEquivocation.v
@@ -43,3 +44,4 @@ Lib/TraceClassicalProperties.v
 Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
+Lib/FinExtras.v
