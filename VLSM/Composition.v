@@ -1157,21 +1157,23 @@ All results from regular projections carry to these "free" projections.
       + rewrite state_update_neq; try assumption. apply Hs.
   Qed.
   
-  Definition independent_traces
-    (a b : (list (@transition_item message (type X)))) : Prop :=
-    let ind_a := List.map (@projT1 _ _) (List.map l a) in
-    let ind_b := List.map (@projT1 _ _) (List.map l b) in
+  Definition independent_actions
+    (a b : action X) : Prop :=
+    let ind_a := List.map (@projT1 _ _) (List.map (@label_a _ _) a) in
+    let ind_b := List.map (@projT1 _ _) (List.map (@label_a _ _) b) in
     set_inter eq_dec ind_a ind_b = [].
   
   Lemma free_trace_reordering 
     (s : vstate X)
     (Hs : protocol_state_prop X s)
-    (a b : list transition_item)
-    (Ha : finite_protocol_trace_from _ s a)
-    (Hb : finite_protocol_trace_from _ s b)
-    (Hindependent : independent_traces a b) :
-    finite_protocol_trace_from _ s (a ++ b).
+    (a b : action X)
+    (Ha : protocol_action _ a s)
+    (Hb : protocol_action _ b s)
+    (Hindependent : independent_actions a b) :
+    protocol_action _ (a ++ b) s.
   Proof.
+  Admitted.
+  (* 
     apply finite_protocol_trace_from_app_iff.
     split.
     assumption.
@@ -1217,6 +1219,7 @@ All results from regular projections carry to these "free" projections.
       
       replace (last (map destination a) s x, input) with (s x, input).
  Admitted.
+ *)
 End free_projections.
 
 Section binary_free_composition.

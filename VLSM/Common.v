@@ -2299,15 +2299,39 @@ Section actions.
     finite_protocol_trace_from _ s (snd (apply_action a s)).
    
   Class PropertyPreservingAction
+  (f : action -> Prop)
   (property : state -> Prop) :=
   {
-    preserves_q 
+    preserves_property 
       (s : state)
       (a : action)
-      (H : property s)
+      (Hs : property s)
+      (Ha : f a)
       (Hpr : protocol_action a s) :
       property (fst (apply_action a s));
   }.
-
-
+  
+  Lemma apply_action_app 
+    (a b : action)
+    (s : state) :
+    apply_action b (fst (apply_action a s)) = apply_action (a ++ b) s.
+  Proof.
+    induction a.
+    - simpl. reflexivity.
+    - unfold apply_action at 2.
+      unfold apply_action'.
+  Admitted.
+  
+  Lemma protocol_action_app_iff
+    (a b : action)
+    (s : state) :
+    let s_a := fst (apply_action a s) in
+    protocol_action a s /\ protocol_action b s_a <-> 
+    protocol_action (a ++ b) s.
+  Proof.
+    unfold protocol_action.
+    unfold apply_action.
+    simpl.
+    admit.
+  Admitted.
 End actions.

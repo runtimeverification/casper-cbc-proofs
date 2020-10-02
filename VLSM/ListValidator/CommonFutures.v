@@ -111,36 +111,6 @@ Context
     | left _ => true 
     | right _ => state_ltb (project s from) s'
     end.
-
-  Definition latest_versions (s : vstate X) (i : index) : list state :=
-    let sc := List.map s index_listing in
-    List.map ((flip project) i) sc.
-  
-  Definition pick_version (s : vstate X) (from to : index) : option message :=
-    let latest_messages := List.map (pair from) (latest_versions s from) in
-    find (can_receive_extended to (s to)) latest_messages.
-  
-  Definition sync_component'
-    (s target : (@state index index_listing))
-    (i : index) : list (@transition_item message (type X)) := [].
-  
-  Definition sync_component 
-    (s : vstate X) 
-    (to from : index) 
-    (target : state) :
-    option (list (@transition_item message (type X))) :=
-    match (can_receive_extended to (s from) (from, target)) with
-    | false => None
-    | true => Some (sync_component' (s to) target from)
-    end.
-    
-  Definition sync (s : vstate X) (from to : index) : list (@transition_item message (type X)) :=
-    let candidates := latest_versions s from in
-    let goal := (pick_version s from to) in 
-    match goal with
-    | None => []
-    | Some goal' => []
-    end. 
   
   Definition feasible_update_value (s : (@state index index_listing)) : bool :=
     match s with
@@ -535,5 +505,36 @@ Context
       rewrite H0 in Hina.
       assumption.
   Qed.
+  
+  Definition latest_versions (s : vstate X) (i : index) : list state :=
+    let sc := List.map s index_listing in
+    List.map ((flip project) i) sc.
+  
+  Definition pick_version (s : vstate X) (from to : index) : option message :=
+    let latest_messages := List.map (pair from) (latest_versions s from) in
+    find (can_receive_extended to (s to)) latest_messages.
+  
+  Definition sync_component'
+    (s target : (@state index index_listing))
+    (i : index) : list (@transition_item message (type X)) := [].
+  
+  Definition sync_to_from 
+    (s : vstate X) 
+    (to from : index) 
+    (target : (@state index index_listing)) :
+    option (list (@transition_item message (type X))) :=
+    Some [].
     
+  Definition sync_all_from
+    (s : vstate X)
+    (to from : index)
+    
+  Definition sync (s : vstate X) (from to : index) : list (@transition_item message (type X)) :=
+    let candidates := latest_versions s from in
+    let goal := (pick_version s from to) in 
+    match goal with
+    | None => []
+    | Some goal' => []
+    end. 
+ 
 End Composition.

@@ -1652,3 +1652,56 @@ Proof.
        discriminate H0.
        discriminate H0.
 Qed.
+
+Definition complete_suffix 
+  {A : Type}
+  `{EqDec A}
+  (l suff : list A) : option (list A) :=
+  let res := complete_prefix (rev l) (rev suff) in
+  match res with
+  | None => None
+  | Some ls => Some (rev ls)
+  end.
+  
+Lemma complete_suffix_correct 
+  {A : Type}
+  `{EqDec A}
+  (l pref suff : list A) :
+  l = pref ++ suff <->
+  complete_suffix l suff = Some pref.
+Proof.
+  unfold complete_suffix.
+  split.
+  - intros.
+    destruct (complete_prefix (rev l) (rev suff)) eqn : eq_c.
+    apply complete_prefix_correct in eq_c.
+    rewrite H0 in eq_c.
+    rewrite rev_app_distr in eq_c.
+    assert (l0 = rev pref). {
+      apply app_inv_head in eq_c.
+      symmetry.
+      assumption.
+    }
+    rewrite H1.
+    f_equal.
+    apply rev_involutive.
+    assert (rev l = rev suff ++ rev pref). {
+      apply rev_eq_app.
+      rewrite rev_involutive.
+      assumption.
+    }
+    apply complete_prefix_correct in H1.
+    rewrite eq_c in H1.
+    discriminate H1.
+  - destruct (complete_prefix (rev l) (rev suff)) eqn : eq_c.
+    intros.
+    inversion H0.
+    apply complete_prefix_correct in eq_c.
+    apply rev_eq_app in eq_c.
+    rewrite rev_involutive in eq_c.
+    assumption.
+    intros.
+    discriminate H0.
+Qed.
+  
+ 
