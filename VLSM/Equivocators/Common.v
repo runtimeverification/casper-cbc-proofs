@@ -1,14 +1,13 @@
 Require Import
-  List ListSet Coq.Vectors.Fin FinFun
-  Arith.Compare_dec Lia Wf_nat
+  List Coq.Vectors.Fin
+  Arith.Compare_dec Lia
   Program
-  FunctionalExtensionality
   .
 Import ListNotations.
 From CasperCBC
   Require Import
-    Preamble ListExtras ListSetExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation
+    Preamble
+    VLSM.Common
     .
 
 (** * Equivocator VLSMs
@@ -441,7 +440,7 @@ Proof.
         destruct (to_nat i) as (ni, Hni).
         destruct (nat_eq_dec ni (S ns)); try (exists om'; assumption).
         apply Hs.
-      * destruct (Fin.eq_dec (Fin2Restrict.n2f Hj) i); try apply Hs.
+      * destruct (Fin.eq_dec (of_nat_lt Hj) i); try apply Hs.
         exists om'. assumption.
 Qed.
 
