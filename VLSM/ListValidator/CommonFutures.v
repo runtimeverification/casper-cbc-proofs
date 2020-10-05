@@ -514,6 +514,7 @@ Context
     let latest_messages := List.map (pair from) (latest_versions s from) in
     find (can_receive_extended to (s to)) latest_messages.
   
+  (* 
   Definition sync_component'
     (s target : (@state index index_listing))
     (i : index) : list (@transition_item message (type X)) := [].
@@ -528,13 +529,67 @@ Context
   Definition sync_all_from
     (s : vstate X)
     (to from : index)
+  *)
+  
+  (* 
+  Definition sync_action' (to from : index) (ls : state) : (@action _ (type (IM_index t *)
+  
+  Definition lift_to_receive_item (to from : index) (s : state): @action_item _ (type (IM_index to)) :=
+    @Build_action_item _ (type (IM_index to)) receive (Some (from, s)).
+  
+  Definition sync_action (to from : index) (ls : list state) : (@action _ (type X)) := 
+    let tmp := List.map (lift_to_receive_item to from)ls in
+    List.map (lift_to_composite_action_item IM_index to) tmp.
+  
+  Definition sync (s : vstate X) (s': state) (to from : index) : option (action) :=
+    let history_s := get_history (s to) from in
+    let history_s' := get_history s' from in
+    let rem_states := complete_suffix history_s' history_s in
+    match rem_states with
+    | None => None
+    | Some ss => let rem_action := sync_action to from (rev ss) in
+                 Some rem_action
+    end.
     
-  Definition sync (s : vstate X) (from to : index) : list (@transition_item message (type X)) :=
-    let candidates := latest_versions s from in
-    let goal := (pick_version s from to) in 
-    match goal with
-    | None => []
-    | Some goal' => []
-    end. 
+   Lemma something
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (to from :index)
+    (s' : state)
+    (a : action)
+    (Hsync : sync s s' to from = Some a) :
+    let res := fst (apply_action _ a s) in
+    protocol_action _ a s /\
+    project (res to) from = project s' from.
+   Proof.
+    generalize dependent s.
+    generalize dependent s'.
+    induction a.
+    - intros.
+      simpl in *.
+      repeat split.
+      unfold protocol_action.
+      simpl.
+      apply finite_ptrace_empty.
+      assumption.
+      unfold res.
+      unfold sync in Hsync.
+      destruct (complete_suffix (get_history s' from) (get_history (s to) from)) eqn : eq_cs.
+      inversion Hsync.
+      unfold sync_action in H0.
+      apply map_eq_nil in H0.
+      apply map_eq_nil in H0.
+      apply complete_suffix_correct in eq_cs.
+      assert (l = []). {
+        destruct l.
+        reflexivity.
+        simpl in H0.
+        admit.
+      }
+      rewrite H in eq_cs. simpl in eq_cs.
+   Admitted.
+    
+     
+                 
  
 End Composition.

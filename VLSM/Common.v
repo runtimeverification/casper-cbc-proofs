@@ -112,6 +112,14 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
         ;   destination : state
         ;   output : option message
     }.
+  
+  
+  Record action_item :=
+    {   label_a : label;   
+        input_a : option message
+    }.
+    
+  Definition action := list action_item.
 
   Inductive Trace : Type :=
   | Finite : state -> list transition_item -> Trace
@@ -161,6 +169,7 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition vtransition := @transition _ _ _ machine.
   Definition vvalid := @valid _ _ _ machine.
   Definition vtransition_item := @transition_item _ type.
+  Definition vaction_item := @action_item _ type.
   Definition vTrace := @Trace _ type.
 
 End vlsm_projections.
@@ -2260,14 +2269,14 @@ Section actions.
       (TypeX := type X)
       (SignX := sign X)
       (MachineX := machine X).
-
+  (*
   Record action_item :=
     {   label_a : @label message TypeX;   
         input_a : option message
-    }.
+    }. 
     
   Definition action := list action_item.
-  
+  *)
   Fixpoint apply_action'
     (a : action)
     (s : state) 

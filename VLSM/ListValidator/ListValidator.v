@@ -581,4 +581,6 @@ Definition VLSM_list
   (est : state -> bool -> Prop)
   : VLSM message := mk_vlsm (VLSM_list_machine est).
 
+Definition mk_label (l : label_list) : @label _ VLSM_list_protocol := l.
+
 End ListNode.

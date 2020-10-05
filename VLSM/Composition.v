@@ -242,6 +242,20 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       - exact (lift_to_composite_state' s j destination).
       - exact output.
     Defined.
+    
+    Check @transition_item.
+    Check @action_item.
+    
+    Definition lift_to_composite_action_item
+      (i : index)
+      (a : vaction_item (IM i)) :
+      @action_item _ composite_type.
+    Proof.
+      destruct a.
+      split.
+      - exact (existT _ i label_a).
+      - exact input_a.
+    Defined.
 
     Definition lift_to_composite_trace
       (j : index)
@@ -1157,6 +1171,7 @@ All results from regular projections carry to these "free" projections.
       + rewrite state_update_neq; try assumption. apply Hs.
   Qed.
   
+  (* 
   Definition independent_actions
     (a b : action X) : Prop :=
     let ind_a := List.map (@projT1 _ _) (List.map (@label_a _ _) a) in
@@ -1219,6 +1234,7 @@ All results from regular projections carry to these "free" projections.
       
       replace (last (map destination a) s x, input) with (s x, input).
  Admitted.
+ *)
  *)
 End free_projections.
 
