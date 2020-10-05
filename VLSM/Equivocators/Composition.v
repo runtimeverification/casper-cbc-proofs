@@ -41,7 +41,7 @@ Context {message : Type}
   {index equiv_index nequiv_index : Type}
   (partition : index -> equiv_index + nequiv_index)
   (rpartition : equiv_index + nequiv_index -> index)
-  (Hlpartition : forall i : index, rpartition (partition i) = i)
+  (Hlpartition : forall i : index, i = rpartition (partition i))
   (Hrpartition : forall i : equiv_index + nequiv_index, partition (rpartition i) = i)
   {IndEqDec : EqDec index}
   (IM : index -> VLSM message)
@@ -105,12 +105,9 @@ Definition equivocators_state_project'
 Definition equivocators_state_project
   (s : vstate equivocators_no_equivocations_vlsm)
   (i : index)
-  : vstate (IM i).
-Proof.
-  pose (equivocators_state_project' s (partition i)) as si.
-  rewrite Hlpartition in si.
-  exact si.
-Defined.
+  : vstate (IM i)
+  :=
+  eq_rect_r (fun i => vstate (IM i)) (equivocators_state_project' s (partition i)) (Hlpartition i).
 
 Definition equivocators_label_project
   (l : vlabel equivocators_no_equivocations_vlsm)
@@ -143,5 +140,54 @@ Definition equivocators_transition_item_project
       Some {| l := lx; input := iom; output := oom; destination := sx |}
     end
   end.
+
+Definition equivocators_trace_project
+  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
+  : list (vtransition_item X)
+  := map_option equivocators_transition_item_project tr.
+
+
+Lemma equivocators_initial_state_project
+  (es : vstate equivocators_no_equivocations_vlsm)
+  (Hes : vinitial_state_prop equivocators_no_equivocations_vlsm es)
+  : vinitial_state_prop X (equivocators_state_project es).
+Proof.
+  unfold vinitial_state_prop in *. simpl in *. unfold composite_initial_state_prop in *.
+  intro n. specialize (Hes (partition n)).
+  unfold equivocator_IM in Hes.
+  rewrite Hlpartition in Hes.
+  destruct (partition n) as [en | nen] eqn:Hnl.
+  ; apply (f_equal rpartition) in Hnl; rewrite <- Hlpartition in Hnl; subst n.
+  - destruct Hes as [Hz Hes].
+    unfold equivocators_state_project.
+    unfold eq_rect_r.
+
+    unfold eq_rect.
+    unfold equivocators_state_project'.
+    destruct (partition (rpartition (@inl equiv_index nequiv_index en))).
+  unfold vinitial_state_prop in Hes. simpl in Hes. unfold equivocator_initial_state_prop in Hes.
+    destruct Hea
+    assumption.
+
+Lemma equivocators_protocol_state_project
+  (es : vstate equivocators_no_equivocations_vlsm)
+  (om : option message)
+  (Hes : protocol_prop equivocators_no_equivocations_vlsm (es, om))
+  : protocol_state_prop X (equivocators_state_project es)
+  /\ option_protocol_message_prop X om.
+Proof.
+  remember (es, om) as esom.
+  generalize dependent om. revert es.
+  induction Hes; intros; split; try (apply pair_equal_spec in Heqesom; destruct Heqesom as [Heqes Heqom]; subst).
+  - 
+
+Lemma equivocators_protocol_trace_project
+  (is : vstate equivocators_no_equivocations_vlsm)
+  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
+  (Htr : finite_protocol_trace_from equivocators_no_equivocations_vlsm is tr)
+  : finite_protocol_trace_from X
+    (equivocators_state_project is) (equivocators_trace_project tr).
+Proof.
+  
 
 End fully_equivocating_composition.
