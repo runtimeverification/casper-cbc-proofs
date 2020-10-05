@@ -62,20 +62,20 @@ Qed.
 Existing Instance partition_eq_dec.
 
 Definition equivocator_IM
-  (i : equiv_index + nequiv_index)
+  (i : index)
   : VLSM message
   :=
-  let IMi := IM (rpartition i) in
-  match i with
-  | inl _ => equivocator_vlsm IMi
-  | inr _ => IMi
+  match (partition i) with
+  | inl _ => equivocator_vlsm (IM i)
+  | inr _ => (IM i)
   end.
 
 Lemma equivocator_Hbs
-  (i : equiv_index + nequiv_index)
+  (i : index)
   :  has_been_sent_capability (equivocator_IM i).
 Proof.
-  destruct i; simpl.
+  unfold equivocator_IM.
+  destruct (partition i) as [eqv | neqv] eqn:Hi.
   - apply equivocator_has_been_sent_capability. apply Hbs.
   - apply Hbs.
 Qed.
@@ -85,48 +85,52 @@ Definition equivocators_no_equivocations_constraint
   (som : composite_state equivocator_IM * option message)
   : Prop
   :=
-  no_equivocations equivocator_IM (partition i0) (free_constraint equivocator_IM) equivocator_Hbs l som.
+  no_equivocations equivocator_IM i0 (free_constraint equivocator_IM) equivocator_Hbs l som.
 
 Definition equivocators_no_equivocations_vlsm
   : VLSM message
   :=
-  composite_vlsm equivocator_IM (partition i0) equivocators_no_equivocations_constraint.
-
-Definition equivocators_state_project'
-  (s : vstate equivocators_no_equivocations_vlsm)
-  (pi : equiv_index + nequiv_index)
-  : vstate (IM (rpartition pi))
-  :=
-  match pi with
-  | inl e => projT2 (s (inl e)) (of_nat_lt (Hzero _ (s (inl e))))
-  | inr n => s (inr n)
-  end.
+  composite_vlsm equivocator_IM i0 equivocators_no_equivocations_constraint.
 
 Definition equivocators_state_project
   (s : vstate equivocators_no_equivocations_vlsm)
   (i : index)
   : vstate (IM i)
   :=
-  eq_rect_r (fun i => vstate (IM i)) (equivocators_state_project' s (partition i)) (Hlpartition i).
+  match (partition i) as s1
+    return (vstate match s1 with
+         | inl _ => equivocator_vlsm (IM i)
+         | inr _ => IM i
+         end -> vstate (IM i))
+  with
+  | inl _ =>
+      fun si0 : vstate (equivocator_vlsm (IM i)) =>
+      projT2 si0 (of_nat_lt (Hzero (IM i) si0))
+  | inr _ => fun si0 : vstate (IM i) => si0
+  end (s i).
 
 Definition equivocators_label_project
   (l : vlabel equivocators_no_equivocations_vlsm)
   : option (vlabel X)
-:=
-let (i, li) := l in
-match i as s return (vlabel (equivocator_IM s) -> option (vlabel X)) with
-| inl e =>
-	fun li0 : vlabel (equivocator_IM (inl e)) =>
-    let (lj, dj) := li0 in
-    match dj with
-    | Existing _ 0 false =>
-      Some (existT (fun n : index => vlabel (IM n)) (rpartition (inl e)) lj)
-    | _ => None
-    end
-| inr n =>
-    fun li0 : vlabel (equivocator_IM (inr n)) =>
-    Some (existT (fun n0 : index => vlabel (IM n0)) (rpartition (inr n)) li0)
-end li.
+  :=
+  let (i, li) := l in
+  match (partition i) as s1
+    return (vlabel match s1 with
+         | inl _ => equivocator_vlsm (IM i)
+         | inr _ => IM i
+         end -> option (vlabel X))
+  with
+  | inl _ =>
+      fun li0 : vlabel (equivocator_vlsm (IM i)) =>
+      let (lj, dj) := li0 in
+      match dj with
+      | Existing _ 0 false =>
+        Some (existT _ i lj)
+      | _ => None
+      end
+  | inr _ => fun li0 : vlabel (IM i) =>
+    Some (existT _ i li0)
+  end li.
 
 Definition equivocators_transition_item_project
   (item : vtransition_item equivocators_no_equivocations_vlsm)
@@ -146,20 +150,40 @@ Definition equivocators_trace_project
   : list (vtransition_item X)
   := map_option equivocators_transition_item_project tr.
 
-
 Lemma equivocators_initial_state_project
   (es : vstate equivocators_no_equivocations_vlsm)
   (Hes : vinitial_state_prop equivocators_no_equivocations_vlsm es)
   : vinitial_state_prop X (equivocators_state_project es).
 Proof.
   unfold vinitial_state_prop in *. simpl in *. unfold composite_initial_state_prop in *.
-  intro n. specialize (Hes (partition n)).
+  intro n. specialize (Hes n).
   unfold equivocator_IM in Hes.
-  rewrite Hlpartition in Hes.
-  destruct (partition n) as [en | nen] eqn:Hnl.
-  ; apply (f_equal rpartition) in Hnl; rewrite <- Hlpartition in Hnl; subst n.
+  unfold equivocators_state_project.
+  remember (partition n).
+  destruct (partition n).
+  remember (partition n) as ie.
+  destruct ie as [en | nen] eqn:Hnl. subst ie.
   - destruct Hes as [Hz Hes].
+    assert (Heqie' := Heqie).
+    apply (f_equal rpartition) in Heqie.
+    rewrite <- Hlpartition in Heqie.
+    simpl in Hes.
+    remember (es (inl en)) as bes.
+    destruct bes as [nbes es']. simpl in *. subst nbes.
+    rewrite Heqie.
+    remember (rpartition (inl en)) as M.
+    unfold vinitial_state_prop in Hes.
+    rewrite Heqie in Hes.
+    subst.
+    replace  (equivocators_state_project es (rpartition (inl en)))
+      with (projT2 (es (inl en)) (of_nat_lt (Hzero (IM (rpartition (inl en))) (es (inl en)))))
+    ; try assumption.
+    simpl.
     unfold equivocators_state_project.
+    unfold equivocators_state_project'.
+    simpl. unfold eq_rect_r. 
+    rewrite <- Heqie'.
+    unfold Hlpartition.
     unfold eq_rect_r.
 
     unfold eq_rect.
