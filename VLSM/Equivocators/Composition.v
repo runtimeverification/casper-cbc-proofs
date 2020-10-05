@@ -152,22 +152,7 @@ Lemma equivocators_initial_state_project
   (Hes : vinitial_state_prop equivocators_no_equivocations_vlsm es)
   : vinitial_state_prop X (equivocators_state_project es).
 Proof.
-  unfold vinitial_state_prop in *. simpl in *. unfold composite_initial_state_prop in *.
-  intro n. specialize (Hes (partition n)).
-  unfold equivocator_IM in Hes.
-  rewrite Hlpartition in Hes.
-  destruct (partition n) as [en | nen] eqn:Hnl.
-  ; apply (f_equal rpartition) in Hnl; rewrite <- Hlpartition in Hnl; subst n.
-  - destruct Hes as [Hz Hes].
-    unfold equivocators_state_project.
-    unfold eq_rect_r.
-
-    unfold eq_rect.
-    unfold equivocators_state_project'.
-    destruct (partition (rpartition (@inl equiv_index nequiv_index en))).
-  unfold vinitial_state_prop in Hes. simpl in Hes. unfold equivocator_initial_state_prop in Hes.
-    destruct Hea
-    assumption.
+Admitted.
 
 Lemma equivocators_protocol_state_project
   (es : vstate equivocators_no_equivocations_vlsm)
@@ -176,10 +161,7 @@ Lemma equivocators_protocol_state_project
   : protocol_state_prop X (equivocators_state_project es)
   /\ option_protocol_message_prop X om.
 Proof.
-  remember (es, om) as esom.
-  generalize dependent om. revert es.
-  induction Hes; intros; split; try (apply pair_equal_spec in Heqesom; destruct Heqesom as [Heqes Heqom]; subst).
-  - 
+Admitted.
 
 Lemma equivocators_protocol_trace_project
   (is : vstate equivocators_no_equivocations_vlsm)
@@ -188,6 +170,7 @@ Lemma equivocators_protocol_trace_project
   : finite_protocol_trace_from X
     (equivocators_state_project is) (equivocators_trace_project tr).
 Proof.
+Admitted.
   
 
 End fully_equivocating_composition.
