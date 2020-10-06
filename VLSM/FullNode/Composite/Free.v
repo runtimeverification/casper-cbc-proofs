@@ -97,7 +97,7 @@ Lemma pre_free_protocol_transition_out
   (iom : option message)
   (m : message)
   (Ht :
-    protocol_transition (pre_loaded_vlsm VLSM_full_composed_free)
+    protocol_transition (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free)
       l (is, iom) (os, Some m)
   )
   : projT1 l = inl (State.sender m)
@@ -148,7 +148,7 @@ Qed.
 
 Lemma VLSM_full_protocol_state_nodup
   (s : vstate VLSM_full_composed_free)
-  (Hs : protocol_state_prop (pre_loaded_vlsm VLSM_full_composed_free) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s)
   (i : index)
   : NoDup (get_message_set (project s i)).
 Proof.
@@ -177,14 +177,14 @@ Lemma free_byzantine_message_justification
   (j := get_justification m)
   : exists
     (s : vstate VLSM_full_composed_free)
-    (Hs : protocol_state_prop (pre_loaded_vlsm VLSM_full_composed_free) s)
+    (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s)
     (i : index)
     (v : V),
     i = inl v /\  make_justification (project s i) = j.
 Proof.
   destruct Hm as [(s0, om0) [l [s [[[_om0 Hs0] [[_s0 Hom0] Hv]] Ht]]]].
   exists s0.
-  assert (Hpsp : protocol_state_prop (pre_loaded_vlsm VLSM_full_composed_free) s0)
+  assert (Hpsp : protocol_state_prop (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s0)
     by (exists _om0; assumption).
   exists Hpsp.
   simpl in Ht.
@@ -207,7 +207,7 @@ Qed.
 
 Lemma in_free_byzantine_state_justification
   (s : vstate VLSM_full_composed_free)
-  (Hs : protocol_state_prop (pre_loaded_vlsm VLSM_full_composed_free) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s)
   (m : message)
   (v : index)
   (Hm : In m (get_message_set (project s v)))
@@ -215,7 +215,7 @@ Lemma in_free_byzantine_state_justification
 Proof.
   destruct  Hs as [om Hsom].
   remember
-    (@pair (@Common.state message (@type message (@pre_loaded_vlsm message VLSM_full_composed_free))) (option message)
+    (@pair (@Common.state message (@type message (@pre_loaded_with_all_messages_vlsm message VLSM_full_composed_free))) (option message)
       s om)
     as som.
   generalize dependent v.
@@ -422,7 +422,7 @@ Defined.
 Lemma full_composed_free_sent_messages_comparable'
   (s : vstate VLSM_full_composed_free)
   (tr : list (vtransition_item VLSM_full_composed_free))
-  (Htr : finite_protocol_trace (pre_loaded_vlsm VLSM_full_composed_free) s tr)
+  (Htr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s tr)
   (m1 m2 : message)
   (Hvalidator : State.sender m1 = State.sender m2)
   (item1 item2 : vtransition_item VLSM_full_composed_free)
@@ -464,7 +464,7 @@ Proof.
       (last (map destination middle) s0 (inl (State.sender m1)))
     ); try assumption.
   specialize
-    (pre_loaded_projection_in_futures IM_index i0 s0 (last (map destination middle) s0))
+    (pre_loaded_with_all_messages_projection_in_futures IM_index i0 s0 (last (map destination middle) s0))
     as Hproj.
   spec Hproj; try (specialize (Hproj (inl (State.sender m1))); apply Hproj).
   exists middle.
@@ -475,7 +475,7 @@ Qed.
 Lemma full_composed_free_sent_messages_comparable
   (s : vstate VLSM_full_composed_free)
   (tr : list transition_item)
-  (Htr : finite_protocol_trace (pre_loaded_vlsm VLSM_full_composed_free) s tr)
+  (Htr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s tr)
   (m1 m2 : message)
   (Hvalidator : sender m1 = sender m2)
   (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free output m1 tr)
@@ -504,14 +504,14 @@ Proof.
       (Hcomparable m1 m2 Hvalidator item1 item2 prefix1 prefix2 suffix2 eq_refl Hm1 Hm2).
 Qed.
 
-Definition free_computable_observable_equivocation_evidence_index
+Definition free_observation_based_equivocation_evidence_index
   (i : index)
-  : computable_observable_equivocation_evidence
+  : observation_based_equivocation_evidence
         (vstate (IM_index i)) V message message_eq (full_node_message_comparable_events C V).
 Proof.
   destruct i.
-  - apply full_node_validator_computable_observable_equivocation_evidence.
-  - apply full_node_client_computable_observable_equivocation_evidence.
+  - apply full_node_validator_observation_based_equivocation_evidence.
+  - apply full_node_client_observation_based_equivocation_evidence.
 Defined.
 
 Parameter indices : list index.
@@ -541,8 +541,8 @@ Proof.
 Qed.
 
 Definition composed_equivocation_evidence
-  : computable_observable_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq  (full_node_message_comparable_events C V)
-  := @composed_computable_observable_equivocation_evidence message V message message_eq (full_node_message_comparable_events C V) index indices IM_index free_computable_observable_equivocation_evidence_index.
+  : observation_based_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq  (full_node_message_comparable_events C V)
+  := @composed_observation_based_equivocation_evidence message V message message_eq (full_node_message_comparable_events C V) index indices IM_index free_observation_based_equivocation_evidence_index.
 
 Existing Instance composed_equivocation_evidence.
 
@@ -551,14 +551,14 @@ Definition composed_basic_observable_equivocation
   := @composed_observable_basic_equivocation
       message V message message_eq (full_node_message_comparable_events C V)
       index indices IM_index
-      free_computable_observable_equivocation_evidence_index
+      free_observation_based_equivocation_evidence_index
       Hmeasurable Hrt
       (fun s => validators)
       (fun s => proj1 finite_validators).
 
 
 Program Instance free_composite_vlsm_observable_messages
-  : composite_vlsm_observable_messages indices IM_index free_computable_observable_equivocation_evidence_index i0 (free_constraint IM_index)
+  : composite_vlsm_observable_messages indices IM_index free_observation_based_equivocation_evidence_index i0 (free_constraint IM_index)
   :=
   {
     message_observable_events := full_message_observable_messages
@@ -567,7 +567,7 @@ Next Obligation.
   apply set_union_iterated_empty. intros msgsi Hmsgsi.
   apply in_map_iff in Hmsgsi. destruct Hmsgsi as [i [Hmsgsi _]].
   subst.
-  specialize (free_computable_observable_equivocation_evidence_index i) as Hev.
+  specialize (free_observation_based_equivocation_evidence_index i) as Hev.
   specialize (His i). unfold IM_index in *.
   destruct i; inversion His; rewrite H0; reflexivity.
 Qed.
@@ -605,7 +605,7 @@ Definition state_union
 
 Lemma state_union_nodup
   (s : vstate VLSM_full_composed_free)
-  (Hs : protocol_state_prop (pre_loaded_vlsm VLSM_full_composed_free) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s)
   : NoDup (state_union s).
 Proof.
   apply set_union_iterated_nodup.
@@ -655,8 +655,8 @@ Proof.
       apply (proj2 finite_validators).
     + simpl. apply set_union_in_iterated. apply Exists_exists.
       destruct H as [[v Hm] | [client Hm]]
-      ; exists (@observable_events _ _ _ _ _ full_node_validator_computable_observable_equivocation_evidence (s (inl v)) (sender m))
-      || exists (@observable_events _ _ _ _ _ full_node_client_computable_observable_equivocation_evidence (s (inr client)) (sender m))
+      ; exists (@observable_events _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence (s (inl v)) (sender m))
+      || exists (@observable_events _ _ _ _ _ full_node_client_observation_based_equivocation_evidence (s (inr client)) (sender m))
       ; split; try (apply in_map_iff; exists (inl v) || exists (inr client); split; try reflexivity; apply (proj2 finite_index))
       ; simpl; apply filter_In; split; try assumption
       ; rewrite eq_dec_if_true; reflexivity.
@@ -705,7 +705,7 @@ Qed.
 Lemma observable_events_commute
   (s : vstate VLSM_full_composed_free)
   (v : V)
-  : set_eq (observable_events s v) (@observable_events _ _ _ _ _  full_node_client_computable_observable_equivocation_evidence (state_union s) v).
+  : set_eq (observable_events s v) (@observable_events _ _ _ _ _  full_node_client_observation_based_equivocation_evidence (state_union s) v).
 Proof.
   split; intros m Hm.
   - simpl.
@@ -753,7 +753,7 @@ Proof.
       (@equivocation_evidence (set (State.message C V)) V
          (State.message C V) (@message_eq C V about_C about_V)
          (@full_node_message_comparable_events C V about_C about_V)
-         (@full_node_client_computable_observable_equivocation_evidence C V
+         (@full_node_client_observation_based_equivocation_evidence C V
             about_C about_V) (state_union s))
       validators
     ); try (apply filter_incl; assumption).

@@ -414,8 +414,8 @@ Lemma [basic_VLSM_inclusion]
       (l : label)
       (s : state)
       (om : option message)
-      (Hv : protocol_valid (pre_loaded_vlsm X1) l (s, om))
-      : vvalid (pre_loaded_vlsm X2) l (s, om).
+      (Hv : protocol_valid (pre_loaded_with_all_messages_vlsm X1) l (s, om))
+      : vvalid (pre_loaded_with_all_messages_vlsm X2) l (s, om).
     Proof.
       destruct Hv as [Hps [Hopm [Hv Hctr]]].
       split; try assumption.
@@ -426,13 +426,13 @@ Lemma [basic_VLSM_inclusion]
     Lemma constraint_subsumption_preloaded_protocol_prop
       (s : state)
       (om : option message)
-      (Hps : protocol_prop (pre_loaded_vlsm X1) (s, om))
-      : protocol_prop (pre_loaded_vlsm X2) (s, om).
+      (Hps : protocol_prop (pre_loaded_with_all_messages_vlsm X1) (s, om))
+      : protocol_prop (pre_loaded_with_all_messages_vlsm X2) (s, om).
     Proof.
       induction Hps.
-      - apply (protocol_initial_state (pre_loaded_vlsm X2) is).
-      - apply (protocol_initial_message (pre_loaded_vlsm X2)).
-      - apply (protocol_generated (pre_loaded_vlsm X2)) with _om _s; try assumption.
+      - apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X2) is).
+      - apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm X2)).
+      - apply (protocol_generated (pre_loaded_with_all_messages_vlsm X2)) with _om _s; try assumption.
         apply constraint_subsumption_preloaded_protocol_valid.
         destruct Hv as [Hv Hc1].
         repeat split; try assumption.
@@ -475,10 +475,10 @@ Then <<X1>> is trace-included into <<X2>>.
         assumption.
     Qed.
 
-    Lemma constraint_subsumption_pre_loaded_incl
-      : VLSM_incl (machine (pre_loaded_vlsm X1)) (machine (pre_loaded_vlsm X2)).
+    Lemma constraint_subsumption_pre_loaded_with_all_messages_incl
+      : VLSM_incl (machine (pre_loaded_with_all_messages_vlsm X1)) (machine (pre_loaded_with_all_messages_vlsm X2)).
     Proof.
-      apply (basic_VLSM_incl (machine (pre_loaded_vlsm X1)) (machine (pre_loaded_vlsm X2)))
+      apply (basic_VLSM_incl (machine (pre_loaded_with_all_messages_vlsm X1)) (machine (pre_loaded_with_all_messages_vlsm X2)))
       ; intros; try (assumption || reflexivity).
       - destruct H as [_ [[_s Hom] _]]. exists _s.
         apply constraint_subsumption_preloaded_protocol_prop. assumption.
@@ -718,11 +718,11 @@ Let us fix an index <<j>> and let <<Xj>> be the projection of <<X>> on
 component <<j>>.
 
 In this section we establish some basic properties for projections, building up
-to Lemma [proj_pre_loaded_incl], which guarantees that all
+to Lemma [proj_pre_loaded_with_all_messages_incl], which guarantees that all
 [protocol_trace]s of <<Xj>> are also [protocol_trace]s for the
-[pre_loaded_vlsm] associated to the component <<IM j>>.
+[pre_loaded_with_all_messages_vlsm] associated to the component <<IM j>>.
 In particular this ensures that the byzantine traces of <<IM j>> include all
-[protocol_trace]s of <<Xj>> (see Lemma [pre_loaded_alt_eq]).
+[protocol_trace]s of <<Xj>> (see Lemma [pre_loaded_with_all_messages_alt_eq]).
 
 *)
 
@@ -813,11 +813,11 @@ the initial ones available from <<X>>.
 
 (**
 As a stepping stone towards proving trace inclusion between <<Xj>> and
-the [pre_loaded_vlsm] associated to <<IM j>>, we prove that the
+the [pre_loaded_with_all_messages_vlsm] associated to <<IM j>>, we prove that the
 [protocol_prop]erty is transferred.
 *)
-    Lemma proj_pre_loaded_protocol_prop
-      (PreLoaded := pre_loaded_vlsm (IM j))
+    Lemma proj_pre_loaded_with_all_messages_protocol_prop
+      (PreLoaded := pre_loaded_with_all_messages_vlsm (IM j))
       (s : state)
       (om : option message)
       (Hps : protocol_prop Xj (s, om))
@@ -826,7 +826,7 @@ the [pre_loaded_vlsm] associated to <<IM j>>, we prove that the
       induction Hps.
       - apply (protocol_initial_state PreLoaded is).
       - destruct im as [m Him]. simpl in om0. clear Him.
-        assert (Him : vinitial_message_prop (pre_loaded_vlsm X) m)
+        assert (Him : vinitial_message_prop (pre_loaded_with_all_messages_vlsm X) m)
           by exact I.
         apply (protocol_initial_message PreLoaded (exist _ m Him)).
       - apply (protocol_generated PreLoaded) with _om _s; try assumption.
@@ -836,14 +836,14 @@ the [pre_loaded_vlsm] associated to <<IM j>>, we prove that the
 (**
 We can now finally prove the main result for this section:
 *)
-    Lemma proj_pre_loaded_incl
-      (PreLoaded := pre_loaded_vlsm (IM j))
+    Lemma proj_pre_loaded_with_all_messages_incl
+      (PreLoaded := pre_loaded_with_all_messages_vlsm (IM j))
       : VLSM_incl (machine Xj) (machine PreLoaded).
     Proof.
       apply (basic_VLSM_incl (machine Xj) (machine PreLoaded))
       ; intros; try (assumption || reflexivity).
       - destruct H as [_ [[_s Hpm] _]]. exists _s.
-        apply proj_pre_loaded_protocol_prop.
+        apply proj_pre_loaded_with_all_messages_protocol_prop.
         assumption.
       - apply projection_valid_implies_valid.
         destruct H as [_ [_ Hv]].
@@ -1099,15 +1099,15 @@ All results from regular projections carry to these "free" projections.
 
   Lemma preloaded_composed_protocol_state
     (s : vstate X)
-    (Hs : protocol_state_prop (pre_loaded_vlsm X) s)
+    (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
     (i : index)
-    : protocol_state_prop (pre_loaded_vlsm (IM i)) (s i).
+    : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
   Proof.
     revert i. generalize dependent s.
     apply
-      (protocol_state_prop_ind (pre_loaded_vlsm X)
-        (fun (s : vstate (pre_loaded_vlsm X)) =>
-          forall i : index, protocol_state_prop (pre_loaded_vlsm (IM i)) (s i)
+      (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm X)
+        (fun (s : vstate (pre_loaded_with_all_messages_vlsm X)) =>
+          forall i : index, protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i)
         )
       ); intros.
     - apply protocol_state_prop_iff. left. specialize (Hs i). unfold vinitial_state_prop in Hs.
@@ -1124,23 +1124,23 @@ All results from regular projections carry to these "free" projections.
         apply protocol_state_prop_iff. right.
         exists li'. exists (s i, om). exists om'.
         repeat split; try assumption.
-        exists (proj1_sig (vs0 (pre_loaded_vlsm (IM i)))).
+        exists (proj1_sig (vs0 (pre_loaded_with_all_messages_vlsm (IM i)))).
         destruct om as [m|].
-        * assert (Him : vinitial_message_prop  (pre_loaded_vlsm (IM i)) m)
+        * assert (Him : vinitial_message_prop  (pre_loaded_with_all_messages_vlsm (IM i)) m)
             by exact I.
           pose (exist _ m Him) as im.
-          apply (protocol_initial_message (pre_loaded_vlsm (IM i)) im).
-        * apply (protocol_initial_state (pre_loaded_vlsm (IM i))).
+          apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm (IM i)) im).
+        * apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm (IM i))).
       + rewrite state_update_neq; try assumption. apply Hs.
   Qed.
 
-  Lemma pre_loaded_projection_protocol_transition_eq
+  Lemma pre_loaded_with_all_messages_projection_protocol_transition_eq
     (s1 s2 : vstate X)
     (om1 om2 : option message)
     (l : label)
-    (Ht : protocol_transition (pre_loaded_vlsm X) l (s1, om1) (s2, om2))
+    (Ht : protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s1, om1) (s2, om2))
     (i := projT1 l)
-    : protocol_transition (pre_loaded_vlsm (IM i)) (projT2 l) (s1 i, om1) (s2 i, om2).
+    : protocol_transition (pre_loaded_with_all_messages_vlsm (IM i)) (projT2 l) (s1 i, om1) (s2 i, om2).
   Proof.
     destruct Ht as [[Hs1 [Hom1 [Hv _]]] Ht].
     simpl in Hv. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
@@ -1151,17 +1151,17 @@ All results from regular projections carry to these "free" projections.
     repeat split; try assumption.
     - apply preloaded_composed_protocol_state. assumption.
     - destruct om1 as [m1|]; exists (proj1_sig (vs0 (IM il))).
-      + assert (Hm1 : vinitial_message_prop (pre_loaded_vlsm (IM il)) m1) by exact I.
+      + assert (Hm1 : vinitial_message_prop (pre_loaded_with_all_messages_vlsm (IM il)) m1) by exact I.
         replace m1 with (proj1_sig (exist _ m1 Hm1)) by reflexivity.
-        apply (protocol_initial_message (pre_loaded_vlsm (IM il))).
-      + apply (protocol_initial_state (pre_loaded_vlsm (IM il))).
+        apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm (IM il))).
+      + apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm (IM il))).
   Qed.
 
-  Lemma pre_loaded_projection_protocol_transition_neq
+  Lemma pre_loaded_with_all_messages_projection_protocol_transition_neq
     (s1 s2 : vstate X)
     (om1 om2 : option message)
     (l : label)
-    (Ht : protocol_transition (pre_loaded_vlsm X) l (s1, om1) (s2, om2))
+    (Ht : protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s1, om1) (s2, om2))
     (i : index)
     (Hi : i <> projT1 l)
     : s1 i = s2 i.
@@ -1175,11 +1175,11 @@ All results from regular projections carry to these "free" projections.
     reflexivity.
   Qed.
 
-  Lemma pre_loaded_projection_in_futures
+  Lemma pre_loaded_with_all_messages_projection_in_futures
     (s1 s2 : vstate X)
-    (Hfutures : in_futures (pre_loaded_vlsm X) s1 s2)
+    (Hfutures : in_futures (pre_loaded_with_all_messages_vlsm X) s1 s2)
     (i : index)
-    : in_futures (pre_loaded_vlsm (IM i))  (s1 i) (s2 i).
+    : in_futures (pre_loaded_with_all_messages_vlsm (IM i))  (s1 i) (s2 i).
   Proof.
     destruct Hfutures as [tr [Htr Hlast]].
     generalize dependent s1.
@@ -1192,18 +1192,18 @@ All results from regular projections carry to these "free" projections.
       inversion Htr. subst. simpl in *.
       specialize (IHtr s H2 eq_refl).
       destruct (eq_dec  i (projT1 l)).
-      + subst. apply pre_loaded_projection_protocol_transition_eq in H3.
+      + subst. apply pre_loaded_with_all_messages_projection_protocol_transition_eq in H3.
         destruct IHtr as [tri [Htri Hlasti]].
         exists
           ({| l := projT2 l; input := iom; destination := s (projT1 l); output := oom |}
           ::tri
           ).
-        split; try apply (finite_ptrace_extend (pre_loaded_vlsm (IM (projT1 l))))
+        split; try apply (finite_ptrace_extend (pre_loaded_with_all_messages_vlsm (IM (projT1 l))))
         ; try assumption.
         rewrite map_cons. rewrite unroll_last. simpl.
         assumption.
       + specialize
-          (pre_loaded_projection_protocol_transition_neq _ _ _ _ _ H3 _ n) as Hs1i.
+          (pre_loaded_with_all_messages_projection_protocol_transition_neq _ _ _ _ _ H3 _ n) as Hs1i.
         rewrite Hs1i. assumption.
   Qed.
 

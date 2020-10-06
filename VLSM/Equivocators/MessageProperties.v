@@ -100,7 +100,7 @@ the projection of the item.
 Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) bs btr)
+  (Hbtr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs btr)
   (bitem : vtransition_item equivocator_vlsm)
   (Hitem : In bitem btr)
   (fi : bool)
@@ -116,22 +116,22 @@ Proof.
   apply in_split in Hitem.
   destruct Hitem as [bprefix [bsuffix Heq]].
   subst btr.
-  apply (finite_protocol_trace_from_app_iff (pre_loaded_vlsm equivocator_vlsm)) in Hbtr.
+  apply (finite_protocol_trace_from_app_iff (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hbtr.
   destruct Hbtr as [Hbprefix Hbsuffix].
   remember
     (@last
     (@state message
-       (@type message (@pre_loaded_vlsm message equivocator_vlsm)))
+       (@type message (@pre_loaded_with_all_messages_vlsm message equivocator_vlsm)))
     (@map
        (@transition_item message
           (@type message
-             (@pre_loaded_vlsm message equivocator_vlsm)))
+             (@pre_loaded_with_all_messages_vlsm message equivocator_vlsm)))
        (@state message
           (@type message
-             (@pre_loaded_vlsm message equivocator_vlsm)))
+             (@pre_loaded_with_all_messages_vlsm message equivocator_vlsm)))
        (@Common.destination message
           (@type message
-             (@pre_loaded_vlsm message equivocator_vlsm)))
+             (@pre_loaded_with_all_messages_vlsm message equivocator_vlsm)))
        bprefix) bs)
     as lst.
   inversion Hbsuffix. subst s' tl.
@@ -202,7 +202,7 @@ one of its projections must do so too.
 Lemma equivocator_vlsm_trace_project_output_reflecting_inv
   (is: vstate equivocator_vlsm)
   (tr: list (vtransition_item equivocator_vlsm))
-  (Htr: finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) is tr)
+  (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr)
   (m : message)
   (Hbbs : Exists (fun elem : transition_item => output elem = Some m) tr)
   : exists
@@ -255,7 +255,7 @@ to state s, then it must be seen in all traces.
 *)
 Lemma equivocator_has_been_sent_consistency
   (s : vstate equivocator_vlsm)
-  (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
   (m : message)
   : selected_messages_consistency_prop equivocator_vlsm output s m.  
 Proof.
@@ -274,10 +274,10 @@ Proof.
       as HpreX.
     simpl in *.
     rewrite Hlast in HpreX. destruct HpreX as [Hj Hi].
-    assert (Hsj : protocol_state_prop (pre_loaded_vlsm X) (projT2 s (of_nat_lt Hj))).
+    assert (Hsj : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 s (of_nat_lt Hj))).
     { simpl.  simpl in *.
       specialize
-        (finite_ptrace_last_pstate (pre_loaded_vlsm equivocator_vlsm) _ _  (proj1 Hbtr))
+        (finite_ptrace_last_pstate (pre_loaded_with_all_messages_vlsm equivocator_vlsm) _ _  (proj1 Hbtr))
         as Hpbs.
       simpl in *.
       rewrite Hlast in Hpbs.
@@ -311,7 +311,7 @@ Proof.
       apply (Hall _ _ HtrX Hlast).
   - intro Hall.
     destruct Hs as [om Hs].
-    apply (protocol_is_trace (pre_loaded_vlsm equivocator_vlsm)) in Hs.
+    apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
     destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
     ; try (elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit output m)
       ; assumption).
@@ -326,7 +326,7 @@ Qed.
 *)
 Lemma equivocator_proper_sent
   (s : vstate equivocator_vlsm)
-  (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
   (m : message)
   : has_been_sent_prop equivocator_vlsm equivocator_has_been_sent s m.
 Proof.
@@ -360,7 +360,7 @@ Proof.
       ; assumption.
   - intro Hbbs. assert (Hbbs' := Hbbs).
     destruct Hs as [om Hs].
-    apply (protocol_is_trace (pre_loaded_vlsm equivocator_vlsm)) in Hs.
+    apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
     destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
     ; try (elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit output m)
       ; assumption).
@@ -385,10 +385,10 @@ Proof.
     destruct s as (ns, bs).
     apply existsb_exists.
     exists (of_nat_lt Hj). split; try apply fin_t_full.
-    assert (Hbsj : protocol_state_prop (pre_loaded_vlsm X) (bs (of_nat_lt Hj))).
+    assert (Hbsj : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (bs (of_nat_lt Hj))).
     { simpl in *.
       specialize
-        (finite_ptrace_last_pstate (pre_loaded_vlsm equivocator_vlsm) _ _  (proj1 Htr))
+        (finite_ptrace_last_pstate (pre_loaded_with_all_messages_vlsm equivocator_vlsm) _ _  (proj1 Htr))
         as Hpbs.
       simpl in *.
       rewrite Hlst in Hpbs.
@@ -412,7 +412,7 @@ Qed.
 *)
 Lemma equivocator_proper_not_sent
   (s : vstate equivocator_vlsm)
-  (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
   (m : message)
   (equivocator_has_not_been_sent := fun s m => negb (equivocator_has_been_sent s m))
   : has_not_been_sent_prop equivocator_vlsm equivocator_has_not_been_sent s m.
@@ -460,7 +460,7 @@ Definition equivocator_sent_messages_fn
 *)
 Lemma equivocator_sent_messages_full
   (s : vstate equivocator_vlsm)
-  (Hs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
   (m : message)
   : In m (equivocator_sent_messages_fn s)
   <-> exists (sm : sent_messages equivocator_vlsm s), proj1_sig sm = m.
@@ -475,12 +475,12 @@ Proof.
     destruct Hin as [[m' Hm] Heq]. simpl in Heq. subst m'.
     apply (sent_messages_consistency X) in Hm; try assumption.
     destruct Hs as [om Hs].
-    apply (protocol_is_trace (pre_loaded_vlsm equivocator_vlsm)) in Hs.
+    apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
     destruct Hs as [Hs | [is [tr [Htr [Hlast _]]]]].
     + specialize (Hm (projT2 s i) []).
       spec Hm.
       { split.
-        - apply (finite_ptrace_empty (pre_loaded_vlsm X)). assumption.
+        - apply (finite_ptrace_empty (pre_loaded_with_all_messages_vlsm X)). assumption.
         - destruct Hs as [Hzero His].
           destruct s as [n s]. simpl in *. subst n.
           dependent destruction i; try inversion i.

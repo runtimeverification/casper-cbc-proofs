@@ -31,16 +31,16 @@ Context
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec est)
   {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
   (X := composite_vlsm IM_index i0 constraint)
-  (preX := pre_loaded_vlsm X)
+  (preX := pre_loaded_with_all_messages_vlsm X)
   (Hevidence := fun (i : index) => @observable_full index index_listing idec)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
   .
 
   Definition composed_eqv_evidence
-  : computable_observable_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
+  : observation_based_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
   :=
-  (@composed_computable_observable_equivocation_evidence
+  (@composed_observation_based_equivocation_evidence
     message index state
     state_eq_dec comparable_states
     index index_listing IM_index Hevidence
@@ -76,7 +76,7 @@ Context
           destruct Hv as [Hv _].
           apply (protocol_state_projection IM_index i0 constraint i) in Hv.
           destruct Hv as [_oms Hv].
-          apply proj_pre_loaded_protocol_prop in Hv.
+          apply proj_pre_loaded_with_all_messages_protocol_prop in Hv.
           unfold protocol_state_prop.
           exists _oms.
           assumption.
@@ -86,7 +86,7 @@ Context
           destruct Hv as [Hv _].
           apply (protocol_state_projection IM_index i0 constraint il) in Hv.
           destruct Hv as [_oms Hv].
-          apply proj_pre_loaded_protocol_prop in Hv.
+          apply proj_pre_loaded_with_all_messages_protocol_prop in Hv.
           unfold protocol_state_prop.
           exists _oms.
           assumption.
@@ -180,7 +180,7 @@ Context
           destruct Hvalid as [Hvalid _].
           apply (protocol_state_projection IM_index i0 constraint il) in Hvalid.
           destruct Hvalid as [_oms Hvalid].
-          apply proj_pre_loaded_protocol_prop in Hvalid.
+          apply proj_pre_loaded_with_all_messages_protocol_prop in Hvalid.
           unfold protocol_state_prop.
           exists _oms.
           assumption.
@@ -315,7 +315,7 @@ Context
         apply (@protocol_prop_no_bottom index v _ _ est).
           apply (protocol_state_projection IM_index i0 constraint v) in Ha.
           destruct Ha as [_oms Ha].
-          apply proj_pre_loaded_protocol_prop in Ha.
+          apply proj_pre_loaded_with_all_messages_protocol_prop in Ha.
           unfold protocol_state_prop.
           exists _oms.
           assumption.
@@ -420,9 +420,9 @@ Context
       apply
         (VLSM_incl_in_futures
           (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
-          (pre_loaded_vlsm_machine (@VLSM_list index v index_listing idec est))
+          (pre_loaded_with_all_messages_vlsm_machine (@VLSM_list index v index_listing idec est))
         )
-      ; try apply (proj_pre_loaded_incl IM_index i0 constraint v).
+      ; try apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v).
       subst e1 e2.
       apply (in_futures_projection IM_index i0 constraint v).
       destruct Hgt as [suf1' Hgt].
@@ -445,9 +445,9 @@ Context
       apply
         (VLSM_incl_in_futures
           (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
-          (pre_loaded_vlsm_machine (@VLSM_list index v index_listing idec est))
+          (pre_loaded_with_all_messages_vlsm_machine (@VLSM_list index v index_listing idec est))
         )
-      ; try apply (proj_pre_loaded_incl IM_index i0 constraint v).
+      ; try apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v).
       subst e1 e2.
       apply (in_futures_projection IM_index i0 constraint v).
       destruct Hlt as [suf2' Hlt].

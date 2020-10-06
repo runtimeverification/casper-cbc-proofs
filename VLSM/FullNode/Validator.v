@@ -41,14 +41,14 @@ Section CompositeValidator.
     :=
     full_node_client_observable_events (get_message_set s) v.
 
-  Definition full_node_validator_computable_observable_equivocation_evidence
-    : computable_observable_equivocation_evidence (state C V) V message message_eq message_events
+  Definition full_node_validator_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (state C V) V message message_eq message_events
     :=
     {|
       observable_events := full_node_validator_observable_events
     |}.
 
-  Existing Instance full_node_validator_computable_observable_equivocation_evidence.
+  Existing Instance full_node_validator_observation_based_equivocation_evidence.
 
   Definition full_node_validator_state_validators
     (s : state C V)
@@ -173,7 +173,7 @@ Section proper_sent_received.
   Context
     (v : V)
     (vlsm := VLSM_full_validator v)
-    (bvlsm := pre_loaded_vlsm vlsm)
+    (bvlsm := pre_loaded_with_all_messages_vlsm vlsm)
     .
 
   Lemma validator_protocol_state_nodup
@@ -486,7 +486,7 @@ Section proper_sent_received.
     (start: Common.state)
     (Hstart: ~In m (State.sent_messages start))
     (prefix: list transition_item)
-    (Hprefix: finite_protocol_trace_from (pre_loaded_vlsm vlsm) start prefix)
+    (Hprefix: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm vlsm) start prefix)
     (Hlast: last (map destination prefix) start = s)
     : exists item : transition_item, In item prefix /\ output item = Some m.
   Proof.

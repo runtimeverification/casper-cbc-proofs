@@ -25,7 +25,7 @@ Context
   {idec : EqDec index}
   (est : state -> bool -> Prop)
   (X := @VLSM_list _ index_self index_listing idec est)
-  (preX := pre_loaded_vlsm X)
+  (preX := pre_loaded_with_all_messages_vlsm X)
   (Xtype := type preX)
   {mdec : EqDec (@message index index_listing)}
   {Mindex : Measurable index}
@@ -1142,13 +1142,13 @@ Context
 
     Lemma state_lt_last_sent
       (s : state)
-      (Hs : protocol_state_prop (pre_loaded_vlsm X) s)
+      (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
       (Hnb : last_sent s <> Bottom)
       : state_lt (last_sent s) s.
     Proof.
       generalize dependent s.
       remember (fun s => last_sent s <> Bottom -> state_lt (last_sent s) s) as P.
-      specialize (protocol_state_prop_ind (pre_loaded_vlsm X) P) as Hind.
+      specialize (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm X) P) as Hind.
       subst P.
       apply Hind; intros; clear Hind.
       - inversion Hs. subst s. elim H.
@@ -1871,7 +1871,7 @@ Context
         + unfold initial_state_prop in H0.
           remember H0 as H0'.
           destruct H0.
-          assert (Hempty : finite_protocol_trace (pre_loaded_vlsm preX) s []). {
+          assert (Hempty : finite_protocol_trace (pre_loaded_with_all_messages_vlsm preX) s []). {
             unfold finite_protocol_trace.
             simpl.
             split.
@@ -2098,7 +2098,7 @@ Context
           unfold initial_state_prop in v.
           remember v as v'.
           destruct v.
-          assert (Hempty : finite_protocol_trace (pre_loaded_vlsm preX) s []). {
+          assert (Hempty : finite_protocol_trace (pre_loaded_with_all_messages_vlsm preX) s []). {
             unfold finite_protocol_trace.
             simpl.
             split.
@@ -2290,7 +2290,7 @@ Context
           destruct H2.
           * specialize (H0 s []).
             simpl in *.
-            assert (finite_protocol_trace (pre_loaded_vlsm X) s []). {
+            assert (finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s []). {
                 unfold finite_protocol_trace.
                 simpl.
                 split.
@@ -2401,7 +2401,7 @@ Context
           destruct H2.
           * specialize (H0 s []).
             simpl in *.
-            assert (finite_protocol_trace (pre_loaded_vlsm X) s []). {
+            assert (finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s []). {
                 unfold finite_protocol_trace.
                 simpl.
                 split.
@@ -3645,7 +3645,7 @@ Context
     Qed.
 
     Definition observable_full :
-      (computable_observable_equivocation_evidence
+      (observation_based_equivocation_evidence
        (@state index index_listing)
        index
        (@state index index_listing)

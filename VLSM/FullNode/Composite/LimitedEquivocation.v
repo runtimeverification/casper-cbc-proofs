@@ -221,7 +221,7 @@ Proof.
   intros m Hm.
   specialize (Hs m Hm). clear -Hs.
   apply can_emit_protocol_iff in Hs.
-  apply pre_loaded_can_emit.
+  apply pre_loaded_with_all_messages_can_emit.
   destruct Hs as [[v [[miv Hmiv] Hs]] | Hem]; try assumption.
   destruct v; inversion Hmiv.
 Qed.
@@ -254,7 +254,7 @@ Definition sorted_state_union
 
 Lemma sorted_state_union_nodup
   (s : vstate FreeX)
-  (Hs : protocol_state_prop (pre_loaded_vlsm FreeX) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeX) s)
   : NoDup (sorted_state_union s).
 Proof.
   apply top_sort_nodup.
@@ -1219,9 +1219,9 @@ Proof.
   intros m Hm mj Hmj.
   apply state_union_iff.
   apply state_union_iff in Hm.
-  assert (Hs' : protocol_state_prop (pre_loaded_vlsm FreeX) s).
+  assert (Hs' : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeX) s).
   { destruct Hs as [_om Hs]. exists _om.
-    apply (pre_loaded_protocol_prop FreeX).
+    apply (pre_loaded_with_all_messages_protocol_prop FreeX).
     apply constraint_free_protocol_prop with Full_composition_constraint.
     assumption.
   }
@@ -1315,7 +1315,7 @@ Proof.
     apply receive_sorted_messages_protocol; try assumption.
     + apply sorted_state_union_nodup.
       destruct Hs as [om Hs].
-      exists om. apply (pre_loaded_protocol_prop FreeX).
+      exists om. apply (pre_loaded_with_all_messages_protocol_prop FreeX).
       apply constraint_free_protocol_prop in Hs.
       assumption.
     + specialize

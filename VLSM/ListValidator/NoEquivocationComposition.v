@@ -27,7 +27,7 @@ Context
   {constraint : composite_label IM_index -> (composite_state IM_index) * option (@message index index_listing) -> Prop}
   (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec ListValidator.estimator)
   (X := composite_vlsm IM_index i0 (no_equivocations IM_index i0 constraint has_been_sent_capabilities))
-  (preX := pre_loaded_vlsm X)
+  (preX := pre_loaded_with_all_messages_vlsm X)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
 

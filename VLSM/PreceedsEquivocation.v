@@ -222,7 +222,7 @@ Section vlsm_message_equivocation_evidence.
         (Heqv : equivocating_with m1 m2 = true)
         (s : state)
         (tr : list transition_item)
-        (Htr : finite_protocol_trace (pre_loaded_vlsm X) s tr)
+        (Htr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s tr)
         (Hm1 : trace_has_message X input m1 tr)
         (Hm2 : trace_has_message X input m2 tr)
         : equivocation_in_trace X m1 tr
@@ -289,7 +289,7 @@ Section composite_preceeds_equivocation.
         by (apply constraint_subsumption_byzantine_message_prop with constraint1; assumption).
       assert (Hm2': byzantine_message_prop X2 m2)
         by (apply constraint_subsumption_byzantine_message_prop with constraint1; assumption).
-      specialize (constraint_subsumption_pre_loaded_incl IM i0 constraint1 constraint2 Hsubsumption (@Finite _ (type X1) s tr) Htr)
+      specialize (constraint_subsumption_pre_loaded_with_all_messages_incl IM i0 constraint1 constraint2 Hsubsumption (@Finite _ (type X1) s tr) Htr)
         as Htrace'.
       simpl in Htrace'.
       specialize (Heqv (exist _ _ Hm1') (exist _ _ Hm2')). simpl in Heqv.
@@ -340,8 +340,8 @@ Definition observable_messages
   :=
   filter (fun m => if eq_dec (sender m) v then true else false) (get_messages s).
 
-Definition message_computable_observable_equivocation_evidence
-  : @computable_observable_equivocation_evidence state validator message _ message_comparable_events
+Definition message_observation_based_equivocation_evidence
+  : @observation_based_equivocation_evidence state validator message _ message_comparable_events
   :=
   {| observable_events := observable_messages |}.
 
@@ -352,7 +352,7 @@ on [sender] and thus obtain a [basic_equivocation] instance through the
 *)
 
 Definition message_basic_observable_equivocation
-  (Hevidence := message_computable_observable_equivocation_evidence)
+  (Hevidence := message_observation_based_equivocation_evidence)
   (validators := fun s => set_map eq_dec sender (get_messages s))
   (validators_nodup := fun s => set_map_nodup eq_dec sender (get_messages s))
   : basic_equivocation state validator

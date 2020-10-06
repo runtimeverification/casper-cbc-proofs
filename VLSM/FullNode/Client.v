@@ -46,14 +46,14 @@ messages, implementing a limited equivocation tolerance policy.
     :=
     filter (fun m => if eq_dec (sender m) v then true else false) s.
 
-  Definition full_node_client_computable_observable_equivocation_evidence
-    : computable_observable_equivocation_evidence (set message) V message message_eq message_events
+  Definition full_node_client_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (set message) V message message_eq message_events
     :=
     {|
       observable_events := full_node_client_observable_events
     |}.
 
-  Existing Instance full_node_client_computable_observable_equivocation_evidence.
+  Existing Instance full_node_client_observation_based_equivocation_evidence.
 
   Definition full_node_client_state_validators
     (s : set message)
@@ -136,7 +136,7 @@ messages, implementing a limited equivocation tolerance policy.
   Section proper_sent_received.
   Context
     (vlsm := VLSM_full_client2)
-    (bvlsm := pre_loaded_vlsm vlsm)
+    (bvlsm := pre_loaded_with_all_messages_vlsm vlsm)
     .
 
   Lemma client_protocol_state_nodup
@@ -146,8 +146,8 @@ messages, implementing a limited equivocation tolerance policy.
   Proof.
     generalize dependent s.
     apply
-      (protocol_state_prop_ind (pre_loaded_vlsm VLSM_full_client2)
-        (fun (s : vstate (pre_loaded_vlsm VLSM_full_client2)) =>
+      (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm VLSM_full_client2)
+        (fun (s : vstate (pre_loaded_with_all_messages_vlsm VLSM_full_client2)) =>
           NoDup s
         )
       ); intros.

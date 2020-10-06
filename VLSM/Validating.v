@@ -125,13 +125,13 @@ Qed.
 
 In the sequel we assume that <<X>> has the [validating_projection_prop]erty for
 component <<i>>.  Let <<Xi>> be the projection of <<X>> to component <<i>>
-and <<Preloaded>> be the [pre_loaded_vlsm] associated to component <<i>>.
+and <<Preloaded>> be the [pre_loaded_with_all_messages_vlsm] associated to component <<i>>.
 *)
 
-Section pre_loaded_validating_proj.
+Section pre_loaded_with_all_messages_validating_proj.
     Context
         (Hvalidating : validating_projection_prop)
-        (PreLoaded := pre_loaded_vlsm (IM i))
+        (PreLoaded := pre_loaded_with_all_messages_vlsm (IM i))
         .
 
 (**
@@ -140,7 +140,7 @@ meta-lemma [basic_VLSM_incl], using the [validating_projection_prop]erty and
 Lemma [protocol_message_projection] to show that its conditions are fulfilled.
 *)
 
-    Lemma pre_loaded_validating_proj_incl
+    Lemma pre_loaded_with_all_messages_validating_proj_incl
         : VLSM_incl (machine PreLoaded) (machine Xi).
     Proof.
         apply (basic_VLSM_incl (machine PreLoaded) (machine Xi))
@@ -151,20 +151,20 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
     Qed.
 
 (**
-Given that any projection is included in the [pre_loaded_vlsm] of its component
-(Lemma [proj_pre_loaded_incl]), we conclude that <<Preloaded>> and <<Xi>> are
+Given that any projection is included in the [pre_loaded_with_all_messages_vlsm] of its component
+(Lemma [proj_pre_loaded_with_all_messages_incl]), we conclude that <<Preloaded>> and <<Xi>> are
 trace-equal.  This means that all the byzantine behavior of a
 validating component is exhibited by its corresponding projection.
 *)
-    Lemma pre_loaded_validating_proj_eq
+    Lemma pre_loaded_with_all_messages_validating_proj_eq
         : VLSM_eq (machine PreLoaded) (machine Xi).
     Proof.
         split.
-        - apply pre_loaded_validating_proj_incl.
-        - apply proj_pre_loaded_incl.
+        - apply pre_loaded_with_all_messages_validating_proj_incl.
+        - apply proj_pre_loaded_with_all_messages_incl.
     Qed.
 
-End pre_loaded_validating_proj.
+End pre_loaded_with_all_messages_validating_proj.
 
 End validating_projection.
 
@@ -193,8 +193,8 @@ Definition validating_vlsm_prop
 
 (**
 In the sequel we will show that a VLSM with the [validating_vlsm_prop]erty
-is trace-equal to its associated [pre_loaded_vlsm], basically meaning that
-(due to Lemma [byzantine_pre_loaded]) all traces with
+is trace-equal to its associated [pre_loaded_with_all_messages_vlsm], basically meaning that
+(due to Lemma [byzantine_pre_loaded_with_all_messages]) all traces with
 the [byzantine_trace_prop]erty associated to a validating VLSMs are also
 [protocol_trace]s for that VLSM, meaning that the VLSM cannot exhibit
 byzantine behavior.
@@ -202,19 +202,19 @@ byzantine behavior.
 
 Context
     (Hvalidating : validating_vlsm_prop)
-    (PreLoaded := pre_loaded_vlsm X)
+    (PreLoaded := pre_loaded_with_all_messages_vlsm X)
     .
 
 (**
-Let <<PreLoaded>> be the [pre_loaded_vlsm] associated to X.
-From Lemma [vlsm_incl_pre_loaded_vlsm] we know that <<X>> is included
+Let <<PreLoaded>> be the [pre_loaded_with_all_messages_vlsm] associated to X.
+From Lemma [vlsm_incl_pre_loaded_with_all_messages_vlsm] we know that <<X>> is included
 in <<PreLoaded>>.
 
 To prove the converse we use the [validating_vlsm_prop]erty to
 verify the conditions of meta-lemma [basic_VLSM_incl].
 *)
 
-    Lemma pre_loaded_validating_vlsm_incl
+    Lemma pre_loaded_with_all_messages_validating_vlsm_incl
         : VLSM_incl (machine PreLoaded) (machine X).
     Proof.
         apply (basic_VLSM_incl (machine PreLoaded) (machine X))
@@ -229,12 +229,12 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
 We conclude that <<X>> and <<Preloaded>> are trace-equal.
 *)
 
-    Lemma pre_loaded_validating_vlsm_eq
+    Lemma pre_loaded_with_all_messages_validating_vlsm_eq
         : VLSM_eq (machine PreLoaded) (machine X).
     Proof.
         split.
-        - apply pre_loaded_validating_vlsm_incl.
-        - pose (vlsm_incl_pre_loaded_vlsm X) as Hincl.
+        - apply pre_loaded_with_all_messages_validating_vlsm_incl.
+        - pose (vlsm_incl_pre_loaded_with_all_messages_vlsm X) as Hincl.
           destruct X as (T, (S, M)).
           apply Hincl.
     Qed.

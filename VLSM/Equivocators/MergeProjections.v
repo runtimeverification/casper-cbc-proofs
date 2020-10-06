@@ -121,7 +121,7 @@ No traces are lost in the projection process described above.
 Lemma projection_traces_replace_one_length
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) is btr)
+  (Hbtr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is btr)
   (n := projT1 (last (map destination btr) is))
   (ni : Fin.t (S n))
   (isi : vstate X)
@@ -159,7 +159,7 @@ Context
   (Hn : length traces = S n)
   (Htraces : Forall
     (fun trace => 
-      finite_protocol_trace (pre_loaded_vlsm X) (fst trace) (snd trace)
+      finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) (fst trace) (snd trace)
     )
     traces)
   (Hne_traces : Forall (fun trace => snd trace <> []) traces)
@@ -230,7 +230,7 @@ Lemma lift_traces_to_equivocator_protocol_trace
     (is : vstate equivocator_vlsm)
     (tr : list (vtransition_item equivocator_vlsm))
     (Hproject :  lift_traces_to_equivocator = Some (is, tr)),
-    finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) is tr.
+    finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr.
 Proof.
 Admitted.
 

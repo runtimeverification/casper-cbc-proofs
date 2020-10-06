@@ -36,7 +36,7 @@ Section Simple.
     Context
       {message : Type}
       (vlsm : VLSM message)
-      (pre_vlsm := pre_loaded_vlsm vlsm)
+      (pre_vlsm := pre_loaded_with_all_messages_vlsm vlsm)
       .
 
 (** We begin with a basic utility function. **)

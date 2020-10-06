@@ -635,14 +635,14 @@ Proof.
 Qed.
 
 (**
-The projection of a segment of a protocol trace from the [pre_loaded_vlsm]
+The projection of a segment of a protocol trace from the [pre_loaded_with_all_messages_vlsm]
 corresponding to the [equivocator_vlsm] is defined and it is a protocol
-trace segment in the [pre_loaded_vlsm] corresponding to the original vlsm.
+trace segment in the [pre_loaded_with_all_messages_vlsm] corresponding to the original vlsm.
 *)
 Lemma preloaded_equivocator_vlsm_trace_project_protocol
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) bs btr)
+  (Hbtr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs btr)
   (j : nat)
   (Hj : j < S (projT1 (last (map destination btr) bs)))
   (jf : bool)
@@ -654,14 +654,14 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol
     | NewMachine _ sn =>
       vinitial_state_prop X sn
       /\ projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) sn
-      /\ finite_protocol_trace_from (pre_loaded_vlsm X) sn tr
+      /\ finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) sn tr
     | Existing _ i fi =>
       exists
       (Hi : i < S (projT1 bs))
       (s := projT2 bs (of_nat_lt Hi))
       (Hlast : projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) s)
       ,
-      finite_protocol_trace_from (pre_loaded_vlsm X) s tr
+      finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) s tr
     end.
 Proof.
   induction Hbtr; intros.
@@ -685,7 +685,7 @@ Proof.
          (@cons
             (@transition_item message
                (@type message
-                  (@pre_loaded_vlsm message
+                  (@pre_loaded_with_all_messages_vlsm message
                      equivocator_vlsm))) item tl))
         s')
       as lst.
@@ -713,17 +713,17 @@ Proof.
         - destruct Hitem as [Hsn' [Hv' Ht']].
           repeat rewrite unroll_last. subst. simpl.
           repeat split; try assumption.
-          apply (finite_ptrace_extend (pre_loaded_vlsm X)); try assumption.
+          apply (finite_ptrace_extend (pre_loaded_with_all_messages_vlsm X)); try assumption.
           repeat split; try assumption.
           + exists None.
             replace sn' with (proj1_sig (exist _ sn' Hsn')) by reflexivity.
-            apply (protocol_initial_state (pre_loaded_vlsm X)).
-          + exists (proj1_sig (vs0 X)). apply (pre_loaded_message_protocol_prop X).
+            apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X)).
+          + exists (proj1_sig (vs0 X)). apply (pre_loaded_with_all_messages_message_protocol_prop X).
         - destruct Hitem as [Hi' [Hv' Ht']]. exists Hi'.
           rewrite unroll_last. subst. simpl. exists Hlst.
-          apply (finite_ptrace_extend (pre_loaded_vlsm X)); try assumption.
+          apply (finite_ptrace_extend (pre_loaded_with_all_messages_vlsm X)); try assumption.
           repeat split; try assumption; try apply Hs'X.
-          exists (proj1_sig (vs0 X)). apply (pre_loaded_message_protocol_prop X).
+          exists (proj1_sig (vs0 X)). apply (pre_loaded_with_all_messages_message_protocol_prop X).
         }
       * subst item.
         apply (equivocator_protocol_transition_item_project_inv3 l s s') in Hitem
@@ -740,14 +740,14 @@ Proof.
 Qed.
 
 (**
-The projection of a protocol trace from the [pre_loaded_vlsm]
+The projection of a protocol trace from the [pre_loaded_with_all_messages_vlsm]
 corresponding to the [equivocator_vlsm] is defined and it is a protocol
-trace in the [pre_loaded_vlsm] corresponding to the original vlsm.
+trace in the [pre_loaded_with_all_messages_vlsm] corresponding to the original vlsm.
 *)
 Lemma preloaded_equivocator_vlsm_project_protocol_trace
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) bs btr)
+  (Hbtr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs btr)
   (j : nat)
   (Hj : j < S (projT1 (last (map destination btr) bs)))
   (jf : bool)
@@ -759,14 +759,14 @@ Lemma preloaded_equivocator_vlsm_project_protocol_trace
     | NewMachine _ sn =>
       exists
       (Hlast : projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) sn),
-      finite_protocol_trace (pre_loaded_vlsm X) sn tr
+      finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) sn tr
     | Existing _ i fi =>
       exists
       (Hi : i < S (projT1 bs))
       (s := projT2 bs (of_nat_lt Hi))
       (Hlast : projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) s)
       ,
-      finite_protocol_trace (pre_loaded_vlsm X) s tr
+      finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s tr
     end.
 Proof.
   destruct Hbtr as [Hbtr Hinit].
@@ -833,7 +833,7 @@ first state of the trace does not fail and yields the same index.
 Lemma preloaded_equivocator_vlsm_trace_project_protocol_inv
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) bs btr)
+  (Hbtr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs btr)
   (i : nat)
   (Hi : i < S (projT1 bs))
   (fi : bool)
@@ -874,7 +874,7 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_inv2
   (is: state)
   (tr: list transition_item)
   (Hntr : tr <> [])
-  (Htr: finite_protocol_trace_from (pre_loaded_vlsm equivocator_vlsm) is tr)
+  (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr)
   (j : nat)
   (fj : bool)
   (di : MachineDescriptor)
@@ -886,12 +886,12 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_inv2
       exists
       (Hsn : vinitial_state_prop X sn)
       (Hlst : projT2 (last (map destination tr) is) (of_nat_lt Hj) = last (map destination trX) sn),
-      finite_protocol_trace_from (pre_loaded_vlsm X) sn trX
+      finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) sn trX
     | Existing _ i fi =>
       exists
       (Hi : i < S (projT1 is))
       (Hlst : projT2 (last (map destination tr) is) (of_nat_lt Hj) = last (map destination trX) (projT2 is (of_nat_lt Hi))),
-      finite_protocol_trace_from (pre_loaded_vlsm X) (projT2 is (of_nat_lt Hi)) trX
+      finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) (projT2 is (of_nat_lt Hi)) trX
     end.
 Proof.
   specialize (equivocator_vlsm_trace_project_inv _ Hntr j fj) as Hj.
@@ -917,7 +917,7 @@ Lemma preloaded_equivocator_vlsm_protocol_trace_project_inv2
   (is: state)
   (tr: list transition_item)
   (Hntr : tr <> [])
-  (Htr: finite_protocol_trace (pre_loaded_vlsm equivocator_vlsm) is tr)
+  (Htr: finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr)
   (j : nat)
   (fj : bool)
   (di : MachineDescriptor)
@@ -929,14 +929,14 @@ Lemma preloaded_equivocator_vlsm_protocol_trace_project_inv2
     | NewMachine _ sn =>
       exists
       (Hlast : projT2 (last (map destination tr) is) (of_nat_lt Hj) = last (map destination trX) sn),
-      finite_protocol_trace (pre_loaded_vlsm X) sn trX
+      finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) sn trX
     | Existing _ i fi =>
       exists
       (Hi : i < S (projT1 is))
       (s := projT2 is (of_nat_lt Hi))
       (Hlast : projT2 (last (map destination tr) is) (of_nat_lt Hj) = last (map destination trX) s)
       ,
-      finite_protocol_trace (pre_loaded_vlsm X) s trX
+      finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s trX
     end.
 Proof.
   specialize (equivocator_vlsm_trace_project_inv _ Hntr j fj) as Hj.

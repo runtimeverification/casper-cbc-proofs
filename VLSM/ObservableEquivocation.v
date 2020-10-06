@@ -9,12 +9,6 @@ From CasperCBC
     VLSM.ProjectionTraces
     .
 
-
-(*
-  TODO:
-    change terminology to [observation_based_equivocation_evidence]
-*)
-
 (** * Observable equivocation
 
 In this section we define a notion of equivocation based on observations.
@@ -38,7 +32,7 @@ Class comparable_events
   (event : Type)
   := { happens_before_fn : event -> event -> bool }.
 
-Class computable_observable_equivocation_evidence
+Class observation_based_equivocation_evidence
   (state validator event : Type)
   (event_eq : EqDec event)
   (event_comparable : comparable_events event) :=
@@ -56,14 +50,14 @@ Class computable_observable_equivocation_evidence
         (observable_events s v)
   }.
 
-(** We can use this notion of [computable_observable_equivocation_evidence]
+(** We can use this notion of [observation_based_equivocation_evidence]
 to obtain the [basic_equivocation] between states and validators.
 *)
 Definition basic_observable_equivocation
   (state validator event : Type)
   {event_eq : EqDec event}
   {event_comparable : comparable_events event}
-  {Hevidence : computable_observable_equivocation_evidence state validator event event_eq event_comparable}
+  {Hevidence : observation_based_equivocation_evidence state validator event event_eq event_comparable}
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
@@ -83,7 +77,7 @@ Context
   {event_eq : EqDec event}
   (v_eq : EqDec validator)
   {event_comparable : comparable_events event}
-  {Hevidence : computable_observable_equivocation_evidence state validator event event_eq event_comparable}
+  {Hevidence : observation_based_equivocation_evidence state validator event event_eq event_comparable}
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
@@ -132,7 +126,7 @@ Section observable_equivocation_in_composition.
 (** ** Observable messages in a VLSM composition
 
 We assume a composition of [VLSM]s where each machine has a way to
-produce [computable_observable_equivocation_evidence].
+produce [observation_based_equivocation_evidence].
 *)
 
 
@@ -146,17 +140,17 @@ Context
   (finite_index : Listing index_listing)
   (IM : index -> VLSM message)
   (Hevidence : forall (i : index),
-    computable_observable_equivocation_evidence
+    observation_based_equivocation_evidence
         (vstate (IM i)) validator event event_eq event_comparable
   )
   (i0 : index)
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
   (X := composite_vlsm IM i0 constraint)
-  (PreX := pre_loaded_vlsm X)
+  (PreX := pre_loaded_with_all_messages_vlsm X)
   .
 
 (**
-It is easy to define a [computable_observable_equivocation_evidence] mechanism for
+It is easy to define a [observation_based_equivocation_evidence] mechanism for
 the composition, by just defining the [observable_events] for the composite state
 to be the union of [observable_events] for each of the component states.
 *)
@@ -168,12 +162,12 @@ Definition composed_observable_events
   :=
   fold_right (set_union eq_dec) [] (map (fun i => observable_events (s i) v) index_listing).
 
-Definition composed_computable_observable_equivocation_evidence
-  : computable_observable_equivocation_evidence (composite_state IM) validator event event_eq event_comparable
+Definition composed_observation_based_equivocation_evidence
+  : observation_based_equivocation_evidence (composite_state IM) validator event event_eq event_comparable
   :=
   {| observable_events := composed_observable_events |}.
 
-Existing Instance composed_computable_observable_equivocation_evidence.
+Existing Instance composed_observation_based_equivocation_evidence.
 
 (**
 Let us now factor [VLSM]s into the event observability framework.
@@ -718,7 +712,7 @@ Qed.
 
 (**
 The class below links [composite_vlsm_observable_messages] with
-[computable_observable_equivocation_evidence] by requiring that all
+[observation_based_equivocation_evidence] by requiring that all
 [trace_generated_event]s for the same validator are [comparable] through
 the [happens_before_fn].
 *)
@@ -767,7 +761,7 @@ Proof.
 Qed.
 
 (**
-We now tie the [computable_observable_equivocation_evidence] notion
+We now tie the [observation_based_equivocation_evidence] notion
 to that of [composite_vlsm_comparable_generated_events] by showing that
 the existence of two events observable for a validator <<v>> in a state <<s>>
 which are not [comparable] w.r.t. [happens_before_fn] relation guarantees
@@ -861,7 +855,7 @@ Proof.
   elim contra.
   apply (protocol_state_projection IM i0 constraint i) in Hps.
   destruct Hps as [_oms Hps].
-  apply proj_pre_loaded_protocol_prop in Hps.
+  apply proj_pre_loaded_with_all_messages_protocol_prop in Hps.
   apply proper_sent in Hconstr'; try (exists _oms; assumption).
   unfold selected_message_exists_in_all_traces in Hconstr'.
   simpl in Hinit. specialize (Hinit i).
@@ -871,7 +865,7 @@ Proof.
   apply (finite_ptrace_projection IM i0 constraint i) in Hpre; try assumption.
   pose (Finite (is i) (finite_trace_projection_list IM i0 constraint i pre)) as tri.
   assert (Htri : protocol_trace_prop Xi tri) by (split; assumption).
-  apply (proj_pre_loaded_incl IM i0 constraint i) in Htri.
+  apply (proj_pre_loaded_with_all_messages_incl IM i0 constraint i) in Htri.
   simpl in Htri.
   spec Hconstr' (is i) (finite_trace_projection_list IM i0 constraint i pre) Htri Hlast.
   apply Exists_exists in Hconstr'.
@@ -948,7 +942,7 @@ Definition composed_observable_basic_equivocation
   := @basic_observable_equivocation (composite_state IM) validator event
       event_eq
       event_comparable
-      composed_computable_observable_equivocation_evidence
+      composed_observation_based_equivocation_evidence
       measurable_V
       reachable_threshold
       validators
@@ -1002,14 +996,14 @@ Context
   (finite_index : Listing index_listing)
   (IM : index -> VLSM message)
   (Hevidence : forall (i : index),
-    computable_observable_equivocation_evidence
+    observation_based_equivocation_evidence
         (vstate (IM i)) validator event event_eq event_comparable
   )
   (i0 : index)
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
   (A : validator -> index)
   (X := composite_vlsm IM i0 constraint)
-  (PreX := pre_loaded_vlsm X)
+  (PreX := pre_loaded_with_all_messages_vlsm X)
   {Hobservable_messages :
     @composite_vlsm_observable_messages _ _ _ event_eq event_comparable _ IndEqDec
     index_listing IM Hevidence i0 constraint}

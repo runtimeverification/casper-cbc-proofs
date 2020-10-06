@@ -395,27 +395,27 @@ Proof.
 Qed.
 
 (**
-All components of a protocol states of the [pre_loaded_vlsm] corresponding
-to an [equivocator_vlsm] are also protocol for the [pre_loaded_vlsm]
+All components of a protocol states of the [pre_loaded_with_all_messages_vlsm] corresponding
+to an [equivocator_vlsm] are also protocol for the [pre_loaded_with_all_messages_vlsm]
 corresponding to the original machine.
 *)
 Lemma preloaded_equivocator_state_project_protocol_state
   (bs : vstate equivocator_vlsm)
-  (Hbs : protocol_state_prop (pre_loaded_vlsm equivocator_vlsm) bs)
+  (Hbs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs)
   (i : Fin.t (S (projT1 bs)))
   :
-  protocol_state_prop (pre_loaded_vlsm X) (projT2 bs i).
+  protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 bs i).
 Proof.
   revert i.
-  pose (fun bs : vstate equivocator_vlsm => forall i : t (S (projT1 bs)), protocol_state_prop (pre_loaded_vlsm X) (projT2 bs i)) as P.
+  pose (fun bs : vstate equivocator_vlsm => forall i : t (S (projT1 bs)), protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 bs i)) as P.
   revert Hbs. revert bs.
-  apply (protocol_state_prop_ind (pre_loaded_vlsm equivocator_vlsm) P)
+  apply (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm equivocator_vlsm) P)
   ; try assumption; unfold P in *; clear P; intros.
   - destruct Hs as [Hzero His].
     destruct s. simpl in *. subst x. exists None.
     dependent destruction i; try inversion i.
     replace (v F1) with (proj1_sig (exist _ _ His)) by reflexivity.
-     apply (protocol_initial_state (pre_loaded_vlsm X)).
+     apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X)).
   - destruct Ht as [[Hps [_ Hv]] Ht].
     simpl in Ht. unfold vtransition in Ht. unfold_transition Ht.
     destruct l as (l, description).
@@ -429,22 +429,22 @@ Proof.
       simpl in *. destruct (to_nat i) as (ni, Hni).
       destruct (nat_eq_dec ni (S ns)); try apply Hs.
       subst. exists om'.
-      replace (@pair (@state message (@type message (@pre_loaded_vlsm message X))) (option message) sn' om')
+      replace (@pair (@state message (@type message (@pre_loaded_with_all_messages_vlsm message X))) (option message) sn' om')
         with (vtransition X l (sn, om)).
-      assert (Hpsn : protocol_prop (pre_loaded_vlsm X) (sn, None)).
+      assert (Hpsn : protocol_prop (pre_loaded_with_all_messages_vlsm X) (sn, None)).
       { replace sn with (proj1_sig (exist _ sn Hsn)) by reflexivity.
-        apply (protocol_initial_state (pre_loaded_vlsm X)).
+        apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X)).
       }
       apply
-        (protocol_generated (pre_loaded_vlsm X) l sn None Hpsn
-        (proj1_sig (vs0 X)) om (pre_loaded_message_protocol_prop X om) Hv).
+        (protocol_generated (pre_loaded_with_all_messages_vlsm X) l sn None Hpsn
+        (proj1_sig (vs0 X)) om (pre_loaded_with_all_messages_message_protocol_prop X om) Hv).
     + destruct Hv as [Hj Hv].
       destruct (le_lt_dec (S (projT1 s)) j). { lia. }
       replace (of_nat_lt l0) with (of_nat_lt Hj) in *; try apply of_nat_ext. clear l0.
       destruct (Hs (of_nat_lt Hj)) as [_omj Hsj].
-      specialize (protocol_generated (pre_loaded_vlsm X) l (projT2 s (of_nat_lt Hj)) _omj Hsj)
+      specialize (protocol_generated (pre_loaded_with_all_messages_vlsm X) l (projT2 s (of_nat_lt Hj)) _omj Hsj)
         as Hgen.
-      spec Hgen (proj1_sig (vs0 X)) om (pre_loaded_message_protocol_prop X om) Hv.
+      spec Hgen (proj1_sig (vs0 X)) om (pre_loaded_with_all_messages_message_protocol_prop X om) Hv.
       replace (transition l (projT2 s (of_nat_lt Hj), om))
         with (vtransition X l (projT2 s (of_nat_lt Hj), om))
         in Hgen by reflexivity.
