@@ -48,3 +48,4 @@ Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
 Lib/FinExtras.v
+Lib/Classes.v
