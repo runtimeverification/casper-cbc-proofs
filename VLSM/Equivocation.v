@@ -471,16 +471,16 @@ Section Simple.
 
     Definition computable_sent_messages_has_been_sent
       {Hsm : computable_sent_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : bool
       :=
-      if inb eq_dec m (sent_messages_fn s) then true else false.
+      if inb eq_message m (sent_messages_fn s) then true else false.
 
     Lemma computable_sent_messages_has_been_sent_proper
       {Hsm : computable_sent_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -489,7 +489,7 @@ Section Simple.
       unfold has_been_sent_prop. unfold all_traces_have_message_prop.
       unfold computable_sent_messages_has_been_sent.
       destruct
-        (inb eq_dec m (sent_messages_fn s))
+        (inb eq_message m (sent_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply sent_messages_full in Hin; try assumption.
@@ -504,7 +504,7 @@ Section Simple.
 
     Definition computable_sent_messages_has_not_been_sent
       {Hsm : computable_sent_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : bool
@@ -513,7 +513,7 @@ Section Simple.
 
     Lemma computable_sent_messages_has_not_been_sent_proper
       {Hsm : computable_sent_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -524,7 +524,7 @@ Section Simple.
       rewrite Bool.negb_true_iff.
       unfold computable_sent_messages_has_been_sent.
       destruct
-        (inb eq_dec m (sent_messages_fn s))
+        (inb eq_message m (sent_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply sent_messages_full in Hin; try assumption.
@@ -541,7 +541,7 @@ Section Simple.
 
     Definition computable_sent_messages_has_been_sent_capability
       {Hsm : computable_sent_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       : has_been_sent_capability
       :=
       {|
@@ -584,16 +584,16 @@ Section Simple.
 
     Definition computable_received_messages_has_been_received
       {Hsm : computable_received_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : bool
       :=
-      if inb eq_dec m (received_messages_fn s) then true else false.
+      if inb eq_message m (received_messages_fn s) then true else false.
 
     Lemma computable_received_messages_has_been_received_proper
       {Hsm : computable_received_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -602,7 +602,7 @@ Section Simple.
       unfold has_been_received_prop. unfold all_traces_have_message_prop.
       unfold computable_received_messages_has_been_received.
       destruct
-        (inb eq_dec m (received_messages_fn s))
+        (inb eq_message m (received_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply received_messages_full in Hin; try assumption. destruct Hin as [[m0 Hm0] Hx].
@@ -615,7 +615,7 @@ Section Simple.
 
     Definition computable_received_messages_has_not_been_received
       {Hsm : computable_received_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : bool
@@ -624,7 +624,7 @@ Section Simple.
 
     Lemma computable_received_messages_has_not_been_received_proper
       {Hsm : computable_received_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -635,7 +635,7 @@ Section Simple.
       rewrite Bool.negb_true_iff.
       unfold computable_received_messages_has_been_received.
       destruct
-        (inb eq_dec m (received_messages_fn s))
+        (inb eq_message m (received_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply received_messages_full in Hin; try assumption. destruct Hin as [[m0 Hm0] Hx].
@@ -651,7 +651,7 @@ Section Simple.
 
     Definition computable_received_messages_has_been_received_capability
       {Hsm : computable_received_messages}
-      {eq_message : EqDec message}
+      {eq_message : EqDecision message}
       : has_been_received_capability
       :=
       {|
@@ -688,7 +688,7 @@ Section Composite.
             {threshold_V : ReachableThreshold validator}
             (validator_listing : list validator)
             {finite_validator : Listing validator_listing}
-            {IndEqDec : EqDec index}
+            {IndEqDec : EqDecision index}
             (IM : index -> VLSM message)
             (i0 : index)
             (constraint : composite_label IM -> composite_state IM  * option message -> Prop)

@@ -27,7 +27,7 @@ such that equality on <<index>> is decidable.
 
   Context {message : Type}
           {index : Type}
-          {IndEqDec : EqDec index}
+          {IndEqDec : EqDecision index}
           (IM : index -> VLSM message)
           .
 
@@ -82,7 +82,7 @@ to a component:
                (j : index)
       : vstate (IM j)
       :=
-      match eq_dec j i with
+      match IndEqDec j i with
       | left e => eq_rect_r (fun i => vstate (IM i)) si e
       | _ => s j
       end.
@@ -98,7 +98,7 @@ The next few results describe several properties of the [state_update] operation
                (Hneq : j <> i)
       : state_update s i si j = s j.
     Proof.
-      unfold state_update. destruct (eq_dec j i); try contradiction. reflexivity.
+      unfold state_update. destruct (IndEqDec j i); try contradiction. reflexivity.
     Qed.
 
     Lemma state_update_eq
@@ -120,7 +120,7 @@ The next few results describe several properties of the [state_update] operation
     Proof.
       apply functional_extensionality_dep_good.
       intro j.
-      destruct (eq_dec j i).
+      destruct (IndEqDec j i).
       - subst. apply state_update_eq.
       - apply state_update_neq. assumption.
     Qed.
@@ -133,7 +133,7 @@ The next few results describe several properties of the [state_update] operation
     Proof.
       apply functional_extensionality_dep_good.
       intro j.
-      destruct (eq_dec j i).
+      destruct (IndEqDec j i).
       - subst. rewrite state_update_eq. symmetry. apply state_update_eq.
       - repeat rewrite state_update_neq; try assumption.
         reflexivity.
@@ -548,7 +548,7 @@ for the [free_composite_vlsm].
       ; unfold s0; clear s0.
       - assert (Hinit : vinitial_state_prop free_composite_vlsm (lift_to_composite_state j s)).
         { intro i. unfold lift_to_composite_state.
-          destruct (eq_dec i j).
+          destruct (IndEqDec i j).
           - subst; rewrite state_update_eq. unfold s. destruct is. assumption.
           - rewrite state_update_neq; try assumption.
             unfold composite_s0. simpl. unfold vs0.
@@ -632,7 +632,7 @@ Let us fix an indexed set of VLSMs <<IM>> and their composition <<X>> using <<co
 
   Context {message : Type}
           {index : Type}
-          {IndEqDec : EqDec index}
+          {IndEqDec : EqDecision index}
           (IM : index -> VLSM message)
           (i0 : index)
           (T := composite_type IM)
@@ -896,7 +896,7 @@ We can now finally prove the main result for this section:
   Proof.
     intro i.
     unfold lift_to_composite_state.
-    destruct (eq_dec i j).
+    destruct (IndEqDec i j).
     - subst. rewrite state_update_eq. assumption.
     - rewrite state_update_neq; try assumption.
       simpl.
@@ -1085,7 +1085,7 @@ All results from regular projections carry to these "free" projections.
 
   Context {message : Type}
           {index : Type}
-          {IndEqDec : EqDec index}
+          {IndEqDec : EqDecision index}
           (IM :index -> VLSM message)
           (i0 : index)
           (X := free_composite_vlsm IM i0)
@@ -1118,7 +1118,7 @@ All results from regular projections carry to these "free" projections.
       destruct l as (i', li').
       destruct (vtransition (IM i') li' (s i', om)) as (si', omi') eqn:Ht'.
       inversion Ht. subst s' omi'; clear Ht.
-      destruct (eq_dec i i').
+      destruct (IndEqDec i i').
       + subst i'. rewrite state_update_eq.
         specialize (Hs i).
         apply protocol_state_prop_iff. right.
@@ -1191,7 +1191,7 @@ All results from regular projections carry to these "free" projections.
     - rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
       inversion Htr. subst. simpl in *.
       specialize (IHtr s H2 eq_refl).
-      destruct (eq_dec  i (projT1 l)).
+      destruct (IndEqDec i (projT1 l)).
       + subst. apply pre_loaded_with_all_messages_projection_protocol_transition_eq in H3.
         destruct IHtr as [tri [Htri Hlasti]].
         exists
@@ -1232,7 +1232,7 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
   Definition first : binary_index := true.
   Definition second : binary_index := false.
 
-  Global Instance binary_index_dec :  EqDec binary_index := bool_dec.
+  Global Instance binary_index_dec :  EqDecision binary_index := _.
 
   Definition binary_IM
     (i : binary_index)

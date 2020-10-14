@@ -95,7 +95,7 @@ Section CommuteIndexed.
     {CV : consensus_values}
     {message : Type}
     {index : Type}
-    {Heqd : EqDec index}
+    {Heqd : EqDecision index}
     (IM : index -> VLSM message)
     (Hi : index)
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
@@ -320,7 +320,7 @@ Section composite_estimators.
     {CV : consensus_values}
     {message : Type}
     {index : Type}
-    {Heqd : EqDec index}
+    {Heqd : EqDecision index}
     (IM : index -> VLSM message)
     (Hi : index)
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)

@@ -5,7 +5,7 @@ Import ListNotations.
 
 Require Import Coq.Logic.FinFun.
 
-Require Import CasperCBC.Lib.Preamble.
+From CasperCBC.Lib Require Import Preamble.
 
 Definition last_error {S} (l : list S) : option S :=
   match l with
@@ -262,17 +262,17 @@ Proof.
   ; try assumption; try reflexivity; try contradiction; discriminate.
 Qed.
 
-Lemma in_correct {X} `{EqDec X} :
+Lemma in_correct {X} {x_eq_dec : EqDecision X} :
   forall (l : list X) (x : X),
-    In x l <-> inb eq_dec x l = true.
+    In x l <-> inb x_eq_dec x l = true.
 Proof.
   intros s msg.
   apply in_function.
 Qed.
 
-Lemma in_correct' {X} `{EqDec X} :
+Lemma in_correct' {X} {x_eq_dec : EqDecision X} :
   forall (l : list X) (x : X),
-    ~ In x l <-> inb eq_dec x l = false.
+    ~ In x l <-> inb x_eq_dec x l = false.
 Proof.
   intros s msg.
   symmetry. apply mirror_reflect_curry.
@@ -281,18 +281,18 @@ Qed.
 
 Definition inclb
   {A : Type}
-  {Heq : EqDec A}
+  {eq_A : EqDecision A}
   (l1 l2 : list A)
   : bool
-  := forallb (fun x : A => inb eq_dec x l2) l1.
+  := forallb (fun x : A => inb eq_A x l2) l1.
 
-Lemma incl_function {A} {Heq : EqDec A} : PredicateFunction2 (@incl A) (inclb).
+Lemma incl_function {A} {eq_A : EqDecision A} : PredicateFunction2 (@incl A) (inclb).
 Proof.
   intros l1 l2. unfold inclb. rewrite forallb_forall.
   split; intros Hincl x Hx; apply in_correct; apply Hincl; assumption.
 Qed.
 
-Definition incl_correct {A} {Heq : EqDec A}
+Definition incl_correct {A} {eq_A : EqDecision A}
   (l1 l2 : list A)
   : incl l1 l2 <-> inclb l1 l2 = true
   := incl_function l1 l2.

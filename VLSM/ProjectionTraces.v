@@ -13,7 +13,7 @@ Section ProjectionTraces.
 Context
   {message : Type}
   {index : Type}
-  {IndEqDec : EqDec index}
+  {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (i0 : index)
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
@@ -33,7 +33,7 @@ Fixpoint finite_trace_projection_list
     let s := destination item in
     let l := l item in
     let x := projT1 l in
-    match eq_dec j x with
+    match IndEqDec j x with
     | left e =>
       let lj := eq_rect_r _ (projT2 l) e in
       @Build_transition_item _ (type Xj) lj (input item) (s j) (output item) :: tail
@@ -49,7 +49,7 @@ Definition from_projection
 Definition dec_from_projection
   (a : transition_item)
   : {from_projection a} + {~from_projection a}
-  := eq_dec j (projT1 (l a)).
+  := IndEqDec j (projT1 (l a)).
 
 Definition finite_trace_projection_list_alt
   (trx : list (vtransition_item X))
@@ -79,7 +79,7 @@ Proof.
   induction trx; intros; try reflexivity.
   simpl.
   destruct
-    (@eq_dec index IndEqDec j
+    (IndEqDec j
     (@projT1 index (fun n : index => @vlabel message (IM n))
        (@l message (@composite_type message index IM) a)))
     eqn:Heq.
@@ -90,7 +90,7 @@ Proof.
     ).
     { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
       replace
-        (@eq_dec index IndEqDec j
+        (IndEqDec j
         (@projT1 index (fun n : index => @vlabel message (IM n))
            (@l message (@type message X) a)))
       with
@@ -131,7 +131,7 @@ Proof.
     ).
     { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
       replace
-        (@eq_dec index IndEqDec j
+        (IndEqDec j
         (@projT1 index (fun n0 : index => @vlabel message (IM n0))
            (@l message (@type message X) a)))
       with
@@ -172,7 +172,7 @@ Proof.
     unfold transition in Htransition; simpl in Htransition.
     destruct (vtransition (IM i) l (s' i, iom)) as [si' om'] eqn:Hteq.
     inversion Htransition; subst. clear Htransition.
-    destruct Hin as [Heq | Hin]; subst; simpl in *; destruct (eq_dec j i).
+    destruct Hin as [Heq | Hin]; subst; simpl in *; destruct (IndEqDec j i).
     + inversion Hempty.
     + apply state_update_neq. assumption.
     + inversion Hempty.
@@ -193,7 +193,7 @@ Proof.
   destruct l as [i l].
   rewrite map_cons.
   rewrite unroll_last. simpl.
-  destruct (eq_dec j i).
+  destruct (IndEqDec j i).
   - rewrite map_cons. rewrite unroll_last.
     assumption.
   - destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
@@ -223,7 +223,7 @@ Proof.
       apply protocol_generated with _om _s; try assumption. split; assumption.
     }
     assert (Hps : protocol_state_prop X s) by (exists oom; assumption).
-    destruct (eq_dec j x).
+    destruct (IndEqDec j x).
     + subst x.
       simpl in Ht.
       destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.

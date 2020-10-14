@@ -1,6 +1,6 @@
-From Coq Require Export Relation_Definitions Morphisms RelationClasses List Bool Peano.
-Export ListNotations.
-From Coq.Program Require Export Basics Syntax.
+From Coq Require Import Relation_Definitions Morphisms RelationClasses List Bool Peano.
+Import ListNotations.
+From Coq.Program Require Import Basics Syntax.
 
 Global Generalizable All Variables.
 
@@ -198,6 +198,16 @@ Proof. intros [??]. destruct (decide P), (decide Q); tauto. Qed.
 
 Definition bool_decide (P : Prop) {dec : Decision P} : bool :=
   if dec then true else false.
+
+Ltac solve_trivial_decision :=
+  match goal with
+  | |- Decision (?P) => apply _
+  | |- sumbool ?P (~?P) => change (Decision P); apply _
+  end.
+Ltac solve_decision :=
+  unfold EqDecision; intros; first
+    [ solve_trivial_decision
+    | unfold Decision; decide equality; solve_trivial_decision ].
 
 Lemma bool_decide_reflect P `{dec : Decision P} : reflect P (bool_decide P).
 Proof. unfold bool_decide. destruct dec; [left|right]; assumption. Qed.

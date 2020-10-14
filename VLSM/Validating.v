@@ -15,7 +15,7 @@ Section validating_projection.
 Context
     {message : Type}
     {index : Type}
-    {IndEqDec : EqDec index}
+    {IndEqDec : EqDecision index}
     (IM : index -> VLSM message)
     (i0 : index)
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)

@@ -442,7 +442,7 @@ Section computable_sent_messages_lifting.
 
 Context
   {Hsent_messages : computable_sent_messages X}
-  (message_eq : EqDec message)
+  (message_eq : EqDecision message)
   (Hbeen_sent_X := @computable_sent_messages_has_been_sent_capability message X Hsent_messages message_eq)
   .
 
@@ -453,7 +453,7 @@ Definition equivocator_sent_messages_fn
   (s : vstate equivocator_vlsm)
   : set message
   :=
-  fold_right (set_union eq_dec) []
+  fold_right (set_union message_eq) []
     (map (fun i => sent_messages_fn X (projT2 s i)) (fin_t_listing (S (projT1 s)))).
 
 (** [equivocator_sent_messages_fn] captures all [sent_messages] for that state.

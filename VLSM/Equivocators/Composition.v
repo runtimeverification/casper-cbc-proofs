@@ -43,23 +43,22 @@ Context {message : Type}
   (rpartition : equiv_index + nequiv_index -> index)
   (Hlpartition : forall i : index, i = rpartition (partition i))
   (Hrpartition : forall i : equiv_index + nequiv_index, partition (rpartition i) = i)
-  {IndEqDec : EqDec index}
+  {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   (i0 : index)
   (X := free_composite_vlsm IM i0)
   .
 
-Lemma partition_eq_dec : EqDec (equiv_index + nequiv_index).
+(* TODO: this follows from sumbool instance *)
+Instance partition_eq_dec : EqDecision (equiv_index + nequiv_index).
 Proof.
   intros x y.
-  destruct (eq_dec (rpartition x) (rpartition y)).
+  destruct (IndEqDec (rpartition x) (rpartition y)).
   - left. apply (f_equal partition) in e.
     repeat rewrite Hrpartition in e. assumption.
   - right. intro contra; elim n. subst. reflexivity.
-Qed.
-
-Existing Instance partition_eq_dec.
+Defined.
 
 Definition equivocator_IM
   (i : index)

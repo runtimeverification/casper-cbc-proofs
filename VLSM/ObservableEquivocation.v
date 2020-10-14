@@ -34,7 +34,7 @@ Class comparable_events
 
 Class observation_based_equivocation_evidence
   (state validator event : Type)
-  (event_eq : EqDec event)
+  (event_eq : EqDecision event)
   (event_comparable : comparable_events event) :=
   {
     observable_events : state -> validator -> set event;
@@ -55,7 +55,7 @@ to obtain the [basic_equivocation] between states and validators.
 *)
 Definition basic_observable_equivocation
   (state validator event : Type)
-  {event_eq : EqDec event}
+  {event_eq : EqDecision event}
   {event_comparable : comparable_events event}
   {Hevidence : observation_based_equivocation_evidence state validator event event_eq event_comparable}
   {measurable_V : Measurable validator}
@@ -74,8 +74,8 @@ Section not_heavy_incl.
 
 Context
   (state validator event : Type)
-  {event_eq : EqDec event}
-  (v_eq : EqDec validator)
+  {event_eq : EqDecision event}
+  (v_eq : EqDecision validator)
   {event_comparable : comparable_events event}
   {Hevidence : observation_based_equivocation_evidence state validator event event_eq event_comparable}
   {measurable_V : Measurable validator}
@@ -132,10 +132,10 @@ produce [observation_based_equivocation_evidence].
 
 Context
   {message validator event : Type}
-  {event_eq : EqDec event}
+  {event_eq : EqDecision event}
   {event_comparable : comparable_events event}
   {index : Type}
-  {IndEqDec : EqDec index}
+  {IndEqDec : EqDecision index}
   (index_listing : list index)
   (finite_index : Listing index_listing)
   (IM : index -> VLSM message)
@@ -160,7 +160,7 @@ Definition composed_observable_events
   (v : validator)
   : set event
   :=
-  fold_right (set_union eq_dec) [] (map (fun i => observable_events (s i) v) index_listing).
+  fold_right (set_union event_eq) [] (map (fun i => observable_events (s i) v) index_listing).
 
 Definition composed_observation_based_equivocation_evidence
   : observation_based_equivocation_evidence (composite_state IM) validator event event_eq event_comparable
@@ -256,7 +256,7 @@ Proof.
     inversion He.
   - destruct (exists_last Htr0) as [l' [a Heq]].
     specialize
-      (existsb_first tr (fun item => inb eq_dec e (observable_events (destination item) v)))
+      (existsb_first tr (fun item => inb event_eq e (observable_events (destination item) v)))
       as Hfirst.
     spec Hfirst.
     + apply existsb_exists. exists a.
@@ -301,9 +301,9 @@ Definition trace_generated_event
   (s := last (map destination prefix) is)
   (s' := destination item),
   In e
-    (set_diff eq_dec
+    (set_diff event_eq
       (observable_events (s' i) v)
-      (set_union eq_dec
+      (set_union event_eq
         (observable_events (s i) v)
         (option_message_observable_events (input item) v)
       )
@@ -322,10 +322,10 @@ Definition trace_generated_event_fn
         let i := projT1 (l item) in
           let s := last (map destination pre) is in
           let s' := destination item in
-          inb eq_dec e
-            (set_diff eq_dec
+          inb event_eq e
+            (set_diff event_eq
               (observable_events (s' i) v)
-              (set_union eq_dec
+              (set_union event_eq
                 (observable_events (s i) v)
                 (option_message_observable_events (input item) v)
               )
@@ -426,9 +426,9 @@ Proof.
     rewrite <- Bool.orb_true_iff.
     unfold s. unfold s'. unfold i.
     destruct
-      (inb eq_dec e
+      (inb event_eq e
         (observable_events (last (map destination prefix) is (projT1 (l item))) v)
-      || inb eq_dec e (option_message_observable_events (input item) v)
+      || inb event_eq e (option_message_observable_events (input item) v)
       )%bool
       eqn:Hor; try reflexivity.
     elim Hne'. split; try assumption. intro contra. discriminate contra.
@@ -647,7 +647,7 @@ Proof.
     apply in_map_iff. exists (projT1 l). split; try reflexivity.
     apply (proj2 finite_index).
   }
-  destruct (eq_dec i (projT1 l)).
+  destruct (IndEqDec i (projT1 l)).
   - specialize
     (not_trace_generated_event _ _ _ _ Hne
       pre [] {| l := l; input := iom; destination := s; output := oom |}
@@ -991,7 +991,7 @@ Context
   {event_eq : EqDec event}
   {event_comparable : comparable_events event}
   {index : Type}
-  {IndEqDec : EqDec index}
+  {IndEqDec : EqDecision index}
   (index_listing : list index)
   (finite_index : Listing index_listing)
   (IM : index -> VLSM message)
@@ -1008,7 +1008,7 @@ Context
     @composite_vlsm_observable_messages _ _ _ event_eq event_comparable _ IndEqDec
     index_listing IM Hevidence i0 constraint}
   .
-
+  
 Class unforgeable_messages
   :=
   {
@@ -1027,7 +1027,7 @@ gather information through the messages it receives.
       (Hv : A v <> i)
       : incl
         (observable_events (s' i) v)
-        (set_union eq_dec
+        (set_union event_eq
           (observable_events (s i) v)
           (option_message_observable_events index_listing IM Hevidence i0 constraint om v)
         );

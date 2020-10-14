@@ -612,24 +612,24 @@ Proof.
     apply H3. assumption.
 Qed.
 
-Lemma add_remove_inverse {X} `{EqDec X}:
+Lemma add_remove_inverse {X} `{X_dec : EqDecision X}:
   forall (lv : list X) (v : X),
     ~ In v lv ->
-    set_remove eq_dec v (set_add eq_dec v lv) = lv.
+    set_remove X_dec v (set_add X_dec v lv) = lv.
 Proof.
   induction lv as [|hd tl IHlv]; intros.
   - simpl.
-    destruct (eq_dec v v).
+    destruct (X_dec v v).
     reflexivity. contradiction.
-  - simpl. destruct (eq_dec v hd).
-    subst. exfalso; apply H0.
+  - simpl. destruct (X_dec v hd).
+    subst. exfalso; apply H.
     apply in_eq.
     spec IHlv v. spec IHlv.
-    intro Habsurd. apply H0.
+    intro Habsurd. apply H.
     right; assumption.
     rewrite <- IHlv at 2.
     simpl.
-    destruct (eq_dec v hd).
+    destruct (X_dec v hd).
     contradiction.
     reflexivity.
 Qed.
