@@ -19,7 +19,7 @@ Section EquivocationAwareValidator.
     {index_self : index}
     {index_listing : list index}
     {Hfinite : Listing index_listing}
-    {idec : EqDec index}
+    {idec : EqDecision index}
     (X := @VLSM_list _ index_self index_listing idec)
     {Mindex : Measurable index}
     {Rindex : ReachableThreshold index}
@@ -34,7 +34,7 @@ Section EquivocationAwareValidator.
     : list state
     :=
     map (fun i: index => project s i)
-      (set_diff eq_dec index_listing eqv_validators).
+      (set_diff decide_eq index_listing eqv_validators).
 
   Definition no_equivocating_decisions
     (s : @state index index_listing)
@@ -49,10 +49,9 @@ Section EquivocationAwareValidator.
   Definition equivocation_aware_estimator (s : state) (b : bool) : Prop :=
     let eqv_validators := equivocating_validators s in
     let decisions := no_equivocating_decisions s eqv_validators in
-    let ob_dec := (option_eq_dec Bool.bool_dec) in
-    let none_count := List.count_occ ob_dec decisions None in
-    let our_count := List.count_occ ob_dec decisions (Some b) in
-    let other_count := List.count_occ ob_dec decisions (Some (negb b)) in
+    let none_count := List.count_occ decide_eq decisions None in
+    let our_count := List.count_occ decide_eq decisions (Some b) in
+    let other_count := List.count_occ decide_eq decisions (Some (negb b)) in
     match s with
     | Bottom => True
     | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
