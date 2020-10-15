@@ -48,7 +48,7 @@ Definition validator_message_preceeds_fn
   : bool
   :=
   match m2 with
-  | (c, v, j) => inb eq_dec m1 (get_message_set (unmake_justification j))
+  | (c, v, j) => inb decide_eq m1 (get_message_set (unmake_justification j))
   end.
 
 Definition validator_message_preceeds
@@ -62,7 +62,7 @@ Lemma  validator_message_preceeds_irreflexive'
   (v : V)
   (j1 j2 : justification C V)
   (Hincl : justification_incl j2 j1)
-  : ~inb eq_dec ((c, v, j1)) (get_message_set (unmake_justification j2)) = true.
+  : ~inb decide_eq ((c, v, j1)) (get_message_set (unmake_justification j2)) = true.
 Proof.
   generalize dependent j1.
   generalize dependent v.
@@ -72,17 +72,17 @@ Proof.
       (fun j2 =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl j2 j1 ->
-        inb eq_dec ((c, v, j1)) (get_message_set (unmake_justification j2)) <> true
+        inb decide_eq ((c, v, j1)) (get_message_set (unmake_justification j2)) <> true
       )
       (fun m =>
         forall (c : C) (v : V) (j1 : justification C V),
         justification_incl (get_justification m) j1 ->
-        inb eq_dec ((c, v, j1)) (get_message_set (unmake_justification (get_justification m))) <> true
+        inb decide_eq ((c, v, j1)) (get_message_set (unmake_justification (get_justification m))) <> true
       )
       (fun msgs =>
         forall (c : C) (v : V) (j1 : justification C V),
         message_set_incl msgs (justification_message_set j1) ->
-        inb eq_dec ((c, v, j1)) (unmake_message_set msgs) <> true
+        inb decide_eq ((c, v, j1)) (unmake_message_set msgs) <> true
       )
     ); simpl; intros; intro Hin; try discriminate.
   - specialize (H c v j1 H0).
@@ -93,7 +93,7 @@ Proof.
     elim H. assumption.
   - specialize
       (in_correct
-        (set_add eq_dec m (unmake_message_set m0))
+        (set_add message_eq m (unmake_message_set m0))
         (Msg _ _ c v j1)
       ); intro Hin_in
     ; apply proj2 in Hin_in

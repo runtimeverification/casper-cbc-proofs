@@ -44,10 +44,10 @@ messages, implementing a limited equivocation tolerance policy.
     (v : V)
     : set message
     :=
-    filter (fun m => if eq_dec (sender m) v then true else false) s.
+    filter (fun m => if decide (sender m = v) then true else false) s.
 
   Definition full_node_client_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (set message) V message message_eq message_events
+    : observation_based_equivocation_evidence (set message) V message decide_eq message_events
     :=
     {|
       observable_events := full_node_client_observable_events
@@ -59,7 +59,7 @@ messages, implementing a limited equivocation tolerance policy.
     (s : set message)
     : set V
     :=
-    set_map eq_dec sender s.
+    set_map decide_eq sender s.
 
   Lemma full_node_client_state_validators_nodup
     (s : set message)
@@ -86,7 +86,7 @@ messages, implementing a limited equivocation tolerance policy.
     let (msgs, om) := sm in
     match om with
     | None => pair msgs None
-    | Some msg => pair (set_add eq_dec msg msgs)  None
+    | Some msg => pair (set_add decide_eq msg msgs)  None
     end.
 
   Definition valid_client2
@@ -99,7 +99,7 @@ messages, implementing a limited equivocation tolerance policy.
     | Some msg =>
       ~In msg msgs
       /\ incl (get_message_set (unmake_justification (get_justification msg))) msgs
-      /\ not_heavy (set_add eq_dec msg msgs)
+      /\ not_heavy (set_add decide_eq msg msgs)
     end.
 
   Instance VLSM_type_full_client2 : VLSM_type message :=
@@ -165,7 +165,7 @@ messages, implementing a limited equivocation tolerance policy.
     (m : message)
     (om' : option message)
     (Ht : protocol_transition bvlsm l (s, Some m) (s', om'))
-    : s' = set_add eq_dec m s
+    : s' = set_add decide_eq m s
     /\ om' = None
     /\ ~In m s
     /\ incl
@@ -257,7 +257,7 @@ messages, implementing a limited equivocation tolerance policy.
   Definition client_has_been_received
     : state_message_oracle vlsm
     :=
-    fun s m => inb eq_dec m s.
+    fun s m => inb decide_eq m s.
 
   Lemma has_been_sent_in_trace
     (s : set message)
@@ -388,7 +388,7 @@ messages, implementing a limited equivocation tolerance policy.
   Proof.
     unfold has_been_received_prop. unfold all_traces_have_message_prop.
     unfold client_has_been_received.
-    pose (in_correct s m) as Hin. rewrite <- Hin. clear Hin.
+    pose (@in_correct _ decide_eq s m) as Heq. rewrite <- Heq. clear Heq.
     unfold selected_message_exists_in_all_traces.
     split; intros.
     - apply Exists_exists.
@@ -404,7 +404,7 @@ messages, implementing a limited equivocation tolerance policy.
         assert (Hfutures : in_futures bvlsm s0 s)
           by (exists tr; split; assumption).
         specialize (IHtr s0 H3 Hlast).
-        destruct (in_dec eq_dec m s0).
+        destruct (in_dec decide_eq m s0).
         * destruct H4 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
           exists {| l := l; input := iom; destination := s0; output := oom |}.
           split; try (left; reflexivity). simpl.
@@ -450,7 +450,7 @@ messages, implementing a limited equivocation tolerance policy.
     unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
     unfold client_has_not_been_received. rewrite Bool.negb_true_iff.
     unfold client_has_been_received.
-    pose (in_correct' s m) as Hin.
+    pose (@in_correct' _ decide_eq s m) as Hin.
     rewrite <- Hin. clear Hin.
     unfold selected_message_exists_in_no_trace.
     split.
@@ -474,7 +474,7 @@ messages, implementing a limited equivocation tolerance policy.
         unfold has_been_received_prop in Hreceived.
         unfold all_traces_have_message_prop in Hreceived.
         unfold client_has_been_received in Hreceived.
-        pose (in_correct s m) as Hin.
+        pose (@in_correct _ decide_eq s m) as Hin.
         rewrite <- Hin in Hreceived. clear Hin.
         rewrite Hreceived in Hbr.
         specialize (Hbr is tr Htr Hlst).

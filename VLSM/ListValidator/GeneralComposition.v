@@ -24,7 +24,7 @@ Context
   {i0 : index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
-  {idec : EqDec index}
+  {idec : EqDecision index}
   (message := @ListValidator.message index index_listing)
   (state := @ListValidator.state index index_listing)
   (est : state -> bool -> Prop)
@@ -50,7 +50,7 @@ Context
 
   Definition message_observable_events_lv (m : message) (target : index) : set state :=
     let obs := @full_observations index index_listing idec (snd m) target in
-    if (eq_dec (fst m) target) then set_add eq_dec (snd m) obs else obs.
+    if (decide (fst m = target)) then set_add decide_eq (snd m) obs else obs.
 
   Lemma message_observable_consistency_lv
       (m : message)
@@ -94,7 +94,7 @@ Context
       inversion Ht. subst m. simpl.
       rewrite state_update_eq.
       rewrite (@observations_disregards_cv index i index_listing idec est).
-      destruct (eq_dec il i).
+      destruct (decide (il = i)).
       + subst il. intros ob Hob.
         apply (@observations_update_eq index i index_listing Hfinite idec est).
         assumption.
@@ -224,7 +224,7 @@ Context
           simpl in Hcvalid.
           destruct Hcvalid as [Hcvalid _].
           destruct Hcvalid as [Hproject [Hnb2 Hother]].
-        destruct (eq_dec (fst m) v).
+        destruct (decide (fst m = v)).
         * rewrite state_update_eq.
           unfold incl.
           intros.
@@ -245,14 +245,14 @@ Context
           right.
           simpl.
           unfold message_observable_events_lv.
-          rewrite eq_dec_if_true.
+          rewrite decide_True.
           rewrite H2.
           apply set_add_intro2.
           reflexivity.
           assumption.
           simpl.
           unfold message_observable_events_lv.
-          rewrite eq_dec_if_true.
+          rewrite decide_True.
           apply set_union_intro.
           apply set_union_elim in H2.
           destruct H2.
@@ -273,7 +273,7 @@ Context
           specialize (H2 a H).
           simpl.
           unfold message_observable_events_lv.
-          rewrite eq_dec_if_false.
+          rewrite decide_False.
           assumption.
           assumption.
        + unfold constrained_composite_valid in Hvalid.
@@ -378,7 +378,7 @@ Context
           with (Some m).
         unfold option_message_observable_events. unfold message_observable_events.
         simpl. unfold message_observable_events_lv.
-        destruct (eq_dec (fst m) v).
+        destruct (decide (fst m = v)).
         * subst v.
           intuition.
         * apply (@observations_update_neq index v index_listing Hfinite idec est) in He; try assumption.
@@ -407,7 +407,7 @@ Context
     rewrite Heq1 in Heq.
     apply order_decompositions in Heq.
     unfold comparableb.
-    destruct (eq_dec e1 e2); try reflexivity.
+    destruct (state_EqDecision e1 e2); try reflexivity.
     destruct Heq as [Heq | [Hgt | Hlt]]
     ; try (elim n; subst; reflexivity)
     ; apply orb_true_iff.

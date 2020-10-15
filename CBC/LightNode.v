@@ -116,7 +116,7 @@ Proof.
 Qed.
 
 Definition justification_in
-  : hash -> list hash -> bool := inb eq_dec.
+  : hash -> list hash -> bool := inb decide_eq.
 
 Instance message_type
   : StrictlyComparable (message C V hash)
@@ -124,7 +124,7 @@ Instance message_type
   TripleStrictlyComparable C V (justification_type hash).
 
 Instance eq_message
-  : EqDec (message C V hash)
+  : EqDecision (message C V hash)
   :=
   strictly_comparable_eq_dec message_type.
 
@@ -162,22 +162,22 @@ Definition state0 C V hash : state C V hash := [].
 Definition state_add
   : message C V hash -> state C V hash -> state C V hash
   :=
-  set_add eq_dec.
+  set_add decide_eq.
 
 Definition state_remove
   : message C V hash -> state C V hash -> state C V hash
   :=
-  set_remove eq_dec.
+  set_remove decide_eq.
 
 Definition state_in
   : message C V hash-> state C V hash-> bool
   :=
-  set_mem eq_dec.
+  set_mem decide_eq.
 
 Definition state_union
   : state C V hash-> state C V hash-> state C V hash
   :=
-  set_union eq_dec.
+  set_union decide_eq.
 
 Definition state_eq
   (s1 s2 : state C V hash)
@@ -270,11 +270,11 @@ Qed.
 Definition equivocating_messages
   (msg1 msg2 : message C V hash) : bool
   :=
-  match eq_dec msg1 msg2 with
+  match decide (msg1 = msg2) with
   | left _  => false
   | _ => match msg1, msg2 with (c1,v1,j1), (c2,v2,j2) =>
-      match eq_dec v1 v2 with
-      | left _  => negb (inb eq_dec (hash_message msg1) j2) && negb (inb eq_dec (hash_message msg2) j1)
+      match decide (v1 = v2) with
+      | left _  => negb (inb decide_eq (hash_message msg1) j2) && negb (inb decide_eq (hash_message msg2) j1)
       | right _ => false
       end
     end
@@ -292,12 +292,10 @@ Proof.
   unfold equivocating_messages.
   intros [(c1, v1) j1] [(c2, v2) j2] H.
   simpl.
-  destruct (eq_dec (c1, v1, j1) (c2, v2, j2)).
-  rewrite eq_dec_if_true in H.
-  inversion H.
-  assumption.
-  rewrite eq_dec_if_false in H.
-  destruct (eq_dec v1 v2).
+  destruct (decide ((c1, v1, j1) = (c2, v2, j2))).
+  rewrite decide_True in H; congruence.
+  rewrite decide_False in H.
+  destruct (decide (v1 = v2)).
   assumption. inversion H. assumption.
 Qed.
 
@@ -310,23 +308,18 @@ Proof.
     + (* Proving inequality obligation *)
       intro H_absurd.
       unfold equivocating_messages in H.
-      rewrite eq_dec_if_true in H.
-      inversion H. assumption.
+      rewrite decide_True in H; congruence.
     + (* Proving sender obligation *)
       now apply equivocating_messages_sender.
     + (* Proving msg1 is not in msg2's justification *)
       intro H_absurd.
-      apply (in_function eq_dec) in H_absurd.
+      apply (in_function decide_eq) in H_absurd.
       unfold equivocating_messages in H.
       simpl in H_absurd.
       rewrite H_absurd in H.
-      destruct (eq_dec (c1,v1,j1) (c2,v2,j2)).
-      rewrite eq_dec_if_true in H. inversion H.
-      assumption. rewrite eq_dec_if_false in H.
-      destruct (eq_dec v1 v2).
-      subst.
-      simpl in H. inversion H.
-      inversion H. assumption.
+      destruct (decide ((c1,v1,j1) = (c2,v2,j2))).
+      rewrite decide_True in H. congruence.
+      rewrite decide_True in H.
     + (* Proving msg2 is not in msg1's justification *)
       intro H_absurd. apply (in_function eq_dec) in H_absurd.
       unfold equivocating_messages in H.

@@ -48,24 +48,7 @@ Proof.
   now apply K_dec_type with (P := fun prf => prf = eq_refl).
 Qed.
 
-Instance comparison_eq_dec : EqDecision comparison.
-Proof. solve_decision. Defined.
-
 Instance nat_eq_dec: EqDecision nat := eq_nat_dec.
-
-Instance option_eq_dec `{dec : EqDecision A} : EqDecision (option A).
-Proof.
- refine (fun mx my =>
-  match mx, my with
-  | Some x, Some y => if (decide (x = y)) then left _ else right _
-  | None, None => left _ | _, _ => right _
-  end); clear dec; abstract congruence.
-Defined.
-
-Instance bool_eq_dec : EqDecision bool.
-Proof. solve_decision. Defined.
-
-Instance option_bool_eq : EqDecision (option bool) := _.
 
 Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
   snd (fst xyz).

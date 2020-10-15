@@ -27,7 +27,7 @@ Context
   {index_self : index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
-  {dec : EqDec index}.
+  `{EqDecision index}.
 
 (** Each state contains a binary value and a list of all the states of the other validators. **)
 
@@ -54,7 +54,7 @@ Proof.
   + left. reflexivity.
   + right. intro H. discriminate H.
   + right. intro H. discriminate H.
-  + destruct (eq_dec b b0).
+  + destruct (bool_eq_dec b b0).
     * { destruct (indexed_state_eq_dec index_listing is is0).
       - subst. left. reflexivity.
       - right. subst. intro H. elim n. inversion H. reflexivity.
@@ -70,7 +70,7 @@ Proof.
     * right. intro H. elim n. inversion H. reflexivity.
 Qed.
 
-Global Instance state_EqDec : EqDec state := { eq_dec := state_eq_dec }.
+Global Instance state_EqDecision : EqDecision state := state_eq_dec.
 
 Fixpoint depth (s : state) : nat :=
   match s with
@@ -95,7 +95,7 @@ Fixpoint project_indexed
   | Empty =>
     Bottom
   | Append v' l' s is' =>
-    if eq_dec v' v
+    if decide (v' = v)
     then s
     else project_indexed l' is' v
   end.
@@ -120,7 +120,7 @@ Fixpoint update_indexed
   match is with
   | Empty => Empty
   | Append v' l' s is' =>
-    if eq_dec v' v
+    if decide (v' = v)
     then Append v' l' new_s is'
     else Append v' l' s (update_indexed l' is' v new_s)
   end.
@@ -137,7 +137,7 @@ Proof.
   - simpl.
     reflexivity.
   - simpl.
-    destruct (eq_dec v i) eqn : eq.
+    destruct (decide (v = i)) eqn : eq.
     + assert (Hsame : s = news). {
         simpl in Heq.
         rewrite eq in Heq.
@@ -178,7 +178,7 @@ Proof.
     exfalso.
     assumption.
   - simpl.
-    destruct (eq_dec v i) eqn : dec_eq; simpl; rewrite <- Heq; rewrite dec_eq;
+    destruct (decide (v = i)) eqn : dec_eq; simpl; rewrite <- Heq; rewrite dec_eq;
     simpl.
     + reflexivity.
     + assert (Hin' : In i l). {
@@ -205,13 +205,13 @@ Proof.
   - simpl.
     reflexivity.
   - simpl.
-    destruct (eq_dec v i).
+    destruct (decide (v = i)).
     + simpl.
-      destruct (eq_dec v j).
+      destruct (decide (v = j)).
       * rewrite e in e0. subst. elim Heq. reflexivity.
       * reflexivity.
     + simpl.
-      destruct (eq_dec v j).
+      destruct (decide (v = j)).
       * reflexivity.
       * apply IHis.
         destruct Hin.
@@ -232,7 +232,7 @@ Proof.
   induction is.
   - simpl. reflexivity.
   - simpl.
-    destruct (eq_dec v i) eqn : eq.
+    destruct (decide (v = i)) eqn : eq.
     + simpl. rewrite eq. reflexivity.
     + simpl. rewrite eq.
       assert (update_indexed l (update_indexed l is i news) i news = update_indexed l is i news). {
@@ -268,7 +268,6 @@ Lemma update_consensus_clean
   (i : index)
   (value : bool) :
   project s i = project (update_consensus s value) i.
-
 Proof.
   unfold update_consensus.
   destruct s.
@@ -307,7 +306,6 @@ Lemma project_different
   (Hdif : i <> j)
   (Hnot_bottom : s <> Bottom) :
   project (update_state s news j) i = project s i.
-
 Proof.
   unfold project.
   destruct s.
@@ -328,7 +326,6 @@ Lemma update_state_eq
       (Hin : In i index_listing)
       (Heq : project big i = news)
       : update_state big news i = big.
-
 Proof.
   intros.
   unfold update_state.
@@ -383,7 +380,7 @@ Fixpoint get_all_states
       induction ls.
       - auto.
       - simpl.
-        destruct (eq_dec v i) eqn : Heqdec.
+        destruct (decide (v = i)) eqn : Heqdec.
         + unfold depth_indexed. unfold depth. lia.
         + pose (in_fast l i v Hi n) as Hi'.
           specialize (IHls Hi').
@@ -438,8 +435,8 @@ Proof.
   intros.
   destruct x.
   destruct y.
-  destruct (eq_dec i i0).
-  - destruct (eq_dec s s0).
+  destruct (decide (i = i0)).
+  - destruct (decide (s = s0)).
     + left. rewrite e. rewrite e0. reflexivity.
     + right.
       intros contra.
@@ -447,7 +444,7 @@ Proof.
       inversion contra.
       elim n.
       assumption.
-   - destruct (eq_dec s s0);
+   - destruct (decide (s = s0));
      right;
      intros contra;
      inversion contra;
@@ -455,8 +452,7 @@ Proof.
      assumption.
 Qed.
 
-Global Instance message_EqDec : EqDec message := { eq_dec := message_eq_dec }.
-
+Global Instance message_EqDecision : EqDecision message := message_eq_dec.
 
 Definition initial_message_prop (m : message) : Prop := False.
 
@@ -491,10 +487,10 @@ Definition global_decisions (s : state) : list (option bool) :=
 
     Currently, ties resolve generously (everyone equal to the mode is
     taken into account).
-**)
+ **)
 
 Definition estimator (s : state) (b : bool) : Prop :=
-  let ob_dec := (option_eq_dec bool_dec) in
+  let ob_dec := (@option_eq_dec bool _) in
   let none_count := List.count_occ ob_dec (global_decisions s) None in
   let our_count := List.count_occ ob_dec (global_decisions s) (Some b) in
   let other_count := List.count_occ ob_dec (global_decisions s) (Some (negb b)) in

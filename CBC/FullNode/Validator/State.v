@@ -387,7 +387,7 @@ Global Instance message_type
     compare_strictorder := message_compare_strict_order;
   }.
 
-Global Instance message_eq : EqDec (message C V)
+Global Instance message_eq : EqDecision (message C V)
   := strictly_comparable_eq_dec message_type.
 
 (* Constructing a StrictOrder type for message_lt *)
@@ -513,7 +513,7 @@ Fixpoint unmake_message_set
   :=
   match msgs with
   | Empty _ _ => []
-  | add _ _ m msgs' => set_add eq_dec m (unmake_message_set msgs')
+  | add _ _ m msgs' => set_add message_eq m (unmake_message_set msgs')
   end.
 
 Lemma in_unmake_message_set
@@ -1063,7 +1063,7 @@ Fixpoint sent_messages_justification
   match j with
   | NoSent _ _ _ => []
   | LastSent _ _ msgs ((c,v,j)) =>
-    set_add eq_dec ((c,v,j)) (sent_messages_justification j)
+    set_add message_eq ((c,v,j)) (sent_messages_justification j)
   end.
 
 Definition sent_messages
@@ -1073,24 +1073,24 @@ Definition sent_messages
   match last_sent s with
   | None => []
   | Some ((c, v, j)) =>
-    set_add eq_dec ((c, v, j)) (sent_messages_justification j)
+    set_add message_eq ((c, v, j)) (sent_messages_justification j)
   end.
 
 Definition received_messages
   (s : state C V)
   : set (message C V)
   :=
-  set_diff eq_dec (get_message_set s) (sent_messages s).
+  set_diff message_eq (get_message_set s) (sent_messages s).
 
 End message_oracles.
 
-Instance eq_v : EqDec V := compare_eq_dec.
+Instance eq_v : EqDecision V := compare_eq_dec.
 
 Definition full_message_observable_messages
   (m : message C V)
   (v : V)
   : set (message C V)
   :=
-  if eq_dec v (sender m) then [m] else [].
+  if decide (v = sender m) then [m] else [].
 
 End FullNodeStateProperties.

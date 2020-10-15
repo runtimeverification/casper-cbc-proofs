@@ -94,11 +94,11 @@ Section CompositeValidator.
     match l with
     | None => match om with
              | None => som
-             | Some msg => pair (pair (set_add eq_dec msg msgs) final) None
+             | Some msg => pair (pair (set_add message_eq msg msgs) final) None
            end
     | Some c =>
       let msg := (c, v, make_justification s) in
-      pair (pair (set_add eq_dec msg msgs) (Some msg)) (Some msg)
+      pair (pair (set_add message_eq msg msgs) (Some msg)) (Some msg)
     end.
 
   Lemma vtransitionv_inv_out
@@ -108,7 +108,7 @@ Section CompositeValidator.
     (om : option message)
     (m' : message)
     (Ht : vtransitionv v l (s, om) = pair s' (Some m'))
-    : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
+    : s' = pair (set_add message_eq m' (get_message_set s)) (Some m')
     /\ get_justification m' = make_justification s
     /\ sender m' = v
     /\ exists (c : C), l = Some c.
@@ -206,7 +206,7 @@ Section proper_sent_received.
     (om : option message)
     (m' : message)
     (Ht : vtransition bvlsm l (s, om) = pair s' (Some m'))
-    : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
+    : s' = pair (set_add message_eq m' (get_message_set s)) (Some m')
     /\ get_justification m' = make_justification s
     /\ sender m' = v
     /\ exists (c : C), l = Some c.
@@ -220,7 +220,7 @@ Section proper_sent_received.
     (om : option message)
     (m' : message)
     (Ht : protocol_transition bvlsm l (s, om) (s', Some m'))
-    : s' = pair (set_add eq_dec m' (get_message_set s)) (Some m')
+    : s' = pair (set_add message_eq m' (get_message_set s)) (Some m')
     /\ get_justification m' = make_justification s
     /\ sender m' = v
     /\ exists (c : C), l = Some c.
@@ -234,7 +234,7 @@ Section proper_sent_received.
     (m : message)
     (om' : option message)
     (Ht : protocol_transition bvlsm l (s, Some m) (s', om'))
-    : s' = pair (set_add eq_dec m (get_message_set s)) (last_sent s)
+    : s' = pair (set_add message_eq m (get_message_set s)) (last_sent s)
     /\ om' = None
     /\ ~In m (get_message_set s)
     /\ incl
@@ -496,7 +496,7 @@ Section proper_sent_received.
       simpl in Horacle. elim Hstart. assumption.
     + rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
       inversion Hprefix; subst. simpl in *.
-      destruct oom as [om|]; try destruct (eq_dec om m); try subst om.
+      destruct oom as [om|]; try destruct (message_eq om m); try subst om.
       * exists (@Build_transition_item message VLSM_type_full_validator l iom s0 (@Some message m)).
         split; try reflexivity.
         left. reflexivity.
@@ -622,7 +622,7 @@ Section proper_sent_received.
         as (msgs, final) eqn:Hlast.
       destruct l as [c|]; inversion Ht.
       destruct iom as [msg|]; inversion Ht; subst.
-      + specialize (set_add_not_empty eq_dec msg msgs) as Hempty. elim Hempty. assumption.
+      + specialize (set_add_not_empty message_eq msg msgs) as Hempty. elim Hempty. assumption.
       + clear Ht H2 H0. specialize (IHprefix Hlast).
         destruct Hitem as [Hin |[Heq |Hfalse]]; try contradiction Hfalse.
         * specialize (IHprefix Hin). assumption.
@@ -797,13 +797,13 @@ Section proper_sent_received.
     specialize (has_been_sent_protocol_transition _ _ _ _ _ H3 m) as Hbspt.
     apply protocol_transition_inv_in in H3.
     destruct H3 as [Hs0' [Hoom [Hnin [Hincl [Hsl1 [Hm Hps0]]]]]].
-    destruct (in_dec eq_dec m (State.sent_messages sl1)).
+    destruct (in_dec message_eq m (State.sent_messages sl1)).
     - exfalso.
       apply get_sent_messages in i; try assumption.
       elim Hnin. assumption.
     - specialize (Hbspt n). subst oom.
       assert (Hnbs : ~In m (State.sent_messages s0)).
-      { destruct (in_dec eq_dec m (State.sent_messages s0)); try assumption.
+      { destruct (in_dec message_eq m (State.sent_messages s0)); try assumption.
         apply Hbspt in i. discriminate i.
       }
       unfold State.received_messages.
@@ -837,12 +837,12 @@ Section proper_sent_received.
         assert (Hfutures : in_futures bvlsm s0 s)
           by (exists tr; split; assumption).
         assert (Hnbs : ~In m (State.sent_messages s0)).
-        { destruct (in_dec eq_dec  m (State.sent_messages s0)); try assumption.
+        { destruct (in_dec message_eq  m (State.sent_messages s0)); try assumption.
           apply (has_been_sent_in_futures s0 s Hfutures) in i.
           elim Hns. assumption.
         }
         specialize (IHtr s0 H2).
-        destruct (in_dec eq_dec m (get_message_set s0)).
+        destruct (in_dec message_eq m (get_message_set s0)).
         * specialize (finite_ptrace_first_pstate bvlsm is _ Htr) as Hpstart.
           destruct Hpstart as [_om Hpstart].
           pose (protocol_is_trace bvlsm is _om Hpstart) as Htr_start.

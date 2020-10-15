@@ -21,6 +21,7 @@ Class RelDecision {A B} (R : A -> B -> Prop) :=
 Hint Mode RelDecision ! ! ! : typeclass_instances.
 Arguments decide_rel {_ _} _ {_} _ _ : simpl never, assert.
 Notation EqDecision A := (RelDecision (@eq A)).
+Notation decide_eq := (fun x y => decide (x = y)).
 
 Class Inhabited (A : Type) : Type := populate { inhabitant : A }.
 Hint Mode Inhabited ! : typeclass_instances.
@@ -218,3 +219,30 @@ Proof. reflexivity. Qed.
 Lemma decide_bool_decide P {Hdec: Decision P} {X : Type} (x1 x2 : X):
   (if decide P then x1 else x2) = (if bool_decide P then x1 else x2).
 Proof. unfold bool_decide, decide. destruct Hdec; reflexivity. Qed.
+
+Instance comparison_eq_dec : EqDecision comparison.
+Proof. solve_decision. Defined.
+
+Instance option_eq_dec `{dec : EqDecision A} : EqDecision (option A).
+Proof.
+ refine (fun mx my =>
+  match mx, my with
+  | Some x, Some y => if (decide (x = y)) then left _ else right _
+  | None, None => left _ | _, _ => right _
+  end); clear dec; abstract congruence.
+Defined.
+
+Instance bool_eq_dec : EqDecision bool.
+Proof. solve_decision. Defined.
+
+Instance unit_eq_dec : EqDecision unit.
+Proof. solve_decision. Defined.
+
+Instance Empty_set_eq_dec : EqDecision Empty_set.
+Proof. solve_decision. Defined.
+
+Instance prod_eq_dec `{EqDecision A, EqDecision B} : EqDecision (A * B).
+Proof. solve_decision. Defined.
+
+Instance sum_eq_dec `{EqDecision A, EqDecision B} : EqDecision (A + B).
+Proof. solve_decision. Defined.

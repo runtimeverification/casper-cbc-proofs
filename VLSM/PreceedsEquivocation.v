@@ -39,17 +39,17 @@ for a restricted set, e.g., [protocol_messsage]s
 
 Class message_equivocation_evidence
   (message validator : Type)
-  {about_message : EqDec message}
-  {about_V : EqDec validator}
+  `{EqDecision message}
+  `{EqDecision validator}
   :=
   { sender : message -> validator
   ; message_preceeds_fn (m1 m2 : message) : bool
   ; equivocating_with
       (msg1 msg2 : message)  : bool
       :=
-      if eq_dec msg1 msg2
+      if decide (msg1 = msg2)
       then false
-      else if eq_dec (sender msg1) (sender msg2)
+      else if decide (sender msg1 = sender msg2)
         then
           negb (message_preceeds_fn msg1 msg2)
           && negb (message_preceeds_fn msg2 msg1)
@@ -88,11 +88,11 @@ Definition state_encapsulating_messages_equivocation
   {reachable_threshold : ReachableThreshold validator}
   : basic_equivocation state validator
   :=
-  {|  state_validators := fun s => set_map eq_dec sender (get_messages s)
-   ;  state_validators_nodup := fun s => set_map_nodup eq_dec sender (get_messages s)
+  {|  state_validators := fun s => set_map decide_eq sender (get_messages s)
+   ;  state_validators_nodup := fun s => set_map_nodup decide_eq sender (get_messages s)
    ;  is_equivocating_fn := fun s v =>
         let msgs := get_messages s in
-        inb eq_dec v
+        inb decide_eq v
           (map sender (filter (fun msg => equivocating_in_set msg msgs) msgs))
   |}.
 
@@ -236,8 +236,7 @@ Section composite_preceeds_equivocation.
   Context
     {message validator : Type}
     `{Eqv : message_equivocation_evidence message validator}
-    {index : Type}
-    {IndEqDec : EqDec index}
+    `{EqDecision index}
     (IM : index -> VLSM message)
     (i0 : index)
     (constraint1 : composite_label IM -> composite_state IM * option message -> Prop)
@@ -338,7 +337,7 @@ Definition observable_messages
   (s : state)
   (v : validator)
   :=
-  filter (fun m => if eq_dec (sender m) v then true else false) (get_messages s).
+  filter (fun m => if decide ((sender m) = v) then true else false) (get_messages s).
 
 Definition message_observation_based_equivocation_evidence
   : @observation_based_equivocation_evidence state validator message _ message_comparable_events
@@ -353,8 +352,8 @@ on [sender] and thus obtain a [basic_equivocation] instance through the
 
 Definition message_basic_observable_equivocation
   (Hevidence := message_observation_based_equivocation_evidence)
-  (validators := fun s => set_map eq_dec sender (get_messages s))
-  (validators_nodup := fun s => set_map_nodup eq_dec sender (get_messages s))
+  (validators := fun s => set_map decide_eq sender (get_messages s))
+  (validators_nodup := fun s => set_map_nodup (decide_rel eq) sender (get_messages s))
   : basic_equivocation state validator
   := @basic_observable_equivocation state validator message _ _ Hevidence _ _ validators validators_nodup.
 
@@ -373,7 +372,7 @@ Lemma message_basic_observable_equivocation_iff
 Proof.
   simpl. unfold equivocation_evidence.
   destruct
-    (ListExtras.inb eq_dec v
+    (ListExtras.inb decide_eq v
       (map sender
          (filter (fun msg : message => equivocating_in_set msg (get_messages s))
             (get_messages s)))
@@ -387,22 +386,22 @@ Proof.
     split.
     + unfold observable_events. simpl. unfold observable_messages.
       apply filter_In. split; try assumption.
-      destruct (eq_dec (sender m) v); try reflexivity.
+      destruct (decide ((sender m) = v)); try reflexivity.
       elim n. assumption.
     + unfold equivocating_in_set in Heqv_msg.
       apply existsb_exists. apply existsb_exists in Heqv_msg.
       destruct Heqv_msg as [m' [Hin' Heqv_msg]].
       unfold equivocating_with in Heqv_msg.
-      destruct (eq_dec m m'); try discriminate Heqv_msg.
-      destruct (eq_dec (sender m) (sender m')); try discriminate Heqv_msg.
+      destruct (decide (m = m')); try discriminate Heqv_msg.
+      destruct (decide ((sender m) = (sender m'))); try discriminate Heqv_msg.
       symmetry in e. rewrite Hm in e.
       exists m'. split.
       * unfold observable_events. simpl. unfold observable_messages.
         apply filter_In. split; try assumption.
-        destruct (eq_dec (sender m') v); try reflexivity.
-        elim n0. assumption.
+        destruct (decide ((sender m') = v)); try reflexivity.
+        congruence.
       * unfold happens_before_fn. simpl. unfold comparableb.
-        destruct (eq_dec m m'); try (elim n; assumption).
+        destruct (decide (m = m')); try (elim n; assumption).
         apply Bool.andb_true_iff in Heqv_msg.
         repeat rewrite Bool.negb_true_iff in Heqv_msg.
         destruct Heqv_msg as [Hmm' Hm'm].
@@ -414,8 +413,8 @@ Proof.
     apply existsb_forall. intros m2 Hin2.
     apply filter_In in Hin1. destruct Hin1 as [Hin1 Hin1'].
     apply filter_In in Hin2. destruct Hin2 as [Hin2 Hin2'].
-    destruct (eq_dec (sender m1) v); try discriminate Hin1'. clear Hin1'.
-    destruct (eq_dec (sender m2) v); try discriminate Hin2'. clear Hin2'.
+    destruct (decide ((sender m1) = v)); try discriminate Hin1'. clear Hin1'.
+    destruct (decide ((sender m2) = v)); try discriminate Hin2'. clear Hin2'.
     apply Bool.negb_false_iff.
     destruct (comparableb message_preceeds_fn m1 m2) eqn:Hcomp; try reflexivity.
     elim Heqv_msg.
@@ -425,9 +424,8 @@ Proof.
     exists m2. split; try assumption.
     unfold comparableb in Hcomp.
     unfold equivocating_with.
-    destruct (eq_dec m1 m2); try discriminate Hcomp.
-    rewrite e. rewrite e0.
-    rewrite eq_dec_if_true; try reflexivity.
+    destruct (decide (m1 = m2)); destruct (decide (m1 = m2)); try congruence.
+    destruct (decide (sender m1 = sender m2)); try congruence.
     apply Bool.orb_false_iff in Hcomp.
     destruct Hcomp as [Hm12 Hm21].
     rewrite Hm12. rewrite Hm21. reflexivity.

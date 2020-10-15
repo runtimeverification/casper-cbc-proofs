@@ -1295,8 +1295,8 @@ Proof.
   - destruct H as [vs' [Hnodup_vs' [Hincl_vs' [Hgt [v [Hin_v Hlt]]]]]].
     exists v. split.
     + subst. apply Hincl_vs' in Hin_v. apply set_diff_elim2 in Hin_v. assumption.
-    + exists (set_remove eq_dec v vs').
-      assert (NoDup (set_remove eq_dec v vs')) as Hnodup_remove
+    + exists (set_remove decide_eq v vs').
+      assert (NoDup (set_remove decide_eq v vs')) as Hnodup_remove
       ; try apply set_remove_nodup; try assumption.
       repeat split.
       * assumption.

@@ -35,7 +35,7 @@ Section ClientsAndValidators.
     (message_events := full_node_message_comparable_events C V)
     .
 Parameter clients : Type.
-Parameter clients_eq_dec : EqDec clients.
+Parameter clients_eq_dec : EqDecision clients.
 Let index : Type := V + clients.
 Parameter i0 : index.
 
@@ -44,20 +44,18 @@ Existing Instance clients_eq_dec.
 Let v_eq_dec := strictly_comparable_eq_dec about_V.
 Existing Instance v_eq_dec.
 
-Lemma index_eq_dec : EqDec index.
+Instance index_eq_dec : EqDecision index.
 Proof.
   intros [v | c] [v' | c'].
-  - destruct (eq_dec v v').
+  - destruct (decide (v = v')).
     + subst. left. reflexivity.
     + right. intro H. elim n. inversion H. reflexivity.
   - right. intro H. discriminate H.
   - right. intro H. discriminate H.
-  - destruct (eq_dec c c').
+  - destruct (decide (c = c')).
     + subst. left. reflexivity.
     + right. intro H. elim n. inversion H. reflexivity.
 Qed.
-
-Existing Instance index_eq_dec.
 
 (**
 In order to create a composition of clients and validators
@@ -244,7 +242,7 @@ Proof.
       unfold vtransition in H0. simpl in H0.
       destruct lv' as [c|].
       + apply pair_equal_spec in H0. destruct H0 as [Hs Hom]; subst.
-        destruct (eq_dec v (inl v')); subst; simpl in *.
+        destruct (decide (v = inl v')); subst; simpl in *.
         * rewrite state_update_eq in *. simpl in Hm.
           apply set_add_iff in Hm.
           { destruct Hm as [Heqm | Hinm]; subst.
@@ -269,7 +267,7 @@ Proof.
           ; apply IHHsom1 ; assumption.
       + destruct om as [m'|].
         * apply pair_equal_spec in H0.  destruct H0 as [Hs Hom]; subst.
-          { destruct (eq_dec v (inl v')); subst.
+          { destruct (decide (v = inl v')); subst.
           - simpl in Hm. rewrite state_update_eq in Hm. simpl. rewrite state_update_eq.
             apply set_add_iff in Hm.
             destruct Hm as [Heqm | Hinm]; subst.
@@ -305,7 +303,7 @@ Proof.
         rewrite state_update_neq by (intro H; discriminate H).
         apply IHHsom1.
         assumption.
-      + destruct (eq_dec (inr client) (inr client')).
+      + destruct (decide (inr client = inr client')).
         * inversion e. subst.
           rewrite state_update_eq in Hm. simpl in Hm.
           simpl; rewrite state_update_eq.
@@ -330,7 +328,7 @@ Proof.
         rewrite state_update_neq by (intro H; discriminate H).
         apply IHHsom1.
         assumption.
-      + simpl. simpl in IHHsom1. destruct (eq_dec (inr client) (inr client')).
+      + simpl. simpl in IHHsom1. destruct (decide (inr client = inr client')).
         * inversion e. subst.
           rewrite state_update_eq in Hm. simpl in Hm.
           simpl; rewrite state_update_eq.
@@ -579,13 +577,13 @@ Next Obligation.
 
   destruct i as [v0|c]; try discriminate Hl.
   inversion Hl. subst. clear Hl.
-  destruct (eq_dec v (sender m)); try apply incl_nil_l.
+  destruct (decide (v = sender m)); try apply incl_nil_l.
   subst. simpl.
   intros m' Hm'.
   destruct Hm' as [Hm' | contra]; try inversion contra.
   subst m'.
   apply filter_In. split; try assumption.
-  rewrite eq_dec_if_true; reflexivity.
+  rewrite decide_True; auto.
 Qed.
 
 Existing Instance message_eq.
@@ -659,7 +657,7 @@ Proof.
       || exists (@observable_events _ _ _ _ _ full_node_client_observation_based_equivocation_evidence (s (inr client)) (sender m))
       ; split; try (apply in_map_iff; exists (inl v) || exists (inr client); split; try reflexivity; apply (proj2 finite_index))
       ; simpl; apply filter_In; split; try assumption
-      ; rewrite eq_dec_if_true; reflexivity.
+      ; rewrite decide_True; auto.
 Qed.
 
 Lemma state_union_initially_empty
@@ -696,9 +694,9 @@ Proof.
   apply set_union_in_iterated in Hm. apply Exists_exists in Hm.
   destruct Hm as [msgsi [Hmsgsi Hm]].
   apply in_map_iff in Hmsgsi. destruct Hmsgsi as [i [Heq _]]. subst.
-  destruct i as [v0 | client]; simpl in Hm; apply filter_In in Hm
-  ; destruct Hm as [Hm Hsender]
-  ; destruct (eq_dec (sender m) v); try discriminate Hsender
+  destruct i as [v0 | client]; simpl in Hm; apply filter_In in Hm;
+  destruct Hm as [Hm Hsender];
+  destruct (decide (sender m = v)); try discriminate Hsender
   ; assumption.
 Qed.
 
@@ -716,7 +714,7 @@ Proof.
       split; try assumption.
       apply in_map_iff. exists v. split; try reflexivity.
       apply (proj2 finite_validators).
-    + rewrite eq_dec_if_true; try reflexivity. apply observable_event_sender with s.
+    + rewrite decide_True; try reflexivity. apply observable_event_sender with s.
       assumption.
   - simpl in Hm. apply filter_In in Hm.
     destruct Hm as [Hm Hsender].
@@ -724,7 +722,7 @@ Proof.
     destruct Hm as [msgsi [Hmsgsi Hm]].
     apply in_map_iff in Hmsgsi. destruct Hmsgsi as [v0 [Heq _]]. subst.
     replace v with v0; try assumption.
-    destruct (eq_dec (sender m) v); try discriminate Hsender. subst.
+    destruct (decide (sender m = v)); try discriminate Hsender. subst.
     symmetry. apply  observable_event_sender with s. assumption.
 Qed.
 
@@ -746,7 +744,7 @@ Proof.
   ; unfold full_node_client_state_validators
   ; try apply set_map_nodup
   .
-  assert (Hincl : incl (set_map eq_dec sender (state_union s)) validators)
+  assert (Hincl : incl (set_map decide_eq sender (state_union s)) validators)
     by (intros v Hv; apply (proj2 finite_validators)).
   apply incl_tran with
     (@filter V
