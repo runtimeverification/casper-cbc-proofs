@@ -82,7 +82,7 @@ to a component:
                (j : index)
       : vstate (IM j)
       :=
-      match IndEqDec j i with
+      match decide (j = i) with
       | left e => eq_rect_r (fun i => vstate (IM i)) si e
       | _ => s j
       end.
@@ -98,7 +98,7 @@ The next few results describe several properties of the [state_update] operation
                (Hneq : j <> i)
       : state_update s i si j = s j.
     Proof.
-      unfold state_update. destruct (IndEqDec j i); try contradiction. reflexivity.
+      unfold state_update. destruct (decide (j = i)); try contradiction. reflexivity.
     Qed.
 
     Lemma state_update_eq
@@ -108,6 +108,7 @@ The next few results describe several properties of the [state_update] operation
       : state_update s i si i = si.
     Proof.
       unfold state_update.
+      unfold decide, decide_rel.
       rewrite eq_dec_refl. reflexivity.
     Qed.
 
@@ -120,7 +121,7 @@ The next few results describe several properties of the [state_update] operation
     Proof.
       apply functional_extensionality_dep_good.
       intro j.
-      destruct (IndEqDec j i).
+      destruct (decide (j = i)).
       - subst. apply state_update_eq.
       - apply state_update_neq. assumption.
     Qed.
@@ -133,7 +134,7 @@ The next few results describe several properties of the [state_update] operation
     Proof.
       apply functional_extensionality_dep_good.
       intro j.
-      destruct (IndEqDec j i).
+      destruct (decide (j = i)).
       - subst. rewrite state_update_eq. symmetry. apply state_update_eq.
       - repeat rewrite state_update_neq; try assumption.
         reflexivity.
@@ -548,7 +549,7 @@ for the [free_composite_vlsm].
       ; unfold s0; clear s0.
       - assert (Hinit : vinitial_state_prop free_composite_vlsm (lift_to_composite_state j s)).
         { intro i. unfold lift_to_composite_state.
-          destruct (IndEqDec i j).
+          destruct (decide (i = j)).
           - subst; rewrite state_update_eq. unfold s. destruct is. assumption.
           - rewrite state_update_neq; try assumption.
             unfold composite_s0. simpl. unfold vs0.
@@ -804,7 +805,7 @@ the initial ones available from <<X>>.
         exists (state_update IM sX j sj).
         replace
           (@pair (@state message (@type message X)) (option message)
-            (@state_update message index IndEqDec IM sX j sj) om')
+            (@state_update message index _ IM sX j sj) om')
           with
           (vtransition X (existT (fun n : index => vlabel (IM n)) j l) (sX, om)).
         apply (protocol_prop_valid_out X).
@@ -896,7 +897,7 @@ We can now finally prove the main result for this section:
   Proof.
     intro i.
     unfold lift_to_composite_state.
-    destruct (IndEqDec i j).
+    destruct (decide (i = j)).
     - subst. rewrite state_update_eq. assumption.
     - rewrite state_update_neq; try assumption.
       simpl.
@@ -1118,7 +1119,7 @@ All results from regular projections carry to these "free" projections.
       destruct l as (i', li').
       destruct (vtransition (IM i') li' (s i', om)) as (si', omi') eqn:Ht'.
       inversion Ht. subst s' omi'; clear Ht.
-      destruct (IndEqDec i i').
+      destruct (decide (i = i')).
       + subst i'. rewrite state_update_eq.
         specialize (Hs i).
         apply protocol_state_prop_iff. right.
@@ -1191,7 +1192,7 @@ All results from regular projections carry to these "free" projections.
     - rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
       inversion Htr. subst. simpl in *.
       specialize (IHtr s H2 eq_refl).
-      destruct (IndEqDec i (projT1 l)).
+      destruct (decide (i = projT1 l)).
       + subst. apply pre_loaded_with_all_messages_projection_protocol_transition_eq in H3.
         destruct IHtr as [tri [Htri Hlasti]].
         exists

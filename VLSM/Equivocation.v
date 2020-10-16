@@ -476,7 +476,7 @@ Section Simple.
       (m : message)
       : bool
       :=
-      if inb eq_message m (sent_messages_fn s) then true else false.
+      if inb decide_eq m (sent_messages_fn s) then true else false.
 
     Lemma computable_sent_messages_has_been_sent_proper
       {Hsm : computable_sent_messages}
@@ -489,7 +489,7 @@ Section Simple.
       unfold has_been_sent_prop. unfold all_traces_have_message_prop.
       unfold computable_sent_messages_has_been_sent.
       destruct
-        (inb eq_message m (sent_messages_fn s))
+        (inb decide_eq m (sent_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply sent_messages_full in Hin; try assumption.
@@ -524,7 +524,7 @@ Section Simple.
       rewrite Bool.negb_true_iff.
       unfold computable_sent_messages_has_been_sent.
       destruct
-        (inb eq_message m (sent_messages_fn s))
+        (inb decide_eq m (sent_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply sent_messages_full in Hin; try assumption.
@@ -589,7 +589,7 @@ Section Simple.
       (m : message)
       : bool
       :=
-      if inb eq_message m (received_messages_fn s) then true else false.
+      if inb decide_eq m (received_messages_fn s) then true else false.
 
     Lemma computable_received_messages_has_been_received_proper
       {Hsm : computable_received_messages}
@@ -602,7 +602,7 @@ Section Simple.
       unfold has_been_received_prop. unfold all_traces_have_message_prop.
       unfold computable_received_messages_has_been_received.
       destruct
-        (inb eq_message m (received_messages_fn s))
+        (inb decide_eq m (received_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply received_messages_full in Hin; try assumption. destruct Hin as [[m0 Hm0] Hx].
@@ -635,7 +635,7 @@ Section Simple.
       rewrite Bool.negb_true_iff.
       unfold computable_received_messages_has_been_received.
       destruct
-        (inb eq_message m (received_messages_fn s))
+        (inb decide_eq m (received_messages_fn s))
         eqn: Hin; split; intros; try discriminate; try reflexivity
         ; apply in_correct in Hin || apply in_correct' in Hin.
       - apply received_messages_full in Hin; try assumption. destruct Hin as [[m0 Hm0] Hx].

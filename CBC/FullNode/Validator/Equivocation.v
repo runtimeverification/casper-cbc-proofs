@@ -93,7 +93,7 @@ Proof.
     elim H. assumption.
   - specialize
       (in_correct
-        (set_add message_eq m (unmake_message_set m0))
+        (set_add decide_eq m (unmake_message_set m0))
         (Msg _ _ c v j1)
       ); intro Hin_in
     ; apply proj2 in Hin_in

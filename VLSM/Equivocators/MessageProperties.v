@@ -453,7 +453,7 @@ Definition equivocator_sent_messages_fn
   (s : vstate equivocator_vlsm)
   : set message
   :=
-  fold_right (set_union message_eq) []
+  fold_right (set_union decide_eq) []
     (map (fun i => sent_messages_fn X (projT2 s i)) (fin_t_listing (S (projT1 s)))).
 
 (** [equivocator_sent_messages_fn] captures all [sent_messages] for that state.

@@ -54,7 +54,7 @@ Context {message : Type}
 Instance partition_eq_dec : EqDecision (equiv_index + nequiv_index).
 Proof.
   intros x y.
-  destruct (IndEqDec (rpartition x) (rpartition y)).
+  destruct (decide (rpartition x = rpartition y)).
   - left. apply (f_equal partition) in e.
     repeat rewrite Hrpartition in e. assumption.
   - right. intro contra; elim n. subst. reflexivity.

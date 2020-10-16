@@ -513,7 +513,7 @@ Fixpoint unmake_message_set
   :=
   match msgs with
   | Empty _ _ => []
-  | add _ _ m msgs' => set_add message_eq m (unmake_message_set msgs')
+  | add _ _ m msgs' => set_add decide_eq m (unmake_message_set msgs')
   end.
 
 Lemma in_unmake_message_set
@@ -1063,7 +1063,7 @@ Fixpoint sent_messages_justification
   match j with
   | NoSent _ _ _ => []
   | LastSent _ _ msgs ((c,v,j)) =>
-    set_add message_eq ((c,v,j)) (sent_messages_justification j)
+    set_add decide_eq ((c,v,j)) (sent_messages_justification j)
   end.
 
 Definition sent_messages
@@ -1073,14 +1073,14 @@ Definition sent_messages
   match last_sent s with
   | None => []
   | Some ((c, v, j)) =>
-    set_add message_eq ((c, v, j)) (sent_messages_justification j)
+    set_add decide_eq ((c, v, j)) (sent_messages_justification j)
   end.
 
 Definition received_messages
   (s : state C V)
   : set (message C V)
   :=
-  set_diff message_eq (get_message_set s) (sent_messages s).
+  set_diff decide_eq (get_message_set s) (sent_messages s).
 
 End message_oracles.
 

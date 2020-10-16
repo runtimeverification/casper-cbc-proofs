@@ -490,10 +490,9 @@ Definition global_decisions (s : state) : list (option bool) :=
  **)
 
 Definition estimator (s : state) (b : bool) : Prop :=
-  let ob_dec := (@option_eq_dec bool _) in
-  let none_count := List.count_occ ob_dec (global_decisions s) None in
-  let our_count := List.count_occ ob_dec (global_decisions s) (Some b) in
-  let other_count := List.count_occ ob_dec (global_decisions s) (Some (negb b)) in
+  let none_count := List.count_occ decide_eq (global_decisions s) None in
+  let our_count := List.count_occ decide_eq (global_decisions s) (Some b) in
+  let other_count := List.count_occ decide_eq (global_decisions s) (Some (negb b)) in
   match s with
   | Bottom => True
   | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
