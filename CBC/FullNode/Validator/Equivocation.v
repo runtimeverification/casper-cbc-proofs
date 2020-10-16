@@ -38,7 +38,7 @@ Context
     {about_V : StrictlyComparable V}
     {measurable_V : Measurable V}
     {reachable_threshold : ReachableThreshold V}
-    (eq_V := strictly_comparable_eq_dec about_V)
+    (eq_V := @strictly_comparable_eq_dec _ about_V)
     .
 
 Existing Instance eq_V.

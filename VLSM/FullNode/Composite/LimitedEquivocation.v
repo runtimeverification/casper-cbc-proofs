@@ -43,7 +43,7 @@ Existing Instance free_equivocation_evidence.
 Existing Instance free_basic_equivocation.
 
 Let index : Type := V + clients.
-Let v_eq_dec := strictly_comparable_eq_dec about_V.
+Let v_eq_dec := @strictly_comparable_eq_dec _ about_V.
 Existing Instance v_eq_dec.
 Existing Instance index_eq_dec.
 

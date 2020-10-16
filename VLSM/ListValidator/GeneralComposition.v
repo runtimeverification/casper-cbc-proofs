@@ -407,7 +407,7 @@ Context
     rewrite Heq1 in Heq.
     apply order_decompositions in Heq.
     unfold comparableb.
-    destruct (state_EqDecision e1 e2); try reflexivity.
+    destruct (decide (e1 = e2)); try reflexivity.
     destruct Heq as [Heq | [Hgt | Hlt]]
     ; try (elim n; subst; reflexivity)
     ; apply orb_true_iff.

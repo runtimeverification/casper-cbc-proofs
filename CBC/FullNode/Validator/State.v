@@ -388,7 +388,7 @@ Global Instance message_type
   }.
 
 Global Instance message_eq : EqDecision (message C V)
-  := strictly_comparable_eq_dec message_type.
+  := @strictly_comparable_eq_dec _ message_type.
 
 (* Constructing a StrictOrder type for message_lt *)
 

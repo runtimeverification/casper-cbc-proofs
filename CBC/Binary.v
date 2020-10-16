@@ -371,7 +371,7 @@ Section States.
    induction H'; intros.
    - destruct H0. unfold state0 in *.
      apply incl_empty in H2; subst. constructor.
-   - apply (set_eq_remove compare_eq_dec (c, v, hash_state j)) in H4 as Hset_eq; try assumption.
+   - apply (@set_eq_remove _ compare_eq_dec (c, v, hash_state j)) in H4 as Hset_eq; try assumption.
      apply IHH'2 in Hset_eq.
      apply (protocol_state_cons c v j); try assumption.
      + destruct H4. now apply (H4 (c, v, hash_state j)).
@@ -485,6 +485,3 @@ Section States.
  Qed.
 
 End States.
-
-
-

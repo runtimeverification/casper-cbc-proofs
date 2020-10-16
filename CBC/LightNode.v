@@ -32,8 +32,8 @@ Context
   {HmV : Measurable V}
   {Hrt : ReachableThreshold V}
   {He : Estimator (state C V hash) C}
-  (eq_H := strictly_comparable_eq_dec HscH)
-  (eq_V := strictly_comparable_eq_dec HscV)
+  (eq_H := @strictly_comparable_eq_dec _ HscH)
+  (eq_V := @strictly_comparable_eq_dec _ HscV)
   .
 
 Existing Instance eq_H.
@@ -126,7 +126,7 @@ Instance message_type
 Instance eq_message
   : EqDecision (message C V hash)
   :=
-  strictly_comparable_eq_dec message_type.
+  @strictly_comparable_eq_dec _ message_type.
 
 (* StrictlyComparable and CompareStrictOrder for message type comes for free *)
 
@@ -614,7 +614,7 @@ Lemma not_extx_in_x
 Proof.
   intros c v s s' PS PS'. induction PS'; intros Hincl Hin; apply hash_state_in in Hin.
   - unfold state0 in Hin. inversion Hin.
-  - apply (set_remove_in_iff decide_eq (c, v, hash_state s) (c0, v0, hash_state j) s0 H1 H0) in Hin.
+  - apply (set_remove_in_iff (c, v, hash_state s) (c0, v0, hash_state j) s0 H1 H0) in Hin.
     destruct Hin as [Heq | Hin].
     + inversion Heq; subst; clear Heq. apply hash_state_injective in H6. apply IHPS'1; try apply H6.
       apply hash_state_in. apply Hincl in H0. apply H6.
@@ -667,7 +667,7 @@ Proof.
   induction H'; intros.
   - destruct H. unfold state0 in *.
     apply incl_empty in H1; subst. constructor.
-  - apply (set_eq_remove decide_eq (c, v, hash_state j)) in H3 as Hset_eq; try assumption.
+  - apply (set_eq_remove (c, v, hash_state j)) in H3 as Hset_eq; try assumption.
     apply IHH'2 in Hset_eq.
     apply (protocol_state_cons j H'1 c H v sigma'); try assumption.
     + destruct H3. now apply (H3 (c, v, hash_state j)).
@@ -896,8 +896,8 @@ Context
   {HmV : Measurable V}
   {Hrt : ReachableThreshold V}
   {He : Estimator (state C V hash) C}
-  (eq_H := strictly_comparable_eq_dec HscH)
-  (eq_V := strictly_comparable_eq_dec HscV)
+  (eq_H := @strictly_comparable_eq_dec _ HscH)
+  (eq_V := @strictly_comparable_eq_dec _ HscV)
   .
 
 Existing Instance eq_H.
@@ -968,7 +968,7 @@ Proof.
       intros msg H_in.
       destruct (classic (msg = (c,v,hash_state j))).
       * subst.
-        assert (H_contra := set_remove_elim decide_eq (c,v,hash_state j) s').
+        assert (H_contra := set_remove_elim (c,v,hash_state j) s').
         spec H_contra H_nodup.
         contradiction.
       * spec H_incl msg.

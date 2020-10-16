@@ -367,9 +367,7 @@ Class StrictlyComparable (X : Type) : Type :=
      compare_strictorder :> CompareStrictOrder compare;
     }.
 
-Lemma strictly_comparable_eq_dec
-  {M : Type}
-  (HM : StrictlyComparable M)
+Instance strictly_comparable_eq_dec `{StrictlyComparable M}
   : EqDecision M.
 Proof.
   intros x y.
@@ -385,13 +383,12 @@ Definition comparable
   a = b \/ R a b \/ R b a.
 
 Definition comparableb
-  {A : Type}
-  {eq_A : EqDecision A}
+  `{EqDecision A}
   (f : A -> A -> bool)
   (a b : A)
   : bool
   :=
-  if eq_A a b then true
+  if decide (a = b) then true
   else orb (f a b) (f b a).
 
 Lemma comparable_function
@@ -404,11 +401,11 @@ Lemma comparable_function
 Proof.
   intros a b. unfold comparable. unfold comparableb.
   split; intro.
-  - destruct H as [Heq | [Hab | Hba]]; destruct (eq_A a b); try reflexivity.
+  - destruct H as [Heq | [Hab | Hba]]; destruct (decide (a = b)); try reflexivity.
     + elim n. assumption.
     + apply HR in Hab. rewrite Hab. reflexivity.
     + apply HR in Hba. rewrite Hba. rewrite orb_comm. reflexivity.
-  - destruct (eq_A a b); try (left; assumption).
+  - destruct (decide (a = b)); try (left; assumption).
     right.
     apply orb_true_iff in H.
     destruct H as [H | H]; apply HR in H.
@@ -417,8 +414,7 @@ Proof.
 Qed.
 
 Lemma comparable_function_neg
-  {A : Type}
-  {eq_A : EqDecision A}
+  `{EqDecision A}
   (f : A -> A -> bool)
   (R : A -> A -> Prop)
   (HR : PredicateFunction2 R f)
@@ -427,7 +423,7 @@ Lemma comparable_function_neg
   : a <> b /\ ~R a b /\ ~R b a.
 Proof.
   unfold comparableb in Hnc.
-  destruct (eq_A a b); try discriminate Hnc.
+  destruct (decide (a = b)); try discriminate Hnc.
   split; try assumption.
   destruct (f a b) eqn:Hab; try discriminate Hnc.
   destruct (f b a) eqn:Hba; try discriminate Hnc.
@@ -437,7 +433,7 @@ Proof.
 Qed.
 
 Lemma compare_two_cases
-  {M} `{Hsc : StrictlyComparable M}
+  `{Hsc : StrictlyComparable M}
   : forall m1 m2 : M,
     (compare m1 m2 = Eq /\ compare m2 m1 = Eq) \/
     (compare m1 m2 = Lt /\ compare m2 m1 = Gt) \/

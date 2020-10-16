@@ -31,7 +31,7 @@ messages, implementing a limited equivocation tolerance policy.
     {about_V : StrictlyComparable V}
     {Hmeasurable : Measurable V}
     {Hrt : ReachableThreshold V}
-    (eq_V := strictly_comparable_eq_dec about_V)
+    (eq_V := @strictly_comparable_eq_dec _ about_V)
     (message := State.message C V)
     (message_events := full_node_message_comparable_events C V)
     .

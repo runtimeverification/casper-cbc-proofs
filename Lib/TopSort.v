@@ -494,7 +494,7 @@ Proof.
   - specialize (min_predecessors_in preceeds (a :: l) l a).
     rewrite <- Heqmin. simpl. intros [Heq | Hin]; try (elim n0; assumption).
     specialize (IHn (a :: l')).
-    specialize (set_remove_length decide_eq min l Hin).
+    specialize (set_remove_length min l Hin).
     rewrite <- Heql'. rewrite <- H0. intro Hlen.
     specialize (IHn Hlen).
     split; intros x [Heq | Hinx]; try (subst x).

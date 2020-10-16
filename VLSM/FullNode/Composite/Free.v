@@ -41,7 +41,7 @@ Parameter i0 : index.
 
 Existing Instance clients_eq_dec.
 
-Let v_eq_dec := strictly_comparable_eq_dec about_V.
+Let v_eq_dec := @strictly_comparable_eq_dec _ about_V.
 Existing Instance v_eq_dec.
 
 Instance index_eq_dec : EqDecision index.
@@ -55,7 +55,7 @@ Proof.
   - destruct (decide (c = c')).
     + subst. left. reflexivity.
     + right. intro H. elim n. inversion H. reflexivity.
-Qed.
+Defined.
 
 (**
 In order to create a composition of clients and validators

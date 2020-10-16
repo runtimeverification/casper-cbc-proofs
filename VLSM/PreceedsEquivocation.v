@@ -89,7 +89,7 @@ Definition state_encapsulating_messages_equivocation
   : basic_equivocation state validator
   :=
   {|  state_validators := fun s => set_map decide_eq sender (get_messages s)
-   ;  state_validators_nodup := fun s => set_map_nodup decide_eq sender (get_messages s)
+   ;  state_validators_nodup := fun s => set_map_nodup sender (get_messages s)
    ;  is_equivocating_fn := fun s v =>
         let msgs := get_messages s in
         inb decide_eq v
@@ -353,7 +353,7 @@ on [sender] and thus obtain a [basic_equivocation] instance through the
 Definition message_basic_observable_equivocation
   (Hevidence := message_observation_based_equivocation_evidence)
   (validators := fun s => set_map decide_eq sender (get_messages s))
-  (validators_nodup := fun s => set_map_nodup (decide_rel eq) sender (get_messages s))
+  (validators_nodup := fun s => set_map_nodup sender (get_messages s))
   : basic_equivocation state validator
   := @basic_observable_equivocation state validator message _ _ Hevidence _ _ validators validators_nodup.
 
