@@ -12,6 +12,8 @@ Global Generalizable All Variables.
 Instance: forall A, PreOrder (@eq A).
 Proof. split; repeat intro; congruence. Qed.
 
+(** ** Top-level classes *)
+
 Class Decision (P : Prop) := decide : {P} + {~P}.
 Hint Mode Decision ! : typeclass_instances.
 Arguments decide _ {_} : simpl never, assert.
@@ -136,6 +138,15 @@ Class TotalOrder {A} (R : relation A) : Prop := {
   total_order_trichotomy :> Trichotomy (strict R)
 }.
 
+(** ** Boolean coercion *)
+
+Coercion Is_true : bool >-> Sortclass.
+Hint Unfold Is_true : core.
+Hint Immediate Is_true_eq_left : core.
+Hint Resolve orb_prop_intro andb_prop_intro : core.
+
+(** ** Basic instances *)
+
 Instance prop_inhabited : Inhabited Prop := populate True.
 Instance list_inhabited {A} : Inhabited (list A) := populate [].
 Instance bool_inhabited : Inhabited bool := populate true.
@@ -185,6 +196,11 @@ Instance option_inhabited {A} : Inhabited (option A) := populate None.
 Lemma dec_stable `{Decision P} : ~~P -> P.
 Proof. firstorder. Qed.
 
+Lemma Is_true_reflect (b : bool) : reflect b b.
+Proof. destruct b; [left; constructor | right; intros []]. Qed.
+Instance: Inj eq iff Is_true.
+Proof. intros [] []; simpl; intuition. Qed.
+
 Lemma decide_True {A} `{Decision P} (x y : A) :
   P -> (if decide P then x else y) = x.
 Proof. destruct (decide P); tauto. Qed.
@@ -219,6 +235,31 @@ Proof. reflexivity. Qed.
 Lemma decide_bool_decide P {Hdec: Decision P} {X : Type} (x1 x2 : X):
   (if decide P then x1 else x2) = (if bool_decide P then x1 else x2).
 Proof. unfold bool_decide, decide. destruct Hdec; reflexivity. Qed.
+
+Lemma bool_decide_spec (P : Prop) {dec : Decision P} : bool_decide P <-> P.
+Proof. unfold bool_decide. destruct dec; simpl; tauto. Qed.
+Lemma bool_decide_unpack (P : Prop) {dec : Decision P} : bool_decide P -> P.
+Proof. rewrite bool_decide_spec; trivial. Qed.
+Lemma bool_decide_pack (P : Prop) {dec : Decision P} : P -> bool_decide P.
+Proof. rewrite bool_decide_spec; trivial. Qed.
+
+Lemma bool_decide_eq_true (P : Prop) `{Decision P} : bool_decide P = true <-> P.
+Proof. unfold bool_decide; destruct H; intuition discriminate. Qed.
+Lemma bool_decide_eq_false (P : Prop) `{Decision P} : bool_decide P = false <-> ~P.
+Proof. unfold bool_decide; destruct H; intuition discriminate. Qed.
+Lemma bool_decide_iff (P Q : Prop) `{Decision P, Decision Q} :
+  (P <-> Q) -> bool_decide P = bool_decide Q.
+Proof. unfold bool_decide; destruct H; destruct H0; tauto. Qed.
+
+Lemma bool_decide_eq_true_1 P `{!Decision P}: bool_decide P = true -> P.
+Proof. apply bool_decide_eq_true. Qed.
+Lemma bool_decide_eq_true_2 P `{!Decision P}: P -> bool_decide P = true.
+Proof. apply bool_decide_eq_true. Qed.
+
+Lemma bool_decide_eq_false_1 P `{!Decision P}: bool_decide P = false -> ~P.
+Proof. apply bool_decide_eq_false. Qed.
+Lemma bool_decide_eq_false_2 P `{!Decision P}: ~P -> bool_decide P = false.
+Proof. apply bool_decide_eq_false. Qed.
 
 Instance comparison_eq_dec : EqDecision comparison.
 Proof. solve_decision. Defined.
