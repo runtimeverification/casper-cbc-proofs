@@ -583,4 +583,23 @@ Definition VLSM_list
 
 Definition mk_label (l : label_list) : @label _ VLSM_list_protocol := l.
 
+Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
+  project_indexed l ls who.
+
+Definition last_sent (s : state) : state := project s index_self.
+
+Fixpoint rec_history (s : state) (who : index) (d : nat) : list state :=
+  match s, d with
+  | Bottom, _ => []
+  | _, 0 => []
+  | (Something cv ls), (S d') => s :: rec_history (last_recorded index_listing ls who) who d'
+  end.
+
+Definition get_history (s : state) (who : index) : list state :=
+   match s with
+   | Bottom => []
+   | Something cv ls => let child := last_recorded index_listing ls who in
+                          rec_history child who (depth child)
+   end.
+
 End ListNode.

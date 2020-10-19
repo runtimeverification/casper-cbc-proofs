@@ -550,21 +550,42 @@ Context
     | Some ss => let rem_action := sync_action to from (rev ss) in
                  Some rem_action
     end.
+   
+   Lemma only_receives_in_sync 
+    (s s' : vstate X)
+    (to from : index)
+    (a : action)
+    (Hsync : sync s (s' from) to from = Some a) 
+    (ai : action_item)
+    (Hin : In ai a) :
+    (projT2 (label_a ai)) = receive /\ (input_a ai <> None).
+   Proof.
+   Admitted.
     
    Lemma something
-    (s : vstate X)
+    (s s': vstate X)
     (Hpr : protocol_state_prop X s)
+    (Hpr' : protocol_state_prop X s')
     (to from :index)
-    (s' : state)
     (a : action)
-    (Hsync : sync s s' to from = Some a) :
+    (Hsync : sync s (s' from) to from = Some a) :
     let res := fst (apply_action _ a s) in
     protocol_action _ a s /\
-    project (res to) from = project s' from.
+    project (res to) from = (project (s' from)) from.
    Proof.
+    assert (Hsnb : (s to) <> Bottom). {
+      apply protocol_state_component_no_bottom.
+      assumption.
+    }
+    
+    assert (Hs'nb : (s' from) <> Bottom). {
+      apply protocol_state_component_no_bottom.
+      assumption.
+    }
+    (* 
     generalize dependent s.
-    generalize dependent s'.
-    induction a.
+    generalize dependent s'. *)
+    induction a using rev_ind.
     - intros.
       simpl in *.
       repeat split.
@@ -574,19 +595,50 @@ Context
       assumption.
       unfold res.
       unfold sync in Hsync.
-      destruct (complete_suffix (get_history s' from) (get_history (s to) from)) eqn : eq_cs.
+      destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_cs.
       inversion Hsync.
       unfold sync_action in H0.
       apply map_eq_nil in H0.
       apply map_eq_nil in H0.
       apply complete_suffix_correct in eq_cs.
       assert (l = []). {
-        destruct l.
-        reflexivity.
-        simpl in H0.
-        admit.
+        apply length_zero_iff_nil.
+        rewrite <- rev_length.
+        rewrite H0.
+        intuition.
       }
       rewrite H in eq_cs. simpl in eq_cs.
+      Check @eq_history_eq_project.
+      apply (@eq_history_eq_project index to index_listing Hfinite idec est' eq_dec Mindex Rindex) in eq_cs.
+      symmetry. assumption.
+      discriminate Hsync.
+    - intros.
+      repeat split.
+      unfold protocol_action.
+      unfold sync in Hsync.
+      destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_c.
+      apply complete_suffix_correct in eq_c.
+      inversion Hsync.
+      unfold sync_action in H0.
+      destruct l eqn: eq_l.
+      simpl in H0.
+      symmetry in H0.
+      assert (length (a ++ [x]) > 0). {
+        rewrite app_length.
+        simpl.
+        lia.
+      }
+      admit.
+      simpl in H0.
+      rewrite map_app in H0.
+      rewrite map_app in H0.
+      simpl.
+      apply app_inj_tail in H0.
+      rewrite apply_action'_unroll_last.
+      apply extend_right_finite_trace_from.
+      spec IHa.
+      destruct H0 as [left right].
+      unfold sync.
    Admitted.
     
      

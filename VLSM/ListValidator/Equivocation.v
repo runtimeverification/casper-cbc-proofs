@@ -31,25 +31,6 @@ Context
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
 
-  Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
-    @project_indexed _ index_listing _ l ls who.
-
-  Definition last_sent (s : vstate X) : vstate X := project s index_self.
-
-  Fixpoint rec_history (s : state) (who : index) (d : nat) : list state :=
-    match s, d with
-    | Bottom, _ => []
-    | _, 0 => []
-    | (Something cv ls), (S d') => s :: rec_history (last_recorded index_listing ls who) who d'
-    end.
-
-  Definition get_history (s : state) (who : index) : list state :=
-     match s with
-     | Bottom => []
-     | Something cv ls => let child := last_recorded index_listing ls who in
-                          rec_history child who (depth child)
-    end.
-
   (* Definition list_message_equivocation_evidence : message_equivocation_evidence message index. *)
 
   Definition state_eqb (s1 s2 : state) : bool :=
@@ -490,7 +471,15 @@ Context
         rewrite eq_project.
         reflexivity.
     Qed.
-
+    
+    Lemma eq_history_eq_project
+      (s s' : state)
+      (i : index)
+      (Heqh : get_history s i = get_history s' i) :
+      project s i = project s' i.
+    Proof.
+    Admitted.
+  
     Lemma history_incl_equiv_suffix
       (s1 s2 : state)
       (i : index)

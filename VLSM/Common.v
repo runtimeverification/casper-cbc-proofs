@@ -2294,6 +2294,32 @@ Section actions.
        |} :: apply_action' tl dest
     end. 
   
+  Lemma apply_action'_unroll_last
+    (a : action)
+    (a' : action_item)
+    (s : state)
+    : let pref := apply_action' a s in
+      let res := last (List.map destination pref) s in
+      let input' := (input_a a') in 
+      let new_res := (@transition _ _ SignX MachineX (label_a a') (res, input')) in
+      apply_action' (a ++ [a']) s =
+      (apply_action' a s) ++ 
+      [{| l := (label_a a'); 
+          input := (input_a a'); 
+          output := snd new_res; 
+          destination := fst new_res;
+        |}].
+  Proof.
+    generalize dependent a.
+    generalize dependent a'.
+    generalize dependent s.
+    induction a.
+    - simpl.
+      destruct a'.
+      reflexivity.
+    - simpl.
+  Admitted.
+  
   Definition apply_action 
     (a : action)
     (s : state)
@@ -2306,19 +2332,6 @@ Section actions.
     (a : action)
     (s : state) : Prop :=
     finite_protocol_trace_from _ s (snd (apply_action a s)).
-   
-  Class PropertyPreservingAction
-  (f : action -> Prop)
-  (property : state -> Prop) :=
-  {
-    preserves_property 
-      (s : state)
-      (a : action)
-      (Hs : property s)
-      (Ha : f a)
-      (Hpr : protocol_action a s) :
-      property (fst (apply_action a s));
-  }.
   
   Lemma apply_action_app 
     (a b : action)
