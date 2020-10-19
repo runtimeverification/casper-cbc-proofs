@@ -232,7 +232,7 @@ Context
              (i : index)
              (d : nat)
              (Hbig : d >= depth s),
-        rec_history s i d = rec_history s i (depth s).
+        rec_history s i d = rec_history s i (@depth index index_listing s).
     Proof.
       intros.
       remember (depth s) as dpth.
@@ -263,7 +263,7 @@ Context
              (i : index)
              (j : index)
              (Hdif : j <> i),
-             get_history s i = get_history (update_state s news j) i.
+             get_history s i = (@get_history index index_listing idec) (update_state s news j) i.
     Proof.
       intros.
       unfold get_history.
@@ -284,6 +284,7 @@ Context
         reflexivity.
     Qed.
 
+    
     Lemma history_disregards_cv :
         forall (s : state)
                (cv : bool)

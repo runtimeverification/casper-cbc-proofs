@@ -490,16 +490,16 @@ Definition global_decisions (s : state) : list (option bool) :=
  **)
 
 Definition in_mode_b (modes : list (option bool)) (b : bool) : bool :=
-  match (inb (option_eq_dec bool_dec) (Some b) modes) with
+  match (inb (option_eq_dec) (Some b) modes) with
   | true => true
-  | false => (inb (option_eq_dec bool_dec) None modes)
+  | false => (inb (option_eq_dec) None modes)
   end.
   
 Definition in_mode (modes : list (option bool)) (b : bool) : Prop :=
   in_mode_b modes b = true.
   
 Definition estimator (s : state) (b : bool) : Prop :=
-  let ob_dec := (option_eq_dec bool_dec) in
+  let ob_dec := (option_eq_dec) in
   let decision_modes := mode (global_decisions s) in
   match s with
   | Bottom => True
@@ -597,5 +597,5 @@ Definition get_history (s : state) (who : index) : list state :=
    | Something cv ls => let child := last_recorded index_listing ls who in
                           rec_history child who (depth child)
    end.
-
+   
 End ListNode.

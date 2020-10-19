@@ -1525,14 +1525,14 @@ Qed.
 
 Definition mode
   {A : Type}
-  `{EqDec A}
+  `{EqDecision A}
   (l : list A) : list A  :=
-  let mode_value := list_max (List.map (count_occ eq_dec l) l) in
-  filter (fun a => beq_nat (count_occ eq_dec l a) mode_value) l.
+  let mode_value := list_max (List.map (count_occ decide_eq l) l) in
+  filter (fun a => beq_nat (count_occ decide_eq l a) mode_value) l.
 
 Lemma mode_not_empty
   {A : Type}
-  `{EqDec A}
+  `{EqDecision A}
   (l : list A)
   (Hne : l <> []) :
   mode l <> []. 
@@ -1540,18 +1540,18 @@ Proof.
   destruct l.
   elim Hne. reflexivity.
   remember (a :: l) as l'.
-  remember (List.map (count_occ eq_dec l') l') as occurrences.
+  remember (List.map (count_occ decide_eq l') l') as occurrences.
   
   assert (Hmaxp: list_max occurrences > 0). {
     rewrite Heqoccurrences.
     rewrite Heql'.
     simpl.
-    rewrite eq_dec_if_true.
+    rewrite decide_True.
     lia.
     reflexivity.
   }
   
-  assert (exists a, (count_occ eq_dec l' a) = list_max occurrences). {
+  assert (exists a, (count_occ decide_eq l' a) = list_max occurrences). {
     assert (In (list_max occurrences) occurrences). {
       apply list_max_exists.
       rewrite Heqoccurrences.
@@ -1560,40 +1560,41 @@ Proof.
       rewrite Heql' in Hmaxp.
       assumption.
     }
-    rewrite Heqoccurrences in H0.
-    rewrite in_map_iff in H0.
-    destruct H0 as [x [Heq Hin]].
+    rewrite Heqoccurrences in H.
+    rewrite in_map_iff in H.
+    destruct H as [x [Heq Hin]].
     exists x.
     rewrite Heqoccurrences.
     assumption.
   }
   
   assert (exists a, In a (mode l')). {
-    destruct H0.
+    destruct H.
     exists x.
-    specialize (count_occ_In eq_dec l' x).
+    specialize (count_occ_In decide_eq l' x).
     intros.
-    destruct H1 as [_ H1].
-    rewrite H0 in H1.
+    destruct H0 as [_ H1].
+    rewrite H in H1.
     specialize (H1 Hmaxp).
     unfold mode.
     apply filter_In.
     split.
     assumption.
-    rewrite Heqoccurrences in H0.
-    rewrite H0.
+    rewrite Heqoccurrences in H.
+    rewrite H.
     symmetry.
     apply beq_nat_refl.
   }
-  destruct H1.
+  destruct H.
   intros contra.
-  rewrite contra in H1.
-  intuition.  
+  rewrite contra in H0.
+  destruct H0.
+  intuition.
 Qed.
 
 Fixpoint complete_prefix 
   {A : Type}
-  `{EqDec A}
+  `{EqDecision A}
   (l pref : list A) : option (list A) :=
   match l, pref with
   | [], [] => Some []
@@ -1603,7 +1604,7 @@ Fixpoint complete_prefix
                      | None => None
                      | Some s => Some (a :: s)
                      end
-  | (a :: l'), (b :: pref') => match (eq_dec a b) with
+  | (a :: l'), (b :: pref') => match (decide_eq a b) with
                                | right _ => None
                                | _ => let res' := complete_prefix l' pref' in
                                       match res' with
@@ -1615,7 +1616,7 @@ Fixpoint complete_prefix
 
 Lemma complete_prefix_empty 
   {A : Type}
-  `{EqDec A}
+  `{EqDecision A}
   (l : list A) :
   complete_prefix l [] = Some l.
 
@@ -1631,7 +1632,7 @@ Qed.
 
 Lemma complete_prefix_correct 
   {A : Type}
-  `{EqDec A}
+  `{EqDecision A}
   (l pref suff : list A) :
   l = pref ++ suff <->
   complete_prefix l pref = Some suff.
@@ -1643,7 +1644,7 @@ Proof.
     + intros. simpl in *.
       destruct pref; destruct suff;
       try reflexivity;
-      try discriminate H0.
+      try discriminate H.
     + intros.
       unfold complete_prefix.
       destruct pref.
@@ -1652,33 +1653,33 @@ Proof.
         intuition.
         unfold complete_prefix in IHl.
         rewrite IHl.
-        rewrite H0.
+        rewrite H.
         f_equal.
-      * destruct (eq_dec a a0) eqn : eq_d.
+      * destruct (decide (a = a0)) eqn : eq_d.
         specialize (IHl pref suff).
         unfold complete_prefix in IHl.
         rewrite IHl.
         reflexivity.
-        simpl in H0.
-        inversion H0.
+        simpl in H.
+        inversion H.
         reflexivity.
-        inversion H0.
+        inversion H.
         elim n. assumption.
    - generalize dependent suff.
      generalize dependent pref.
      induction l; intros.
      + destruct pref; destruct suff;
        try intuition;
-       try discriminate H0.
+       try discriminate H.
      + destruct pref eqn : eq_pref.
-       rewrite complete_prefix_empty in H0.
-       inversion H0.
+       rewrite complete_prefix_empty in H.
+       inversion H.
        intuition.
        simpl.
-       simpl in H0.
-       destruct (eq_dec a a0).
+       simpl in H.
+       destruct (decide (a = a0)).
        destruct (complete_prefix l l0) eqn : eq_cp.
-       inversion H0.
+       inversion H.
        rewrite e.
        f_equal.
        specialize (IHl l0 suff).
@@ -1686,13 +1687,13 @@ Proof.
        rewrite eq_cp.
        f_equal. assumption.
        assumption.
-       discriminate H0.
-       discriminate H0.
+       discriminate H.
+       discriminate H.
 Qed.
 
 Definition complete_suffix 
   {A : Type}
-  `{EqDec A}
+  `{EqDecision A}
   (l suff : list A) : option (list A) :=
   let res := complete_prefix (rev l) (rev suff) in
   match res with
@@ -1702,7 +1703,7 @@ Definition complete_suffix
   
 Lemma complete_suffix_correct 
   {A : Type}
-  `{EqDec A}
+  `{EqDecision A}
   (l pref suff : list A) :
   l = pref ++ suff <->
   complete_suffix l suff = Some pref.
@@ -1712,14 +1713,14 @@ Proof.
   - intros.
     destruct (complete_prefix (rev l) (rev suff)) eqn : eq_c.
     apply complete_prefix_correct in eq_c.
-    rewrite H0 in eq_c.
+    rewrite H in eq_c.
     rewrite rev_app_distr in eq_c.
     assert (l0 = rev pref). {
       apply app_inv_head in eq_c.
       symmetry.
       assumption.
     }
-    rewrite H1.
+    rewrite H0.
     f_equal.
     apply rev_involutive.
     assert (rev l = rev suff ++ rev pref). {
@@ -1727,16 +1728,16 @@ Proof.
       rewrite rev_involutive.
       assumption.
     }
-    apply complete_prefix_correct in H1.
-    rewrite eq_c in H1.
-    discriminate H1.
+    apply complete_prefix_correct in H0.
+    rewrite eq_c in H0.
+    discriminate H0.
   - destruct (complete_prefix (rev l) (rev suff)) eqn : eq_c.
     intros.
-    inversion H0.
+    inversion H.
     apply complete_prefix_correct in eq_c.
     apply rev_eq_app in eq_c.
     rewrite rev_involutive in eq_c.
     assumption.
     intros.
-    discriminate H0.
+    discriminate H.
 Qed.
