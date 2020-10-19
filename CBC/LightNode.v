@@ -32,8 +32,8 @@ Context
   {HmV : Measurable V}
   {Hrt : ReachableThreshold V}
   {He : Estimator (state C V hash) C}
-  (eq_H := strictly_comparable_eq_dec HscH)
-  (eq_V := strictly_comparable_eq_dec HscV)
+  (eq_H := @strictly_comparable_eq_dec _ HscH)
+  (eq_V := @strictly_comparable_eq_dec _ HscV)
   .
 
 Existing Instance eq_H.
@@ -116,7 +116,7 @@ Proof.
 Qed.
 
 Definition justification_in
-  : hash -> list hash -> bool := inb eq_dec.
+  : hash -> list hash -> bool := inb decide_eq.
 
 Instance message_type
   : StrictlyComparable (message C V hash)
@@ -124,9 +124,9 @@ Instance message_type
   TripleStrictlyComparable C V (justification_type hash).
 
 Instance eq_message
-  : EqDec (message C V hash)
+  : EqDecision (message C V hash)
   :=
-  strictly_comparable_eq_dec message_type.
+  @strictly_comparable_eq_dec _ message_type.
 
 (* StrictlyComparable and CompareStrictOrder for message type comes for free *)
 
@@ -162,22 +162,22 @@ Definition state0 C V hash : state C V hash := [].
 Definition state_add
   : message C V hash -> state C V hash -> state C V hash
   :=
-  set_add eq_dec.
+  set_add decide_eq.
 
 Definition state_remove
   : message C V hash -> state C V hash -> state C V hash
   :=
-  set_remove eq_dec.
+  set_remove decide_eq.
 
 Definition state_in
   : message C V hash-> state C V hash-> bool
   :=
-  set_mem eq_dec.
+  set_mem decide_eq.
 
 Definition state_union
   : state C V hash-> state C V hash-> state C V hash
   :=
-  set_union eq_dec.
+  set_union decide_eq.
 
 Definition state_eq
   (s1 s2 : state C V hash)
@@ -270,11 +270,11 @@ Qed.
 Definition equivocating_messages
   (msg1 msg2 : message C V hash) : bool
   :=
-  match eq_dec msg1 msg2 with
+  match decide (msg1 = msg2) with
   | left _  => false
   | _ => match msg1, msg2 with (c1,v1,j1), (c2,v2,j2) =>
-      match eq_dec v1 v2 with
-      | left _  => negb (inb eq_dec (hash_message msg1) j2) && negb (inb eq_dec (hash_message msg2) j1)
+      match decide (v1 = v2) with
+      | left _  => negb (inb decide_eq (hash_message msg1) j2) && negb (inb decide_eq (hash_message msg2) j1)
       | right _ => false
       end
     end
@@ -292,12 +292,10 @@ Proof.
   unfold equivocating_messages.
   intros [(c1, v1) j1] [(c2, v2) j2] H.
   simpl.
-  destruct (eq_dec (c1, v1, j1) (c2, v2, j2)).
-  rewrite eq_dec_if_true in H.
-  inversion H.
-  assumption.
-  rewrite eq_dec_if_false in H.
-  destruct (eq_dec v1 v2).
+  destruct (decide ((c1, v1, j1) = (c2, v2, j2))).
+  rewrite decide_True in H; congruence.
+  rewrite decide_False in H.
+  destruct (decide (v1 = v2)).
   assumption. inversion H. assumption.
 Qed.
 
@@ -310,46 +308,42 @@ Proof.
     + (* Proving inequality obligation *)
       intro H_absurd.
       unfold equivocating_messages in H.
-      rewrite eq_dec_if_true in H.
-      inversion H. assumption.
+      rewrite decide_True in H; congruence.
     + (* Proving sender obligation *)
       now apply equivocating_messages_sender.
     + (* Proving msg1 is not in msg2's justification *)
       intro H_absurd.
-      apply (in_function eq_dec) in H_absurd.
+      apply (in_function decide_eq) in H_absurd.
       unfold equivocating_messages in H.
       simpl in H_absurd.
       rewrite H_absurd in H.
-      destruct (eq_dec (c1,v1,j1) (c2,v2,j2)).
-      rewrite eq_dec_if_true in H. inversion H.
-      assumption. rewrite eq_dec_if_false in H.
-      destruct (eq_dec v1 v2).
-      subst.
-      simpl in H. inversion H.
-      inversion H. assumption.
+      destruct (decide ((c1, v1, j1) = (c2, v2, j2))).
+      rewrite decide_True in H; congruence.
+      rewrite decide_False in H; try congruence.
+      destruct (decide (v1 = v2)); simpl in H; congruence.
     + (* Proving msg2 is not in msg1's justification *)
-      intro H_absurd. apply (in_function eq_dec) in H_absurd.
+      intro H_absurd. apply (in_function decide_eq) in H_absurd.
       unfold equivocating_messages in H.
       simpl in H_absurd. rewrite H_absurd in H.
-      destruct (eq_dec (c1,v1,j1) (c2,v2,j2)).
-      rewrite eq_dec_if_true in H. inversion H.
-      assumption. rewrite eq_dec_if_false in H.
-      destruct (eq_dec v1 v2).
+      destruct (decide ((c1,v1,j1) = (c2,v2,j2))).
+      rewrite decide_True in H. inversion H.
+      assumption. rewrite decide_False in H.
+      destruct (decide (v1 = v2)).
       rewrite andb_false_r in H. inversion H.
       inversion H. assumption.
   - destruct H as [H_neq [H_sender [H_in1 H_in2]]].
     simpl in H_sender.
     unfold equivocating_messages.
-    destruct (eq_dec (c1,v1,j1) (c2,v2,j2)).
+    destruct (decide ((c1,v1,j1) = (c2,v2,j2))).
     contradiction; try assumption.
-    rewrite eq_dec_if_false; try assumption.
-    destruct (eq_dec v1 v2); try contradiction.
+    rewrite decide_False; try assumption.
+    destruct (decide (v1 = v2)); try contradiction.
     simpl in *.
     apply andb_true_iff.
     split
     ; apply negb_true_iff
     ; rewrite mirror_reflect_curry; try exact H_in1; try exact H_in2
-    ;  intros; split; apply (in_function eq_dec).
+    ;  intros; split; apply (in_function decide_eq).
 Qed.
 
 Lemma equivocating_messages_correct'
@@ -367,19 +361,19 @@ Lemma equivocating_messages_comm
 Proof.
   intros [(c1, v1) sigma1] [(c2, v2) sigma2].
   unfold equivocating_messages.
-  destruct (eq_dec (c1, v1, sigma1) (c2, v2, sigma2)).
-  subst. rewrite eq_dec_if_true.
-  rewrite eq_dec_if_true. reflexivity.
+  destruct (decide ((c1, v1, sigma1) = (c2, v2, sigma2))).
+  rewrite decide_True.
+  rewrite decide_True. reflexivity.
   symmetry; assumption.
   assumption.
-  rewrite (eq_dec_if_false eq_dec).
-  destruct (eq_dec v1 v2).
-  rewrite eq_dec_if_false.
-  rewrite e. rewrite eq_dec_if_true.
+  rewrite decide_False.
+  destruct (decide (v1 = v2)).
+  rewrite decide_False.
+  rewrite e. rewrite decide_True.
   rewrite andb_comm. reflexivity. reflexivity.
   intro Hnot; symmetry in Hnot; tauto.
-  rewrite eq_dec_if_false.
-  rewrite eq_dec_if_false. reflexivity.
+  rewrite decide_False.
+  rewrite decide_False. reflexivity.
   intro Hnot; symmetry in Hnot; tauto.
   intro Hnot; symmetry in Hnot; tauto.
   assumption.
@@ -402,8 +396,8 @@ Lemma non_equivocating_messages_sender
 Proof.
   intros [(c1, v1) j1] [(c2, v2) j2] Hneq. simpl in Hneq.
   unfold equivocating_messages.
-  rewrite eq_dec_if_false.
-  - rewrite eq_dec_if_false; try reflexivity. assumption.
+  rewrite decide_False.
+  - rewrite decide_False; try reflexivity. assumption.
   - intro Heq. inversion Heq; subst; clear Heq. apply Hneq. reflexivity.
 Qed.
 
@@ -458,7 +452,7 @@ Qed.
 
 Lemma equivocating_in_state_not_seen
   : forall msg sigma,
-  ~ In (sender msg) (set_map eq_dec sender sigma) ->
+  ~ In (sender msg) (set_map decide_eq sender sigma) ->
   ~ equivocating_in_state_prop msg sigma.
 Proof.
   intros [(c, v) j] sigma Hnin. rewrite set_map_exists in Hnin. simpl in Hnin.
@@ -473,7 +467,7 @@ Qed.
 Definition equivocating_senders
   (sigma : state C V hash) : set V
   :=
-  set_map eq_dec sender (filter (fun msg => equivocating_in_state msg sigma) sigma).
+  set_map decide_eq sender (filter (fun msg => equivocating_in_state msg sigma) sigma).
 
 Definition equivocating_senders_prop
   (s : state C V hash) (lv : set V)
@@ -595,7 +589,7 @@ Inductive protocol_state
       valid_estimate c j ->
       forall (v : V) (s : state C V hash),
         In (c, v, hash_state j) s ->
-        protocol_state (set_remove eq_dec (c, v, hash_state j) s) ->
+        protocol_state (set_remove decide_eq (c, v, hash_state j) s) ->
         NoDup s ->
         not_heavy s ->
         protocol_state s.
@@ -620,7 +614,7 @@ Lemma not_extx_in_x
 Proof.
   intros c v s s' PS PS'. induction PS'; intros Hincl Hin; apply hash_state_in in Hin.
   - unfold state0 in Hin. inversion Hin.
-  - apply (set_remove_in_iff eq_dec (c, v, hash_state s) (c0, v0, hash_state j) s0 H1 H0) in Hin.
+  - apply (set_remove_in_iff (c, v, hash_state s) (c0, v0, hash_state j) s0 H1 H0) in Hin.
     destruct Hin as [Heq | Hin].
     + inversion Heq; subst; clear Heq. apply hash_state_injective in H6. apply IHPS'1; try apply H6.
       apply hash_state_in. apply Hincl in H0. apply H6.
@@ -673,7 +667,7 @@ Proof.
   induction H'; intros.
   - destruct H. unfold state0 in *.
     apply incl_empty in H1; subst. constructor.
-  - apply (set_eq_remove eq_dec (c, v, hash_state j)) in H3 as Hset_eq; try assumption.
+  - apply (set_eq_remove (c, v, hash_state j)) in H3 as Hset_eq; try assumption.
     apply IHH'2 in Hset_eq.
     apply (protocol_state_cons j H'1 c H v sigma'); try assumption.
     + destruct H3. now apply (H3 (c, v, hash_state j)).
@@ -689,13 +683,13 @@ Lemma non_equivocating_messages_extend
 Proof.
   intros [(c0, v0) sigma']; intros.
   unfold equivocating_messages.
-  destruct (eq_dec (c0, v0, sigma') (c, v, hash_state sigma1)).
+  destruct (decide ((c0, v0, sigma') = (c, v, hash_state sigma1))).
   - (* In the case that these two messages are equal, they cannot be equivocating *)
-    now rewrite eq_dec_if_true.
+    now rewrite decide_True.
   - (* In the case that these messages are not equal, *)
-    rewrite eq_dec_if_false.
+    rewrite decide_False.
     (* When their senders are equal *)
-    destruct (eq_dec v0 v).
+    destruct (decide (v0 = v)).
     + subst.
       apply hash_state_in in H.
       apply in_correct in H.
@@ -795,7 +789,7 @@ Proof.
   induction Hps2; intros.
   - simpl. assumption.
   - clear IHHps2_1.
-    assert (protocol_state (state_union sig1 (set_remove eq_dec (c, v, hash_state j) s))).
+    assert (protocol_state (state_union sig1 (set_remove decide_eq (c, v, hash_state j) s))).
     { apply IHHps2_2.
       apply not_heavy_subset with (state_union sig1 s); try assumption.
       intro msg; intro Hin.
@@ -807,15 +801,15 @@ Proof.
     clear IHHps2_2.
     apply protocol_state_nodup in Hps1 as Hnodups1.
     assert (HnodupUs1s' := H1).
-    apply (set_union_nodup eq_dec Hnodups1) in HnodupUs1s'.
-    destruct (in_dec eq_dec (c, v, hash_state j) sig1).
-    + apply set_eq_protocol_state with (state_union sig1 (set_remove eq_dec (c, v, hash_state j) s))
+    apply (set_union_nodup decide_eq Hnodups1) in HnodupUs1s'.
+    destruct (in_dec decide_eq (c, v, hash_state j) sig1).
+    + apply set_eq_protocol_state with (state_union sig1 (set_remove decide_eq (c, v, hash_state j) s))
       ; try assumption.
       apply set_eq_remove_union_in; assumption.
     + eapply (protocol_state_cons j Hps2_1 c H v); try assumption.
       * apply set_union_iff. right. assumption.
-      * apply (set_remove_nodup eq_dec (c, v, hash_state j)) in HnodupUs1s' as Hnoduprem.
-        apply set_eq_protocol_state with (state_union sig1 (set_remove eq_dec (c, v, hash_state j) s))
+      * apply (set_remove_nodup decide_eq (c, v, hash_state j)) in HnodupUs1s' as Hnoduprem.
+        apply set_eq_protocol_state with (state_union sig1 (set_remove decide_eq (c, v, hash_state j) s))
         ; try assumption.
         apply set_eq_remove_union_not_in; assumption.
 Qed.
@@ -902,8 +896,8 @@ Context
   {HmV : Measurable V}
   {Hrt : ReachableThreshold V}
   {He : Estimator (state C V hash) C}
-  (eq_H := strictly_comparable_eq_dec HscH)
-  (eq_V := strictly_comparable_eq_dec HscV)
+  (eq_H := @strictly_comparable_eq_dec _ HscH)
+  (eq_V := @strictly_comparable_eq_dec _ HscV)
   .
 
 Existing Instance eq_H.
@@ -932,7 +926,7 @@ Proof.
   unfold fault_weight_state.
   unfold equivocating_senders.
   simpl. unfold equivocating_messages.
-  rewrite eq_dec_if_true; try reflexivity. simpl.
+  rewrite decide_True; try reflexivity. simpl.
   apply Rge_le. destruct threshold. easy.
 Qed.
 
@@ -945,7 +939,7 @@ Proof.
   intros.
   apply protocol_state_cons with j c v; try assumption.
   - left. reflexivity.
-  - simpl. rewrite eq_dec_if_true; constructor.
+  - simpl. rewrite decide_True; constructor.
   - constructor; try constructor. apply in_nil.
   - apply not_heavy_singleton.
 Qed.
@@ -966,7 +960,7 @@ Proof.
     + apply protocol_state_nil.
     + spec H_incl m (in_eq m s'). inversion H_incl.
   - destruct (classic (In (c,v,hash_state j) s')).
-    + spec IHabout_s2 (set_remove eq_dec (c,v,hash_state j) s').
+    + spec IHabout_s2 (set_remove decide_eq (c,v,hash_state j) s').
       apply protocol_state_cons with j c v; try assumption.
       2 : now apply not_heavy_subset with s.
       apply IHabout_s2.
@@ -974,12 +968,12 @@ Proof.
       intros msg H_in.
       destruct (classic (msg = (c,v,hash_state j))).
       * subst.
-        assert (H_contra := set_remove_elim eq_dec (c,v,hash_state j) s').
+        assert (H_contra := set_remove_elim (c,v,hash_state j) s').
         spec H_contra H_nodup.
         contradiction.
       * spec H_incl msg.
         spec H_incl.
-        assert (H_useful := set_remove_iff eq_dec msg (c,v,hash_state j)).
+        assert (H_useful := set_remove_iff decide_eq msg (c,v,hash_state j)).
         spec H_useful s' H_nodup.
         rewrite H_useful in H_in.
         tauto.
@@ -1040,10 +1034,10 @@ Proof.
     destruct H4 as [Hanin Hnodup].
     simpl. apply protocol_state_cons with j1 c1 a; try assumption.
     + left; reflexivity.
-    + simpl. rewrite eq_dec_if_true; try reflexivity.
+    + simpl. rewrite decide_True; try reflexivity.
       apply protocol_state_cons with j2 c2 a; try assumption.
       * left; reflexivity.
-      * simpl. rewrite eq_dec_if_true; try reflexivity.
+      * simpl. rewrite decide_True; try reflexivity.
         apply IHvs; try assumption.
         apply not_heavy_subset with (flat_map (fun v : V => [(c1, v, hash_state j1); (c2, v, hash_state j2)]) (a :: vs))
         ; try assumption.
@@ -1084,7 +1078,7 @@ Qed.
 
 Lemma fault_weight_max
   : forall sigma : state C V hash,
-  (fault_weight_state sigma <= sum_weights (set_map eq_dec sender sigma))%R.
+  (fault_weight_state sigma <= sum_weights (set_map decide_eq sender sigma))%R.
 Proof.
   intros.
   apply sum_weights_incl; try apply set_map_nodup.
@@ -1115,8 +1109,8 @@ Proof.
     apply (protocol_state_singleton c v []) in Hc; try constructor; assumption.
   - intro. destruct H. apply incl_empty in H0. inversion H0.
   - exists c. exists c''. repeat split; try assumption.
-    intros. unfold equivocating_messages. rewrite eq_dec_if_false.
-    + rewrite eq_dec_if_true; try reflexivity.
+    intros. unfold equivocating_messages. rewrite decide_False.
+    + rewrite decide_True; try reflexivity.
       apply andb_true_iff. split; apply  negb_true_iff; apply in_correct'.
       * unfold hash_state; simpl.
         intro Hh. destruct Hh as [Hh | Hf]; try contradiction Hf.
@@ -1146,11 +1140,11 @@ Proof.
       * (* Proving that the message partner is in the new state *)
         left; reflexivity.
       * (* Proving that the new state without the message partner is a protocol state *)
-        simpl. rewrite eq_dec_if_true; try reflexivity.
+        simpl. rewrite decide_True; try reflexivity.
         (* This state is a protocol state if it's not too heavy *)
         apply binary_justification_protocol_state; try assumption.
         unfold not_heavy, fault_weight_state.
-        apply Rle_trans with (sum_weights (set_map eq_dec sender (flat_map (fun v0 : V => [(c1, v0, hash_state j1); (c2, v0, hash_state j2)]) vs))); try apply fault_weight_max.
+        apply Rle_trans with (sum_weights (set_map decide_eq sender (flat_map (fun v0 : V => [(c1, v0, hash_state j1); (c2, v0, hash_state j2)]) vs))); try apply fault_weight_max.
         apply Rle_trans with (sum_weights vs); try assumption.
         apply sum_weights_incl; try assumption; try apply set_map_nodup.
         (* x is some arbitrary validator in vs *)
@@ -1189,16 +1183,16 @@ Proof.
         ).
         inversion Heq; subst; clear Heq. simpl in Hequiv.
         unfold equivocating_messages in Hequiv.
-        rewrite eq_dec_if_true in Hequiv; try reflexivity.
+        rewrite decide_True in Hequiv; try reflexivity.
         simpl in Hequiv.
         apply existsb_exists in Hequiv.
         destruct Hequiv as [[(mc, mv) mj] [Hin Hequiv]].
         apply in_flat_map in Hin.
         unfold equivocating_messages in Hequiv.
-        destruct (eq_dec (c0, v0, hash_state j2) (mc, mv, mj))
-        ; try (rewrite eq_dec_if_true in Hequiv; try assumption; discriminate).
-        rewrite eq_dec_if_false in Hequiv; try assumption.
-        destruct (eq_dec v0 mv); try discriminate; subst.
+        destruct (decide ((c0, v0, hash_state j2) = (mc, mv, mj)))
+        ; try (rewrite decide_True in Hequiv; try assumption; discriminate).
+        rewrite decide_False in Hequiv; try assumption.
+        destruct (decide (v0 = mv)); try discriminate; subst.
         destruct Hin as [v0' [Hinv0 [Hin | [Hin | Hin]]]]
         ; inversion Hin; subst; clear Hin; assumption. }
     exists (exist protocol_state ((c2, v, hash_state j2)  :: flat_map (fun v : V => [(c1, v, hash_state j1); (c2, v, hash_state j2)]) vs) H_prot).
@@ -1313,7 +1307,7 @@ Definition in_future
 
 Definition next_future
   (s1 s2 : state C V hash) :=
-  exists (msg : message C V hash), set_eq (set_add eq_dec msg s1) s2.
+  exists (msg : message C V hash), set_eq (set_add decide_eq msg s1) s2.
 
 Definition in_past
   (s1 s2 : state C V hash)
@@ -1644,7 +1638,7 @@ Lemma add_equivocating_sender
           In msg' s /\
           equivocating_messages_prop msg msg') ->
       set_eq (equivocating_senders (msg :: s))
-             (set_add eq_dec (sender msg) (equivocating_senders s)).
+             (set_add decide_eq (sender msg) (equivocating_senders s)).
 Proof.
   (* Because we're using set_add, we don't need to care about whether (sender msg) is already in (equivocating_senders s) *)
   intros s about_s msg [msg' [H_in H_equiv]].
@@ -1705,7 +1699,7 @@ Proof.
     (* For all we know (sender msg) could already be in (equivocating_senders s) *)
     destruct (classic (In (sender msg) (equivocating_senders s))).
     + (* If (sender msg) is already in there, then adding it again does nothing *)
-      assert (H_ignore : set_eq (set_add eq_dec (sender msg) (equivocating_senders s)) (equivocating_senders s)).
+      assert (H_ignore : set_eq (set_add decide_eq (sender msg) (equivocating_senders s)) (equivocating_senders s)).
       {  split; intros v H_v_in.
          apply set_add_iff in H_v_in.
          destruct H_v_in.
@@ -1808,7 +1802,7 @@ Proof.
                      ((get_estimate
                            ((get_estimate j, v', hash_state j) :: j), v,
                         hash_state ((get_estimate j, v', hash_state j) :: j)) ::
-                        ((get_estimate j, v', hash_state j) :: j)))) (set_add eq_dec (sender (get_estimate j, v, hash_state j))
+                        ((get_estimate j, v', hash_state j) :: j)))) (set_add decide_eq (sender (get_estimate j, v, hash_state j))
                   (equivocating_senders
                      ((get_estimate
                            ((get_estimate j, v', hash_state j) :: j), v,
@@ -1825,7 +1819,7 @@ Proof.
   unfold next_equivocation_state.
   rewrite H_inter.
   simpl. clear H_inter.
-  assert (H_rewrite := sum_weights_in v (set_add eq_dec v
+  assert (H_rewrite := sum_weights_in v (set_add decide_eq v
        (equivocating_senders
           ((get_estimate ((get_estimate j, v', hash_state j) :: j), v, hash_state ((get_estimate j, v', hash_state j) :: j)) ::
              (get_estimate j, v', hash_state j) :: j)))).
@@ -2200,7 +2194,7 @@ Proof.
   pose (@LightNode_seteq hash C V _ _ _ _ _ _ _) as protocol_eq.
   destruct suff_val as [vs [Hvs Hweight]].
   remember (equivocating_senders s) as eqv_s.
-  remember (set_diff eq_dec vs eqv_s) as vss.
+  remember (set_diff decide_eq vs eqv_s) as vss.
   assert (sum_weights (vss ++ eqv_s) > proj1_sig threshold)%R.
   { apply Rge_gt_trans with (sum_weights vs); try assumption.
     apply Rle_ge. apply sum_weights_incl; try assumption.
@@ -2209,14 +2203,14 @@ Proof.
     - rewrite Heqvss. intros a Hin. apply in_app_iff.
       rewrite set_diff_iff. apply or_and_distr_left.
       split; try (left; assumption).
-      destruct (in_dec eq_dec a eqv_s); (left; assumption) || (right; assumption).
+      destruct (in_dec decide_eq a eqv_s); (left; assumption) || (right; assumption).
   }
   apply pivotal_validator_extension in H.
   - destruct H as [vs' [Hnodup_vs' [Hincl_vs' [Hgt [v [Hin_v Hlt]]]]]].
     exists v. split.
     + subst. apply Hincl_vs' in Hin_v. apply set_diff_elim2 in Hin_v. assumption.
-    + exists (set_remove eq_dec v vs').
-      assert (NoDup (set_remove eq_dec v vs')) as Hnodup_remove
+    + exists (set_remove decide_eq v vs').
+      assert (NoDup (set_remove decide_eq v vs')) as Hnodup_remove
       ; try apply set_remove_nodup; try assumption.
       repeat split.
       * assumption.

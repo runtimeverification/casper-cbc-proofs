@@ -368,7 +368,7 @@ Definition exists_pivotal_validator_ps
   {C V}
   `{PS : ProtocolState C V}
   :=
-  @exists_pivotal_validator V (strictly_comparable_eq_dec (triple_strictly_comparable_proj2 about_M)) Hm Hrt.
+  @exists_pivotal_validator V (@strictly_comparable_eq_dec _ (triple_strictly_comparable_proj2 about_M)) Hm Hrt.
 
 Theorem non_triviality_decisions_on_properties_of_protocol_states
   {C V : Type} `{PS : ProtocolState C V}
@@ -376,7 +376,7 @@ Theorem non_triviality_decisions_on_properties_of_protocol_states
   : exists (p : pstate C V -> Prop) , non_trivial_pstate p.
 Proof.
   pose (triple_strictly_comparable_proj2 about_M) as HscV.
-  pose (strictly_comparable_eq_dec HscV) as HeqV.
+  pose (@strictly_comparable_eq_dec _ HscV) as HeqV.
   destruct (estimator_total Empty) as [c Hc].
   destruct exists_pivotal_validator_ps as [v [vs [Hnodup [Hnin [Hlt Hgt]]]]].
   destruct vs as [ | v' vs].
@@ -870,7 +870,7 @@ Proof.
   rewrite in_state_add_in_sorted_iff.
   tauto. apply about_equivocating_messages; try assumption.
   assert (HscV  := @triple_strictly_comparable_proj2 _ _ _ about_M).
-  pose (strictly_comparable_eq_dec HscV) as HeqV.
+  pose (@strictly_comparable_eq_dec _ HscV) as HeqV.
   (* Now. *)
   assert (H_inter := senders_fault_weight_eq (equivocating_senders
                   (add_in_sorted_fn (get_estimate j, v, j)
@@ -1275,7 +1275,7 @@ Lemma all_pivotal_validator
     potentially_pivotal_state v s.
 Proof.
   remember (triple_strictly_comparable_proj2 about_M) as HscV.
-  pose (strictly_comparable_eq_dec HscV) as HeqV.
+  pose (@strictly_comparable_eq_dec _ HscV) as HeqV.
   remember (@compare _ HscV) as compare_v.
   intros s about_s.
   destruct suff_val as [vs [Hvs Hweight]].
@@ -1295,8 +1295,8 @@ Proof.
   - destruct H as [vs' [Hnodup_vs' [Hincl_vs' [Hgt [v [Hin_v Hlt]]]]]].
     exists v. split.
     + subst. apply Hincl_vs' in Hin_v. apply set_diff_elim2 in Hin_v. assumption.
-    + exists (set_remove eq_dec v vs').
-      assert (NoDup (set_remove eq_dec v vs')) as Hnodup_remove
+    + exists (set_remove decide_eq v vs').
+      assert (NoDup (set_remove decide_eq v vs')) as Hnodup_remove
       ; try apply set_remove_nodup; try assumption.
       repeat split.
       * assumption.
@@ -1325,7 +1325,7 @@ Theorem strong_nontriviality_full
   : @strong_nontriviality C V _ _ _ _ _.
 Proof.
   remember (triple_strictly_comparable_proj2 about_M) as HscV.
-  pose (strictly_comparable_eq_dec HscV) as HeqV.
+  pose (@strictly_comparable_eq_dec _ HscV) as HeqV.
   remember (@compare _ HscV) as compare_v.
   intros [s1 about_s1].
   destruct (all_pivotal_validator s1 about_s1) as [v [H_v [vs [H_nodup [H_v_notin [H_disjoint [H_under H_over]]]]]]].

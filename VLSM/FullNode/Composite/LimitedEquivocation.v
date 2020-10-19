@@ -15,8 +15,9 @@ From CasperCBC
     Validator.State
     Validator.Equivocation
     FullNode.Validator
+    FullNode.Client
     VLSM.FullNode.Composite.Free
-    PreceedsEquivocation
+    ObservableEquivocation
     .
 
 Section ConstrainedValidators.
@@ -32,69 +33,19 @@ Section ConstrainedValidators.
     {Hestimator : Estimator (state C V) C}
     (message := State.message C V)
     (FreeX := @VLSM_full_composed_free C V about_C about_V Hmeasurable Hrt Hestimator)
+    (free_equivocation_evidence := @composed_equivocation_evidence
+      C V about_C about_V Hmeasurable Hrt Hestimator)
+    (free_basic_equivocation := @composed_basic_observable_equivocation
+      C V about_C about_V Hmeasurable Hrt Hestimator)
     .
 
+Existing Instance free_equivocation_evidence.
+Existing Instance free_basic_equivocation.
+
 Let index : Type := V + clients.
-Let v_eq_dec := strictly_comparable_eq_dec about_V.
+Let v_eq_dec := @strictly_comparable_eq_dec _ about_V.
 Existing Instance v_eq_dec.
 Existing Instance index_eq_dec.
-
-Fixpoint validators'
-  (is : list index)
-  : list V
-  :=
-  match is with
-  | [] => []
-  | i :: is' =>
-    match i with
-    | inl v => v :: validators' is'
-    | _ => validators' is'
-    end
-  end.
-
-Lemma validators'_in
-  (is : list index)
-  (v : V)
-  : In v (validators' is) <-> In (inl v) is.
-Proof.
-  induction is.
-  - split; intro H; inversion H.
-  - destruct a; simpl; split.
-    + intros [Heq | Hv].
-      * subst v0. left. reflexivity.
-      * right. apply IHis. assumption.
-    + intros [Heq | Hv].
-      * inversion Heq; subst. left. reflexivity.
-      * right. apply IHis. assumption.
-    + intro Hv. right. apply IHis. assumption.
-    + intros [n | Hv]; try discriminate n.
-      apply IHis. assumption.
-Qed.
-
-Lemma validators'_nodup
-  (is : list index)
-  (His : NoDup is)
-  : NoDup (validators' is).
-Proof.
-  induction is; simpl; try apply NoDup_nil.
-  apply NoDup_cons_iff in His. destruct His as [Ha His].
-  specialize (IHis His).
-  destruct a; try assumption.
-  constructor; try assumption.
-  intro Hv. elim Ha. apply validators'_in. assumption.
-Qed.
-
-
-Definition validators : list V := validators' indices.
-
-Lemma finite_validators : Listing validators.
-Proof.
-  split.
-  - apply validators'_nodup. apply (proj1 finite_index).
-  - intros v. pose (proj2 finite_index (inl v)) as Hv.
-    apply validators'_in. assumption.
-Qed.
-
 
 (*
 Parameter (Hno_clients : clients -> False).
@@ -105,73 +56,6 @@ Proof.
   - elim Hno_clients. exact c.
 Defined.
 *)
-
-Lemma state_union_nodup
-  (s : vstate FreeX)
-  (Hs : protocol_state_prop (pre_loaded_vlsm FreeX) s)
-  : NoDup (state_union s).
-Proof.
-  pose (VLSM_full_protocol_state_nodup s Hs) as Hnodup.
-  unfold state_union.
-  induction indices.
-  - constructor.
-  - simpl.
-    apply set_union_nodup; try assumption.
-    apply Hnodup.
-Qed.
-
-Lemma state_union_iff
-  (s : vstate FreeX)
-  (m : message)
-  : In m (state_union s)
-    <-> ex (fun v : V => In m (get_message_set (s (inl v))))
-    \/ ex (fun client : clients => In m (s (inr client))).
-Proof.
-  unfold state_union.
-  split.
-  - intros Hm.
-    apply set_union_in_iterated in Hm.
-    apply Exists_exists in Hm.
-    destruct Hm as [msgs [Hmsgs Hm]].
-    apply in_map_iff in Hmsgs.
-    destruct Hmsgs as [(_msgs, final) [Heq Hs]]. simpl in Heq. subst _msgs.
-    apply in_map_iff in Hs. destruct Hs as [i [Hs Hi]].
-    destruct i; simpl in Hs.
-    + left. exists v. rewrite Hs. assumption.
-    + right. exists c. inversion Hs. rewrite H0. assumption.
-  - intros [[v Hm] | [client Hm]]
-    ; apply set_union_in_iterated
-    ; apply Exists_exists
-    ; exists (get_message_set (s (inl v)))
-      || exists (s (inr client))
-    ; split; try assumption
-    ; apply in_map_iff
-    ; exists (s (inl v)) || exists (pair (s (inr client)) None)
-    ; split; try reflexivity
-    ; apply in_map_iff
-    ; exists (inl v) || exists (inr client)
-    ; split; try reflexivity
-    ; apply (proj2 finite_index).
-Qed.
-
-Lemma state_union_initially_empty
-  (is : vinitial_state FreeX)
-  : state_union (proj1_sig is) = [].
-Proof.
-  apply incl_l_nil.
-  intros m Hm.
-  apply state_union_iff in Hm.
-  destruct Hm as [[v Hm] | [client Hm]]
-  ; destruct is as [is His]
-  ; simpl in Hm
-  ; specialize (His (inl v)) || specialize (His (inr client))
-  ; simpl in His
-  ; unfold initial_state_prop in His
-  ;  rewrite His in Hm
-  ; inversion Hm.
-Qed.
-
-Existing Instance VLSM_full_composed_free_basic_equivocation.
 
 Definition Full_composition_constraint
   (l : vlabel FreeX)
@@ -191,11 +75,12 @@ Lemma Full_composition_constraint_state_not_heavy
 Proof.
   destruct Hs as [_om Hs].
   inversion Hs; subst; simpl.
-  - unfold s0. apply empty_not_heavy.
-    simpl. rewrite state_union_initially_empty. reflexivity.
-  - unfold s0. apply empty_not_heavy.
-    remember (proj1_sig Common.s0) as s1. simpl. subst s1.
-    rewrite state_union_initially_empty. reflexivity.
+  - unfold s0.
+    apply initial_state_not_heavy; try apply free_composite_vlsm_observable_messages.
+    destruct is. assumption.
+  - unfold s0.
+    apply initial_state_not_heavy; try apply free_composite_vlsm_observable_messages.
+    destruct Common.s0. assumption.
   - destruct Hv as [Hv Hctr].
     unfold Full_composition_constraint in Hctr.
     unfold vtransition in Hctr.
@@ -211,19 +96,6 @@ Proof.
       as (si', om').
     inversion H0; subst.
     assumption.
-Qed.
-
-Existing Instance full_node_message_equivocation_evidence.
-
-Global Instance Full_constrained_composition_message_equivocation_evidence
-  : vlsm_message_equivocation_evidence V Full_constrained_composition.
-Proof.
-  apply
-    (preceeds_equivocation_constrained
-      IM_index i0 Full_composition_constraint (free_constraint _)
-    ).
-  - intro l; intros. exact I.
-  - apply VLSM_full_composed_free_message_equivocation_evidence.
 Qed.
 
 Lemma in_protocol_state
@@ -269,7 +141,7 @@ Proof.
       || remember (s (inr client')) as msgsv' eqn:Hsv'
     ; try destruct li' as [c|].
     + apply pair_equal_spec in H0. destruct H0 as [Hs Hom]; subst.
-      destruct (eq_dec i (inl v')); destruct i as [v | client]; subst.
+      destruct (decide (i = inl v')); destruct i as [v | client]; subst.
       * rewrite e in *. simpl in Hm. rewrite state_update_eq in Hm.
         apply set_add_iff in Hm.
         destruct Hm as [Heqm | Hinm]; subst; try assumption.
@@ -284,7 +156,7 @@ Proof.
         assumption.
     + destruct om as [m'|].
       * apply pair_equal_spec in H0.  destruct H0 as [Hs Hom]; subst.
-        { destruct (eq_dec i (inl v')); destruct i as [v | client]; subst.
+        { destruct (decide (i = inl v')); destruct i as [v | client]; subst.
         - simpl in Hm. inversion e. subst v. rewrite state_update_eq in Hm.
           apply set_add_iff in Hm.
           destruct Hm as [Heqm | Hinm]; subst.
@@ -305,7 +177,7 @@ Proof.
         assumption.
     + destruct om as [m'|].
       * apply pair_equal_spec in H0.  destruct H0 as [Hs Hom]; subst.
-        { destruct (eq_dec i (inr client')); destruct i as [v | client]; subst.
+        { destruct (decide (i = inr client')); destruct i as [v | client]; subst.
         - discriminate e.
         - simpl in Hm. inversion e. subst client. rewrite state_update_eq in Hm.
           apply set_add_iff in Hm.
@@ -349,7 +221,7 @@ Proof.
   intros m Hm.
   specialize (Hs m Hm). clear -Hs.
   apply can_emit_protocol_iff in Hs.
-  apply pre_loaded_can_emit.
+  apply pre_loaded_with_all_messages_can_emit.
   destruct Hs as [[v [[miv Hmiv] Hs]] | Hem]; try assumption.
   destruct v; inversion Hmiv.
 Qed.
@@ -369,15 +241,20 @@ Proof.
     assumption.
 Qed.
 
+Context
+  (message_events := full_node_message_comparable_events C V).
+
+Existing Instance  message_events.
+
 Definition sorted_state_union
   (s : vstate FreeX)
   : set message
   :=
-  top_sort message_preceeds_fn (state_union s).
+  top_sort happens_before_fn (state_union s).
 
 Lemma sorted_state_union_nodup
   (s : vstate FreeX)
-  (Hs : protocol_state_prop (pre_loaded_vlsm FreeX) s)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeX) s)
   : NoDup (sorted_state_union s).
 Proof.
   apply top_sort_nodup.
@@ -431,7 +308,7 @@ Fixpoint receive_messages
   | [] => []
   | m :: ms' =>
     let items := receive_messages s i ms' in
-    match in_dec eq_dec m (get_message_set (project s i)) with
+    match in_dec decide_eq m (get_message_set (project s i)) with
     | left _ => items
     | right _ =>
       let final := last (map destination items) s in
@@ -453,7 +330,7 @@ Proof.
   { intros m Hm. apply Hms. apply in_app_iff. left. assumption. }
   specialize (IHms s Hi).
   rewrite rev_unit. simpl.
-  destruct (in_dec eq_dec x (get_message_set (project s i))); try assumption.
+  destruct (in_dec decide_eq x (get_message_set (project s i))); try assumption.
   rewrite map_app. simpl. rewrite last_last.
   unfold receive_destination.  unfold vtransition. simpl.
   unfold vtransition. simpl.
@@ -484,7 +361,7 @@ Proof.
     apply state_union_iff.
     apply I1 in Hm.
     apply state_union_iff in Hm.
-    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (eq_dec (inl v') (inl v)).
+    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (decide_eq (inl v') (inl v)).
     + inversion e. subst v'. left.
       exists v. simpl.
       rewrite state_update_eq. simpl.
@@ -522,7 +399,7 @@ Proof.
     specialize (I1 m Hm).
     apply state_union_iff in I1.
     apply state_union_iff.
-    destruct I1 as [[v' HI1] | [client' HI1]]; try destruct (eq_dec (inr client') (inr client)).
+    destruct I1 as [[v' HI1] | [client' HI1]]; try destruct (decide (inr client' = inr client)).
     + simpl. left. exists v'.  rewrite state_update_neq by (intro; discriminate).
       assumption.
     + inversion e. subst client'. right. exists client.
@@ -555,7 +432,7 @@ Proof.
             (@rev message ms))) s (@inl V clients v))
       as (msgs, final) eqn:Ht.
     apply state_union_iff in Hm.
-    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (eq_dec (inl v') (inl v)).
+    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (decide (inl v' = inl v)).
     + inversion e. subst v'. simpl in Hm. rewrite state_update_eq in Hm.
       apply set_add_iff in Hm.
       destruct Hm as [Heq | Hm].
@@ -598,7 +475,7 @@ Proof.
             (@rev message ms))) s (@inr V clients client))
       as msgs eqn:Ht.
     apply state_union_iff in Hm.
-    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (eq_dec (inr client') (inr client)).
+    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (decide (inr client' = inr client)).
     + simpl in Hm. rewrite state_update_neq in Hm by (intro; discriminate).
       apply I2. apply state_union_iff.
       left. exists v'.
@@ -620,14 +497,14 @@ Lemma receive_messages_v
   (s : vstate FreeX)
   (i : index)
   (ms : list message)
-  : set_eq (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i)) (set_union eq_dec (get_message_set (project s i)) ms).
+  : set_eq (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i)) (set_union decide_eq (get_message_set (project s i)) ms).
 Proof.
   generalize dependent s.
   induction ms using rev_ind; intros; try apply set_eq_refl.
   rewrite rev_unit. simpl.
-  destruct (in_dec eq_dec x (get_message_set (project s i))).
+  destruct (in_dec decide_eq x (get_message_set (project s i))).
   { specialize (IHms s).
-    apply set_eq_tran with (set_union eq_dec (get_message_set (project s i)) ms)
+    apply set_eq_tran with (set_union decide_eq (get_message_set (project s i)) ms)
     ; try assumption.
     split; intros m Hm; apply set_union_iff; apply set_union_iff in Hm
     ; destruct Hm as [Hm | Hm]; try (left; assumption); try (right; assumption).
@@ -800,7 +677,7 @@ Proof.
   induction ms using rev_ind; intros; try apply reflexivity.
   specialize (IHms s).
   rewrite rev_unit. simpl.
-  destruct (in_dec eq_dec x (get_message_set (project s i))); try assumption.
+  destruct (in_dec decide_eq x (get_message_set (project s i))); try assumption.
   rewrite map_app. simpl.
   rewrite last_last.
   unfold receive_destination.
@@ -854,7 +731,7 @@ Proof.
   intros m Hm.
   specialize (receive_messages_v s i ms).
   intros [_ Hincl].
-  assert (Hm' : In m (set_union eq_dec (get_message_set (project s i)) ms))
+  assert (Hm' : In m (set_union decide_eq (get_message_set (project s i)) ms))
    by (apply set_union_iff; right; assumption).
   apply Hincl in Hm'.
   apply state_union_iff.
@@ -869,9 +746,9 @@ Lemma receive_messages_protocol
   (i : index)
   (ms : list message)
   (Hms : NoDup ms)
-  (Hmsj : preceeds_closed message_preceeds_fn ms)
+  (Hmsj : preceeds_closed happens_before_fn ms)
   (Hmsi : incl ms (state_union s))
-  (Hmst : topologically_sorted message_preceeds_fn ms)
+  (Hmst : topologically_sorted happens_before_fn ms)
   : finite_protocol_trace_from Full_constrained_composition s (receive_messages s i (rev ms)).
 Proof.
   induction ms using rev_ind.
@@ -883,13 +760,13 @@ Proof.
       apply state_union_free_byzantine_message.
       assumption.
     }
-    assert (Hmsj' : preceeds_closed message_preceeds_fn ms).
+    assert (Hmsj' : preceeds_closed happens_before_fn ms).
     { apply topologically_sorted_preceeds_closed_remove_last
         with (byzantine_message_prop FreeX) (ms ++ [x]) x
       ; try assumption; try reflexivity.
       apply free_full_byzantine_message_preceeds_stict_order.
     }
-    assert (Hmst' : topologically_sorted message_preceeds_fn ms ).
+    assert (Hmst' : topologically_sorted happens_before_fn ms ).
     { apply toplogically_sorted_remove_last with (ms ++ [x]) x; try assumption.
       reflexivity.
     }
@@ -898,7 +775,7 @@ Proof.
     rewrite app_nil_r in *.
     specialize (IHms Hms Hmsj' Hmsi' Hmst').
     rewrite rev_unit. simpl.
-    destruct (in_dec eq_dec x (get_message_set (project s i))); try assumption.
+    destruct (in_dec decide_eq x (get_message_set (project s i))); try assumption.
     apply (extend_right_finite_trace_from Full_constrained_composition); try assumption.
     repeat split.
     + apply finite_ptrace_last_pstate. assumption.
@@ -931,8 +808,7 @@ Proof.
         ; rewrite Forall_forall in Hmsj
         ; specialize (Hmsj x Hx m)
         ; destruct x as (c, v', j)
-        ; unfold message_preceeds_fn in Hmsj; simpl in Hmsj
-        ; unfold validator_message_preceeds_fn in Hmsj; simpl in Hmsj
+        ; unfold happens_before_fn in Hmsj; simpl in Hmsj
         ; simpl in Hm; apply in_correct in Hm
         ; specialize (Hmsj Hm)
         ; apply in_app_iff in Hmsj
@@ -952,61 +828,74 @@ Proof.
         ; unfold unmake_justification
         ; assumption
         ).
-      * pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
-        apply not_heavy_incl with (state_union s); try assumption.
-        specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
-        intros [_ Hincl].
-        simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
-        destruct (in_dec eq_dec x (s (inr client))); try (elim n; assumption).
-        rewrite map_app in Hincl. simpl in Hincl.
-        rewrite last_last in Hincl.
-        unfold receive_destination in Hincl.
-        unfold vtransition in Hincl. simpl in Hincl.
-        unfold vtransition in Hincl. simpl in Hincl.
-        remember
-          (@last
-          (@_composite_state (State.message C V) (sum V clients)
-             (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-          (@map
-             (@transition_item (State.message C V)
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (@_composite_state (State.message C V) (sum V clients)
-                (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-             (@destination (State.message C V)
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (receive_messages s (@inr V clients client) (@rev message ms))) s
-          (@inr V clients client))
-          as msgs eqn:Hmsgs.
-        replace
-          (@last
-          (@_composite_state (State.message C V) (sum V clients)
-             (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-          (@map
-             (@transition_item message
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (@_composite_state (State.message C V) (sum V clients)
-                (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-             (@destination message
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (receive_messages s (@inr V clients client) (@rev message ms))) s
-          (@inr V clients client))
-          with msgs.
-        simpl in *.
+      pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
+      specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
+      intros [_ Hincl].
+      simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
+      destruct (in_dec decide_eq x (s (inr client))); try (elim n; assumption).
+      rewrite map_app in Hincl. simpl in Hincl.
+      rewrite last_last in Hincl.
+      unfold receive_destination in Hincl.
+      unfold vtransition in Hincl. simpl in Hincl.
+      remember
+        (@last
+        (@_composite_state (State.message C V) (sum V clients)
+           (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
+        (@map
+           (@transition_item message
+              (@composite_type (State.message C V)
+                 (sum V clients)
+                 (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
+           (@_composite_state (State.message C V)
+              (sum V clients)
+              (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
+           (@destination message
+              (@composite_type (State.message C V)
+                 (sum V clients)
+                 (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
+           (receive_messages s (@inr V clients client) (@rev message ms))) s)
+        as lst.
+      replace
+        (@last
+        (@_composite_state (State.message C V)
+           (sum V clients)
+           (@IM_index C V about_C about_V Hmeasurable Hrt
+              Hestimator))
+        (@map
+           (@transition_item (State.message C V)
+              (@composite_type (State.message C V)
+                 (sum V clients)
+                 (@IM_index C V about_C about_V Hmeasurable Hrt
+                    Hestimator)))
+           (@_composite_state (State.message C V)
+              (sum V clients)
+              (@IM_index C V about_C about_V Hmeasurable Hrt
+                 Hestimator))
+           (@destination (State.message C V)
+              (@composite_type (State.message C V)
+                 (sum V clients)
+                 (@IM_index C V about_C about_V Hmeasurable Hrt
+                    Hestimator)))
+           (receive_messages s (@inr V clients client)
+              (@rev message ms))) s)
+        with lst in Hincl.
+      assert (Hincl' : incl (set_add decide_eq x (lst (inr client))) (state_union s)).
+      {
         intros m Hm. apply Hincl.
         apply state_union_iff. right. exists client.
-        rewrite state_update_eq.
-        assumption.
+        rewrite state_update_eq. assumption.
+      }
+      apply not_heavy_incl with (state_union s); try assumption.
+      * apply set_map_incl. assumption.
+      * intro v. simpl. apply filter_incl. assumption.
+      * apply not_heavy_commute. assumption.
     + unfold Full_composition_constraint.
       unfold vtransition. simpl.
       pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
       specialize (receive_messages_set_eq s i (ms ++ [x]) Hmsi).
       intros [_ Hincl].
       simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
-      destruct (in_dec eq_dec x (get_message_set (project s i)))
+      destruct (in_dec decide_eq x (get_message_set (project s i)))
       ; try (elim n; assumption).
       rewrite map_app in Hincl. simpl in Hincl.
       rewrite last_last in Hincl.
@@ -1048,6 +937,8 @@ Proof.
         as msgs eqn:Hmsgs
       ; apply not_heavy_incl with s; try assumption
       ; unfold vtransition in Hincl; simpl in Hincl
+      ; try apply incl_refl
+      ; intro v0
       .
       * replace
           (@last
@@ -1066,7 +957,36 @@ Proof.
           (@inl V clients v))
           with (msgs, final) in Hincl.
         simpl in Hincl.
-        assumption.
+        intros m Hm.
+        assert
+          (In m
+            (state_union
+              (state_update IM_index
+                 (last (map destination (receive_messages s (inl v) (rev ms))) s)
+                 (inl v) (set_add decide_eq x msgs, final)
+              )
+            )
+          ).
+        {
+          unfold state_union.
+          apply set_union_in_iterated.
+          apply Exists_exists.
+          exists (observable_events
+          (state_update IM_index
+             (last (map destination (receive_messages s (inl v) (rev ms))) s)
+             (inl v) (set_add decide_eq x msgs, final)) v0).
+          split; try assumption.
+          apply in_map_iff. exists v0. split; try reflexivity.
+          apply (proj2 finite_validators).
+        }
+        apply Hincl in H.
+        apply set_union_in_iterated in H. apply Exists_exists in H.
+        destruct H as [msgsv [Hmsgsv H]].
+        apply in_map_iff in Hmsgsv. destruct Hmsgsv as [v1 [Heq _]].
+        subst.
+        apply observable_event_sender in Hm. subst v0.
+        replace (sender m) with v1; try assumption.
+        symmetry. apply observable_event_sender in H. assumption.
       * replace
           (@last
           (@_composite_state (State.message C V) (sum V clients)
@@ -1083,8 +1003,35 @@ Proof.
              (receive_messages s (@inr V clients client) (@rev message ms))) s
           (@inr V clients client))
           with msgs in Hincl.
-        simpl in Hincl.
-        assumption.
+        intros m Hm.
+        assert
+          (In m
+            (state_union
+              (state_update IM_index
+              (last (map destination (receive_messages s (inr client) (rev ms))) s)
+              (inr client) (set_add decide_eq x msgs))
+            )
+          ).
+        {
+          unfold state_union.
+          apply set_union_in_iterated.
+          apply Exists_exists.
+          exists (observable_events
+          (state_update IM_index
+             (last (map destination (receive_messages s (inr client) (rev ms))) s)
+             (inr client) (set_add decide_eq x msgs)) v0).
+          split; try assumption.
+          apply in_map_iff. exists v0. split; try reflexivity.
+          apply (proj2 finite_validators).
+        }
+        apply Hincl in H.
+        apply set_union_in_iterated in H. apply Exists_exists in H.
+        destruct H as [msgsv [Hmsgsv H]].
+        apply in_map_iff in Hmsgsv. destruct Hmsgsv as [v1 [Heq _]].
+        subst.
+        apply observable_event_sender in Hm. subst v0.
+        replace (sender m) with v1; try assumption.
+        symmetry. apply observable_event_sender in H. assumption.
     + unfold receive_destination.
       unfold vtransition. simpl.
       destruct i as [v | client]
@@ -1122,39 +1069,7 @@ Proof.
           (@inl V clients v))
           with (msgs, final).
         reflexivity.
-      * remember
-          (@last
-          (@_composite_state (State.message C V) (sum V clients)
-             (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-          (@map
-             (@transition_item message
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (@_composite_state (State.message C V) (sum V clients)
-                (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-             (@destination message
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (receive_messages s (@inr V clients client) (@rev message ms))) s
-          (@inr V clients client))
-          as msgs eqn:Hmsgs.
-        replace
-          (@last
-          (@_composite_state (State.message C V) (sum V clients)
-             (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-          (@map
-             (@transition_item (State.message C V)
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (@_composite_state (State.message C V) (sum V clients)
-                (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator))
-             (@destination (State.message C V)
-                (@composite_type (State.message C V) (sum V clients)
-                   (@IM_index C V about_C about_V Hmeasurable Hrt Hestimator)))
-             (receive_messages s (@inr V clients client) (@rev message ms))) s
-          (@inr V clients client))
-          with msgs.
-        reflexivity.
+      * reflexivity.
 Qed.
 
 Fixpoint receive_messages_iterated
@@ -1197,13 +1112,13 @@ Lemma receive_messages_iterated_in
   (Hi : In i is)
   : set_eq
     (get_message_set (project (last (map destination (receive_messages_iterated s ms is)) s) i))
-    (set_union eq_dec (get_message_set (project s i)) ms).
+    (set_union decide_eq (get_message_set (project s i)) ms).
 Proof.
   generalize dependent s.
   induction is; intros; simpl; inversion Hi
   ; rewrite map_app; rewrite last_app.
   - subst a.
-    destruct (in_dec eq_dec i is).
+    destruct (in_dec decide_eq i is).
     + specialize (IHis i0 (last (map destination (receive_messages s i (rev ms))) s)).
       apply set_eq_tran with (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i))
       ; try apply receive_messages_v.
@@ -1266,7 +1181,7 @@ Proof.
       with
         (project (last (map destination (receive_messages s i (rev ms))) s) i).
       apply set_eq_refl.
-  - destruct (eq_dec i a).
+  - destruct (decide (i = a)).
     + subst a.
       specialize (IHis H (last (map destination (receive_messages s i (rev ms))) s)).
       apply set_eq_tran with (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i))
@@ -1297,20 +1212,20 @@ Qed.
 Lemma state_union_justification_closed
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
-  : preceeds_closed message_preceeds_fn (state_union s).
+  : preceeds_closed happens_before_fn (state_union s).
 Proof.
   unfold preceeds_closed.
   rewrite Forall_forall.
   intros m Hm mj Hmj.
   apply state_union_iff.
   apply state_union_iff in Hm.
-  assert (Hs' : protocol_state_prop (pre_loaded_vlsm FreeX) s).
+  assert (Hs' : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeX) s).
   { destruct Hs as [_om Hs]. exists _om.
-    apply (pre_loaded_protocol_prop FreeX).
+    apply (pre_loaded_with_all_messages_protocol_prop FreeX).
     apply constraint_free_protocol_prop with Full_composition_constraint.
     assumption.
   }
-  unfold message_preceeds_fn in Hmj. simpl in Hmj.
+  unfold happens_before_fn in Hmj. simpl in Hmj.
   unfold validator_message_preceeds_fn in Hmj. simpl in Hmj.
   destruct m as (cm, vm, jm).
   specialize (in_correct (unmake_message_set (justification_message_set jm)) mj); intro Hin.
@@ -1327,11 +1242,11 @@ Lemma receive_sorted_messages_protocol
   (Hs : protocol_state_prop Full_constrained_composition s)
   (ms : set message)
   (Hnodup : NoDup ms)
-  (Hms : topological_sorting message_preceeds_fn (state_union s) ms)
+  (Hms : topological_sorting happens_before_fn (state_union s) ms)
   (tr := receive_messages_iterated s ms is)
   : finite_protocol_trace_from Full_constrained_composition s tr.
 Proof.
-  assert (Hmsj : preceeds_closed message_preceeds_fn ms).
+  assert (Hmsj : preceeds_closed happens_before_fn ms).
   { destruct Hms as [Hmseq _].
     apply preceeds_closed_set_eq with (state_union s).
     - apply set_eq_comm. assumption.
@@ -1339,7 +1254,7 @@ Proof.
   }
   assert (Hmsi : incl ms (state_union s)).
   { destruct Hms as [[_ Hincl] _]. assumption. }
-  assert (Hmst : topologically_sorted message_preceeds_fn ms).
+  assert (Hmst : topologically_sorted happens_before_fn ms).
   { destruct Hms as [_ Hts]. assumption. }
   clear Hms.
   generalize dependent s.
@@ -1371,9 +1286,9 @@ Proof.
   unfold union_state.
   specialize (receive_messages_iterated_in s (sorted_state_union s) indices i Hi).
   intros Heq.
-  specialize (top_sort_set_eq message_preceeds_fn (state_union s)).
+  specialize (top_sort_set_eq happens_before_fn (state_union s)).
   intro Heq'.
-  apply set_eq_tran with (set_union eq_dec (get_message_set (project s i)) (sorted_state_union s))
+  apply set_eq_tran with (set_union decide_eq (get_message_set (project s i)) (sorted_state_union s))
   ; try assumption.
   split; intros m Hm.
   - apply set_union_iff in Hm.
@@ -1400,12 +1315,12 @@ Proof.
     apply receive_sorted_messages_protocol; try assumption.
     + apply sorted_state_union_nodup.
       destruct Hs as [om Hs].
-      exists om. apply (pre_loaded_protocol_prop FreeX).
+      exists om. apply (pre_loaded_with_all_messages_protocol_prop FreeX).
       apply constraint_free_protocol_prop in Hs.
       assumption.
     + specialize
         (@top_sort_correct _ _
-          message_preceeds_fn
+          happens_before_fn
           (byzantine_message_prop FreeX)).
       intro H.
       apply H.

@@ -5,25 +5,6 @@ Import ListNotations.
 Require Import CasperCBC.Lib.Preamble.
 Require Import CasperCBC.Lib.ListExtras.
 
-
-Lemma eq_dec_left {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall v,
-  exists n, Aeq_dec v v = left n.
-Proof.
-  intros.  destruct (Aeq_dec v v) eqn:Hv.
-  - exists e. reflexivity.
-  - exfalso. apply n. reflexivity.
-Qed.
-
-
-Lemma eq_dec_right {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x y,
-  x <> y ->
-  exists n, Aeq_dec x y = right n.
-Proof.
-  intros.  destruct (Aeq_dec x y) eqn:Hv.
-  - exfalso. apply H. assumption.
-  - exists n. reflexivity.
-Qed.
-
 Definition set_eq {A} (s1 s2 : set A) : Prop :=
   incl s1 s2 /\ incl s2 s1.
 
@@ -94,23 +75,23 @@ Proof.
 Qed.
 
 
-Fixpoint set_eq_fn_rec {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (s1 s2 : list A) : bool :=
+Fixpoint set_eq_fn_rec `{EqDecision A} (s1 s2 : list A) : bool :=
   match s1 with
   | [] =>
     match s2 with
     | [] => true
     | _ => false
     end
-  | h :: t => if in_dec Aeq_dec h s2 then set_eq_fn_rec Aeq_dec t (set_remove Aeq_dec h s2) else false
+  | h :: t => if in_dec decide_eq h s2 then set_eq_fn_rec t (set_remove decide_eq h s2) else false
   end.
 
-Definition set_eq_fn {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (s1 s2 : list A) : bool :=
-  set_eq_fn_rec Aeq_dec (nodup Aeq_dec s1) (nodup Aeq_dec s2).
+Definition set_eq_fn `{EqDecision A} (s1 s2 : list A) : bool :=
+  set_eq_fn_rec (nodup decide_eq s1) (nodup decide_eq s2).
 
-Lemma set_eq_fn_rec_iff {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall s1 s2,
+Lemma set_eq_fn_rec_iff `{EqDecision A} : forall (s1 s2 : list A),
   NoDup s1 ->
   NoDup s2 ->
-  set_eq s1 s2 <-> set_eq_fn_rec Aeq_dec s1 s2 = true.
+  set_eq s1 s2 <-> set_eq_fn_rec s1 s2 = true.
 Proof.
   intros; split; intros.
   - generalize dependent s2. induction s1; intros; destruct s2; destruct H1.
@@ -119,8 +100,8 @@ Proof.
     + apply incl_empty in  H1. inversion H1.
     + apply NoDup_cons_iff in H. destruct H.
       apply NoDup_cons_iff in H0. destruct H0.
-      simpl. destruct (Aeq_dec a0 a); subst.
-      * rewrite eq_dec_if_true; try reflexivity.
+      simpl. destruct (decide (a0 = a)); subst.
+      * rewrite decide_True; try reflexivity.
         apply IHs1; try assumption.
         { split; intros x Hin.
           - destruct (H1 x); try (right; assumption); try assumption; subst.
@@ -128,8 +109,8 @@ Proof.
           - destruct (H2 x); try (right; assumption); try assumption; subst.
             exfalso. apply H0; assumption.
         }
-      * { destruct (in_dec Aeq_dec a s2).
-          - rewrite eq_dec_if_false.
+      * { destruct (in_dec decide_eq a s2).
+          - rewrite decide_False.
             + apply IHs1; try assumption.
               * apply NoDup_cons_iff.
                 { split.
@@ -138,7 +119,7 @@ Proof.
                   - apply set_remove_nodup. assumption.
                 }
               * { split; intros x Hin.
-                  - destruct (Aeq_dec x a0); subst; try (left; reflexivity).
+                  - destruct (decide (x = a0)); subst; try (left; reflexivity).
                     right. apply set_remove_iff; try assumption.
                     split.
                     + destruct (H1 x); try assumption; try (right; assumption); subst.
@@ -157,22 +138,22 @@ Proof.
         }
   - generalize dependent s2. induction s1; intros; simpl in H1; destruct s2; try discriminate.
     + split; apply incl_refl.
-    + destruct (in_dec Aeq_dec a (a0 :: s2)); try discriminate.
+    + destruct (in_dec decide_eq a (a0 :: s2)); try discriminate.
       apply IHs1 in H1; destruct H1
       ; try (split; intros x Hin; destruct Hin as [Heq | Hin]; subst; try assumption).
       * apply H1 in Hin. apply set_remove_iff in Hin; try assumption. destruct Hin; assumption.
-      * destruct (Aeq_dec x a); subst; try (left; reflexivity).
+      * destruct (decide (x = a)); subst; try (left; reflexivity).
         right. apply H2. apply set_remove_iff; try assumption. split; try assumption.
         left; reflexivity.
-      * destruct (Aeq_dec x a); subst; try (left; reflexivity).
+      * destruct (decide (x = a)); subst; try (left; reflexivity).
         right. apply H2. apply set_remove_iff; try assumption. split; try assumption.
         right; assumption.
       * apply NoDup_cons_iff in H. destruct H; assumption.
       * apply set_remove_nodup. assumption.
 Qed.
 
-Lemma set_eq_functional {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) :
-  PredicateFunction2 set_eq (set_eq_fn Aeq_dec).
+Lemma set_eq_functional `{EqDecision A} :
+  @PredicateFunction2 _ (set A) set_eq set_eq_fn.
 Proof.
   intros s1 s2. split; intros.
   - unfold set_eq_fn. apply set_eq_fn_rec_iff; try apply NoDup_nodup.
@@ -181,21 +162,20 @@ Proof.
     ; assumption.
   - apply set_eq_fn_rec_iff in H; try apply NoDup_nodup.
     destruct H as [H12 H21].
-    split; intros x Hin; rewrite <- (nodup_In Aeq_dec); rewrite <- (nodup_In Aeq_dec) in Hin
+    split; intros x Hin; rewrite <- (nodup_In decide_eq); rewrite <- (nodup_In decide_eq) in Hin
     ; apply H12 || apply H21
     ; assumption.
 Qed.
 
-Lemma set_eq_dec {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall (s1 s2 : set A),
-  {set_eq s1 s2} + {~ set_eq s1 s2}.
+Instance set_eq_dec `{EqDecision A} : @RelDecision (set A) (set A) set_eq.
 Proof.
-  intros.
-  destruct (set_eq_fn Aeq_dec s1 s2) eqn:Heq.
-  - left. apply (set_eq_functional Aeq_dec). assumption.
-  - right. intro. apply (set_eq_functional Aeq_dec) in H. rewrite Heq in H. discriminate H.
-Qed.
+intros s1 s2.
+destruct (set_eq_fn s1 s2) eqn:Heq.
+- left. apply set_eq_functional. assumption.
+- right. intro. apply set_eq_functional in H. rewrite Heq in H. discriminate H.
+Defined.
 
-Lemma set_eq_singleton_iff {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) :
+Lemma set_eq_singleton_iff `{EqDecision A} :
   forall (s1 : list A) (a : A),
   NoDup s1 ->
   set_eq s1 [a] <-> s1 = [a].
@@ -211,7 +191,7 @@ Proof.
   subst. apply set_eq_refl.
 Qed.
 
-Lemma set_eq_singleton {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) :
+Lemma set_eq_singleton `{EqDecision A} :
   forall (s1 : list A) (a : A),
   NoDup s1 ->
   set_eq s1 [a] -> s1 = [a].
@@ -219,7 +199,7 @@ Proof.
   intros. apply set_eq_singleton_iff; assumption.
 Qed.
 
-Lemma set_eq_singleton_rev {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) :
+Lemma set_eq_singleton_rev `{EqDecision A} :
   forall (s1 : list A) (a : A),
   NoDup s1 ->
   s1 = [a] -> set_eq s1 [a].
@@ -227,56 +207,56 @@ Proof.
   intros. apply set_eq_singleton_iff; assumption.
 Qed.
 
-Lemma set_union_comm {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s1 s2,
-  set_eq (set_union Aeq_dec s1 s2) (set_union Aeq_dec s2 s1).
+Lemma set_union_comm `{EqDecision A}  : forall (s1 s2 : list A),
+  set_eq (set_union decide_eq s1 s2) (set_union decide_eq s2 s1).
 Proof.
   intros; split; intro x; intros; apply set_union_iff in H; apply set_union_iff; destruct H;
   (left ; assumption) || (right; assumption).
 Qed.
 
-Lemma set_union_empty {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s1 s2,
-  set_union Aeq_dec s1 s2 = nil ->
+Lemma set_union_empty `{EqDecision A}  : forall (s1 s2 : list A),
+  set_union decide_eq s1 s2 = nil ->
   s1 = nil /\ s2 = nil.
 Proof.
   intros.
   destruct s2.
-  - destruct (set_union_comm Aeq_dec s1 nil). rewrite H in H1. destruct s1.
+  - destruct (set_union_comm s1 nil). rewrite H in H1. destruct s1.
     + split; reflexivity.
     + simpl in H1. destruct (H1 a). apply set_add_intro. left. reflexivity.
   - simpl in H. assert (@incl A nil nil); try apply incl_refl.
     rewrite <- H in H0 at 1. destruct (H0 a). apply set_add_intro. left. reflexivity.
 Qed.
 
-Lemma set_union_incl_left {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s1 s2,
-  incl s1 (set_union Aeq_dec s1 s2).
+Lemma set_union_incl_left `{EqDecision A}  : forall (s1 s2 : list A),
+  incl s1 (set_union decide_eq s1 s2).
 Proof.
   intros; intros x H; apply set_union_intro.
   left; assumption.
 Qed.
 
-Lemma set_union_incl_right {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s1 s2,
-  incl s2 (set_union Aeq_dec s1 s2).
+Lemma set_union_incl_right `{EqDecision A}  : forall (s1 s2 : list A),
+  incl s2 (set_union decide_eq s1 s2).
 Proof.
   intros; intros x H; apply set_union_intro.
   right; assumption.
 Qed.
 
-Lemma set_union_incl_iterated {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall ss s,
+Lemma set_union_incl_iterated `{EqDecision A}  : forall ss (s : list A),
   In s ss ->
-  incl s (fold_right (set_union Aeq_dec) nil ss).
+  incl s (fold_right (set_union decide_eq) nil ss).
 Proof.
   induction ss; intros.
   - inversion H.
   - simpl. destruct H.
     + subst. apply set_union_incl_left.
-    + apply IHss in H. apply incl_tran with (fold_right (set_union Aeq_dec) [] ss); try assumption.
+    + apply IHss in H. apply incl_tran with (fold_right (set_union decide_eq) [] ss); try assumption.
       apply set_union_incl_right.
 Qed.
 
-Lemma set_union_iterated_nodup {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})
+Lemma set_union_iterated_nodup `{EqDecision A}
   (ss : list (list A))
   (H : forall s, In s ss -> NoDup s) :
-  NoDup (fold_right (set_union Aeq_dec) nil ss).
+  NoDup (fold_right (set_union decide_eq) nil ss).
 Proof.
   intros.
   generalize dependent ss.
@@ -299,11 +279,10 @@ Proof.
 Qed.
 
 Lemma set_union_in_iterated
-  {A : Type}
-  (Aeq_dec : forall x y:A, {x = y} + {x <> y})
+  `{EqDecision A}
   (ss : list (set A))
   (a : A)
-  : In a (fold_right (set_union Aeq_dec) nil ss)
+  : In a (fold_right (set_union decide_eq) nil ss)
   <-> Exists (fun s => In a s) ss.
 Proof.
   rewrite Exists_exists.
@@ -323,9 +302,9 @@ Proof.
       exists x. split; assumption.
 Qed.
 
-Lemma set_union_empty_left {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  : forall s,
+Lemma set_union_empty_left `{EqDecision A}  : forall (s : list A),
   NoDup s ->
-  set_eq (set_union Aeq_dec nil s) s.
+  set_eq (set_union decide_eq nil s) s.
 Proof.
   intros. split; intros x Hin.
   - apply set_union_elim in Hin. destruct Hin.
@@ -341,24 +320,24 @@ Proof.
   split; apply map_incl; apply H.
 Qed.
 
-Lemma set_map_nodup {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) : forall s,
-  NoDup (set_map Aeq_dec f s).
+Lemma set_map_nodup {A B} `{EqDecision A} (f : B -> A) : forall (s : set B),
+  NoDup (set_map decide_eq f s).
 Proof.
   induction s; simpl; try constructor.
   apply set_add_nodup. assumption.
 Qed.
 
-Lemma set_map_in {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) : forall x s,
+Lemma set_map_in {A B} `{EqDecision A} (f : B -> A) : forall x s,
   In x s ->
-  In (f x) (set_map Aeq_dec f s).
+  In (f x) (set_map decide_eq f s).
 Proof.
   induction s; intros; inversion H; subst; clear H; simpl.
   - apply set_add_intro2. reflexivity.
   - apply set_add_intro1. apply IHs. assumption.
 Qed.
 
-Lemma set_map_exists  {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) : forall y s,
-  In y (set_map Aeq_dec f s) <->
+Lemma set_map_exists {A B} `{EqDecision A} (f : B -> A) : forall y s,
+  In y (set_map decide_eq f s) <->
   exists x, In x s /\ f x = y.
 Proof.
   intros.
@@ -376,9 +355,9 @@ Proof.
     + reflexivity.
 Qed.
 
-Lemma set_map_incl {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) : forall s s',
+Lemma set_map_incl {A B} `{EqDecision A} (f : B -> A) : forall s s',
   incl s s' ->
-  incl (set_map Aeq_dec f s) (set_map Aeq_dec f s').
+  incl (set_map decide_eq f s) (set_map decide_eq f s').
 Proof.
   induction s; intros; intro msg; intros.
   - inversion H0.
@@ -387,33 +366,33 @@ Proof.
     + apply IHs; try assumption. intros x; intros. apply H. right. assumption.
 Qed.
 
-Lemma set_map_eq {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) : forall s s',
+Lemma set_map_eq {A B} `{EqDecision A} (f : B -> A) : forall s s',
   set_eq s s' ->
-  set_eq (set_map Aeq_dec f s) (set_map Aeq_dec f s').
+  set_eq (set_map decide_eq f s) (set_map decide_eq f s').
 Proof.
   intros. split; destruct H; apply set_map_incl; assumption.
 Qed.
 
-Lemma set_map_singleton {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) : forall s a,
-  set_map Aeq_dec f s = [a] ->
+Lemma set_map_singleton {A B} `{EqDecision A} (f : B -> A) : forall s a,
+  set_map decide_eq f s = [a] ->
   forall b, In b s -> f b = a.
 Proof.
-  intros. apply (set_map_in Aeq_dec f) in H0. rewrite H in H0. inversion H0.
+  intros. apply (set_map_in f) in H0. rewrite H in H0. inversion H0.
   - subst. reflexivity.
   - exfalso. inversion H1.
 Qed.
 
-Lemma set_map_injective {A B} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) (f : B -> A) :
+Lemma set_map_injective {A B} `{EqDecision A} (f : B -> A) :
   Injective f ->
   forall s s',
-    set_eq (set_map Aeq_dec f s) (set_map Aeq_dec f s') -> set_eq s s'.
+    set_eq (set_map decide_eq f s) (set_map decide_eq f s') -> set_eq s s'.
 Proof.
   intros. split; intros x Hin;
-    apply (set_map_in Aeq_dec f) in Hin; apply H0 in Hin; apply set_map_exists in Hin
+    apply (set_map_in f) in Hin; apply H0 in Hin; apply set_map_exists in Hin
     ; destruct Hin as [x' [Hin Heq]]; apply H in Heq; subst; assumption.
 Qed.
 
-Lemma filter_set_add {X} `{StrictlyComparable X} :
+Lemma filter_set_add `{StrictlyComparable X} :
   forall (l : list X) (f : X -> bool) (x : X),
     f x = false ->
     filter f l = filter f (set_add compare_eq_dec x l).
@@ -428,8 +407,7 @@ Proof.
       simpl; rewrite H_eq; rewrite <- IHl; reflexivity.
 Qed.
 
-
-Lemma set_add_ignore {X} `{StrictlyComparable X} :
+Lemma set_add_ignore `{StrictlyComparable X} :
   forall (l : list X) (x : X),
     In x l ->
     set_add compare_eq_dec x l = l.
@@ -447,58 +425,56 @@ Proof.
       rewrite IHl. reflexivity.
 Qed.
 
-
-Lemma set_remove_not_in {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s,
+Lemma set_remove_not_in `{EqDecision A} : forall x (s : list A),
   ~ In x s ->
-  set_remove Aeq_dec x s = s.
+  set_remove decide_eq x s = s.
 Proof.
   induction s; intros.
   - reflexivity.
   - simpl. apply not_in_cons in H.  destruct H.
-    destruct (eq_dec_right Aeq_dec x a H). rewrite H1.
+    destruct (decide (x = a)); [congruence|].
     rewrite (IHs H0). reflexivity.
 Qed.
 
-Lemma set_remove_elim {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s,
-  NoDup s -> ~ In x (set_remove Aeq_dec x s).
+Lemma set_remove_elim `{EqDecision A} : forall x (s : list A),
+  NoDup s -> ~ In x (set_remove decide_eq x s).
 Proof.
   intros. intro. apply set_remove_iff in H0; try assumption.
   destruct H0. apply H1. reflexivity.
 Qed.
 
-
-Lemma set_remove_first {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x y s,
-  x = y -> set_remove Aeq_dec x (y::s) = s.
+Lemma set_remove_first `{EqDecision A} : forall x y (s : list A),
+  x = y -> set_remove decide_eq x (y::s) = s.
 Proof.
-  intros. destruct (Aeq_dec x y) eqn:Hcmp; simpl; rewrite Hcmp; try reflexivity.
+  intros. destruct (decide (x = y)) eqn:Hcmp; simpl; rewrite Hcmp; try reflexivity.
   exfalso. apply n. assumption.
 Qed.
 
-Lemma set_remove_nodup_1 {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s,
-  NoDup (set_remove Aeq_dec x s) ->
-  ~ In x (set_remove Aeq_dec x s) ->
+Lemma set_remove_nodup_1 `{EqDecision A} : forall x (s : list A),
+  NoDup (set_remove decide_eq x s) ->
+  ~ In x (set_remove decide_eq x s) ->
   NoDup s.
 Proof.
   induction s; intros.
   - constructor.
-  - simpl in H0 . destruct (Aeq_dec x a).
-    + subst. simpl in H. destruct (eq_dec_left Aeq_dec a). rewrite H1 in H. constructor; assumption.
+  - simpl in H0 . destruct (decide (x = a)).
+    + subst. simpl in H. rewrite decide_True in H; auto. constructor; assumption.
     + apply not_in_cons in H0. destruct H0. simpl in H.
-      destruct (eq_dec_right Aeq_dec x a H0).
-    rewrite H2 in H. inversion H; subst; clear H.
-    constructor; try apply IHs; try assumption.
-    intro. apply H5. apply set_remove_3; try assumption. intro; subst. apply H0; reflexivity.
+      rewrite decide_False in H; auto.
+      inversion H; subst.
+      specialize (IHs H5 H1).
+      constructor; auto.
+      intro; contradict H4.
+      apply set_remove_3; congruence.
 Qed.
 
-
-Lemma set_remove_in_iff {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})
-  :  forall x y s
-  ,  NoDup s
-  ->  In y s
-  -> In x s <-> x = y \/ In x (set_remove Aeq_dec y s).
+Lemma set_remove_in_iff `{EqDecision A} :  forall x y (s : list A),
+  NoDup s ->
+  In y s ->
+  In x s <-> x = y \/ In x (set_remove decide_eq y s).
 Proof.
   intros. split; intros.
-  - destruct (Aeq_dec x y).
+  - destruct (decide (x = y)).
     + left. assumption.
     + right. apply set_remove_3; assumption.
   - destruct H1 as [Heq | Hin].
@@ -507,25 +483,24 @@ Proof.
 Qed.
 
 Lemma set_remove_length
-  {A : Type}
-  (Aeq_dec : forall x y:A, {x = y} + {x <> y})
+  `{EqDecision A}
   (x : A)
   (s : set A)
   (Hx : In x s)
-  : length s = S (length (set_remove Aeq_dec x s)).
+  : length s = S (length (set_remove decide_eq x s)).
 Proof.
   generalize dependent x. induction s; intros; inversion Hx; subst.
   - rewrite set_remove_first;  reflexivity.
   - simpl. f_equal.
-    destruct (Aeq_dec x a); try reflexivity.
+    destruct (decide (x = a)); try reflexivity.
     apply IHs. assumption.
 Qed.
 
-Lemma set_eq_remove {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s1 s2,
+Lemma set_eq_remove `{EqDecision A} : forall x (s1 s2 : list A),
   NoDup s1 ->
   NoDup s2 ->
   set_eq s1 s2 ->
-  set_eq (set_remove Aeq_dec x s1) (set_remove Aeq_dec x s2).
+  set_eq (set_remove decide_eq x s1) (set_remove decide_eq x s2).
 Proof.
   intros.
   destruct H1. split; intros a Hin
@@ -537,12 +512,12 @@ Proof.
   - apply H2. assumption.
 Qed.
 
-Lemma incl_remove_union  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s1 s2,
+Lemma incl_remove_union  `{EqDecision A} : forall x (s1 s2 : list A),
   NoDup s1 ->
   NoDup s2 ->
   incl
-    (set_remove Aeq_dec x (set_union Aeq_dec s1 s2))
-    (set_union Aeq_dec s1 (set_remove Aeq_dec x s2)).
+    (set_remove decide_eq x (set_union decide_eq s1 s2))
+    (set_union decide_eq s1 (set_remove decide_eq x s2)).
 Proof.
   intros. intros y Hin. apply set_remove_iff in Hin.
   - apply set_union_intro. destruct Hin. apply set_union_elim in H1.
@@ -551,34 +526,34 @@ Proof.
   - apply set_union_nodup; assumption.
 Qed.
 
-Lemma set_eq_remove_union_in  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s1 s2,
+Lemma set_eq_remove_union_in  `{EqDecision A} : forall x (s1 s2 : list A),
   NoDup s1 ->
   NoDup s2 ->
   In x s1 ->
   set_eq
-    (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-    (set_union Aeq_dec s1 s2).
+    (set_union decide_eq s1 (set_remove decide_eq x s2))
+    (set_union decide_eq s1 s2).
 Proof.
   split; intros msg Hin; apply set_union_iff; apply set_union_iff in Hin
   ; destruct Hin; try (left; assumption)
   .
   - apply set_remove_iff in H2; try assumption. destruct H2. right. assumption.
-  - destruct (Aeq_dec msg x).
+  - destruct (decide (msg = x)).
     + subst. left. assumption.
     + right. apply set_remove_iff; try assumption. split; assumption.
 Qed.
 
-Lemma set_eq_remove_union_not_in  {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall x s1 s2,
+Lemma set_eq_remove_union_not_in  `{EqDecision A} : forall x (s1 s2 : list A),
   NoDup s1 ->
   NoDup s2 ->
   ~ In x s1 ->
   set_eq
-    (set_union Aeq_dec s1 (set_remove Aeq_dec x s2))
-    (set_remove Aeq_dec x (set_union Aeq_dec s1 s2)).
+    (set_union decide_eq s1 (set_remove decide_eq x s2))
+    (set_remove decide_eq x (set_union decide_eq s1 s2)).
 Proof.
   intros.
   assert (HnodupUs1s2 := H0).
-  apply (set_union_nodup Aeq_dec H) in HnodupUs1s2.
+  apply (set_union_nodup decide_eq H) in HnodupUs1s2.
   split; intros msg Hin.
   - apply set_remove_iff; try assumption.
     apply set_union_iff in Hin.
@@ -598,53 +573,51 @@ Proof.
     split; assumption.
 Qed.
 
-
-Lemma diff_app_nodup {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y}) : forall s1 s2,
+Lemma diff_app_nodup `{EqDecision A} : forall (s1 s2 : list A),
   NoDup s1 ->
   NoDup s2 ->
-  NoDup ((set_diff Aeq_dec s1 s2) ++ s2).
+  NoDup ((set_diff decide_eq s1 s2) ++ s2).
 Proof.
   intros.
   apply nodup_append; try assumption.
   - apply set_diff_nodup; try assumption.
-  - intros. apply (set_diff_elim2 Aeq_dec a s1); assumption.
+  - intros. apply (set_diff_elim2 decide_eq a s1); assumption.
   - intros. intro. apply set_diff_iff in H2. destruct H2.
     apply H3. assumption.
 Qed.
 
-Lemma add_remove_inverse {X} `{EqDec X}:
+Lemma add_remove_inverse `{EqDecision X}:
   forall (lv : list X) (v : X),
     ~ In v lv ->
-    set_remove eq_dec v (set_add eq_dec v lv) = lv.
+    set_remove decide_eq v (set_add decide_eq v lv) = lv.
 Proof.
   induction lv as [|hd tl IHlv]; intros.
   - simpl.
-    destruct (eq_dec v v).
-    reflexivity. contradiction.
-  - simpl. destruct (eq_dec v hd).
-    subst. exfalso; apply H0.
+    rewrite decide_True; congruence.
+  - simpl. destruct (decide (v = hd)).
+    subst. exfalso; apply H.
     apply in_eq.
     spec IHlv v. spec IHlv.
-    intro Habsurd. apply H0.
+    intro Habsurd. apply H.
     right; assumption.
     rewrite <- IHlv at 2.
     simpl.
-    destruct (eq_dec v hd).
+    destruct (decide (v = hd)).
     contradiction.
     reflexivity.
 Qed.
 
-Lemma set_union_iterated_empty    {A} (Aeq_dec : forall x y:A, {x = y} + {x <> y})  :
+Lemma set_union_iterated_empty `{EqDecision A} :
    forall ss,
-   (forall s,
-   In s ss -> s = []) -> (fold_right (set_union Aeq_dec) nil ss) = [].
+   (forall (s : list A),
+   In s ss -> s = []) -> (fold_right (set_union decide_eq) nil ss) = [].
 Proof.
    intros.
    induction ss.
    - simpl.
      reflexivity.
    - simpl.
-     assert (fold_right (set_union Aeq_dec) [] ss = []). {
+     assert (fold_right (set_union decide_eq) [] ss = []). {
         apply IHss.
         simpl in H.
         intros.

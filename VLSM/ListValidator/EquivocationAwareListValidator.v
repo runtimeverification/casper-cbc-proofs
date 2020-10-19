@@ -20,7 +20,7 @@ Section EquivocationAwareValidator.
     {index_self : index}
     {index_listing : list index}
     {Hfinite : Listing index_listing}
-    {idec : EqDec index}
+    {idec : EqDecision index}
     (X := @VLSM_list _ index_self index_listing idec)
     {Mindex : Measurable index}
     {Rindex : ReachableThreshold index}
@@ -35,7 +35,7 @@ Section EquivocationAwareValidator.
     : list state
     :=
     map (fun i: index => project s i)
-      (set_diff eq_dec index_listing eqv_validators).
+      (set_diff decide_eq index_listing eqv_validators).
 
   Definition no_equivocating_decisions
     (s : @state index index_listing)

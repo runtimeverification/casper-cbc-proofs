@@ -1504,7 +1504,9 @@ Lemma equivocating_in_state_not_seen
   ~ In (sender msg) (set_map (compare_eq_dec_v about_M) sender (get_messages sigma)) ->
   ~ equivocating_in_state_prop msg sigma.
 Proof.
-  intros [(c, v) j] sigma Hnin. rewrite set_map_exists in Hnin. simpl in Hnin.
+  intros [(c, v) j] sigma Hnin.
+  rewrite (@set_map_exists _ _ (compare_eq_dec_v about_M)) in Hnin.
+  simpl in Hnin.
   rewrite <- equivocating_in_state_correct'.
   apply existsb_forall.
   intros [(cx, vx) jx] Hin.
@@ -2257,7 +2259,7 @@ Proof.
     + intros v0 H_mem.
       (* The following is winding and painful *)
       unfold equivocating_senders in H_mem.
-      rewrite set_map_exists in H_mem.
+      rewrite (@set_map_exists _ _ (compare_eq_dec_v about_M)) in H_mem.
       destruct H_mem as [msg0 [H0_in H0_sender]].
       rewrite filter_In in H0_in.
       assert (H_senders := equivocating_senders_correct s).
@@ -2445,7 +2447,7 @@ Proof.
   remember (next (cempty, v, Empty) Empty) as sigma.
   remember (valid_protocol_state sigma csigma cempty vs) as sigma2.
   unfold equivocating_senders. split; intros; intros x Hin.
-  - apply (set_map_exists compare_eq_dec sender)  in Hin.
+  - apply set_map_exists  in Hin.
     destruct Hin as [[(cx, vx) jx] [Hin Hsend]].
     simpl in Hsend. rewrite <- Hsend.
     apply filter_In in Hin. destruct Hin as [Hin Hequiv].
@@ -2475,7 +2477,7 @@ Proof.
         intro; subst. inversion Hin; subst; clear Hin. inversion Heq; subst; clear Heq.
         apply H0. assumption.
       * intro. inversion H2; subst; clear H2. apply H0. assumption.
-  - apply (set_map_exists compare_eq_dec sender).
+  - apply set_map_exists.
     exists (cempty, x, Empty). simpl. split; try reflexivity.
     apply filter_In. split.
     + rewrite Heqsigma2. apply in_valid_protocol_state_rev_cempty. assumption.
@@ -2508,7 +2510,7 @@ Lemma valid_protocol_state_ps
   estimator (next (cempty, v, Empty) Empty) csigma ->
   protocol_state (valid_protocol_state (next (cempty, v, Empty) Empty) csigma cempty vs).
 Proof.
-  pose (strictly_comparable_eq_dec (triple_strictly_comparable_proj2 about_M)) as HEqDec.
+  pose (@strictly_comparable_eq_dec _ (triple_strictly_comparable_proj2 about_M)) as HEqDec.
   intros. induction vs.
   - simpl. apply protocol_state_singleton. assumption.
   - simpl. constructor.
@@ -2566,6 +2568,3 @@ Proof.
       apply set_eq_proj1.
       apply valid_protocol_state_equivocating_senders; try assumption.
 Qed.
-
-
-

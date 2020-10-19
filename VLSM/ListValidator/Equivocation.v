@@ -22,12 +22,12 @@ Context
   {index_self : index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
-  {idec : EqDec index}
+  {idec : EqDecision index}
   (est : state -> bool -> Prop)
   (X := @VLSM_list _ index_self index_listing idec est)
-  (preX := pre_loaded_vlsm X)
+  (preX := pre_loaded_with_all_messages_vlsm X)
   (Xtype := type preX)
-  {mdec : EqDec (@message index index_listing)}
+  {mdec : EqDecision (@message index index_listing)}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
 
@@ -64,7 +64,7 @@ Context
   Definition send_oracle (s : state) (m : message)  : bool :=
     let who := fst m in
     let what := snd m in
-    match idec who index_self with
+    match decide (who = index_self) with
     | right _ => false
     | left _ => existsb (state_eqb what) (get_history s who)
     end.
@@ -72,7 +72,7 @@ Context
   Definition receive_oracle (s : state) (m : message) : bool :=
     let who := fst m in
     let what := snd m in
-    match idec who index_self with
+    match decide (who = index_self) with
     | left _ => false
     | right _ => existsb (state_eqb what) (get_history s who)
     end.
@@ -264,7 +264,6 @@ Context
              (j : index)
              (Hdif : j <> i),
              get_history s i = get_history (update_state s news j) i.
-
     Proof.
       intros.
       unfold get_history.
@@ -290,7 +289,6 @@ Context
                (cv : bool)
                (i : index),
           get_history (update_consensus s cv) i = get_history s i.
-
     Proof.
       intros.
       unfold update_consensus.
@@ -579,7 +577,7 @@ Context
       := state_leb s1 s2 &&
       existsb
         (fun i : index =>
-          existsb (fun s : state => negb (inb eq_dec s (get_history s1 i))) (get_history s2 i))
+          existsb (fun s : state => negb (inb decide_eq s (get_history s1 i))) (get_history s2 i))
         index_listing.
 
     Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
@@ -591,7 +589,7 @@ Context
         exists i. split; try apply (proj2 Hfinite).
         apply existsb_exists. exists s. split; try assumption.
         apply negb_true_iff.
-        destruct (inb eq_dec s (get_history s1 i)) eqn:H; try reflexivity.
+        destruct (inb decide_eq s (get_history s1 i)) eqn:H; try reflexivity.
         elim Hs1. apply in_function in H. assumption.
       - apply existsb_exists in H. destruct H as [i [_ H]].
         apply existsb_exists in H. destruct H as [s [Hs2 Hs1]].
@@ -599,13 +597,6 @@ Context
         intro contra. apply in_correct in contra.
         rewrite contra in Hs1. discriminate Hs1.
     Qed.
-
-    Definition state_lt_equivocation : message_equivocation_evidence message index
-      :=
-      {|
-        sender := fst;
-        message_preceeds_fn := fun m1 m2 => state_ltb (snd m1) (snd m2)
-      |}.
 
     Lemma state_le_refl
       (s1 : state)
@@ -684,7 +675,7 @@ Context
 
       destruct l eqn : eq.
       - inversion Htransition.
-        destruct (eq_dec index_self i).
+        destruct (decide (index_self = i)).
         + rewrite history_disregards_cv.
           specialize (history_append s1 s1).
           intros.
@@ -700,7 +691,7 @@ Context
          rewrite <- H0.
          apply incl_refl.
       -  destruct om1.
-         destruct (idec (fst m) i) eqn : dec_eq.
+         destruct (decide (fst m = i)) eqn : dec_eq.
          + inversion Htransition.
            specialize (history_append s1 (snd m) H).
            intros.
@@ -854,7 +845,6 @@ Context
       (m : message)
       (Hemit : can_emit preX m) :
       (snd m) <> Bottom.
-
     Proof.
       unfold can_emit in Hemit.
       destruct Hemit as [som [l [s Htransition]]].
@@ -877,7 +867,6 @@ Context
       (s : state)
       (Hzero : @depth index index_listing s = 0) :
       s = Bottom.
-
     Proof.
       unfold depth in Hzero.
       destruct s.
@@ -963,7 +952,6 @@ Context
       (i : index)
       (Hin : In s' (get_history s i)) :
       s' <> Bottom.
-
     Proof.
       unfold get_history in Hin.
       destruct s.
@@ -1013,7 +1001,7 @@ Context
           inversion Htransition.
           simpl in Hnew.
           rewrite <- H0 in Hnew.
-          destruct (idec (fst m) (index_self)).
+          destruct (decide (fst m = index_self)).
           * destruct Hvalid as [tmp1 [tmp2 [tmp3 [tmp4 Hneed]]]].
             elim Hneed.
             intuition.
@@ -1069,7 +1057,7 @@ Context
           inversion Htransition.
           simpl in Hnew.
           rewrite <- H0 in Hnew.
-          destruct (idec (fst m) i).
+          destruct (decide (fst m = i)).
           * rewrite e in Hnew.
             rewrite @project_same in Hnew.
             rewrite <- Hnew.
@@ -1098,12 +1086,11 @@ Context
       (i : index)
       (l : list index) :
       @project_indexed _ index_listing _ l (all_bottom_f l) i = Bottom.
-
     Proof.
       induction l.
       - simpl. reflexivity.
       - simpl.
-        destruct (eq_dec a i).
+        destruct (decide (a = i)).
         + reflexivity.
         + assumption.
     Qed.
@@ -1111,7 +1098,6 @@ Context
     Lemma project_all_bottom
       (i : index) :
       project_indexed index_listing all_bottom i = Bottom.
-
     Proof.
       apply project_all_bottom_f.
     Qed.
@@ -1138,13 +1124,13 @@ Context
 
     Lemma state_lt_last_sent
       (s : state)
-      (Hs : protocol_state_prop (pre_loaded_vlsm X) s)
+      (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
       (Hnb : last_sent s <> Bottom)
       : state_lt (last_sent s) s.
     Proof.
       generalize dependent s.
       remember (fun s => last_sent s <> Bottom -> state_lt (last_sent s) s) as P.
-      specialize (protocol_state_prop_ind (pre_loaded_vlsm X) P) as Hind.
+      specialize (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm X) P) as Hind.
       subst P.
       apply Hind; intros; clear Hind.
       - inversion Hs. subst s. elim H.
@@ -1160,7 +1146,7 @@ Context
           rewrite <- update_consensus_clean.
           rewrite (@project_same _ _ Hfinite); try assumption.
           repeat split
-          ; try (intro j; rewrite history_disregards_cv; destruct (eq_dec index_self j)).
+          ; try (intro j; rewrite history_disregards_cv; destruct (decide (index_self = j))).
           * subst j. rewrite history_append; try assumption; try reflexivity.
             apply incl_tl. apply incl_refl.
           * rewrite <- history_oblivious; try assumption. apply incl_refl.
@@ -1175,7 +1161,7 @@ Context
             rewrite (@project_different _ _ Hfinite); try assumption.
             unfold last_sent in H.
             rewrite (@project_different _ _ Hfinite) in H; try assumption.
-            { repeat split; try (intro j; destruct (eq_dec im j)).
+            { repeat split; try (intro j; destruct (decide (im = j))).
             - subst im. rewrite history_append; auto.
               apply incl_tl. apply Hs. assumption.
             - rewrite <- history_oblivious; try assumption.
@@ -1335,7 +1321,7 @@ Context
          simpl in *.
 
          destruct (l lst) eqn : eq_l.
-         * destruct (idec i (index_self)). {
+         * destruct (decide (i = index_self)). {
            - rewrite e in Hin.
              inversion Htransition.
              rewrite Hlst_s in H0.
@@ -1413,7 +1399,7 @@ Context
            {- inversion Htransition.
               rewrite <- Hlst_s in Hin.
               rewrite <- H0 in Hin.
-              destruct (idec (fst m) i).
+              destruct (decide (fst m = i)).
               + rewrite e in Hin.
                 rewrite history_append in Hin.
                 simpl in Hin.
@@ -1676,7 +1662,7 @@ Context
       split.
       - intros.
         unfold send_oracle in H.
-        destruct (idec (fst m) index_self) eqn:eq.
+        destruct (decide (fst m = index_self)) eqn:eq.
         2: discriminate H.
         destruct s eqn:eq_s.
         + discriminate H.
@@ -1867,7 +1853,7 @@ Context
         + unfold initial_state_prop in H0.
           remember H0 as H0'.
           destruct H0.
-          assert (Hempty : finite_protocol_trace (pre_loaded_vlsm preX) s []). {
+          assert (Hempty : finite_protocol_trace (pre_loaded_with_all_messages_vlsm preX) s []). {
             unfold finite_protocol_trace.
             simpl.
             split.
@@ -1884,22 +1870,8 @@ Context
         + destruct H0 as [s0 [tr [Hfinite_protocol [Hdest Hmessage]]]].
           destruct Hmessage.
           specialize (H s0 tr Hfinite_protocol).
-          assert (last (List.map destination tr) s0 = s). {
-            specialize (@last_map (@transition_item message (type preX)) state destination).
-            intros.
-            unfold option_map in Hdest.
-            destruct (last_error tr) eqn : eq.
-            - inversion Hdest.
-              unfold last_error in eq.
-              destruct tr.
-              + discriminate eq.
-              + inversion eq.
-                apply H0.
-           - discriminate Hdest.
-
-          }
-
-          specialize (H H0).
+          assert (Hlst := last_error_destination_last tr s Hdest s0).
+          specialize (H Hlst).
           assert (can_emit preX m). {
             specialize (can_emit_from_protocol_trace preX s0 m tr Hfinite_protocol H).
             intros.
@@ -1911,20 +1883,20 @@ Context
             assumption.
           }
 
-          destruct (idec (fst m) index_self).
+          destruct (decide (fst m = index_self)).
           * assert (s <> Bottom). {
               apply protocol_prop_no_bottom.
               assumption.
             }
 
-            destruct s. elim H3. reflexivity.
+            destruct s. elim H2. reflexivity.
 
             (* Rewrite it as Prop involving In. *)
 
             assert (In (snd m) (get_history (Something b is) (fst m))). {
               specialize (output_to_history (Something b is) s0 m tr).
               intros.
-              specialize (H4 Hfinite_protocol H0 H).
+              specialize (H3 Hfinite_protocol Hlst H).
               rewrite e.
               assumption.
             }
@@ -1938,7 +1910,7 @@ Context
             reflexivity.
             elim n.
             reflexivity.
-           * rewrite H2 in n.
+           * rewrite H1 in n.
               elim n.
               reflexivity.
     Qed.
@@ -1948,7 +1920,6 @@ Context
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
       has_been_received_prop X receive_oracle s m.
-
     Proof.
       unfold has_been_received_prop.
       unfold all_traces_have_message_prop.
@@ -1956,7 +1927,7 @@ Context
       split.
       - intros.
         unfold receive_oracle in H.
-        destruct (idec (fst m) index_self) eqn:eq.
+        destruct (decide (fst m = index_self)) eqn:eq.
         + discriminate H.
         + destruct s eqn:eq_s.
           * discriminate H.
@@ -2108,7 +2079,7 @@ Context
           unfold initial_state_prop in v.
           remember v as v'.
           destruct v.
-          assert (Hempty : finite_protocol_trace (pre_loaded_vlsm preX) s []). {
+          assert (Hempty : finite_protocol_trace (pre_loaded_with_all_messages_vlsm preX) s []). {
             unfold finite_protocol_trace.
             simpl.
             split.
@@ -2125,20 +2096,8 @@ Context
         + destruct e as [start [tr [Hprotocol_tr [Hdest Hothers]]]].
           destruct trace_eq.
           specialize (H start tr Hprotocol_tr).
-          assert (last (List.map destination tr) start = s). {
-            specialize (@last_map (@transition_item message (type preX)) state destination).
-            intros.
-            unfold option_map in Hdest.
-            destruct (last_error tr) eqn : eq.
-            - inversion Hdest.
-              unfold last_error in eq.
-              destruct tr.
-              + discriminate eq.
-              + inversion eq.
-                apply H0.
-           - discriminate Hdest.
-          }
-          specialize (H H0).
+          assert (Hlst := last_error_destination_last tr s Hdest start).
+          specialize (H Hlst).
           rewrite Exists_exists in H.
           destruct H as [x [Hin Hm]].
           apply in_split in Hin.
@@ -2152,7 +2111,7 @@ Context
             assumption.
           }
 
-          destruct (idec (fst m) index_self).
+          destruct (decide (fst m = index_self)).
           * unfold protocol_transition in H.
             destruct H as [Hvalid Htransition].
             unfold protocol_valid in Hvalid.
@@ -2203,10 +2162,10 @@ Context
               split.
               destruct Happ.
               destruct Hprotocol_tr.
-              rewrite Hconcat in H3.
-              rewrite <- app_assoc in H2.
-              specialize (H2 H3).
-              destruct H2.
+              rewrite Hconcat in H2.
+              rewrite <- app_assoc in H1.
+              specialize (H1 H2).
+              destruct H1.
 
               assert (last (List.map destination (l1 ++ [x])) start = destination x). {
                  rewrite map_app.
@@ -2215,13 +2174,13 @@ Context
                  reflexivity.
               }
 
-              rewrite <- H6.
+              rewrite <- H5.
               assumption.
-              rewrite Hconcat in H0.
-              rewrite map_app in H0.
-              rewrite last_app in H0.
-              rewrite map_cons in H0.
-              rewrite unroll_last in H0.
+              rewrite Hconcat in Hlst.
+              rewrite map_app in Hlst.
+              rewrite last_app in Hlst.
+              rewrite map_cons in Hlst.
+              rewrite unroll_last in Hlst.
               assumption.
             }
 
@@ -2266,7 +2225,7 @@ Context
           assumption.
         }
         unfold send_oracle in H.
-        destruct (idec (fst m) index_self).
+        destruct (decide (fst m = index_self)).
         + destruct s.
           * simpl in H1.
             assumption.
@@ -2312,7 +2271,7 @@ Context
           destruct H2.
           * specialize (H0 s []).
             simpl in *.
-            assert (finite_protocol_trace (pre_loaded_vlsm X) s []). {
+            assert (finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s []). {
                 unfold finite_protocol_trace.
                 simpl.
                 split.
@@ -2330,21 +2289,9 @@ Context
             assumption.
           * destruct H2 as [start [tr [Htr Hothers]]].
             destruct Hothers as [Hdest Houtput].
-            assert (last (List.map destination tr) start = s). {
-               specialize (@last_map (@transition_item message (type preX)) state destination).
-               intros.
-               unfold option_map in Hdest.
-               destruct (last_error tr) eqn : eq.
-                - inversion Hdest.
-                  unfold last_error in eq.
-                  destruct tr.
-                  + discriminate eq.
-                  + inversion eq.
-                  apply H2.
-                - discriminate Hdest.
-            }
-            specialize (H start tr Htr H2).
-            specialize (H0 start tr Htr H2).
+            assert (Hlst := last_error_destination_last tr s Hdest start).
+            specialize (H start tr Htr Hlst).
+            specialize (H0 start tr Htr Hlst).
             rewrite Exists_exists in H0.
             destruct H0 as [x [Hin Hm]].
             rewrite <- Forall_Exists_neg in H.
@@ -2388,7 +2335,7 @@ Context
           assumption.
         }
         unfold receive_oracle in H.
-        destruct (idec (fst m) index_self).
+        destruct (decide (fst m = index_self)).
         * apply in_split in H0.
           destruct H0 as [l1 [l2 Hconcat]].
           remember (last (List.map destination l1) start) as prev_x.
@@ -2435,7 +2382,7 @@ Context
           destruct H2.
           * specialize (H0 s []).
             simpl in *.
-            assert (finite_protocol_trace (pre_loaded_vlsm X) s []). {
+            assert (finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s []). {
                 unfold finite_protocol_trace.
                 simpl.
                 split.
@@ -2453,21 +2400,9 @@ Context
             assumption.
           * destruct H2 as [start [tr [Htr Hothers]]].
             destruct Hothers as [Hdest Houtput].
-            assert (last (List.map destination tr) start = s). {
-              specialize (@last_map (@transition_item message (type preX)) state destination).
-               intros.
-               unfold option_map in Hdest.
-               destruct (last_error tr) eqn : eq.
-                - inversion Hdest.
-                  unfold last_error in eq.
-                  destruct tr.
-                  + discriminate eq.
-                  + inversion eq.
-                  apply H2.
-                - discriminate Hdest.
-            }
-            specialize (H start tr Htr H2).
-            specialize (H0 start tr Htr H2).
+            assert (Hlst := last_error_destination_last tr s Hdest start).
+            specialize (H start tr Htr Hlst).
+            specialize (H0 start tr Htr Hlst).
             rewrite Exists_exists in H0.
             destruct H0 as [x [Hin Hm]].
             rewrite <- Forall_Exists_neg in H.
@@ -2536,7 +2471,7 @@ Context
       split.
       - intros.
         unfold send_oracle in H.
-        destruct (idec (fst m) index_self).
+        destruct (decide (fst m = index_self)).
         + unfold get_sent_messages.
           rewrite <- e.
           rewrite get_iff_history.
@@ -2548,7 +2483,7 @@ Context
         + discriminate H.
       - intros.
         unfold send_oracle.
-        destruct (idec (fst m) index_self).
+        destruct (decide (fst m = index_self)).
         + unfold get_sent_messages in H.
           rewrite <- e in H.
           rewrite get_iff_history in H.
@@ -2649,7 +2584,7 @@ Context
       split.
       - intros.
         unfold receive_oracle in H.
-        destruct (idec (fst m) index_self).
+        destruct (decide (fst m = index_self)).
         + discriminate H.
         + rewrite existsb_exists in H.
           destruct H as [x [Hinx Heq]].
@@ -2674,7 +2609,7 @@ Context
             assumption.
        - intros.
          unfold receive_oracle.
-         destruct (idec (fst m) index_self).
+         destruct (decide (fst m = index_self)).
          + unfold get_received_messages in H.
            rewrite set_diff_iff in H.
            rewrite in_history_equiv_in_union in H.
@@ -2703,7 +2638,7 @@ Context
       assert (send_oracle s (index_self, s') = true). {
         unfold send_oracle.
         simpl.
-        destruct (idec index_self index_self).
+        destruct (decide (index_self = index_self)).
         - rewrite existsb_exists.
           exists s'.
           split.
@@ -2739,21 +2674,9 @@ Context
       - destruct H1 as [si [tr [Htr [Hdest Hm]]]].
         specialize (H0 si tr Htr).
 
-        assert (last (map destination tr) si = s). {
-          specialize (@last_map (@transition_item message (type preX)) state destination).
-               intros.
-               unfold option_map in Hdest.
-               destruct (last_error tr) eqn : eq.
-                - inversion Hdest.
-                  unfold last_error in eq.
-                  destruct tr.
-                  + discriminate eq.
-                  + inversion eq.
-                  apply H1.
-                - discriminate Hdest.
-        }
+        assert (Hlst := last_error_destination_last tr s Hdest si).
 
-        specialize (H0 H1).
+        specialize (H0 Hlst).
         rewrite Exists_exists in H0.
         destruct H0 as [x [Hin_x Houtput]].
         apply in_split in Hin_x.
@@ -2763,10 +2686,10 @@ Context
         destruct Htr.
         specialize (protocol_transition_to preX si x tr l1 l2 Hconcat H0).
         intros.
-        simpl in H3.
+        simpl in H2.
 
-        unfold protocol_transition in H3.
-        destruct H3 as [Hvalid Htransition].
+        unfold protocol_transition in H2.
+        destruct H2 as [Hvalid Htransition].
         unfold protocol_valid in Hvalid.
         destruct Hvalid as [Hneed Hother].
 
@@ -2776,18 +2699,18 @@ Context
           simpl in *.
           destruct (l x) eqn : eq_l.
           - inversion Htransition.
-            rewrite Houtput in H5.
-            inversion H5.
+            rewrite Houtput in H4.
+            inversion H4.
             reflexivity.
           - destruct (input x).
             + inversion Htransition.
-              rewrite Houtput in H5.
-              discriminate H5.
+              rewrite Houtput in H4.
+              discriminate H4.
             + inversion Htransition.
-              rewrite Houtput in H5.
-              discriminate H5.
+              rewrite Houtput in H4.
+              discriminate H4.
         }
-        rewrite <- H3.
+        rewrite <- H2.
         assumption.
     Qed.
 
@@ -2873,11 +2796,11 @@ Context
       match s with
       | Bottom => []
       | _ => match d with
-             | 0 => set_remove eq_dec Bottom [project s target]
+             | 0 => set_remove decide_eq Bottom [project s target]
              | S n => let children := List.map (@project index index_listing _ s) index_listing in
              let children_res := List.map (get_observations target n) children in
-             set_remove eq_dec Bottom
-             (set_union eq_dec (List.fold_right (set_union eq_dec) [] children_res) [project s target])
+             set_remove decide_eq Bottom
+             (set_union decide_eq (List.fold_right (set_union decide_eq) [] children_res) [project s target])
              end
       end.
 
@@ -2929,10 +2852,10 @@ Context
          destruct H0 as [j [Heq Hin]].
          assert (depth a < S n). {
            rewrite Heqdpth.
-           specialize (@depth_parent_child index index_listing Hfinite eq_dec is b j).
+           specialize (@depth_parent_child index index_listing Hfinite decide_eq is b j).
            intros.
            unfold project in Heq.
-           replace (@project_indexed index index_listing (@eq_dec index idec) index_listing is j)
+           replace (@project_indexed index index_listing _ index_listing is j)
            with a in H0.
            lia.
          }
@@ -2967,13 +2890,12 @@ Context
        - intros.
           simpl.
          destruct (project s target).
-         + rewrite eq_dec_if_true.
+         + rewrite decide_True; auto.
            symmetry in Heqd.
            apply depth_zero_bottom in Heqd.
            rewrite Heqd.
            apply NoDup_nil.
-           reflexivity.
-         + rewrite eq_dec_if_false.
+         + rewrite decide_False.
            symmetry in Heqd.
            apply depth_zero_bottom in Heqd.
            rewrite Heqd.
@@ -2986,7 +2908,7 @@ Context
          simpl in Heqd. discriminate Heqd.
          apply set_remove_nodup.
          apply set_add_nodup.
-         specialize (@set_union_iterated_nodup (@state index index_listing) eq_dec).
+         specialize (@set_union_iterated_nodup (@state index index_listing) decide_eq).
          intros.
          specialize (H0 (map
         ((fix get_observations (target0 : index) (d0 : nat) (s : state) {struct d0} :
@@ -2996,13 +2918,13 @@ Context
             | Something _ _ =>
                 match d0 with
                 | 0 =>
-                    if eq_dec Bottom (project s target0)
+                    if decide (Bottom = (project s target0))
                     then []
                     else project s target0 :: empty_set state
                 | S n =>
-                    set_remove eq_dec Bottom
-                      (set_add eq_dec (project s target0)
-                         (fold_right (set_union eq_dec) []
+                    set_remove decide_eq Bottom
+                      (set_add decide_eq (project s target0)
+                         (fold_right (set_union decide_eq) []
                             (map (get_observations target0 n) (map (project s) index_listing))))
                 end
             end) target d) (map (project (Something b is)) index_listing))).
@@ -3015,7 +2937,7 @@ Context
           apply in_map_iff in Hright.
           destruct Hright as [i [Hi _]].
           rewrite <- Hi.
-          specialize (@depth_parent_child index index_listing Hfinite eq_dec is b i).
+          specialize (@depth_parent_child index index_listing Hfinite decide_eq is b i).
           intros.
           unfold project.
           intuition.
@@ -3029,7 +2951,6 @@ Context
         assumption.
         lia.
  Qed.
-
 
   Lemma no_bottom_in_observations
     (s s': state)
@@ -3158,8 +3079,8 @@ Context
       (Hvalid : project s' target = project s target)
       : set_eq
         (full_observations (update_state s s' target) target)
-        (set_add eq_dec s'
-          (set_union eq_dec
+        (set_add decide_eq s'
+          (set_union decide_eq
             (full_observations s target)
             (full_observations s' target)
           )
@@ -3167,7 +3088,7 @@ Context
     Proof.
      unfold set_eq.
      split; unfold incl; intros.
-     - destruct (eq_dec a s').
+     - destruct (decide (a = s')).
        + apply set_add_intro2.
          assumption.
        + apply set_add_intro1.
@@ -3182,7 +3103,7 @@ Context
            apply set_remove_1 in H.
            assert (project (Something b is) target = s'). {
              rewrite <- eq_up.
-             specialize (@project_same index index_listing Hfinite eq_dec s s' target).
+             specialize (@project_same index index_listing Hfinite decide_eq s s' target).
              intros.
              apply H0.
              assumption.
@@ -3191,7 +3112,7 @@ Context
            apply set_union_elim in H.
            simpl in H.
            destruct H.
-           specialize (@set_union_in_iterated (@state index index_listing) eq_dec).
+           specialize (@set_union_in_iterated (@state index index_listing) decide_eq).
            intros.
            specialize (H1 (map
             ((fix get_observations (target : index) (d : nat) (s : state) {struct d} :
@@ -3201,13 +3122,13 @@ Context
                 | Something _ _ =>
                     match d with
                     | 0 =>
-                        if eq_dec Bottom (project s target)
+                        if decide (Bottom = (project s target))
                         then []
                         else project s target :: empty_set state
                     | S n =>
-                        set_remove eq_dec Bottom
-                          (set_add eq_dec (project s target)
-                             (fold_right (set_union eq_dec) []
+                        set_remove decide_eq Bottom
+                          (set_add decide_eq (project s target)
+                             (fold_right (set_union decide_eq) []
                                 (map (get_observations target n) (map (project s) index_listing))))
                     end
                 end) target n0) (map (project (Something b is)) index_listing))).
@@ -3229,7 +3150,7 @@ Context
               unfold project.
               lia.
             }
-            destruct (eq_dec j target).
+            destruct (decide (j = target)).
             rewrite e in Hproject.
             rewrite H0 in Hproject.
             rewrite <- Hproject in Ha.
@@ -3280,7 +3201,7 @@ Context
             assumption.
           }
           apply set_add_elim in H.
-          destruct (eq_dec a s').
+          destruct (decide (a = s')).
           (* a = s' *)
           + unfold full_observations.
             unfold get_observations.
@@ -3328,7 +3249,7 @@ Context
               destruct Heq_child_result as [child [Heq_child Hin_child]].
               rewrite in_map_iff in Hin_child.
               destruct Hin_child as [i [Hproject _]].
-              destruct (eq_dec i target).
+              destruct (decide (i = target)).
               { (* found originally in target projection *)
                 rewrite e in Hproject.
                 rewrite <- Hvalid in Hproject.
@@ -3585,7 +3506,7 @@ Context
       (Hi : i <> target)
       : set_eq
         (full_observations (update_state s s' i) target)
-        (set_union eq_dec
+        (set_union decide_eq
           (full_observations s target)
           (full_observations s' target)
         ).
@@ -3633,7 +3554,7 @@ Context
         assumption.
         destruct H as [j Hin_j].
         apply set_union_intro.
-        destruct (eq_dec i j).
+        destruct (decide (i = j)).
         + right.
           rewrite e in Hproj_ui.
           rewrite Hproj_ui in Hin_j.
@@ -3674,7 +3595,7 @@ Context
         assumption.
         assumption.
         right.
-        destruct (eq_dec i j).
+        destruct (decide (i = j)).
         exists i.
         rewrite Hproj_ui.
         apply unfold_full_observations.
@@ -3706,7 +3627,7 @@ Context
     Qed.
 
     Definition observable_full :
-      (computable_observable_equivocation_evidence
+      (observation_based_equivocation_evidence
        (@state index index_listing)
        index
        (@state index index_listing)

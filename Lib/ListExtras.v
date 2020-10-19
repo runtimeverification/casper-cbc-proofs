@@ -6,7 +6,7 @@ Import ListNotations.
 
 Require Import Coq.Logic.FinFun.
 
-Require Import CasperCBC.Lib.Preamble.
+From CasperCBC.Lib Require Import Preamble.
 
 Definition last_error {S} (l : list S) : option S :=
   match l with
@@ -263,17 +263,17 @@ Proof.
   ; try assumption; try reflexivity; try contradiction; discriminate.
 Qed.
 
-Lemma in_correct {X} `{EqDec X} :
+Lemma in_correct `{EqDecision X} :
   forall (l : list X) (x : X),
-    In x l <-> inb eq_dec x l = true.
+    In x l <-> inb decide_eq x l = true.
 Proof.
   intros s msg.
   apply in_function.
 Qed.
 
-Lemma in_correct' {X} `{EqDec X} :
+Lemma in_correct' `{EqDecision X} :
   forall (l : list X) (x : X),
-    ~ In x l <-> inb eq_dec x l = false.
+    ~ In x l <-> inb decide_eq x l = false.
 Proof.
   intros s msg.
   symmetry. apply mirror_reflect_curry.
@@ -281,19 +281,18 @@ Proof.
 Qed.
 
 Definition inclb
-  {A : Type}
-  {Heq : EqDec A}
+  `{EqDecision A}
   (l1 l2 : list A)
   : bool
-  := forallb (fun x : A => inb eq_dec x l2) l1.
+  := forallb (fun x : A => inb decide_eq x l2) l1.
 
-Lemma incl_function {A} {Heq : EqDec A} : PredicateFunction2 (@incl A) (inclb).
+Lemma incl_function `{EqDecision A} : PredicateFunction2 (@incl A) (inclb).
 Proof.
   intros l1 l2. unfold inclb. rewrite forallb_forall.
   split; intros Hincl x Hx; apply in_correct; apply Hincl; assumption.
 Qed.
 
-Definition incl_correct {A} {Heq : EqDec A}
+Definition incl_correct `{EqDecision A}
   (l1 l2 : list A)
   : incl l1 l2 <-> inclb l1 l2 = true
   := incl_function l1 l2.
@@ -1089,6 +1088,45 @@ Definition map_option
     )
     [].
 
+Lemma map_option_length
+  {A B : Type}
+  (f : A -> option B)
+  (l : list A)
+  (Hfl : Forall (fun a => f a <> None) l)
+  : length (map_option f l) = length l.
+Proof.
+  induction l; try reflexivity.
+  inversion Hfl; subst.
+  spec IHl H2.
+  simpl.
+  destruct (f a); try (elim H1; reflexivity).
+  simpl. f_equal. assumption.
+Qed.
+
+Lemma map_option_nth
+  {A B : Type}
+  (f : A -> option B)
+  (l : list A)
+  (Hfl : Forall (fun a => f a <> None) l)
+  (n := length l)
+  (i : nat)
+  (Hi : i < n)
+  (dummya : A)
+  (dummyb : B)
+  : Some (nth i (map_option f l) dummyb) = f (nth i l dummya).
+Proof.
+  generalize dependent i.
+  induction l; intros; simpl in *. { lia. }
+  inversion Hfl. subst. spec IHl H2.
+  destruct (f a) eqn: Hfa; try (elim H1; reflexivity).
+  symmetry in Hfa.
+  destruct i; try assumption.
+  spec IHl i.
+  spec IHl. { lia. }
+  assumption.
+Qed.
+
+
 Lemma in_map_option
   {A B : Type}
   (f : A -> option B)
@@ -1200,11 +1238,10 @@ Proof.
 Qed.
 
 Lemma union_fold
-  {A : Type}
-  {eq_dec_a : EqDec A}
+  `{EqDecision A}
   (haystack : list (list A))
   (a : A) :
-  In a (fold_right (set_union eq_dec_a) [] haystack)
+  In a (fold_right (set_union decide_eq) [] haystack)
   <->
   exists (needle : list A), (In a needle) /\ (In needle haystack).
 Proof.
@@ -1703,5 +1740,3 @@ Proof.
     intros.
     discriminate H0.
 Qed.
-  
- 

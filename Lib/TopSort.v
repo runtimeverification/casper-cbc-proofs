@@ -261,8 +261,7 @@ Section topologically_sorted.
 (** ** Topologically sorted lists. Definition and properties. *)
 
 Context
-  {A : Type}
-  {eq_dec_a : EqDec A}
+  `{EqDecision A}
   (preceeds : A -> A -> bool)
   (l : list A)
   .
@@ -449,8 +448,7 @@ Section top_sort.
 (** ** The topological sorting algorithm *)
 
 Context
-  {A : Type}
-  {eq_dec_a : EqDec A}
+  `{EqDecision A}
   (preceeds : A -> A -> bool)
   .
 
@@ -467,7 +465,7 @@ Fixpoint top_sort_n
   | _, [] => []
   | S n', a :: l' =>
     let min := min_predecessors preceeds l l' a in
-    let l'' := set_remove eq_dec min l in
+    let l'' := set_remove decide_eq min l in
     min :: top_sort_n n' l''
   end.
 
@@ -490,20 +488,20 @@ Proof.
   ; inversion Heqn.
   simpl.
   remember (min_predecessors preceeds (a :: l) l a) as min.
-  remember (set_remove eq_dec min l) as l'.
-  destruct (eq_dec min a); try rewrite e.
+  remember (set_remove decide_eq min l) as l'.
+  destruct (decide (min = a)); try rewrite e.
   - apply set_eq_cons. specialize (IHn l H0). subst. assumption.
   - specialize (min_predecessors_in preceeds (a :: l) l a).
     rewrite <- Heqmin. simpl. intros [Heq | Hin]; try (elim n0; assumption).
     specialize (IHn (a :: l')).
-    specialize (set_remove_length eq_dec min l Hin).
+    specialize (set_remove_length min l Hin).
     rewrite <- Heql'. rewrite <- H0. intro Hlen.
     specialize (IHn Hlen).
     split; intros x [Heq | Hinx]; try (subst x).
     + right. apply IHn. left. reflexivity.
-    + destruct (eq_dec x min); try subst x.
+    + destruct (decide (x = min)); try subst x.
       * left. reflexivity.
-      * specialize (set_remove_3 eq_dec l Hinx n1).
+      * specialize (set_remove_3 decide_eq l Hinx n1).
         rewrite <- Heql'. intro Hinx'.
         right. apply IHn. right. assumption.
     + right. assumption.
@@ -528,16 +526,16 @@ Proof.
     + simpl.
       assert (Hl' : NoDup l) by (inversion Hl; assumption).
       assert (Hlen : len = length l) by (inversion Heqlen; reflexivity).
-      assert (Hl'' : NoDup (set_remove eq_dec (min_predecessors preceeds (a :: l) l a) l))
+      assert (Hl'' : NoDup (set_remove decide_eq (min_predecessors preceeds (a :: l) l a) l))
         by (apply set_remove_nodup; assumption).
-      destruct (eq_dec (min_predecessors preceeds (a :: l) l a) a); constructor.
+      destruct (decide (min_predecessors preceeds (a :: l) l a = a)); constructor.
       * specialize (IHlen l Hl'  Hlen).
         rewrite e in *.
         inversion Hl; subst x l0. intro Ha. elim H1.
         apply top_sort_set_eq. subst len. assumption.
       * apply IHlen; try assumption.
       * intro Hmin.
-        assert (Hlen' : len = length (a :: set_remove eq_dec (min_predecessors preceeds (a :: l) l a) l)).
+        assert (Hlen' : len = length (a :: set_remove decide_eq (min_predecessors preceeds (a :: l) l a) l)).
         { simpl.
           rewrite <- set_remove_length; try assumption.
           pose (@min_predecessors_in _ preceeds (a :: l) l a) as Hin.
@@ -545,7 +543,7 @@ Proof.
           elim n. assumption.
         }
         rewrite Hlen' in Hmin.
-        apply (proj2 (top_sort_set_eq (a :: set_remove eq_dec (min_predecessors preceeds (a :: l) l a) l)))
+        apply (proj2 (top_sort_set_eq (a :: set_remove decide_eq (min_predecessors preceeds (a :: l) l a) l)))
           in Hmin.
         destruct Hmin; try (symmetry in H; elim n; assumption).
         apply set_remove_2 in H; try assumption.
@@ -598,15 +596,15 @@ Proof.
   + inversion Ha.
   + remember (min_predecessors preceeds (a0 :: l0) l0 a0) as min.
     remember
-      (match @eq_dec A eq_dec_a min a0 return (set A) with
+      (match decide (min = a0) return (set A) with
       | left _ => l0
-      | right _ => @cons A a0 (@set_remove A (@eq_dec A eq_dec_a) min l0)
+      | right _ => @cons A a0 (set_remove decide_eq min l0)
       end) as l'.
     inversion Heqn.
     assert (Hall' : Forall P l').
     { rewrite Forall_forall. intros x Hx.
       rewrite Forall_forall in H2.
-      destruct (eq_dec min a0).
+      destruct (decide (min = a0)).
       - subst a0 l'. apply H2. assumption.
       - subst l'.
         destruct Hx as [Heqx | Hx]; try (subst; assumption).
@@ -614,7 +612,7 @@ Proof.
         apply H2. assumption.
     }
     assert (Hlenl' : n = length l').
-    { destruct (eq_dec min a0).
+    { destruct (decide (min = a0)).
       - subst a0.
         subst l'. assumption.
       - subst l'. simpl.
@@ -626,7 +624,7 @@ Proof.
     }
     specialize (IHn l' Hall' Hlenl' a b Hab).
     assert (Hminb : b <> min).
-    { destruct (eq_dec b min); try assumption.
+    { destruct (decide (b = min)); try assumption.
       subst b.
       specialize (min_predecessors_zero preceeds (a0 :: l0) P Hl l0 a0 eq_refl).
       rewrite <- Heqmin. simpl. intro Hmin.
@@ -637,18 +635,18 @@ Proof.
     destruct l1 as [| _min l1]; inversion Heq
     ; try (subst b; elim Hminb; reflexivity).
     subst _min.
-    destruct (in_dec eq_dec a l').
+    destruct (in_dec decide_eq a l').
     - apply (IHn i l1 l2 Ha2 H4).
     - assert (Hmina : min = a).
-      { destruct (eq_dec min a0).
+      { destruct (decide (min = a0)).
       - subst a0 l'.
         inversion Ha; try assumption.
         elim n0. assumption.
       - subst l'.
         destruct Ha as [Heqa | Ha'].
         + subst a0. elim n0. left. reflexivity.
-        + destruct (eq_dec a min); try (symmetry; assumption).
-          apply (set_remove_3 eq_dec _ Ha') in n2.
+        + destruct (decide (a = min)); try (symmetry; assumption).
+          apply (set_remove_3 decide_eq _ Ha') in n2.
           elim n0. right. assumption.
       }
       subst a.

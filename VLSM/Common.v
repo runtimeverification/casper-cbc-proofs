@@ -138,6 +138,22 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
       | Infinite _ _ => None
       end.
 
+  Lemma last_error_destination_last
+    (tr : list transition_item)
+    (s : state)
+    (Hlast : option_map destination (last_error tr) = Some s)
+    (default : state)
+    : last (List.map destination tr) default = s.
+  Proof.
+    unfold option_map in Hlast.
+    destruct (last_error tr) eqn : eq; try discriminate Hlast.
+    inversion Hlast.
+    unfold last_error in eq.
+    destruct tr; try discriminate eq.
+    inversion eq.
+    rewrite last_map. reflexivity.
+  Qed.
+
 End Traces.
 
 Section vlsm_projections.
@@ -512,7 +528,7 @@ pre-existing concepts.
     Qed.
 
     (** For VLSMs initialized with many initial messages such as
-    the [composite_vlsm_constrained_projection] or the [pre_loaded_vlsm],
+    the [composite_vlsm_constrained_projection] or the [pre_loaded_with_all_messages_vlsm],
     the question of whether a [VLSM] [can_emit] a message <<m>> becomes more
     useful than that whether <<m>> is a [protocol_message].
     *)
@@ -2171,13 +2187,13 @@ including _Byzantine_ behaviour, which makes it a useful concept in
 Byzantine fault tolerance analysis. *)
 
 
-  Section pre_loaded_vlsm.
+  Section pre_loaded_with_all_messages_vlsm.
     Context
       {message : Type}
       (X : VLSM message)
       .
 
-  Definition pre_loaded_vlsm_sig
+  Definition pre_loaded_with_all_messages_vlsm_sig
     : VLSM_sign (type X)
     :=
     {| initial_state_prop := vinitial_state_prop X
@@ -2187,58 +2203,69 @@ Byzantine fault tolerance analysis. *)
      ; l0 := vl0 X
     |}.
 
-  Definition pre_loaded_vlsm_machine
-    : VLSM_class pre_loaded_vlsm_sig
+  Definition pre_loaded_with_all_messages_vlsm_machine
+    : VLSM_class pre_loaded_with_all_messages_vlsm_sig
     :=
     {| transition := vtransition X
      ; valid := vvalid X
     |}.
 
-  Definition pre_loaded_vlsm
+  Definition pre_loaded_with_all_messages_vlsm
     : VLSM message
-    := mk_vlsm pre_loaded_vlsm_machine.
+    := mk_vlsm pre_loaded_with_all_messages_vlsm_machine.
 
   (**
     A message which can be emitted during a protocol run of
-    the [pre_loaded_vlsm] is called a [byzantine_message], because
-    as shown by Lemmas [byzantine_pre_loaded] and [pre_loaded_alt_eq],
+    the [pre_loaded_with_all_messages_vlsm] is called a [byzantine_message], because
+    as shown by Lemmas [byzantine_pre_loaded_with_all_messages] and [pre_loaded_with_all_messages_alt_eq],
     byzantine traces for a [VLSM] are precisely the protocol traces
-    of the [pre_loaded_vlsm], hence a byzantine message is any message
+    of the [pre_loaded_with_all_messages_vlsm], hence a byzantine message is any message
     which a byzantine trace [can_emit].
   *)
 
   Definition byzantine_message_prop
     (m : message)
     : Prop
-    := can_emit pre_loaded_vlsm m.
+    := can_emit pre_loaded_with_all_messages_vlsm m.
 
   Definition byzantine_message : Type
     := sig byzantine_message_prop.
 
   (* begin hide *)
-  Lemma pre_loaded_protocol_prop
+  Lemma pre_loaded_with_all_messages_message_protocol_prop
+    (om : option message)
+    : protocol_prop pre_loaded_with_all_messages_vlsm (proj1_sig (vs0 X), om).
+  Proof.
+    destruct om as [m|]; try apply (protocol_initial_state pre_loaded_with_all_messages_vlsm).
+    assert (Hm : vinitial_message_prop pre_loaded_with_all_messages_vlsm m) by exact I.
+    pose (exist _ m Hm) as im.
+    replace m with (proj1_sig im) by reflexivity.
+    apply (protocol_initial_message pre_loaded_with_all_messages_vlsm).
+  Qed.
+
+  Lemma pre_loaded_with_all_messages_protocol_prop
     (s : state)
     (om : option message)
     (Hps : protocol_prop X (s, om))
-    : protocol_prop pre_loaded_vlsm (s, om).
+    : protocol_prop pre_loaded_with_all_messages_vlsm (s, om).
   Proof.
     induction Hps.
-    - apply (protocol_initial_state pre_loaded_vlsm is).
+    - apply (protocol_initial_state pre_loaded_with_all_messages_vlsm is).
     - destruct im as [m Him]. simpl in om0. clear Him.
-      assert (Him : @initial_message_prop _ _ pre_loaded_vlsm_sig m)
+      assert (Him : @initial_message_prop _ _ pre_loaded_with_all_messages_vlsm_sig m)
         by exact I.
-      apply (protocol_initial_message pre_loaded_vlsm (exist _ m Him)).
-    - apply (protocol_generated pre_loaded_vlsm) with _om _s; assumption.
+      apply (protocol_initial_message pre_loaded_with_all_messages_vlsm (exist _ m Him)).
+    - apply (protocol_generated pre_loaded_with_all_messages_vlsm) with _om _s; assumption.
   Qed.
 
-  Lemma pre_loaded_can_emit
+  Lemma pre_loaded_with_all_messages_can_emit
     (m : message)
     (Hm : can_emit X m)
-    : can_emit pre_loaded_vlsm m.
+    : can_emit pre_loaded_with_all_messages_vlsm m.
   Proof.
     destruct Hm as [(s0, om0) [l [s [[[_om0 Hs0] [[_s0 Hom0] Hv]] Ht]]]].
-    apply pre_loaded_protocol_prop in Hs0.
-    apply pre_loaded_protocol_prop in Hom0.
+    apply pre_loaded_with_all_messages_protocol_prop in Hs0.
+    apply pre_loaded_with_all_messages_protocol_prop in Hom0.
     exists (s0, om0). exists l. exists s.
     repeat split; try assumption.
     - exists _om0. assumption.
@@ -2247,19 +2274,19 @@ Byzantine fault tolerance analysis. *)
 
   (* end hide *)
 
-  Lemma vlsm_incl_pre_loaded_vlsm
-    : VLSM_incl (machine X) pre_loaded_vlsm_machine.
+  Lemma vlsm_incl_pre_loaded_with_all_messages_vlsm
+    : VLSM_incl (machine X) pre_loaded_with_all_messages_vlsm_machine.
   Proof.
-    apply (basic_VLSM_incl (machine X) pre_loaded_vlsm_machine)
+    apply (basic_VLSM_incl (machine X) pre_loaded_with_all_messages_vlsm_machine)
     ; intros; try (assumption || reflexivity)
     ; destruct H as [_ [[_s Hpm] Hv]]
     ; try assumption.
-    exists _s. apply pre_loaded_protocol_prop.
+    exists _s. apply pre_loaded_with_all_messages_protocol_prop.
     destruct X as (T,(S,M)). simpl in *.
     assumption.
   Qed.
 
-End pre_loaded_vlsm.
+End pre_loaded_with_all_messages_vlsm.
 
 Section actions.
 

@@ -24,14 +24,14 @@ Context
   {i0 : index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
-  {idec : EqDec index}
+  {idec : EqDecision index}
   (message := @ListValidator.message index index_listing)
   (state := @ListValidator.state index index_listing)
   (est : state -> bool -> Prop)
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec est)
   {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
   (X := composite_vlsm IM_index i0 constraint)
-  (preX := pre_loaded_vlsm X)
+  (preX := pre_loaded_with_all_messages_vlsm X)
   (Hevidence := fun (i : index) => @observable_full index index_listing idec)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
@@ -54,20 +54,20 @@ Context
   Qed.  
   
   Definition composed_eqv_evidence
-  : computable_observable_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
+  : observation_based_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
   :=
-  (@composed_computable_observable_equivocation_evidence
+  (@composed_observation_based_equivocation_evidence
     message index state
     state_eq_dec comparable_states
-    index idec index_listing IM_index Hevidence i0 constraint
+    index index_listing IM_index Hevidence
   ).
 
   Existing Instance composed_eqv_evidence.
 
   Definition message_observable_events_lv (m : message) (target : index) : set state :=
     let obs := @full_observations index index_listing idec (snd m) target in
-    if (eq_dec (fst m) target) then set_add eq_dec (snd m) obs else obs.  
-  
+    if (decide (fst m = target)) then set_add decide_eq (snd m) obs else obs.
+
   Lemma message_observable_consistency_lv
       (m : message)
       (i : index)
@@ -98,7 +98,7 @@ Context
       inversion Ht. subst m. simpl.
       rewrite state_update_eq.
       rewrite (@observations_disregards_cv index i index_listing idec est).
-      destruct (eq_dec il i).
+      destruct (decide (il = i)).
       + subst il. intros ob Hob.
         apply (@observations_update_eq index i index_listing Hfinite idec est).
         assumption.
@@ -184,7 +184,7 @@ Context
           destruct Hvalid as [Hvalid _].
           apply (protocol_state_projection IM_index i0 constraint il) in Hvalid.
           destruct Hvalid as [_oms Hvalid].
-          apply proj_pre_loaded_protocol_prop in Hvalid.
+          apply proj_pre_loaded_with_all_messages_protocol_prop in Hvalid.
           unfold protocol_state_prop.
           exists _oms.
           assumption.
@@ -228,7 +228,7 @@ Context
           simpl in Hcvalid.
           destruct Hcvalid as [Hcvalid _].
           destruct Hcvalid as [Hproject [Hnb2 Hother]].
-        destruct (eq_dec (fst m) v).
+        destruct (decide (fst m = v)).
         * rewrite state_update_eq.
           unfold incl.
           intros.
@@ -249,14 +249,14 @@ Context
           right.
           simpl.
           unfold message_observable_events_lv.
-          rewrite eq_dec_if_true.
+          rewrite decide_True.
           rewrite H2.
           apply set_add_intro2.
           reflexivity.
           assumption.
           simpl.
           unfold message_observable_events_lv.
-          rewrite eq_dec_if_true.
+          rewrite decide_True.
           apply set_union_intro.
           apply set_union_elim in H2.
           destruct H2.
@@ -277,7 +277,7 @@ Context
           specialize (H2 a H).
           simpl.
           unfold message_observable_events_lv.
-          rewrite eq_dec_if_false.
+          rewrite decide_False.
           assumption.
           assumption.
        + unfold constrained_composite_valid in Hvalid.
@@ -319,7 +319,7 @@ Context
         apply (@protocol_prop_no_bottom index v _ _ est).
           apply (protocol_state_projection IM_index i0 constraint v) in Ha.
           destruct Ha as [_oms Ha].
-          apply proj_pre_loaded_protocol_prop in Ha.
+          apply proj_pre_loaded_with_all_messages_protocol_prop in Ha.
           unfold protocol_state_prop.
           exists _oms.
           assumption.
@@ -382,7 +382,7 @@ Context
           with (Some m).
         unfold option_message_observable_events. unfold message_observable_events.
         simpl. unfold message_observable_events_lv.
-        destruct (eq_dec (fst m) v).
+        destruct (decide (fst m = v)).
         * subst v.
           intuition.
         * apply (@observations_update_neq index v index_listing Hfinite idec est) in He; try assumption.
@@ -411,7 +411,7 @@ Context
     rewrite Heq1 in Heq.
     apply order_decompositions in Heq.
     unfold comparableb.
-    destruct (eq_dec e1 e2); try reflexivity.
+    destruct (decide (e1 = e2)); try reflexivity.
     destruct Heq as [Heq | [Hgt | Hlt]]
     ; try (elim n; subst; reflexivity)
     ; apply orb_true_iff.
@@ -424,9 +424,9 @@ Context
       apply
         (VLSM_incl_in_futures
           (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
-          (pre_loaded_vlsm_machine (@VLSM_list index v index_listing idec est))
+          (pre_loaded_with_all_messages_vlsm_machine (@VLSM_list index v index_listing idec est))
         )
-      ; try apply (proj_pre_loaded_incl IM_index i0 constraint v).
+      ; try apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v).
       subst e1 e2.
       apply (in_futures_projection IM_index i0 constraint v).
       destruct Hgt as [suf1' Hgt].
@@ -449,9 +449,9 @@ Context
       apply
         (VLSM_incl_in_futures
           (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
-          (pre_loaded_vlsm_machine (@VLSM_list index v index_listing idec est))
+          (pre_loaded_with_all_messages_vlsm_machine (@VLSM_list index v index_listing idec est))
         )
-      ; try apply (proj_pre_loaded_incl IM_index i0 constraint v).
+      ; try apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v).
       subst e1 e2.
       apply (in_futures_projection IM_index i0 constraint v).
       destruct Hlt as [suf2' Hlt].
