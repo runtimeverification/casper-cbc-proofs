@@ -211,7 +211,7 @@ were not available in the transition that generated it
 
 Context
   {Hcomposite : composite_vlsm_observable_messages}
-  `{EqDec message}
+  `{EqDecision message}
   .
 
 Definition option_message_observable_events

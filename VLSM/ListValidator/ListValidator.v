@@ -429,30 +429,7 @@ Definition state0 : {s | initial_state_prop s} :=
 
 Definition message : Type := (index * state).
 
-Lemma message_eq_dec : EqDec message.
-Proof.
-  unfold EqDec.
-  intros.
-  destruct x.
-  destruct y.
-  destruct (decide (i = i0)).
-  - destruct (decide (s = s0)).
-    + left. rewrite e. rewrite e0. reflexivity.
-    + right.
-      intros contra.
-      rewrite e in contra.
-      inversion contra.
-      elim n.
-      assumption.
-   - destruct (decide (s = s0));
-     right;
-     intros contra;
-     inversion contra;
-     elim n;
-     assumption.
-Qed.
-
-Global Instance message_EqDecision : EqDecision message := message_eq_dec.
+Global Instance message_EqDecision : EqDecision message := _.
 
 Definition initial_message_prop (m : message) : Prop := False.
 
