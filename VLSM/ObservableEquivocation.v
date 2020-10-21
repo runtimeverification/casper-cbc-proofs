@@ -217,7 +217,7 @@ initial states.
       (v : validator)
       (ei e: event)
       (Hsubj : subject_of_observation e = v)
-      (Hin : In e (observable_events s v)) :
+      (Hin : In ei (observable_events s v)) :
       comparableb happens_before_fn ei e = true;
 
 (**
@@ -686,7 +686,7 @@ Proof.
    }
   destruct H as [Hcon H].
   specialize (in_observable_events_first is tr Htr v e).
-  intros. simpl in H.
+  intros. 
   intros.
   simpl in H0.
   specialize (H0 He).
@@ -696,11 +696,13 @@ Proof.
   unfold trace_generated_event in Hne.
   destruct H0 as [pre [suf [item [Heq [H0 Hpre]]]]].
   assert (tr = pre ++ [item] ++ suf). {
-    admit.
+    rewrite Heq.
+    simpl.
+    reflexivity.
   }
   rewrite app_assoc in H1.
+  destruct Heq.
   subst tr.
-  rewrite H1.
   apply not_trace_generated_prefix in Hne.
   destruct Htr as [Htr His].
   apply finite_protocol_trace_from_app_iff in Htr.
@@ -708,9 +710,9 @@ Proof.
   rewrite Forall_forall in Hpre.
   apply finite_protocol_trace_from_app_iff in Htr.
   destruct Htr as [Htr Ht].
-  inversion Ht. subst item tl s'. clear Ht H2. simpl in He.
-  apply set_union_in_iterated in He. apply Exists_exists in He.
-  destruct He as [esi [Hesi He]].
+  inversion Ht. subst item tl s'. clear Ht H4 He. simpl in H0.
+  apply set_union_in_iterated in H0. apply Exists_exists in H0.
+  destruct H0 as [esi [Hesi He]].
   apply in_map_iff in Hesi.
   destruct Hesi as [i [Hesi Hi]]. subst esi.
   assert (Hnpre : ~In e (observable_events (last (map destination pre) is) v)).
@@ -771,7 +773,7 @@ Proof.
       exists (observable_events (last (map destination pre) is i) v).
       split; try assumption.
       apply in_map_iff. exists i. split; try reflexivity. assumption.
-    + symmetry. apply (composite_transition_state_neq _ _ _ _ _ _ _ H3 _ n).
+    + symmetry. apply (composite_transition_state_neq _ _ _ _ _ _ _ H5 _ n).
 Qed.
 
 (**
@@ -1069,17 +1071,25 @@ Proof.
   apply existsb_forall. intros e1 He1.
   rewrite existsb_forall.
   intros.
-  apply no_events_in_initial_state with (ei := x0) in He1.
+  apply no_events_in_initial_state with (e := x0) in He1.
+  (* Perhaps generalize this somewhere. *)
   assert (comparableb happens_before_fn e1 x0 = comparableb happens_before_fn x0 e1). {
-    admit.
+    unfold comparableb.
+    destruct (decide (e1 = x0)).
+    rewrite e.
+    rewrite decide_True.
+    reflexivity.
+    reflexivity.
+    rewrite decide_False.
+    intuition.
+    intuition.
   }
-  rewrite <- H0 in He1.
   replace (comparableb happens_before_fn e1 x0) with true.
   simpl. reflexivity.
   assumption.
   apply observed_event_subject with (s := is).
   assumption.
-Admitted.
+Qed.
 
 End observable_equivocation_in_composition.
 

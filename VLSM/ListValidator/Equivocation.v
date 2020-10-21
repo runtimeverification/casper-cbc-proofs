@@ -2967,7 +2967,8 @@ Context
         | left _ => false
         | _ => match type1, type2 with
                | State, State => false
-               | _, _ => state_ltb state1 state2
+               | State, Message => false
+               | Message, State => state_ltb state1 state2
                end  
         end
     end.

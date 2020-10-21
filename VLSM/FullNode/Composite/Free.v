@@ -562,13 +562,31 @@ Program Instance free_composite_vlsm_observable_messages
     message_observable_events := full_message_observable_messages
   }.
 Next Obligation.
+  unfold comparableb.
+  unfold vinitial_state_prop in His.
+  simpl in His.
+  unfold composite_initial_state_prop in His.
+  unfold validator_message_preceeds_fn.
+  unfold composed_observable_events in Hin.
+  apply set_union_in_iterated in Hin.
+  rewrite Exists_exists in Hin.
+  destruct Hin as [x [Hinx Hinei]].
+  rewrite in_map_iff in Hinx.
+  destruct Hinx as [x0 [Heq Hind]].
+  specialize (His x0).
+  unfold vinitial_state_prop in His.
+  unfold observable_events in Heq.
+  unfold free_observation_based_equivocation_evidence_index in Heq.
+  admit.
+  (*
   apply set_union_iterated_empty. intros msgsi Hmsgsi.
   apply in_map_iff in Hmsgsi. destruct Hmsgsi as [i [Hmsgsi _]].
   subst.
   specialize (free_observation_based_equivocation_evidence_index i) as Hev.
   specialize (His i). unfold IM_index in *.
-  destruct i; inversion His; rewrite H0; reflexivity.
-Qed.
+  destruct i; inversion His; rewrite H0; reflexivity. *)
+Admitted.
+
 Next Obligation.
   apply free_protocol_transition_out in Ht.
   destruct Ht as [Hl [Hj Hm]].
