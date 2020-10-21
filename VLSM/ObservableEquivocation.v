@@ -28,16 +28,32 @@ validator which are not comparable through [happens_before_fn], this constitutes
 an [equivocation_evidence].
 *)
 
+(* 
+Class Decision (P : Prop) := decide : {P} + {~P}.
+Class RelDecision {A B} (R : A -> B -> Prop) :=
+  decide_rel x y :> Decision (R x y).
+Definition bool_decide (P : Prop) {dec : Decision P} : bool :=
+  if dec then true else false.
+*)
+
 Class comparable_events
   (event : Type)
-  := { happens_before_fn : event -> event -> bool }.
+  := { happens_before_fn : event -> event -> bool }. 
 
 Class observation_based_equivocation_evidence
   (state validator event : Type)
   (event_eq : EqDecision event)
-  (event_comparable : comparable_events event) :=
+  (event_comparable : comparable_events event)
+  (subject_of_observation : event -> validator) :=
   {
     observable_events : state -> validator -> set event;
+    observed_event_subject :
+      forall
+        (s : state)
+        (v : validator)
+        (e : event)
+        (He : In e (observable_events s v)),
+        subject_of_observation e = v;
     equivocation_evidence (s : state) (v : validator) : bool :=
       existsb
         (fun e1 =>
@@ -55,9 +71,10 @@ to obtain the [basic_equivocation] between states and validators.
 *)
 Definition basic_observable_equivocation
   (state validator event : Type)
+  (subject_of_observation : event -> validator)
   `{EqDecision event}
   {event_comparable : comparable_events event}
-  {Hevidence : observation_based_equivocation_evidence state validator event decide_eq event_comparable}
+  {Hevidence : observation_based_equivocation_evidence state validator event decide_eq event_comparable subject_of_observation}
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
@@ -74,15 +91,16 @@ Section not_heavy_incl.
 
 Context
   (state validator event : Type)
+  (subject_of_observation : event -> validator)
   `{EqDecision event}
   (v_eq : EqDecision validator)
   {event_comparable : comparable_events event}
-  {Hevidence : observation_based_equivocation_evidence state validator event decide_eq event_comparable}
+  {Hevidence : observation_based_equivocation_evidence state validator event decide_eq event_comparable subject_of_observation}
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
   (validators_nodup : forall (s : state), NoDup (validators s))
-  (basic_eqv := basic_observable_equivocation state validator event validators validators_nodup)
+  (basic_eqv := basic_observable_equivocation state validator event subject_of_observation validators validators_nodup)
   .
 
 Existing Instance basic_eqv.
@@ -134,6 +152,7 @@ Context
   {message validator event : Type}
   `{EqDecision event}
   {event_comparable : comparable_events event}
+  {subject_of_observation : event -> validator}
   {index : Type}
   `{EqDecision index}
   (index_listing : list index)
@@ -141,7 +160,7 @@ Context
   (IM : index -> VLSM message)
   (Hevidence : forall (i : index),
     observation_based_equivocation_evidence
-        (vstate (IM i)) validator event decide_eq event_comparable
+        (vstate (IM i)) validator event decide_eq event_comparable subject_of_observation
   )
   (i0 : index)
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
@@ -162,10 +181,21 @@ Definition composed_observable_events
   :=
   fold_right (set_union decide_eq) [] (map (fun i => observable_events (s i) v) index_listing).
 
-Definition composed_observation_based_equivocation_evidence
-  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq event_comparable
+Program Instance composed_observation_based_equivocation_evidence
+  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq event_comparable subject_of_observation
   :=
   {| observable_events := composed_observable_events |}.
+  Next Obligation.
+  unfold composed_observable_events in He.
+  rewrite set_union_in_iterated in He.
+  rewrite Exists_exists in He.
+  destruct He as [x [Hinx Hine]].
+  rewrite in_map_iff in Hinx.
+  destruct Hinx as [x0 [Heq Hin_index]].
+  rewrite <- Heq in Hine.
+  apply observed_event_subject in Hine.
+  assumption.
+  Qed.
 
 Existing Instance composed_observation_based_equivocation_evidence.
 
@@ -185,7 +215,10 @@ initial states.
       (s : state)
       (His : vinitial_state_prop X s)
       (v : validator)
-      : observable_events s v = [];
+      (ei e: event)
+      (Hsubj : subject_of_observation e = v)
+      (Hin : In e (observable_events s v)) :
+      comparableb happens_before_fn ei e = true;
 
 (**
 We assume that machines communicate through messages,
@@ -254,6 +287,7 @@ Proof.
       (observable_events (last (map destination []) is) v)
       with (@nil event) in He.
     inversion He.
+    admit.
   - destruct (exists_last Htr0) as [l' [a Heq]].
     specialize
       (existsb_first tr (fun item => inb decide_eq e (observable_events (destination item) v)))
@@ -275,7 +309,7 @@ Proof.
       specialize (Hfirst x Hx).
       apply in_correct' in Hfirst.
       assumption.
-Qed.
+Admitted.
 
 (** ** Defining observable equivocation based on observable messages
 *)
@@ -293,6 +327,7 @@ Definition trace_generated_event
   (e : event)
   : Prop
   :=
+  In e (observable_events is v) \/
   exists
   (prefix suffix : list transition_item)
   (item : transition_item)
@@ -334,6 +369,7 @@ Definition trace_generated_event_fn
     )
     (one_element_decompositions tr).
 
+(*
 Lemma trace_generated_event_function
   (is : vstate X)
   (tr : list (vtransition_item X))
@@ -354,7 +390,7 @@ Proof.
     simpl in H. apply in_correct in H.
     apply in_one_element_decompositions_iff in Hdec. symmetry in Hdec.
     exists pre. exists suf. exists item. exists Hdec. assumption.
-Qed.
+Qed. *)
 
 (**
 If an event is generated by a trace <<tr>>, then it's also generated by
@@ -369,6 +405,10 @@ Lemma trace_generated_prefix
   (suf : list transition_item)
   : trace_generated_event is (pre ++ suf) v e.
 Proof.
+  unfold trace_generated_event in *.
+  destruct Hgen as [Hgen|Hgen].
+  left. assumption.
+  right.
   destruct Hgen as [pre' [suf' [item [Heq Hgen]]]].
   exists pre'. exists (suf' ++ suf). exists item.
   subst pre. repeat rewrite <- app_assoc. exists eq_refl. assumption.
@@ -395,6 +435,8 @@ An event which was not generated prior to reaching a trace, but it is
 observable in its final state must come from the previous state or
 the incoming message.
 *)
+
+(* 
 Lemma not_trace_generated_event
   (is : vstate X)
   (tr : list (vtransition_item X))
@@ -433,6 +475,7 @@ Proof.
       eqn:Hor; try reflexivity.
     elim Hne'. split; try assumption. intro contra. discriminate contra.
 Qed.
+*) 
 
 (**
 We say that an equivocation of validator <<v>> can be observed in the
@@ -465,6 +508,8 @@ Definition equivocating_in_trace_last_fn
     )
     (observable_events s v).
 
+(*
+
 Lemma equivocating_in_trace_last_function
   (is : vstate X)
   (tr : list transition_item)
@@ -483,7 +528,7 @@ Proof.
     exists e. exists Hin.
     intro contra. apply trace_generated_event_function in contra.
     rewrite contra in H. simpl in H. discriminate H.
-Qed.
+Qed. *)
 
 (**
 Since the initial state has no events, no equivocations can exist in an
@@ -496,6 +541,8 @@ Lemma not_equivocating_in_trace_last_initial
   : ~ equivocating_in_trace_last s [] v.
 Proof.
   intro contra. destruct contra as [e [He Hne]].
+  simpl in He.
+  unfold trace_generated_event in Hne.
   specialize (no_events_in_initial_state (last (map destination []) s) Hs v) as Hno.
   replace
     (observable_events (last (map destination []) s) v)
@@ -940,6 +987,7 @@ Context
 Definition composed_observable_basic_equivocation
   : basic_equivocation (composite_state IM) validator
   := @basic_observable_equivocation (composite_state IM) validator event
+      subject_of_observation
       decide_eq
       event_comparable
       composed_observation_based_equivocation_evidence
@@ -989,6 +1037,7 @@ Context
   {message validator event : Type}
   `{EqDecision event}
   {event_comparable : comparable_events event}
+  {subject_of_observation : event -> validator}
   {index : Type}
   `{EqDecision index}
   (index_listing : list index)
@@ -996,7 +1045,7 @@ Context
   (IM : index -> VLSM message)
   (Hevidence : forall (i : index),
     observation_based_equivocation_evidence
-        (vstate (IM i)) validator event decide_eq event_comparable
+        (vstate (IM i)) validator event decide_eq event_comparable subject_of_observation
   )
   (i0 : index)
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
@@ -1004,7 +1053,7 @@ Context
   (X := composite_vlsm IM i0 constraint)
   (PreX := pre_loaded_with_all_messages_vlsm X)
   {Hobservable_messages :
-    @composite_vlsm_observable_messages _ _ _ decide_eq event_comparable _ decide_eq
+    @composite_vlsm_observable_messages _ _ _ decide_eq event_comparable subject_of_observation _ decide_eq
     index_listing IM Hevidence i0 constraint}
 .
 

@@ -597,5 +597,56 @@ Definition get_history (s : state) (who : index) : list state :=
    | Something cv ls => let child := last_recorded index_listing ls who in
                           rec_history child who (depth child)
    end.
+
+
+  Definition state_eqb (s1 s2 : state) : bool :=
+    match decide_eq s1 s2 with
+    | left _ => true
+    | right _ => false
+    end.
+
+  Lemma state_eqb_eq (s1 s2 : state) :
+    (state_eqb s1 s2) = true <-> s1 = s2.
+  Proof.
+    unfold state_eqb.
+    split.
+    - destruct (decide (s1 = s2)).
+      + intuition.
+      + intros. discriminate H.
+    - intros.
+      destruct (decide (s1 = s2));
+      intuition.
+  Qed.
+
+  Lemma state_eqb_neq (s1 s2 : state) :
+    (state_eqb s1 s2) = false <-> s1 <> s2.
+  Proof.
+    unfold state_eqb.
+    split;
+    destruct (decide (s1 = s2));
+    intuition.
+  Qed.
+
+  Definition send_oracle (s : state) (m : message)  : bool :=
+    let who := fst m in
+    let what := snd m in
+    match decide (who = index_self) with
+    | right _ => false
+    | left _ => existsb (state_eqb what) (get_history s who)
+    end.
+
+  Definition receive_oracle (s : state) (m : message) : bool :=
+    let who := fst m in
+    let what := snd m in
+    match decide (who = index_self) with
+    | left _ => false
+    | right _ => existsb (state_eqb what) (get_history s who)
+    end.
+
+    Definition not_send_oracle (s : state) (m : message)  : bool :=
+      negb (send_oracle s m).
+
+    Definition not_receive_oracle (s : state) (m : message) : bool :=
+      negb (receive_oracle s m).
    
-End ListNode.
+End ListNode. 

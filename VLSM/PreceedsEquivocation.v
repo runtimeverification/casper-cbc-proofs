@@ -339,10 +339,18 @@ Definition observable_messages
   :=
   filter (fun m => if decide ((sender m) = v) then true else false) (get_messages s).
 
-Definition message_observation_based_equivocation_evidence
-  : @observation_based_equivocation_evidence state validator message _ message_comparable_events
+Program Instance message_observation_based_equivocation_evidence
+  : @observation_based_equivocation_evidence state validator message _ message_comparable_events sender
   :=
   {| observable_events := observable_messages |}.
+Next Obligation.
+  unfold observable_messages in He.
+  apply filter_In in He.
+  destruct He as [_ Hdecide].
+  destruct (decide (sender e = v)).
+  assumption.
+  discriminate Hdecide.
+Qed. 
 
 (**
 Further, we can get all validators for a state by projecting the messages
@@ -355,7 +363,7 @@ Definition message_basic_observable_equivocation
   (validators := fun s => set_map decide_eq sender (get_messages s))
   (validators_nodup := fun s => set_map_nodup sender (get_messages s))
   : basic_equivocation state validator
-  := @basic_observable_equivocation state validator message _ _ Hevidence _ _ validators validators_nodup.
+  := @basic_observable_equivocation state validator message sender _ _ Hevidence _ _ validators validators_nodup.
 
 (**
 We can now show that the [message_based_equivocation] (customly built for

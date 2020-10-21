@@ -505,7 +505,7 @@ Qed.
 Definition free_observation_based_equivocation_evidence_index
   (i : index)
   : observation_based_equivocation_evidence
-        (vstate (IM_index i)) V message message_eq (full_node_message_comparable_events C V).
+        (vstate (IM_index i)) V message message_eq (full_node_message_comparable_events C V) sender.
 Proof.
   destruct i.
   - apply full_node_validator_observation_based_equivocation_evidence.
@@ -539,15 +539,15 @@ Proof.
 Qed.
 
 Definition composed_equivocation_evidence
-  : observation_based_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq  (full_node_message_comparable_events C V)
-  := @composed_observation_based_equivocation_evidence message V message message_eq (full_node_message_comparable_events C V) index indices IM_index free_observation_based_equivocation_evidence_index.
+  : observation_based_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq  (full_node_message_comparable_events C V) sender
+  := @composed_observation_based_equivocation_evidence message V message message_eq (full_node_message_comparable_events C V) sender index indices IM_index free_observation_based_equivocation_evidence_index.
 
 Existing Instance composed_equivocation_evidence.
 
 Definition composed_basic_observable_equivocation
   : basic_equivocation (vstate VLSM_full_composed_free) V
   := @composed_observable_basic_equivocation
-      message V message message_eq (full_node_message_comparable_events C V)
+      message V message message_eq (full_node_message_comparable_events C V) sender
       index indices IM_index
       free_observation_based_equivocation_evidence_index
       Hmeasurable Hrt
@@ -647,14 +647,14 @@ Proof.
   - intro H.
     apply set_union_in_iterated.
     apply Exists_exists.
-    exists (@observable_events _ _ _ _ _ composed_equivocation_evidence s (sender m)).
+    exists (@observable_events _ _ _ _ _ sender composed_equivocation_evidence s (sender m)).
     split.
     + apply in_map_iff. exists (sender m). split; try reflexivity.
       apply (proj2 finite_validators).
     + simpl. apply set_union_in_iterated. apply Exists_exists.
       destruct H as [[v Hm] | [client Hm]]
-      ; exists (@observable_events _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence (s (inl v)) (sender m))
-      || exists (@observable_events _ _ _ _ _ full_node_client_observation_based_equivocation_evidence (s (inr client)) (sender m))
+      ; exists (@observable_events _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence (s (inl v)) (sender m))
+      || exists (@observable_events _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence (s (inr client)) (sender m))
       ; split; try (apply in_map_iff; exists (inl v) || exists (inr client); split; try reflexivity; apply (proj2 finite_index))
       ; simpl; apply filter_In; split; try assumption
       ; rewrite decide_True; auto.
@@ -703,14 +703,14 @@ Qed.
 Lemma observable_events_commute
   (s : vstate VLSM_full_composed_free)
   (v : V)
-  : set_eq (observable_events s v) (@observable_events _ _ _ _ _  full_node_client_observation_based_equivocation_evidence (state_union s) v).
+  : set_eq (observable_events s v) (@observable_events _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence (state_union s) v).
 Proof.
   split; intros m Hm.
   - simpl.
     apply filter_In.
     split.
     + apply set_union_in_iterated. apply Exists_exists.
-      exists (@observable_events _ _ _ _ _  composed_equivocation_evidence s v).
+      exists (@observable_events _ _ _ _ _ _  composed_equivocation_evidence s v).
       split; try assumption.
       apply in_map_iff. exists v. split; try reflexivity.
       apply (proj2 finite_validators).
@@ -751,6 +751,7 @@ Proof.
       (@equivocation_evidence (set (State.message C V)) V
          (State.message C V) (@message_eq C V about_C about_V)
          (@full_node_message_comparable_events C V about_C about_V)
+         sender
          (@full_node_client_observation_based_equivocation_evidence C V
             about_C about_V) (state_union s))
       validators
