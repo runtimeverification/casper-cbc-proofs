@@ -2296,14 +2296,7 @@ Section actions.
       (TypeX := type X)
       (SignX := sign X)
       (MachineX := machine X).
-  (*
-  Record action_item :=
-    {   label_a : @label message TypeX;   
-        input_a : option message
-    }. 
-    
-  Definition action := list action_item.
-  *)
+
   Fixpoint apply_action'
     (a : action)
     (s : state) 
@@ -2337,14 +2330,6 @@ Section actions.
           destination := fst new_res;
         |}].
   Proof.
-    generalize dependent a.
-    generalize dependent a'.
-    generalize dependent s.
-    induction a.
-    - simpl.
-      destruct a'.
-      reflexivity.
-    - simpl.
   Admitted.
   
   Definition apply_action 
@@ -2365,10 +2350,6 @@ Section actions.
     (s : state) :
     apply_action b (fst (apply_action a s)) = apply_action (a ++ b) s.
   Proof.
-    induction a.
-    - simpl. reflexivity.
-    - unfold apply_action at 2.
-      unfold apply_action'.
   Admitted.
   
   Lemma protocol_action_app_iff
@@ -2378,9 +2359,5 @@ Section actions.
     protocol_action a s /\ protocol_action b s_a <-> 
     protocol_action (a ++ b) s.
   Proof.
-    unfold protocol_action.
-    unfold apply_action.
-    simpl.
-    admit.
   Admitted.
 End actions.
