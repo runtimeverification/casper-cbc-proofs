@@ -112,6 +112,14 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
         ;   destination : state
         ;   output : option message
     }.
+  
+  
+  Record action_item :=
+    {   label_a : label;   
+        input_a : option message
+    }.
+    
+  Definition action := list action_item.
 
   Inductive Trace : Type :=
   | Finite : state -> list transition_item -> Trace
@@ -177,6 +185,7 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition vtransition := @transition _ _ _ machine.
   Definition vvalid := @valid _ _ _ machine.
   Definition vtransition_item := @transition_item _ type.
+  Definition vaction_item := @action_item _ type.
   Definition vTrace := @Trace _ type.
 
 End vlsm_projections.
@@ -2279,3 +2288,76 @@ Byzantine fault tolerance analysis. *)
 
 End pre_loaded_with_all_messages_vlsm.
 
+Section actions.
+
+  Context
+      {message : Type}
+      (X : VLSM message)
+      (TypeX := type X)
+      (SignX := sign X)
+      (MachineX := machine X).
+
+  Fixpoint apply_action'
+    (a : action)
+    (s : state) 
+    : list transition_item :=
+    match a with
+    | [] => []
+    | {| label_a := l'; input_a := input' |} :: tl =>
+      let res := (@transition _ _ SignX MachineX l' (s, input')) in
+      let dest := fst res in 
+      let out := snd res in
+      {| l := l';
+         input := input';
+         output := out;
+         destination := dest
+       |} :: apply_action' tl dest
+    end. 
+  
+  Lemma apply_action'_unroll_last
+    (a : action)
+    (a' : action_item)
+    (s : state)
+    : let pref := apply_action' a s in
+      let res := last (List.map destination pref) s in
+      let input' := (input_a a') in 
+      let new_res := (@transition _ _ SignX MachineX (label_a a') (res, input')) in
+      apply_action' (a ++ [a']) s =
+      (apply_action' a s) ++ 
+      [{| l := (label_a a'); 
+          input := (input_a a'); 
+          output := snd new_res; 
+          destination := fst new_res;
+        |}].
+  Proof.
+  Admitted.
+  
+  Definition apply_action 
+    (a : action)
+    (s : state)
+    : (state * list transition_item) :=
+      let tr := apply_action' a s in
+      let res := last (List.map destination tr) s in
+      (res, tr).
+  
+  Definition protocol_action
+    (a : action)
+    (s : state) : Prop :=
+    finite_protocol_trace_from _ s (snd (apply_action a s)).
+  
+  Lemma apply_action_app 
+    (a b : action)
+    (s : state) :
+    apply_action b (fst (apply_action a s)) = apply_action (a ++ b) s.
+  Proof.
+  Admitted.
+  
+  Lemma protocol_action_app_iff
+    (a b : action)
+    (s : state) :
+    let s_a := fst (apply_action a s) in
+    protocol_action a s /\ protocol_action b s_a <-> 
+    protocol_action (a ++ b) s.
+  Proof.
+  Admitted.
+End actions.
