@@ -5,12 +5,12 @@ From CasperCBC
 
 Section actions.
   Context
-      {message : Type}
-      {T : VLSM_type message}.
+    {message : Type}
+    {T : VLSM_type message}.
 
   Record action_item :=
-    {   label_a : label;   
-        input_a : option message
+    { label_a : label;   
+      input_a : option message
     }.
     
 End actions.
@@ -18,14 +18,13 @@ End actions.
 Section apply_actions.
 
   Context
-      {message : Type}
-      (X : VLSM message)
-      .
+    {message : Type}
+    (X : VLSM message).
 
-Definition vaction_item {message : Type} (X : VLSM message) : Type
+  Definition vaction_item {message : Type} (X : VLSM message) : Type
     := @action_item message (type X).
-
-Definition vaction {message : Type} (X : VLSM message) : Type
+  
+  Definition vaction {message : Type} (X : VLSM message) : Type
     := list (vaction_item X).
 
   Definition apply_action_folder
