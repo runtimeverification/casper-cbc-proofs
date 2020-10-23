@@ -112,7 +112,6 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
         ;   destination : state
         ;   output : option message
     }.
-  
 
   Inductive Trace : Type :=
   | Finite : state -> list transition_item -> Trace
