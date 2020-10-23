@@ -533,6 +533,12 @@ Context
         (fun i : index =>
           existsb (fun s : state => negb (inb decide_eq s (get_history' s1 i))) (get_history' s2 i))
         index_listing.
+        
+     Definition state_ltb'
+      (i : index)
+      (s1 s2 : (@state index index_listing))
+      : bool
+      := inb decide_eq s1 (get_history s2 i).
 
     Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
     Proof.
@@ -2932,7 +2938,8 @@ Context
     
     Inductive lv_event_type : Type :=
     | State
-    | Message.
+    | Sent
+    | Received.
     
     Instance event_type_eq_dec : EqDecision lv_event_type.
     solve_decision.
@@ -2964,11 +2971,20 @@ Context
     match e1, e2 with
       Obs type1 subject1 state1, Obs type2 subject2 state2 =>
         match decide_eq subject1 subject2 with
-        | left _ => false
+        | right _ => false
         | _ => match type1, type2 with
                | State, State => false
-               | State, Message => false
-               | Message, State => state_ltb state1 state2
+               | State, Sent => false
+               | State, Received => false
+               | _, _ => state_ltb' subject1 state1 state2
+               (*
+               | Sent, State => state_ltb state1 state2
+               | Sent, Sent => state_ltb state1 state2
+               | Sent, Received => state_ltb state1 state2
+               | Received, State => state_ltb state1 state2
+               | Received, Sent => state_ltb state1 state2
+               | Received, Received => state_ltb state1 state2
+               *)
                end  
         end
     end.
@@ -2979,14 +2995,18 @@ Context
 
     Existing Instance comparable_lv_events.
     
-    Definition lv_observations (s : state) (target : index) :=
-      let messages := List.map (Obs Message target) (get_observations target (depth s) s) in
+    Definition lv_observations (s : state) (target : index) : set lv_event :=
+      let messages := (get_observations target (depth s) s) in
+      let sent_messages := get_history s index_self in
+      let sent_obs := List.map (Obs Sent index_self) sent_messages in
+      let received_obs := List.map (Obs Received target) (set_remove_list sent_messages messages) in
+      let state_obs := (Obs State index_self s) in
       match decide_eq target index_self with
-      | left _ => set_union decide_eq messages [(Obs State index_self s)]
-      | right _ => messages
+      | left _ => set_union decide_eq (set_union decide_eq sent_obs received_obs) [state_obs]
+      | right _ => received_obs
       end.  
           
-    Definition complete_observations (s : state) :=
+    Definition complete_observations (s : state) : set lv_event :=
       fold_right (set_union decide_eq) [] (List.map (lv_observations s) index_listing).
     
     Program Instance observable_full :
@@ -3004,11 +3024,13 @@ Context
     destruct (decide (v = index_self)).
     - apply set_union_elim in He.
       destruct He.
-      + rewrite in_map_iff in H.
-        destruct H as [x [Hobs Hinx]].
-        rewrite <- Hobs.
-        simpl.
-        reflexivity.
+      + apply set_union_elim in H. 
+        destruct H;
+        rewrite in_map_iff in H;
+        destruct H as [x [Hobs Hinx]];
+        rewrite <- Hobs;
+        simpl;
+        intuition.
       + simpl in H.
         destruct H.
         rewrite <- H.
@@ -3052,7 +3074,7 @@ Context
       get_validators_nodup.
 
    Existing Instance lv_basic_equivocation.
-   
+   (*
   Lemma observations_in_project
       (s : state)
       (target i : index)
@@ -3689,5 +3711,5 @@ Context
         rewrite Hproj_ui.
         assumption.
     Qed.
-
+   *)
 End Equivocation.

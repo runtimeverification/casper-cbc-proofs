@@ -1,4 +1,4 @@
-Require Import PeanoNat Lia FinFun Fin List ListSet RelationClasses Reals.
+Require Import Bool PeanoNat Lia FinFun Fin List ListSet RelationClasses Reals.
 
 Import ListNotations.
 
@@ -566,7 +566,6 @@ Next Obligation.
   unfold vinitial_state_prop in His.
   simpl in His.
   unfold composite_initial_state_prop in His.
-  unfold validator_message_preceeds_fn.
   unfold composed_observable_events in Hin.
   apply set_union_in_iterated in Hin.
   rewrite Exists_exists in Hin.
@@ -574,17 +573,21 @@ Next Obligation.
   rewrite in_map_iff in Hinx.
   destruct Hinx as [x0 [Heq Hind]].
   specialize (His x0).
-  unfold vinitial_state_prop in His.
+  unfold initial_state_prop in His.
+  (* 
+  assert (s x0 = ([], None)). {
+  
+  }
   unfold observable_events in Heq.
   unfold free_observation_based_equivocation_evidence_index in Heq.
+  unfold Common.initial_state_prop in His.
   admit.
-  (*
   apply set_union_iterated_empty. intros msgsi Hmsgsi.
   apply in_map_iff in Hmsgsi. destruct Hmsgsi as [i [Hmsgsi _]].
   subst.
   specialize (free_observation_based_equivocation_evidence_index i) as Hev.
   specialize (His i). unfold IM_index in *.
-  destruct i; inversion His; rewrite H0; reflexivity. *)
+  destruct i; inversion His; rewrite H0; reflexivity.  *) 
 Admitted.
 
 Next Obligation.
@@ -678,6 +681,7 @@ Proof.
       ; rewrite decide_True; auto.
 Qed.
 
+(* 
 Lemma state_union_initially_empty
   (is : vinitial_state VLSM_full_composed_free)
   : state_union (proj1_sig is) = [].
@@ -693,7 +697,25 @@ Proof.
   ; unfold initial_state_prop in His
   ;  rewrite His in Hm
   ; inversion Hm.
-Qed.
+Qed. *)
+
+(* 
+Lemma state_union_initially_empty
+  (is : vinitial_state VLSM_full_composed_free)
+  : state_union (proj1_sig is) = [].
+Proof.
+  apply incl_l_nil.
+  intros m Hm.
+  apply state_union_iff in Hm.
+  destruct Hm as [[v Hm] | [client Hm]]
+  . destruct is as [is His].
+    simpl in Hm.
+    specialize (His (inl v)) || specialize (His (inr client)).
+    simpl in His. 
+    (* unfold initial_state_prop in His. *)
+    rewrite His in Hm.
+    inversion Hm.
+Qed. *) 
 
 Existing Instance composed_basic_observable_equivocation.
 

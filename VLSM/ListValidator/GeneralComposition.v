@@ -27,12 +27,12 @@ Context
   {idec : EqDecision index}
   (message := @ListValidator.message index index_listing)
   (state := @ListValidator.state index index_listing)
-  (est : state -> bool -> Prop)
-  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec est)
+  (est : index -> state -> bool -> Prop)
+  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec (est i))
   {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
   (X := composite_vlsm IM_index i0 constraint)
   (preX := pre_loaded_with_all_messages_vlsm X)
-  (Hevidence := fun (i : index) => @observable_full index index_listing idec)
+  (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
   .
@@ -40,32 +40,39 @@ Context
   Lemma protocol_state_component_no_bottom 
     (s : vstate X)
     (i : index)
-    (Hprs : protocol_state_prop _ s) :
+    (Hprs : protocol_state_prop X s) :
     (s i) <> Bottom.
   Proof.
-    apply (@protocol_prop_no_bottom index i _ _ est).
+    apply (@protocol_prop_no_bottom index i _ _ (est i)).
     apply (protocol_state_projection IM_index i0 constraint i) in Hprs.
     unfold protocol_state_prop in Hprs.
     destruct Hprs as [om Hprs] in Hprs.
-    apply (proj_pre_loaded_protocol_prop IM_index i0 constraint i) in Hprs.
+    apply (proj_pre_loaded_with_all_messages_protocol_prop IM_index i0 constraint i) in Hprs.
     unfold protocol_state_prop.
     exists om.
     assumption.
   Qed.  
   
   Definition composed_eqv_evidence
-  : observation_based_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
+  : observation_based_equivocation_evidence (vstate X) index lv_event 
+    decide_eq 
+    comparable_lv_events 
+    get_event_subject
   :=
   (@composed_observation_based_equivocation_evidence
-    message index state
-    state_eq_dec comparable_states
+    message index lv_event
+    decide_eq 
+    comparable_lv_events
+    get_event_subject
     index index_listing IM_index Hevidence
   ).
 
   Existing Instance composed_eqv_evidence.
-
-  Definition message_observable_events_lv (m : message) (target : index) : set state :=
-    let obs := @full_observations index index_listing idec (snd m) target in
+  
+  (*   
+  
+  Definition message_observable_events_lv (m : message) (target : index) : set lv_event :=
+    let obs := @lv_observations index (fst m) index_listing idec (snd m) target in
     if (decide (fst m = target)) then set_add decide_eq (snd m) obs else obs.
 
   Lemma message_observable_consistency_lv
@@ -473,5 +480,6 @@ Context
     {
       comparable_generated_events := comparable_generated_events_lv
     }.
+    *)
 
 End Composition.

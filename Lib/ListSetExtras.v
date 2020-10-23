@@ -637,4 +637,9 @@ Proof.
   reflexivity.
 Qed.
 
+Check fold_right.
+
+Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
+  fold_right (set_remove decide_eq) l2 l1.
+
 Unset Implicit Arguments.

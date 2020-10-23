@@ -24,7 +24,7 @@ Section EquivocationAwareValidator.
     (X := @VLSM_list _ index_self index_listing idec)
     {Mindex : Measurable index}
     {Rindex : ReachableThreshold index}
-    (eqv := @lv_basic_equivocation index index_listing Hfinite idec Mindex Rindex)
+    (eqv := @lv_basic_equivocation index index_self index_listing Hfinite idec Mindex Rindex)
     .
 
   Existing Instance eqv.
@@ -75,9 +75,9 @@ Section EquivocationAwareValidator.
     discriminate Hnotb.
     unfold in_mode_b in Hnotb.
     remember (no_equivocating_decisions (Something b0 is) (equivocating_validators (Something b0 is))) as d.
-    destruct (inb (option_eq_dec bool_dec) (Some b) (mode d)) eqn : eq_b.
+    destruct (inb option_eq_dec (Some b) (mode d)) eqn : eq_b.
     discriminate Hnotb.
-    assert (inb (option_eq_dec bool_dec) (Some (negb b)) (mode d) = true). {  
+    assert (inb option_eq_dec (Some (negb b)) (mode d) = true). {  
       apply in_correct' in eq_b.
       apply in_correct' in Hnotb.
       apply in_correct.
@@ -94,10 +94,10 @@ Section EquivocationAwareValidator.
       }
       destruct H0 as [x Hin].
       destruct x.
-      + destruct (eq_dec (negb b) b1).
+      + destruct (decide ((negb b) = b1)).
         rewrite <- e in Hin.
         assumption.
-        destruct b; destruct b1.
+        destruct b; destruct b1;
         simpl. contradiction.
         simpl. assumption.
         simpl. assumption.

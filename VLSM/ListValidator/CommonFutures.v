@@ -25,55 +25,52 @@ Context
   {i0 : index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
-  {idec : EqDec index}
+  {idec : EqDecision index}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
-  (est' := (@EquivocationAwareListValidator.equivocation_aware_estimator _ _ Hfinite _ _ _ ))
-  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec est')
+  (est' := fun (i : index) => (@EquivocationAwareListValidator.equivocation_aware_estimator _ i _ Hfinite _ _ _ ))
+  (IM_index := fun (i : index) => @VLSM_list index i index_listing idec (est' i))
   (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec ListValidator.estimator)
-  (X := free_composite_vlsm IM_index i0)
-  (preX := pre_loaded_vlsm X)
-  (Hevidence := fun (i : index) => @observable_full index index_listing idec)
-  (ce := @composed_computable_observable_equivocation_evidence
-    message index state
-    state_eq_dec comparable_states
-    index idec index_listing IM_index Hevidence i0 (free_constraint IM_index)).
-  
-  (* 
-  (ce := @composed_eqv_evidence index i0 index_listing _ est' (free_constraint IM_index)) 
-  (Hc := @Hcomposite index i0 index_listing Hfinite _ est' (free_constraint IM_index))
-  (cvcgel := @composite_vlsm_comparable_generated_events_lv index i0 index_listing Hfinite _ est' (free_constraint IM_index)).
-  *)
+  (X := composite_vlsm IM_index i0 (free_constraint IM_index))
+  (preX := pre_loaded_with_all_messages_vlsm X)
+  (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
+  (ce := @composed_observation_based_equivocation_evidence
+    message index lv_event
+    decide_eq 
+    comparable_lv_events
+    get_event_subject
+    index index_listing IM_index Hevidence).
   
   Definition component_list (s : vstate X) (li : list index) :=
     List.map s li.
-  
-  Definition unite_observations (ls : list state) : list (@state index index_listing) := 
-    fold_right (set_union eq_dec) [] (List.map complete_observations ls).
+  (*
+  Definition unite_observations (ls : list state) : set lv_event := 
+    fold_right (set_union decide_eq) [] (List.map (@complete_observations) ls). *)
   
   Definition GH (s : vstate X) : list index := 
-    List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index state _ comparable_states ce s i)) index_listing.
+    List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index lv_event _ comparable_lv_events get_event_subject ce s i)) index_listing.
   
   Definition GE (s : vstate X) : list index :=
     set_diff idec index_listing (GH s).
     
   Definition can_receive_prop (to : index) (s : state) (m : message) :=
-    @list_valid index to index_listing eq_dec (ListValidator.estimator) receive (s, (Some m)).
+    @list_valid index to index_listing decide_eq (ListValidator.estimator) receive (s, (Some m)).
   
   Definition can_receive (to : index) (s : (@state index index_listing)) (m : message) : bool :=
     let s' := snd m in
     let from := fst m in 
-    match eq_dec from to with
+    match decide_eq from to with
     | left _ => false
-    | right _ => match eq_dec s' Bottom with
+    | right _ => match decide_eq s' Bottom with
                  | left _ => false
-                 | right _ => match eq_dec (project s from) (project s' from) with
+                 | right _ => match decide_eq (project s from) (project s' from) with
                               | left _ => true
                               | right _ => false
                               end
                  end
     end.
   
+  (*
   Lemma can_receive_function (to : index) : PredicateFunction2 (can_receive_prop to) (can_receive to).
   Proof.
     unfold PredicateFunction2.
@@ -84,9 +81,9 @@ Context
       unfold can_receive.
       unfold list_valid in H.
       destruct H as [Hproject [Hnb Hnself]]; try
-      rewrite eq_dec_if_false.
-      rewrite eq_dec_if_false.
-      rewrite eq_dec_if_true.
+      rewrite decide_False.
+      rewrite decide_False.
+      rewrite decide_False.
       reflexivity.
       assumption.
       assumption.
@@ -102,30 +99,31 @@ Context
       discriminate H.
       intuition.
       destruct (eq_dec (fst b) to); destruct (eq_dec (snd b) Bottom); discriminate H.
-  Qed.
+  Qed. *)
   
   Definition can_receive_extended (to : index) (s : (@state index index_listing)) (m : message) : bool :=
     let s' := snd m in
     let from := fst m in
-    match eq_dec s Bottom with
+    match decide_eq s Bottom with
     | left _ => true 
     | right _ => state_ltb (project s from) s'
     end.
   
-  Definition feasible_update_value (s : (@state index index_listing)) : bool :=
+  Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
     | Bottom => false
-    | Something c is => match (@equivocation_aware_estimatorb index index_listing Hfinite eq_dec _ _ s false) with
+    | Something c is => match (@equivocation_aware_estimatorb index who index_listing Hfinite decide_eq _ _ s false) with
                         | true => false
                         | false => true
                         end
     end.
   
   Lemma feasible_update_value_correct 
-    (s : (@state index index_listing)) :
-    (@equivocation_aware_estimator index index_listing Hfinite eq_dec _ _ s (feasible_update_value s)).
+    (s : (@state index index_listing))
+    (who : index) :
+    (@equivocation_aware_estimator index who index_listing Hfinite decide_eq _ _ s (feasible_update_value s who)).
   Proof.
-   destruct (feasible_update_value s) eqn : eq_fv.
+   destruct (feasible_update_value s who) eqn : eq_fv.
    - unfold feasible_update_value in eq_fv.
      destruct s.
      discriminate eq_fv.
@@ -145,7 +143,7 @@ Context
   Admitted.
   
   Definition feasible_update_single (s : (@state index index_listing)) (who : index) : transition_item :=
-    let cv := feasible_update_value s in
+    let cv := feasible_update_value s who in
     let res := @list_transition index who _ _ (update cv) (s, None) in
     @Build_transition_item _ (type (IM_index who)) (update cv) None (fst res) (snd res).
   
@@ -164,7 +162,7 @@ Context
     assumption.
     simpl.
     apply option_protocol_message_None.
-    apply feasible_update_value_correct.
+    apply feasible_update_value_correct with (s := s who) (who := who).
   Qed.
   (* pair (stare, transition_item) *)
   
@@ -215,7 +213,7 @@ Context
         rewrite Heqitem.
         simpl.
         split.
-        apply feasible_update_value_correct.
+        apply feasible_update_value_correct with (s := s a) (who := a).
         reflexivity.
         rewrite Heqitem.
         simpl.
@@ -325,7 +323,7 @@ Context
     - simpl in *.
       intuition.
     - simpl in IHli.
-      destruct (eq_dec i a).
+      destruct (decide (i = a)).
       + intros. 
         unfold s'.
         unfold resulting_state.
@@ -339,11 +337,11 @@ Context
           unfold lift_to_composite_transition_item'.
           simpl.
           unfold lift_to_composite_state'.
-          remember (update_consensus (update_state (s a) (s a) a) (feasible_update_value (s a))) as su.
+          remember (update_consensus (update_state (s a) (s a) a) (feasible_update_value (s a) a)) as su.
           rewrite e.
           rewrite state_update_eq.
           rewrite Heqsu.
-          rewrite <- update_consensus_clean with (value := (feasible_update_value (s a))).
+          rewrite <- update_consensus_clean with (value := (feasible_update_value (s a) a)).
           rewrite (@project_same index index_listing Hfinite).
           reflexivity.
           apply protocol_state_component_no_bottom.
