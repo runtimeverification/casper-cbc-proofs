@@ -382,16 +382,6 @@ Proof.
   - exfalso. inversion H1.
 Qed.
 
-Lemma set_map_injective {A B} `{EqDecision A} (f : B -> A) :
-  Injective f ->
-  forall s s',
-    set_eq (set_map decide_eq f s) (set_map decide_eq f s') -> set_eq s s'.
-Proof.
-  intros. split; intros x Hin;
-    apply (set_map_in f) in Hin; apply H0 in Hin; apply set_map_exists in Hin
-    ; destruct Hin as [x' [Hin Heq]]; apply H in Heq; subst; assumption.
-Qed.
-
 Lemma filter_set_add `{StrictlyComparable X} :
   forall (l : list X) (f : X -> bool) (x : X),
     f x = false ->

@@ -296,15 +296,6 @@ Definition incl_correct `{EqDecision A}
   : incl l1 l2 <-> inclb l1 l2 = true
   := incl_function l1 l2.
 
-Lemma map_injective : forall A B (f : A -> B),
-  Injective f -> Injective (map f).
-Proof.
-  intros. intros xs ys. generalize dependent ys.
-  induction xs; intros; destruct ys; split; intros; try reflexivity; try discriminate.
-  - simpl in H0. inversion H0 . apply H in H2; subst. apply IHxs in H3; subst. reflexivity.
-  - rewrite H0. reflexivity.
-Qed.
-
 Lemma map_incl {A B} (f : B -> A) : forall s s',
   incl s s' ->
   incl (map f s) (map f s').

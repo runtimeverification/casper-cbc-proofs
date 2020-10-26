@@ -165,15 +165,6 @@ Proof.
   - rewrite Hirrelevance at 1. reflexivity.
 Qed.
 
-Class TotalOrder {A} (lt : relation A) : Prop :=
-   totality : forall c1 c2, c1 = c2 \/ lt c1 c2 \/ lt c2 c1.
-
-Class Injective {A B} (f : A -> B) : Prop :=
-  injective : forall x y, f x = f y <-> x = y.
-
-Class Commutative {A B : Type} (f : A -> A -> B) :=
-  commutative : forall a1 a2, f a1 a2 = f a2 a1.
-
 Class DecidablePred {A} (r : A -> Prop) :=
   pred_dec : forall (a : A), r a \/ ~ r a.
 
@@ -339,18 +330,6 @@ Proof.
   intros x y Hxy Hyx. apply (TR _ _ _ _ Hxy) in Hyx.
   assert (compare x x = Eq) by (apply compare_eq; reflexivity).
   rewrite Hyx in H; discriminate.
-Qed.
-
-Lemma compare_lt_total_order {A} `{CompareStrictOrder A} :
-  TotalOrder (compare_lt compare).
-Proof.
-  intros x y.
-  assert (CSO := H).
-  destruct H as [R TR].
-  destruct (compare x y) eqn:Hcmp.
-  - apply R in Hcmp. left. assumption.
-  - right. left. assumption.
-  - right. right. now apply compare_asymmetric_intro.
 Qed.
 
 (* We can easily obtain inhabitants of above Typeclasses using Program Definitions, for instance : *)

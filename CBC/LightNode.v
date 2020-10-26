@@ -18,7 +18,7 @@ Class MessageHash message hash :=
   }.
 
 Class InjectiveMessageHash message hash (Hmh : MessageHash message hash) :=
-  { hash_message_injective : Injective hash_message
+  { hash_message_injective : Inj eq eq hash_message
   }.
 
 Section LightNode_protocol_eq.
