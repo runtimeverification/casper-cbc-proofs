@@ -8,6 +8,7 @@ From CasperCBC
   Require Import
     StreamExtras ListExtras Preamble
     VLSM.Common
+    VLSM.Actions
     .
 (**
 
@@ -228,8 +229,6 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       : composite_state
       := state_update s j sj.
     
-    Check @state.
-    
     Definition lift_to_composite_transition_item'
       (s : composite_state)
       (j : index)
@@ -243,9 +242,6 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       - exact (lift_to_composite_state' s j destination).
       - exact output.
     Defined.
-    
-    Check @transition_item.
-    Check @action_item.
     
     Definition lift_to_composite_action_item
       (i : index)
@@ -654,6 +650,19 @@ for the [free_composite_vlsm].
           with (sj, om0).
           f_equal.
           apply state_update_twice.
+    Qed.
+    
+    Lemma protocol_message_prop_composite_free_lift
+      (j : index)
+      (m : message)
+      (Hp : protocol_message_prop (IM j) m)
+      : protocol_message_prop free_composite_vlsm m.
+    Proof.
+      unfold protocol_message_prop in *.
+      destruct Hp as [s Hprop].
+      apply protocol_prop_composite_free_lift in Hprop.
+      exists (lift_to_composite_state j s).
+      assumption.
     Qed.
 
   End composite_vlsm.

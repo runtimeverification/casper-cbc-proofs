@@ -8,6 +8,7 @@ Require Import
   Lib.ListSetExtras
   Lib.SortedLists
   VLSM.Common
+  VLSM.Actions
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
@@ -533,14 +534,14 @@ Context
   (* 
   Definition sync_action' (to from : index) (ls : state) : (@action _ (type (IM_index t *)
   
-  Definition lift_to_receive_item (to from : index) (s : state): @action_item _ (type (IM_index to)) :=
+  Definition lift_to_receive_item (to from : index) (s : state): vaction_item (IM_index to) :=
     @Build_action_item _ (type (IM_index to)) receive (Some (from, s)).
   
-  Definition sync_action (to from : index) (ls : list state) : (@action _ (type X)) := 
+  Definition sync_action (to from : index) (ls : list state) : (vaction X) := 
     let tmp := List.map (lift_to_receive_item to from) ls in
     List.map (lift_to_composite_action_item IM_index to) tmp.
   
-  Definition sync (s : vstate X) (s': state) (to from : index) : option (action) :=
+  Definition sync (s : vstate X) (s': state) (to from : index) : option (vaction X) :=
     let history_s := get_history (s to) from in
     let history_s' := get_history s' from in
     let rem_states := complete_suffix history_s' history_s in
@@ -555,12 +556,14 @@ Context
     (Hpr : protocol_state_prop X s)
     (Hpr' : protocol_state_prop X s')
     (to from :index)
-    (a : action)
+    (Hdif : to <> from)
+    (a : vaction X)
     (Hsync : sync s (s' from) to from = Some a) :
-    let res := fst (apply_action _ a s) in
-    protocol_action _ a s /\
-    project (res to) from = (project (s' from)) from.
+    let res := snd (apply_action X s a) in
+    finite_protocol_action_from X s a.
    Proof.
+    generalize dependent s.
+   (*
     assert (Hsnb : (s to) <> Bottom). {
       apply protocol_state_component_no_bottom.
       assumption.
@@ -569,64 +572,85 @@ Context
     assert (Hs'nb : (s' from) <> Bottom). {
       apply protocol_state_component_no_bottom.
       assumption.
-    }
-    (* 
-    generalize dependent s.
-    generalize dependent s'. *)
-    induction a using rev_ind.
+    } *)
+    
+    induction a.
     - intros.
       simpl in *.
-      repeat split.
-      unfold protocol_action.
+      unfold finite_protocol_action_from.
       simpl.
-      apply finite_ptrace_empty.
+      apply finite_ptrace_empty. 
       assumption.
-      unfold res.
+    - intros.
+      simpl in *.
+      unfold finite_protocol_action_from.
+      replace (a :: a0) with ([a] ++ a0).
+      rewrite apply_action_app.
       unfold sync in Hsync.
       destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_cs.
       inversion Hsync.
       unfold sync_action in H0.
-      apply map_eq_nil in H0.
-      apply map_eq_nil in H0.
+      apply map_eq_cons in H0.
+      destruct H0 as [a1 [tl [H0 [Hh Htl]]]].
+      apply map_eq_cons in H0.
+      destruct H0 as [sa [tls [H0 [Hh' Htl']]]].
       apply complete_suffix_correct in eq_cs.
-      assert (l = []). {
-        apply length_zero_iff_nil.
-        rewrite <- rev_length.
-        rewrite H0.
-        intuition.
-      }
-      rewrite H in eq_cs. simpl in eq_cs.
+      replace (sa :: tls) with ([sa] ++ tls) in H0.
+      apply rev_eq_app in H0.
+      simpl in H0.
+      rewrite H0 in eq_cs.
+      assert (eq_cs' := eq_cs).
+      rewrite <- app_assoc in eq_cs.
+      apply (@unfold_history index index_listing Hfinite) in eq_cs.
       Check @eq_history_eq_project.
-      apply (@eq_history_eq_project index to index_listing Hfinite idec est' eq_dec Mindex Rindex) in eq_cs.
-      symmetry. assumption.
-      discriminate Hsync.
-    - intros.
-      repeat split.
-      unfold protocol_action.
-      unfold sync in Hsync.
-      destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_c.
-      apply complete_suffix_correct in eq_c.
-      inversion Hsync.
-      unfold sync_action in H0.
-      destruct l eqn: eq_l.
-      simpl in H0.
-      symmetry in H0.
-      assert (length (a ++ [x]) > 0). {
-        rewrite app_length.
-        simpl.
-        lia.
+      apply (@eq_history_eq_project index to index_listing Hfinite _ (est' to) _ _ _ _) in eq_cs.
+      
+      assert (Hinsa: In sa (get_history (s' from) from)). {
+        rewrite eq_cs'.
+        rewrite <- app_assoc.
+        apply in_elt.
       }
-      admit.
-      simpl in H0.
-      rewrite map_app in H0.
-      rewrite map_app in H0.
-      simpl.
-      apply app_inj_tail in H0.
-      rewrite apply_action'_unroll_last.
-      apply extend_right_finite_trace_from.
-      spec IHa.
-      destruct H0 as [left right].
-      unfold sync.
+      
+      assert (finite_protocol_action_from X s [a]). {
+        unfold finite_protocol_action_from.
+        unfold apply_action.
+        simpl.
+        unfold lift_to_receive_item in Hh'.
+        rewrite <- Hh' in Hh.
+        unfold lift_to_composite_action_item in Hh.
+        destruct a.
+        destruct (vtransition X label_a (s, input_a)) eqn : eq_v.
+        simpl.
+        assert (protocol_transition X label_a (s, input_a) (s0, o)). {
+          unfold protocol_transition.
+          repeat split.
+          - assumption.
+          - inversion Hh.
+            apply option_protocol_message_Some.
+            apply protocol_message_prop_composite_free_lift with (j := from).
+            apply can_emit_protocol.
+            Check (@in_history_can_emits).
+            apply (@in_history_can_emits index to index_listing Hfinite _ (est' from) _ _  _) in Hinsa.
+            unfold IM_index.
+            admit.
+            
+          - simpl.
+            simpl in Hh.
+            inversion Hh.
+            unfold vvalid.
+            apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
+            unfold valid.
+            simpl.
+            repeat split; assumption.
+          - assumption.
+        }
+        
+        apply finite_ptrace_extend.
+        apply finite_ptrace_empty.
+        apply protocol_transition_destination in H.
+        assumption.
+      }
+    
    Admitted.
     
      
