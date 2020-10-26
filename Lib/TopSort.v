@@ -268,11 +268,7 @@ Section topologically_sorted.
 
 (** ** Topologically sorted lists. Definition and properties. *)
 
-Context
-  `{EqDecision A}
-  (preceeds : A -> A -> bool)
-  (l : list A)
-  .
+Context {A} (preceeds : A -> A -> Prop) {rd: RelDecision preceeds} (l : list A).
 
 (**
 We say that a list <<l>> is [topologically_sorted] w.r.t a <<preceeds>>
@@ -282,7 +278,7 @@ Definition topologically_sorted
   :=
   forall
     (a b : A)
-    (Hab : preceeds a b = true)
+    (Hab : preceeds a b)
     (l1 l2 : list A)
     (Heq : l = l1 ++ [b] ++ l2)
     , ~In a l2.
@@ -311,7 +307,7 @@ a [topologically_sorted] list.
 *)
 Lemma topologically_sorted_occurrences_ordering
   (a b : A)
-  (Hab : preceeds a b = true)
+  (Hab : preceeds a b)
   (la1 la2 : list A)
   (Heqa : l = la1 ++ [a] ++ la2)
   (lb1 lb2 : list A)
@@ -324,14 +320,12 @@ Proof.
   rewrite Heqa in Heqb.
   assert (Ha : ~In a (b :: lb2)).
   { intro Ha. apply Hts. destruct Ha; try assumption. subst.
-    
-    rewrite (preceeds_irreflexive preceeds P a Hpa) in Hab.
-    discriminate Hab.
+    apply (preceeds_irreflexive preceeds P a Hpa) in Hab.
+    contradict Hab.
   }
   specialize (occurrences_ordering a b la1 la2 lb1 lb2 Heqb Ha).
   intro; assumption.
 Qed.
-
 
 (**
 If <<a>> and <<b>> are in a [topologically_sorted] list <<lts>> and <<a preceeds b>>
@@ -339,7 +333,7 @@ then there is an <<a>> before any occurence of <<b>> in <<lts>>.
 *)
 Corollary top_sort_before
   (a b : A)
-  (Hab : preceeds a b = true)
+  (Hab : preceeds a b)
   (Ha : In a l)
   (l1 l2 : list A)
   (Heq : l = l1 ++ [b] ++ l2)
@@ -358,7 +352,7 @@ Qed.
 *)
 Corollary top_sort_preceeds
   (a b : A)
-  (Hab : preceeds a b = true)
+  (Hab : preceeds a b)
   (Ha : In a l)
   (Hb : In b l)
   : exists l1 l2 l3, l = l1 ++ [a] ++ l2 ++ [b] ++ l3.
@@ -378,7 +372,8 @@ End topologically_sorted.
 
 Lemma toplogically_sorted_remove_last
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)    
+  {rd: RelDecision preceeds}
   (l : list A)
   (Hts : topologically_sorted preceeds l)
   (init : list A)
@@ -396,15 +391,17 @@ Qed.
 
 Definition preceeds_closed
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)
+  {rd: RelDecision preceeds}
   (s : set A)
   : Prop
   :=
-  Forall (fun (b : A) => forall (a : A) (Hmj : preceeds a b = true), In a s) s.
+  Forall (fun (b : A) => forall (a : A) (Hmj : preceeds a b), In a s) s.
 
 Lemma preceeds_closed_set_eq
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)
+  {rd: RelDecision preceeds}
   (s1 s2 : set A)
   (Heq : set_eq s1 s2)
   : preceeds_closed preceeds s1 <-> preceeds_closed preceeds s2.
@@ -417,7 +414,8 @@ Qed.
 
 Lemma topologically_sorted_preceeds_closed_remove_last
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)
+  {rd: RelDecision preceeds}
   (P : A -> Prop)
   {Hso : StrictOrder (preceeds_P preceeds P)}
   (l : list A)
@@ -456,14 +454,12 @@ Qed.
 Section top_sort.
 (** ** The topological sorting algorithm *)
 
-Context
-  `{EqDecision A}
-  (preceeds : A -> A -> bool)
-  .
+Context {A} `{EqDecision A} (preceeds : A -> A -> Prop) {rd: RelDecision preceeds}.
 
 (** Iteratively extracts <<n>> elements with minimal number of precessors
 from a given list.
-*)
+ *)
+
 Fixpoint top_sort_n
   (n : nat)
   (l : list A)
@@ -547,7 +543,7 @@ Proof.
         assert (Hlen' : len = length (a :: set_remove decide_eq (min_predecessors preceeds (a :: l) l a) l)).
         { simpl.
           rewrite <- set_remove_length; try assumption.
-          pose (@min_predecessors_in _ preceeds (a :: l) l a) as Hin.
+          pose (@min_predecessors_in _ preceeds _ (a :: l) l a) as Hin.
           destruct Hin as [Heq | Hin]; try assumption.
           elim n. assumption.
         }
@@ -564,7 +560,7 @@ Proof.
           inversion Hl. elim H1. assumption.
         - simpl.
           rewrite <- set_remove_length; try assumption.
-          pose (@min_predecessors_in _ preceeds (a :: l) l a) as Hin.
+          pose (@min_predecessors_in _ preceeds _ (a :: l) l a) as Hin.
           destruct Hin as [Heq | Hin]; try assumption.
           elim n. assumption.
         }
@@ -639,7 +635,8 @@ Proof.
       rewrite <- Heqmin. simpl. intro Hmin.
       apply zero_predecessors in Hmin.
       rewrite Forall_forall in Hmin. apply Hmin in Ha.
-      rewrite Ha in Hab. discriminate Hab.
+      apply bool_decide_eq_false in Ha.
+      congruence.
     }
     destruct l1 as [| _min l1]; inversion Heq
     ; try (subst b; elim Hminb; reflexivity).
