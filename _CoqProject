@@ -1,6 +1,7 @@
 -Q . CasperCBC
 
 VLSM/Common.v
+VLSM/Actions.v
 VLSM/CommonTraces.v
 VLSM/Composition.v
 VLSM/Decisions.v
