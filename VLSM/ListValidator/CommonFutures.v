@@ -417,6 +417,7 @@ Context
     apply ((proj2 Hfinite) i).
   Qed.
   
+  (*
   Lemma everything_in_projections 
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
@@ -502,7 +503,7 @@ Context
       }
       rewrite H0 in Hina.
       assumption.
-  Qed.
+  Qed. *)
   
   Definition latest_versions (s : vstate X) (i : index) : list state :=
     let sc := List.map s index_listing in
@@ -536,7 +537,7 @@ Context
     @Build_action_item _ (type (IM_index to)) receive (Some (from, s)).
   
   Definition sync_action (to from : index) (ls : list state) : (@action _ (type X)) := 
-    let tmp := List.map (lift_to_receive_item to from)ls in
+    let tmp := List.map (lift_to_receive_item to from) ls in
     List.map (lift_to_composite_action_item IM_index to) tmp.
   
   Definition sync (s : vstate X) (s': state) (to from : index) : option (action) :=
@@ -548,17 +549,6 @@ Context
     | Some ss => let rem_action := sync_action to from (rev ss) in
                  Some rem_action
     end.
-   
-   Lemma only_receives_in_sync 
-    (s s' : vstate X)
-    (to from : index)
-    (a : action)
-    (Hsync : sync s (s' from) to from = Some a) 
-    (ai : action_item)
-    (Hin : In ai a) :
-    (projT2 (label_a ai)) = receive /\ (input_a ai <> None).
-   Proof.
-   Admitted.
     
    Lemma something
     (s s': vstate X)
