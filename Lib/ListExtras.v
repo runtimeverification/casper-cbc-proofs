@@ -270,6 +270,19 @@ Proof.
   apply in_function.
 Qed.
 
+Lemma in_correct_refl `{EqDecision X} :
+  forall (l : list X) (x : X),
+    In x l <-> inb decide_eq x l.
+Proof.
+  intros s msg; unfold Is_true.
+  destruct (inb decide_eq msg s) eqn:?.
+  - apply in_correct in Heqb.
+    firstorder.
+  - split; firstorder.
+    apply in_correct in H.
+    congruence.
+Qed.
+
 Lemma in_correct' `{EqDecision X} :
   forall (l : list X) (x : X),
     ~ In x l <-> inb decide_eq x l = false.

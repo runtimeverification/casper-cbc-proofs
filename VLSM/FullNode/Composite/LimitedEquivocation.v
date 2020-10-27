@@ -751,6 +751,27 @@ Proof.
   - right. exists client. assumption.
 Qed.
 
+Instance StrictOrder_preceeds_happens_before_fn :
+ StrictOrder (preceeds_P happens_before_fn (byzantine_message_prop FreeX)).
+Proof.
+unfold preceeds_P; simpl.
+assert (Hstr: StrictOrder
+ (fun x0 y : {x : State.message C V | byzantine_message_prop FreeX x} =>
+  validator_message_preceeds C V (proj1_sig x0) (proj1_sig y))).
+apply free_full_byzantine_message_preceeds_stict_order.
+unfold validator_message_preceeds in Hstr.
+unfold Bool.Is_true.
+destruct Hstr.
+constructor.
+* intro x'; specialize (StrictOrder_Irreflexive x').
+  generalize StrictOrder_Irreflexive.
+  unfold complement; simpl.
+  destruct (validator_message_preceeds_fn C V _ _); intuition.
+* intros x' y' z'. specialize (StrictOrder_Transitive x' y' z').
+  generalize StrictOrder_Transitive.
+  repeat destruct (validator_message_preceeds_fn C V _ _); intuition.
+Qed.
+
 Lemma receive_messages_protocol
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
@@ -775,22 +796,7 @@ Proof.
     { apply topologically_sorted_preceeds_closed_remove_last
         with (byzantine_message_prop FreeX) (ms ++ [x]) x
       ; try assumption; try reflexivity.
-      unfold preceeds_P; simpl.
-      assert (Hstr: StrictOrder
-    (fun x0 y : {x : State.message C V | byzantine_message_prop FreeX x} =>
-     validator_message_preceeds C V (proj1_sig x0) (proj1_sig y))).
-      apply free_full_byzantine_message_preceeds_stict_order.
-      unfold validator_message_preceeds in Hstr.
-      unfold Bool.Is_true.
-      destruct Hstr.
-      constructor.
-      * intro x'; specialize (StrictOrder_Irreflexive x').
-        generalize StrictOrder_Irreflexive.
-        unfold complement; simpl.
-        destruct (validator_message_preceeds_fn C V _ _); intuition.
-      * intros x' y' z'. specialize (StrictOrder_Transitive x' y' z').
-        generalize StrictOrder_Transitive.
-        repeat destruct (validator_message_preceeds_fn C V _ _); intuition.
+      apply StrictOrder_preceeds_happens_before_fn.
     }
     assert (Hmst' : topologically_sorted happens_before_fn ms ).
     { apply toplogically_sorted_remove_last with (ms ++ [x]) x; try assumption.
@@ -855,6 +861,8 @@ Proof.
         ; unfold unmake_justification
         ; assumption
         ).
+        admit.
+        admit.
       pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
       specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
       intros [_ Hincl].
@@ -1097,7 +1105,7 @@ Proof.
           with (msgs, final).
         reflexivity.
       * reflexivity.
-Qed.
+Admitted.
 
 Fixpoint receive_messages_iterated
   (s : vstate FreeX)
@@ -1255,7 +1263,7 @@ Proof.
   unfold happens_before_fn in Hmj. simpl in Hmj.
   unfold validator_message_preceeds_fn in Hmj. simpl in Hmj.
   destruct m as (cm, vm, jm).
-  specialize (in_correct (unmake_message_set (justification_message_set jm)) mj); intro Hin.
+  specialize (in_correct_refl (unmake_message_set (justification_message_set jm)) mj); intro Hin.
   apply Hin in Hmj.
   pose (in_free_byzantine_state_justification s Hs' ((cm, vm, jm))) as Hinm.
   destruct Hm as [[v Hm] | [client Hm]].
@@ -1348,10 +1356,10 @@ Proof.
     + specialize
         (@top_sort_correct _ _
           happens_before_fn
-          (byzantine_message_prop FreeX)).
+          happens_before_rel (byzantine_message_prop FreeX)).
       intro H.
       apply H.
-      * apply free_full_byzantine_message_preceeds_stict_order.
+      * apply StrictOrder_preceeds_happens_before_fn.
       * apply state_union_free_byzantine_message. assumption.
   - intros i i'.
     specialize (union_state_state_union s).
