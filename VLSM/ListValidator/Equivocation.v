@@ -421,18 +421,7 @@ Context
         rewrite eq_project.
         reflexivity.
     Qed.
-    
-    Lemma eq_history_eq_project
-      (s s' : state)
-      (i : index) :
-      get_history' s i = get_history' s' i <->
-      project s i = @project index index_listing idec s' i.
-    Proof.
-      split.
-      - intros.
-        
-    Admitted.
-  
+
     Lemma history_incl_equiv_suffix
       (s1 s2 : state)
       (i : index)
@@ -2372,6 +2361,77 @@ Context
             assumption.
         + reflexivity.
     Qed.
+    
+    Lemma bottom_project_empty_history
+      (s : state)
+      (i : index)
+      (Hb : project s i = Bottom) : 
+      get_history' s i = [].
+    Proof.
+      unfold get_history'.
+      destruct s.
+      - reflexivity.
+      - unfold project in Hb.
+        unfold last_recorded.
+        rewrite Hb.
+        simpl.
+        reflexivity.
+    Qed.
+   
+    Lemma eq_history_eq_project
+      (s s' : state)
+      (i : index) :
+      get_history' s i = get_history' s' i <->
+      project s i = @project index index_listing idec s' i.
+    Proof.
+      destruct (project s i) eqn : eq_ps; destruct (project s' i) eqn : eq_ps'; split; intros.
+      - reflexivity.
+      - apply bottom_project_empty_history in eq_ps.
+        apply bottom_project_empty_history in eq_ps'.
+        rewrite eq_ps. rewrite eq_ps'. reflexivity.
+      - apply bottom_project_empty_history in eq_ps.
+        rewrite eq_ps in H.
+        specialize (unfold_history_cons s' i). intros.
+        spec H0. intros contra. rewrite eq_ps' in contra. discriminate contra.
+        rewrite H0 in H. discriminate H.
+      - discriminate H.
+      - apply bottom_project_empty_history in eq_ps'.
+        rewrite eq_ps' in H.
+        specialize (unfold_history_cons s i). intros.
+        spec H0. intros contra. rewrite eq_ps in contra. discriminate contra.
+        rewrite H0 in H. discriminate H.
+      - discriminate H.
+      - unfold get_history' in H.
+        destruct s; destruct s';
+        try discriminate eq_ps';
+        try discriminate eq_ps.
+        + unfold rec_history in H.
+          destruct (depth (last_recorded index_listing is1 i)) eqn : eq_d1;
+          destruct (depth (last_recorded index_listing is2 i)) eqn : eq_d2;
+          try unfold last_recorded in *;
+          try unfold project in *;
+          try apply depth_zero_bottom in eq_d1;
+          try apply depth_zero_bottom in eq_d2;
+          try rewrite eq_d1 in eq_ps;
+          try rewrite eq_d2 in eq_ps';
+          try discriminate eq_ps;
+          try discriminate eq_ps'.
+          rewrite eq_ps in H.
+          rewrite eq_ps' in H.
+          inversion H.
+          reflexivity.
+      - specialize (unfold_history_cons s i) as Hus.
+        specialize (unfold_history_cons s' i) as Hus'.
+        spec Hus. intros contra. rewrite contra in eq_ps. discriminate eq_ps.
+        spec Hus'. intros contra. rewrite contra in eq_ps'. discriminate eq_ps'.
+        rewrite H in eq_ps.
+        rewrite eq_ps in Hus.
+        rewrite eq_ps' in Hus'.
+        rewrite Hus.
+        rewrite Hus'.
+        reflexivity.
+   Qed.
+  
     
     Lemma in_history_can_emits
       (s sm : state)
