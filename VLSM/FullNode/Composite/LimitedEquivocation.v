@@ -760,16 +760,18 @@ assert (Hstr: StrictOrder
   validator_message_preceeds C V (proj1_sig x0) (proj1_sig y))).
 apply free_full_byzantine_message_preceeds_stict_order.
 unfold validator_message_preceeds in Hstr.
-unfold Bool.Is_true.
 destruct Hstr.
 constructor.
 * intro x'; specialize (StrictOrder_Irreflexive x').
   generalize StrictOrder_Irreflexive.
-  unfold complement; simpl.
-  destruct (validator_message_preceeds_fn C V _ _); intuition.
+  unfold complement; simpl; intros.
+  apply StrictOrder_Irreflexive0.
+  apply Bool.Is_true_eq_true.
+  assumption.
 * intros x' y' z'. specialize (StrictOrder_Transitive x' y' z').
-  generalize StrictOrder_Transitive.
-  repeat destruct (validator_message_preceeds_fn C V _ _); intuition.
+  generalize StrictOrder_Transitive; intros.
+  apply Bool.Is_true_eq_left.
+  apply StrictOrder_Transitive0; apply Bool.Is_true_eq_true; assumption.
 Qed.
 
 Lemma receive_messages_protocol
@@ -821,7 +823,8 @@ Proof.
       assumption.
     + assert (Hx : In x (ms ++ [x])).
         { apply in_app_iff. right. left. reflexivity. }
-      simpl. destruct i as [v | client]; simpl; repeat split
+      simpl. 
+      destruct i as [v | client]; simpl; repeat split
       ; try
         (intro Hx'
         ; apply (proj1 (receive_messages_v s (inl v) ms))in Hx'
@@ -842,7 +845,7 @@ Proof.
         ; specialize (Hmsj x Hx m)
         ; destruct x as (c, v', j)
         ; unfold happens_before_fn in Hmsj; simpl in Hmsj
-        ; simpl in Hm; apply in_correct in Hm
+        ; simpl in Hm; apply in_correct_refl in Hm
         ; specialize (Hmsj Hm)
         ; apply in_app_iff in Hmsj
         ; destruct Hmsj as [Hmsj | [Heqm | Hn]]
@@ -859,10 +862,8 @@ Proof.
         ; unfold validator_message_preceeds
         ; unfold validator_message_preceeds_fn
         ; unfold unmake_justification
-        ; assumption
-        ).
-        admit.
-        admit.
+        ; apply Bool.Is_true_eq_true
+        ; assumption).
       pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
       specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
       intros [_ Hincl].
@@ -1105,7 +1106,7 @@ Proof.
           with (msgs, final).
         reflexivity.
       * reflexivity.
-Admitted.
+Qed.
 
 Fixpoint receive_messages_iterated
   (s : vstate FreeX)
