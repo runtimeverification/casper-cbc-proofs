@@ -575,29 +575,29 @@ Context
     } *)
     
     induction a.
-    - intros.
-      simpl in *.
-      unfold finite_protocol_action_from.
-      simpl.
+    - intros. simpl in *.
+      unfold finite_protocol_action_from. simpl.
       apply finite_ptrace_empty. 
       assumption.
-    - intros.
-      simpl in *.
-      unfold finite_protocol_action_from.
-      replace (a :: a0) with ([a] ++ a0).
-      rewrite apply_action_app.
+    - intros. simpl in *.
+      
+      replace (a :: a0) with ([a] ++ a0). 2: auto.
+      rewrite <- finite_protocol_action_from_app_iff.
+      
       unfold sync in Hsync.
-      destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_cs.
+      destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_cs. 2: discriminate Hsync.
+      
       inversion Hsync.
       unfold sync_action in H0.
       apply map_eq_cons in H0.
       destruct H0 as [a1 [tl [H0 [Hh Htl]]]].
       apply map_eq_cons in H0.
       destruct H0 as [sa [tls [H0 [Hh' Htl']]]].
+      assert (eq_cs_orig := eq_cs).
       apply complete_suffix_correct in eq_cs.
-      replace (sa :: tls) with ([sa] ++ tls) in H0.
-      apply rev_eq_app in H0.
-      simpl in H0.
+      replace (sa :: tls) with ([sa] ++ tls) in H0. 2: auto.
+      apply rev_eq_app in H0. simpl in H0.
+      
       rewrite H0 in eq_cs.
       assert (eq_cs' := eq_cs).
       rewrite <- app_assoc in eq_cs.
@@ -611,46 +611,77 @@ Context
         apply in_elt.
       }
       
-      assert (finite_protocol_action_from X s [a]). {
-        unfold finite_protocol_action_from.
-        unfold apply_action.
-        simpl.
-        unfold lift_to_receive_item in Hh'.
-        rewrite <- Hh' in Hh.
-        unfold lift_to_composite_action_item in Hh.
-        destruct a.
-        destruct (vtransition X label_a (s, input_a)) eqn : eq_v.
-        simpl.
-        assert (protocol_transition X label_a (s, input_a) (s0, o)). {
-          unfold protocol_transition.
-          repeat split.
-          - assumption.
-          - inversion Hh.
-            apply option_protocol_message_Some.
-            apply protocol_message_prop_composite_free_lift with (j := from).
-            apply can_emit_protocol.
-            Check (@in_history_can_emits).
-            apply (@in_history_can_emits index to index_listing Hfinite _ (est' from) _ _  _) in Hinsa.
-            unfold IM_index.
-            admit.
-            
-          - simpl.
-            simpl in Hh.
-            inversion Hh.
-            unfold vvalid.
-            apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
-            unfold valid.
-            simpl.
-            repeat split; assumption.
-          - assumption.
-        }
-        
+      destruct a.
+      destruct (vtransition X label_a (s, input_a)) eqn : eq_vtrans. simpl.
+      
+      unfold lift_to_receive_item in Hh'.
+      rewrite <- Hh' in Hh.
+      unfold lift_to_composite_action_item in Hh.
+
+      assert (protocol_transition X label_a (s, input_a) (s0, o)). {
+        unfold protocol_transition.
+        repeat split.
+        - assumption.
+        - inversion Hh.
+          apply option_protocol_message_Some.
+          apply protocol_message_prop_composite_free_lift with (j := from).
+          apply can_emit_protocol.
+          Check (@in_history_can_emits).
+          apply (@in_history_can_emits index from index_listing Hfinite _ (est' from) _ _  _) in Hinsa.
+          unfold IM_index.
+          assumption.
+          admit.
+        - simpl in *.
+          inversion Hh.
+          unfold vvalid.
+          apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
+          unfold valid. simpl.
+          repeat split; assumption.
+        - assumption.
+      }
+     
+      split.
+      + unfold finite_protocol_action_from.
+        unfold apply_action. simpl in *.
+        rewrite eq_vtrans. simpl.
         apply finite_ptrace_extend.
         apply finite_ptrace_empty.
+        apply protocol_transition_destination in H. 
+        assumption.
+        assumption.
+      + unfold apply_action. simpl.
+        rewrite eq_vtrans. simpl.
+        specialize (IHa s0).
+        spec IHa.
         apply protocol_transition_destination in H.
         assumption.
-      }
-    
+        apply IHa.
+        
+        assert (Honefold: get_history (s0 to) from = [sa] ++ get_history (s to) from). {
+            admit.
+        }
+        
+        unfold sync.
+        
+        destruct (complete_suffix (get_history (s' from) from) (get_history (s0 to) from)) eqn : eq_cs2.
+        * f_equal.
+          unfold sync_action.
+          rewrite <- Htl.
+          rewrite <- Htl'.
+          repeat f_equal.
+          apply complete_suffix_correct in eq_cs2.
+          rewrite Honefold in eq_cs2.
+          rewrite eq_cs' in eq_cs2.
+          rewrite app_assoc in eq_cs2.
+          apply app_inv_tail in eq_cs2.
+          apply app_inj_tail in eq_cs2.
+          destruct eq_cs2.
+          rewrite <- H1.
+          apply rev_involutive.
+        * rewrite Honefold in eq_cs2.
+          rewrite eq_cs' in eq_cs2.
+          rewrite <- app_assoc in eq_cs2.
+          
    Admitted.
     
      
