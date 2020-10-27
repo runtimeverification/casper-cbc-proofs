@@ -424,10 +424,13 @@ Context
     
     Lemma eq_history_eq_project
       (s s' : state)
-      (i : index)
-      (Heqh : get_history' s i = get_history' s' i) :
+      (i : index) :
+      get_history' s i = get_history' s' i <->
       project s i = @project index index_listing idec s' i.
     Proof.
+      split.
+      - intros.
+        
     Admitted.
   
     Lemma history_incl_equiv_suffix

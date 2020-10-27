@@ -658,7 +658,11 @@ Context
         apply IHa.
         
         assert (Honefold: get_history (s0 to) from = [sa] ++ get_history (s to) from). {
-            admit.
+            assert (project (s0 to) from = sa). {
+              admit.
+            }
+            rewrite <- H1. simpl.
+            (* apply unfold_history_cons *).
         }
         
         unfold sync.
@@ -681,7 +685,13 @@ Context
         * rewrite Honefold in eq_cs2.
           rewrite eq_cs' in eq_cs2.
           rewrite <- app_assoc in eq_cs2.
-          
+          assert (complete_suffix (rev tls ++ [sa] ++ get_history (s to) from)
+           ([sa] ++ get_history (s to) from) = Some (rev tls)). {
+            apply complete_suffix_correct.
+            reflexivity.  
+          }
+          rewrite H1 in eq_cs2.
+          discriminate eq_cs2.
    Admitted.
     
      
