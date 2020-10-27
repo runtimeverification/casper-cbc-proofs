@@ -274,13 +274,12 @@ Lemma in_correct_refl `{EqDecision X} :
   forall (l : list X) (x : X),
     In x l <-> inb decide_eq x l.
 Proof.
-  intros s msg; unfold Is_true.
-  destruct (inb decide_eq msg s) eqn:?.
-  - apply in_correct in Heqb.
-    firstorder.
-  - split; firstorder.
-    apply in_correct in H.
-    congruence.
+  intros s msg.
+  split; intros.
+  - apply Is_true_eq_left.
+    apply in_correct; assumption.
+  - apply in_correct.
+    apply Is_true_eq_true; assumption.
 Qed.
 
 Lemma in_correct' `{EqDecision X} :
