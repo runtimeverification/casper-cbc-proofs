@@ -872,7 +872,7 @@ Proof.
   destruct Hconstr' as [itemi [Hitemi Houtput]].
   specialize (finite_trace_projection_list_alt_iff IM i0 constraint i pre) as Halt.
   simpl in Halt.
-  specialize (Halt (filter_Forall _ (dec_from_projection IM i0 constraint i) pre)).
+  specialize (Halt (@filter_Forall _ _ (dec_from_projection IM i0 constraint i) pre)).
   rewrite <- Halt in Hitemi.
   apply in_map_iff in Hitemi.
   destruct Hitemi as [[item Hpr] [Heq Hitem]].

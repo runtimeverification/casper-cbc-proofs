@@ -808,17 +808,15 @@ Proof.
 Qed.
 
 Fixpoint filter_Forall
-  {A : Type}
-  (P : A -> Prop)
-  (decP : forall a:A, {P a} + {~P a})
+  `{forall a : A, Decision (P a)}
   (l : list A)
-  : Forall P (filter (predicate_to_function decP) l).
+  : Forall P (filter (fun a => bool_decide (P a)) l).
 Proof.
   destruct l; simpl.
   - exact (Forall_nil P).
-  - unfold predicate_to_function.
-    specialize (filter_Forall A P decP l).
-    destruct (decP a); simpl.
+  - specialize (filter_Forall A P _ l).
+    rewrite <- decide_bool_decide.
+    destruct (decide (P a)).
     + constructor; assumption.
     + assumption.
 Defined.
