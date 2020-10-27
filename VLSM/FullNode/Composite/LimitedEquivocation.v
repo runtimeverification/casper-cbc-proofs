@@ -244,7 +244,18 @@ Qed.
 Context
   (message_events := full_node_message_comparable_events C V).
 
-Existing Instance  message_events.
+Existing Instance message_events.
+
+Instance happens_before_rel : RelDecision happens_before_fn.
+Proof.
+unfold RelDecision; intros.
+unfold Decision.
+destruct (happens_before_fn x y) eqn:?.
+- apply left; reflexivity.
+- apply right.
+  intro H.
+  contradict H.
+Defined.
 
 Definition sorted_state_union
   (s : vstate FreeX)
@@ -764,10 +775,26 @@ Proof.
     { apply topologically_sorted_preceeds_closed_remove_last
         with (byzantine_message_prop FreeX) (ms ++ [x]) x
       ; try assumption; try reflexivity.
+      unfold preceeds_P; simpl.
+      assert (Hstr: StrictOrder
+    (fun x0 y : {x : State.message C V | byzantine_message_prop FreeX x} =>
+     validator_message_preceeds C V (proj1_sig x0) (proj1_sig y))).
       apply free_full_byzantine_message_preceeds_stict_order.
+      unfold validator_message_preceeds in Hstr.
+      unfold Bool.Is_true.
+      destruct Hstr.
+      constructor.
+      * intro x'; specialize (StrictOrder_Irreflexive x').
+        generalize StrictOrder_Irreflexive.
+        unfold complement; simpl.
+        destruct (validator_message_preceeds_fn C V _ _); intuition.
+      * intros x' y' z'. specialize (StrictOrder_Transitive x' y' z').
+        generalize StrictOrder_Transitive.
+        repeat destruct (validator_message_preceeds_fn C V _ _); intuition.
     }
     assert (Hmst' : topologically_sorted happens_before_fn ms ).
     { apply toplogically_sorted_remove_last with (ms ++ [x]) x; try assumption.
+      apply happens_before_rel.
       reflexivity.
     }
     apply NoDup_remove in Hms.
