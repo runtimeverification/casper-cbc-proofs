@@ -775,11 +775,3 @@ Proof.
   exists n2.
   split; assumption.
 Qed.
-
-Definition predicate_to_function
-  {A : Type}
-  {P : A -> Prop}
-  (decP : forall a : A, Decision (P a))
-  (a : A)
-  : bool
-  := bool_decide (P a).

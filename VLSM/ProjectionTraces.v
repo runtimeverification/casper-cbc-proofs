@@ -565,10 +565,7 @@ Proof.
                (fun a : @vtransition_item message X => from_projection a))
             (@list_annotate (@vtransition_item message X)
                from_projection
-               (@filter (@transition_item message (@type message X))
-                  (@predicate_to_function
-                     (@transition_item message (@type message X))
-                     from_projection dec_from_projection) trx) Hall) n2)
+               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n2)
           with oitem in Hs2.
         clear Hoa.
         destruct oitem as [[item Hitem]|]; try inversion Hs2; subst; clear Hs2.
@@ -597,14 +594,14 @@ Proof.
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (predicate_to_function dec_from_projection) trx)
+            (filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n2
           ); intros [oitem2 [Hoa2 Hn2th]].
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (predicate_to_function dec_from_projection) trx)
+            (filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n1
           ); intros [oitem1 [Hoa1 Hn1th]].
@@ -614,10 +611,7 @@ Proof.
                (fun a : @vtransition_item message X => from_projection a))
             (@list_annotate (@vtransition_item message X)
                from_projection
-               (@filter (@transition_item message (@type message X))
-                  (@predicate_to_function
-                     (@transition_item message (@type message X))
-                     from_projection dec_from_projection) trx) Hall) n2)
+               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n2)
           with oitem2 in Hs2.
         clear Hoa2.
         replace
@@ -626,10 +620,7 @@ Proof.
                (fun a : @vtransition_item message X => from_projection a))
             (@list_annotate (@vtransition_item message X)
                from_projection
-               (@filter (@transition_item message (@type message X))
-                  (@predicate_to_function
-                     (@transition_item message (@type message X))
-                     from_projection dec_from_projection) trx) Hall) n1)
+               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n1)
            with oitem1 in Hs1.
         clear Hoa1.
         destruct oitem2 as [[item2 Hitem2]|]; try inversion Hs2; subst; clear Hs2.
@@ -684,7 +675,7 @@ Proof.
   - specialize (Hfr sj (list_prefix lj n2) Hpref).
     destruct Hfr as [sx [trx [Htrx [Hsx Hproj]]]].
     assert (Hall : Forall from_projection
-              (filter (predicate_to_function dec_from_projection) trx))
+              (filter (fun a => bool_decide (from_projection a)) trx))
       by apply filter_Forall.
     specialize (finite_trace_projection_list_alt_iff trx Hall); intro Heq.
     rewrite <- Heq in Hproj.
@@ -715,7 +706,7 @@ Proof.
   - specialize (Hfr sj (stream_prefix lj n2) Hpref).
     destruct Hfr as [sx [trx [Htrx [Hsx Hproj]]]].
     assert (Hall : Forall from_projection
-              (filter (predicate_to_function dec_from_projection) trx))
+              (filter (fun a => bool_decide (from_projection a)) trx))
       by apply filter_Forall.
     specialize (finite_trace_projection_list_alt_iff trx Hall); intro Heq.
     rewrite <- Heq in Hproj.
