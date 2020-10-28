@@ -107,7 +107,7 @@ Section States.
     set_map compare_eq_dec sender sigma.
 
   Parameters (hash : message -> H)
-             (hash_injective : Injective hash).
+             (hash_injective : Inj eq eq hash).
 
   Definition later (msg : message) (sigma : state) : list message :=
     filter (fun msg' => inb compare_eq_dec (hash msg) (justification msg')) sigma.

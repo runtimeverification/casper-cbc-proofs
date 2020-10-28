@@ -244,7 +244,18 @@ Qed.
 Context
   (message_events := full_node_message_comparable_events C V).
 
-Existing Instance  message_events.
+Existing Instance message_events.
+
+Instance happens_before_rel : RelDecision happens_before_fn.
+Proof.
+unfold RelDecision; intros.
+unfold Decision.
+destruct (happens_before_fn x y) eqn:?.
+- apply left; reflexivity.
+- apply right.
+  intro H.
+  contradict H.
+Defined.
 
 Definition sorted_state_union
   (s : vstate FreeX)
@@ -740,6 +751,29 @@ Proof.
   - right. exists client. assumption.
 Qed.
 
+Instance StrictOrder_preceeds_happens_before_fn :
+ StrictOrder (preceeds_P happens_before_fn (byzantine_message_prop FreeX)).
+Proof.
+unfold preceeds_P; simpl.
+assert (Hstr: StrictOrder
+ (fun x0 y : {x : State.message C V | byzantine_message_prop FreeX x} =>
+  validator_message_preceeds C V (proj1_sig x0) (proj1_sig y))).
+apply free_full_byzantine_message_preceeds_stict_order.
+unfold validator_message_preceeds in Hstr.
+destruct Hstr.
+constructor.
+* intro x'; specialize (StrictOrder_Irreflexive x').
+  generalize StrictOrder_Irreflexive.
+  unfold complement; simpl; intros.
+  apply StrictOrder_Irreflexive0.
+  apply Bool.Is_true_eq_true.
+  assumption.
+* intros x' y' z'. specialize (StrictOrder_Transitive x' y' z').
+  generalize StrictOrder_Transitive; intros.
+  apply Bool.Is_true_eq_left.
+  apply StrictOrder_Transitive0; apply Bool.Is_true_eq_true; assumption.
+Qed.
+
 Lemma receive_messages_protocol
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
@@ -764,10 +798,11 @@ Proof.
     { apply topologically_sorted_preceeds_closed_remove_last
         with (byzantine_message_prop FreeX) (ms ++ [x]) x
       ; try assumption; try reflexivity.
-      apply free_full_byzantine_message_preceeds_stict_order.
+      apply StrictOrder_preceeds_happens_before_fn.
     }
     assert (Hmst' : topologically_sorted happens_before_fn ms ).
     { apply toplogically_sorted_remove_last with (ms ++ [x]) x; try assumption.
+      apply happens_before_rel.
       reflexivity.
     }
     apply NoDup_remove in Hms.
@@ -788,7 +823,8 @@ Proof.
       assumption.
     + assert (Hx : In x (ms ++ [x])).
         { apply in_app_iff. right. left. reflexivity. }
-      simpl. destruct i as [v | client]; simpl; repeat split
+      simpl. 
+      destruct i as [v | client]; simpl; repeat split
       ; try
         (intro Hx'
         ; apply (proj1 (receive_messages_v s (inl v) ms))in Hx'
@@ -809,7 +845,7 @@ Proof.
         ; specialize (Hmsj x Hx m)
         ; destruct x as (c, v', j)
         ; unfold happens_before_fn in Hmsj; simpl in Hmsj
-        ; simpl in Hm; apply in_correct in Hm
+        ; simpl in Hm; apply in_correct_refl in Hm
         ; specialize (Hmsj Hm)
         ; apply in_app_iff in Hmsj
         ; destruct Hmsj as [Hmsj | [Heqm | Hn]]
@@ -826,8 +862,8 @@ Proof.
         ; unfold validator_message_preceeds
         ; unfold validator_message_preceeds_fn
         ; unfold unmake_justification
-        ; assumption
-        ).
+        ; apply Bool.Is_true_eq_true
+        ; assumption).
       pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
       specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
       intros [_ Hincl].
@@ -1228,7 +1264,7 @@ Proof.
   unfold happens_before_fn in Hmj. simpl in Hmj.
   unfold validator_message_preceeds_fn in Hmj. simpl in Hmj.
   destruct m as (cm, vm, jm).
-  specialize (in_correct (unmake_message_set (justification_message_set jm)) mj); intro Hin.
+  specialize (in_correct_refl (unmake_message_set (justification_message_set jm)) mj); intro Hin.
   apply Hin in Hmj.
   pose (in_free_byzantine_state_justification s Hs' ((cm, vm, jm))) as Hinm.
   destruct Hm as [[v Hm] | [client Hm]].
@@ -1321,10 +1357,10 @@ Proof.
     + specialize
         (@top_sort_correct _ _
           happens_before_fn
-          (byzantine_message_prop FreeX)).
+          happens_before_rel (byzantine_message_prop FreeX)).
       intro H.
       apply H.
-      * apply free_full_byzantine_message_preceeds_stict_order.
+      * apply StrictOrder_preceeds_happens_before_fn.
       * apply state_union_free_byzantine_message. assumption.
   - intros i i'.
     specialize (union_state_state_union s).

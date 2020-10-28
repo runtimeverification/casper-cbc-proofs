@@ -3,7 +3,7 @@ Require Import Lia.
 Import ListNotations.
 
 From CasperCBC
-  Require Import Preamble ListExtras ListSetExtras.
+Require Import Preamble ListExtras ListSetExtras.
 
 (** * Topological sorting algorithm *)
 
@@ -28,21 +28,17 @@ Section min_predecessors.
 (** For this section we will fix a list <<l>> and count the predecessors
 occurring in that list. *)
 
-Context
-  {A : Type}
-  (preceeds : A -> A -> bool)
-  (l : list A)
-  .
+Context {A} (preceeds : A -> A -> Prop) {rd: RelDecision preceeds} (l : list A).
 
 Definition count_predecessors
   (a : A)
   : nat
-  := length (filter (fun b => preceeds b a) l).
+  := length (filter (fun b => bool_decide (preceeds b a)) l).
 
 Lemma zero_predecessors
   (a : A)
   (Ha : count_predecessors a = 0)
-  : Forall (fun b => preceeds b a = false) l.
+  : Forall (fun b => bool_decide (preceeds b a) = false) l.
 Proof.
   apply filter_nil.
   apply length_zero_iff_nil.
@@ -130,7 +126,7 @@ Definition preceeds_P
   (P : A -> Prop)
   (x y : sig P)
   : Prop
-  := preceeds (proj1_sig x) (proj1_sig y) = true.
+  := preceeds (proj1_sig x) (proj1_sig y).
 
 (** In what follows, let us fix a property <<P>> satisfied by all elements
 of <<l>>, such that [preceeds_P] <<P>> is a [StrictOrder].
@@ -150,28 +146,26 @@ properties associated with [preceeds_P]. *)
 Lemma preceeds_irreflexive
   (a : A)
   (Ha : P a)
-  : preceeds a a = false.
+  : ~ preceeds a a.
 Proof.
   specialize (StrictOrder_Irreflexive (exist P a Ha)).
   unfold complement; unfold preceeds_P; simpl; intro Hirr.
-  destruct (preceeds a a); try reflexivity.
-  elim Hirr.
-  reflexivity.
+  destruct (decide (preceeds a a)); assumption.
 Qed.
 
 Lemma preceeds_asymmetric
   (a b : A)
   (Ha : P a)
   (Hb : P b)
-  (Hab : preceeds a b = true)
-  : preceeds b a = false.
+  (Hab : preceeds a b)
+  : ~ preceeds b a.
 Proof.
-  destruct (preceeds b a) eqn:Hba; try reflexivity.
-  specialize
+  intro Hba.
+  contradict
     (StrictOrder_Asymmetric Hso
       (exist P a Ha) (exist P b Hb)
       Hab Hba
-    ); intro H; inversion H.
+    ).  
 Qed.
 
 Lemma preceeds_transitive
@@ -179,9 +173,9 @@ Lemma preceeds_transitive
   (Ha : P a)
   (Hb : P b)
   (Hc : P c)
-  (Hab : preceeds a b = true)
-  (Hbc : preceeds b c = true)
-  : preceeds a c = true.
+  (Hab : preceeds a b)
+  (Hbc : preceeds b c)
+  : preceeds a c.
 Proof.
   specialize
     (RelationClasses.StrictOrder_Transitive
@@ -206,20 +200,27 @@ Proof.
     specialize (IHl0 H2).
     apply Exists_cons.
     destruct l0 as [|b l1].
-    + left. simpl. rewrite preceeds_irreflexive by assumption. reflexivity.
+    + left. simpl.
+      rewrite bool_decide_decide.
+      rewrite decide_False.
+      reflexivity.
+      apply preceeds_irreflexive.
+      assumption.
     + assert (Hbl1 : b :: l1 <> []) by (intro; discriminate).
       specialize (IHl0 Hbl1).
       apply Exists_exists in IHl0.
-      destruct IHl0 as [x [Hin Hlen]].
-      destruct (preceeds a x) eqn:Hxa.
+      destruct IHl0 as [x [Hin Hlen]].      
+      destruct (decide (preceeds a x)).
       * left. inversion H2; subst.
         specialize (Forall_forall P (b :: l1)); intros [Hall _].
         specialize (Hall H2 x Hin).
         assert
           (Hax : forall ll (Hll: Forall P ll),
-            Forall (fun c => preceeds c a = true -> preceeds c x = true) ll
+            Forall (fun c => bool_decide (preceeds c a) = true -> bool_decide (preceeds c x) = true) ll
           ).
         { intros. rewrite Forall_forall. intros c Hinc Hac.
+          apply bool_decide_eq_true.
+          apply bool_decide_eq_true in Hac.
           apply preceeds_transitive with a; try assumption.
           rewrite Forall_forall in Hll.
           apply Hll.
@@ -227,9 +228,16 @@ Proof.
         }
         specialize (Hax (b :: l1) H2).
         specialize (filter_length_fn _ _ (b :: l1) Hax); intro Hlena.
-        simpl in *. rewrite preceeds_irreflexive by assumption. lia.
+        simpl in *.
+        rewrite bool_decide_decide.
+        destruct (decide (preceeds a a)) as [Hp|Hp].
+        contradict Hp.
+        apply preceeds_irreflexive; assumption.
+        lia.
       * right. apply Exists_exists. exists x. split; try assumption.
-        simpl in *. rewrite Hxa. assumption.
+        simpl in *.        
+        rewrite bool_decide_decide.
+        destruct (decide (preceeds a x)); intuition.
 Qed.
 
 (**
@@ -260,11 +268,7 @@ Section topologically_sorted.
 
 (** ** Topologically sorted lists. Definition and properties. *)
 
-Context
-  `{EqDecision A}
-  (preceeds : A -> A -> bool)
-  (l : list A)
-  .
+Context {A} (preceeds : A -> A -> Prop) {rd: RelDecision preceeds} (l : list A).
 
 (**
 We say that a list <<l>> is [topologically_sorted] w.r.t a <<preceeds>>
@@ -274,7 +278,7 @@ Definition topologically_sorted
   :=
   forall
     (a b : A)
-    (Hab : preceeds a b = true)
+    (Hab : preceeds a b)
     (l1 l2 : list A)
     (Heq : l = l1 ++ [b] ++ l2)
     , ~In a l2.
@@ -303,7 +307,7 @@ a [topologically_sorted] list.
 *)
 Lemma topologically_sorted_occurrences_ordering
   (a b : A)
-  (Hab : preceeds a b = true)
+  (Hab : preceeds a b)
   (la1 la2 : list A)
   (Heqa : l = la1 ++ [a] ++ la2)
   (lb1 lb2 : list A)
@@ -316,13 +320,12 @@ Proof.
   rewrite Heqa in Heqb.
   assert (Ha : ~In a (b :: lb2)).
   { intro Ha. apply Hts. destruct Ha; try assumption. subst.
-    rewrite (preceeds_irreflexive preceeds P a Hpa) in Hab.
-    discriminate Hab.
+    apply (preceeds_irreflexive preceeds P a Hpa) in Hab.
+    contradict Hab.
   }
   specialize (occurrences_ordering a b la1 la2 lb1 lb2 Heqb Ha).
   intro; assumption.
 Qed.
-
 
 (**
 If <<a>> and <<b>> are in a [topologically_sorted] list <<lts>> and <<a preceeds b>>
@@ -330,7 +333,7 @@ then there is an <<a>> before any occurence of <<b>> in <<lts>>.
 *)
 Corollary top_sort_before
   (a b : A)
-  (Hab : preceeds a b = true)
+  (Hab : preceeds a b)
   (Ha : In a l)
   (l1 l2 : list A)
   (Heq : l = l1 ++ [b] ++ l2)
@@ -349,7 +352,7 @@ Qed.
 *)
 Corollary top_sort_preceeds
   (a b : A)
-  (Hab : preceeds a b = true)
+  (Hab : preceeds a b)
   (Ha : In a l)
   (Hb : In b l)
   : exists l1 l2 l3, l = l1 ++ [a] ++ l2 ++ [b] ++ l3.
@@ -369,7 +372,8 @@ End topologically_sorted.
 
 Lemma toplogically_sorted_remove_last
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)    
+  {rd: RelDecision preceeds}
   (l : list A)
   (Hts : topologically_sorted preceeds l)
   (init : list A)
@@ -387,15 +391,17 @@ Qed.
 
 Definition preceeds_closed
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)
+  {rd: RelDecision preceeds}
   (s : set A)
   : Prop
   :=
-  Forall (fun (b : A) => forall (a : A) (Hmj : preceeds a b = true), In a s) s.
+  Forall (fun (b : A) => forall (a : A) (Hmj : preceeds a b), In a s) s.
 
 Lemma preceeds_closed_set_eq
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)
+  {rd: RelDecision preceeds}
   (s1 s2 : set A)
   (Heq : set_eq s1 s2)
   : preceeds_closed preceeds s1 <-> preceeds_closed preceeds s2.
@@ -408,7 +414,8 @@ Qed.
 
 Lemma topologically_sorted_preceeds_closed_remove_last
   {A : Type}
-  (preceeds : A -> A -> bool)
+  (preceeds : A -> A -> Prop)
+  {rd: RelDecision preceeds}
   (P : A -> Prop)
   {Hso : StrictOrder (preceeds_P preceeds P)}
   (l : list A)
@@ -447,14 +454,12 @@ Qed.
 Section top_sort.
 (** ** The topological sorting algorithm *)
 
-Context
-  `{EqDecision A}
-  (preceeds : A -> A -> bool)
-  .
+Context {A} `{EqDecision A} (preceeds : A -> A -> Prop) {rd: RelDecision preceeds}.
 
 (** Iteratively extracts <<n>> elements with minimal number of precessors
 from a given list.
-*)
+ *)
+
 Fixpoint top_sort_n
   (n : nat)
   (l : list A)
@@ -538,7 +543,7 @@ Proof.
         assert (Hlen' : len = length (a :: set_remove decide_eq (min_predecessors preceeds (a :: l) l a) l)).
         { simpl.
           rewrite <- set_remove_length; try assumption.
-          pose (@min_predecessors_in _ preceeds (a :: l) l a) as Hin.
+          pose (@min_predecessors_in _ preceeds _ (a :: l) l a) as Hin.
           destruct Hin as [Heq | Hin]; try assumption.
           elim n. assumption.
         }
@@ -555,7 +560,7 @@ Proof.
           inversion Hl. elim H1. assumption.
         - simpl.
           rewrite <- set_remove_length; try assumption.
-          pose (@min_predecessors_in _ preceeds (a :: l) l a) as Hin.
+          pose (@min_predecessors_in _ preceeds _ (a :: l) l a) as Hin.
           destruct Hin as [Heq | Hin]; try assumption.
           elim n. assumption.
         }
@@ -630,7 +635,8 @@ Proof.
       rewrite <- Heqmin. simpl. intro Hmin.
       apply zero_predecessors in Hmin.
       rewrite Forall_forall in Hmin. apply Hmin in Ha.
-      rewrite Ha in Hab. discriminate Hab.
+      apply bool_decide_eq_false in Ha.
+      congruence.
     }
     destruct l1 as [| _min l1]; inversion Heq
     ; try (subst b; elim Hminb; reflexivity).

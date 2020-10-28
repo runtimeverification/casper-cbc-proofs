@@ -271,6 +271,18 @@ Proof.
   apply in_function.
 Qed.
 
+Lemma in_correct_refl `{EqDecision X} :
+  forall (l : list X) (x : X),
+    In x l <-> inb decide_eq x l.
+Proof.
+  intros s msg.
+  split; intros.
+  - apply Is_true_eq_left.
+    apply in_correct; assumption.
+  - apply in_correct.
+    apply Is_true_eq_true; assumption.
+Qed.
+
 Lemma in_correct' `{EqDecision X} :
   forall (l : list X) (x : X),
     ~ In x l <-> inb decide_eq x l = false.
@@ -296,15 +308,6 @@ Definition incl_correct `{EqDecision A}
   (l1 l2 : list A)
   : incl l1 l2 <-> inclb l1 l2 = true
   := incl_function l1 l2.
-
-Lemma map_injective : forall A B (f : A -> B),
-  Injective f -> Injective (map f).
-Proof.
-  intros. intros xs ys. generalize dependent ys.
-  induction xs; intros; destruct ys; split; intros; try reflexivity; try discriminate.
-  - simpl in H0. inversion H0 . apply H in H2; subst. apply IHxs in H3; subst. reflexivity.
-  - rewrite H0. reflexivity.
-Qed.
 
 Lemma map_incl {A B} (f : B -> A) : forall s s',
   incl s s' ->
