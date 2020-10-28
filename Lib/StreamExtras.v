@@ -732,16 +732,14 @@ Proof.
 Qed.
 
 Lemma stream_filter_prefix_0
-  {A : Type}
-  (P : A -> Prop)
-  (decP : forall a:A, {P a} + {~P a})
+  `{forall (a : A), Decision (P a)}
   (ss : Stream A)
   (ks : monotone_nat_stream)
   (Hfs : filtering_subsequence P ss ks)
   (kn := Str_nth 0 (proj1_sig ks))
   (ss_to_kn := stream_prefix ss (S kn))
   : stream_prefix (stream_subsequence ss ks) (S 0)
-    = filter (predicate_to_function decP) ss_to_kn.
+    = filter (fun a => bool_decide (P a)) ss_to_kn.
 Proof.
   generalize dependent ks.
   intros [(k, ks) Hseq]; intros.
@@ -751,46 +749,42 @@ Proof.
   unfold ss_to_kn.
   rewrite stream_prefix_succ.
   rewrite filter_app.
-  assert (Hk : predicate_to_function decP (Str_nth k ss) = true).
-  { specialize (Hfs k).
-    apply proj2 in Hfs.
-    unfold predicate_to_function.
-    destruct (decP (Str_nth k ss)); try reflexivity.
-    elim n.
+  simpl.
+  rewrite <- decide_bool_decide.
+  assert (P (Str_nth k ss)).
+  { destruct (decide (P (Str_nth k ss))).
+    assumption.
+    specialize (Hfs k).
     apply Hfs.
     exists 0.
     reflexivity.
-  }
-  simpl.
-  rewrite Hk.
-  replace (filter (predicate_to_function decP) (stream_prefix ss k)) with (@nil A)
+  }  
+  destruct (decide (P (Str_nth k ss))); [|tauto].  
+  replace (filter _ (stream_prefix ss k)) with (@nil A)
   ; try reflexivity.
   symmetry.
   apply filter_nil.
   rewrite Forall_forall.
   intros a Hin.
-  unfold predicate_to_function.
-  destruct (decP a); try reflexivity.
+  rewrite bool_decide_decide.
+  destruct (decide (P a)); [|reflexivity].
   exfalso.
   apply stream_prefix_in in Hin.
   destruct Hin as [k0 [Hlt Heq]]; subst.
   specialize (Hfs k0).
-  apply proj1 in Hfs.
-  specialize (Hfs p).
-  destruct Hfs as [i Heqki].
+  apply Hfs in p0.
+  destruct p0 as [i Heqki].
   specialize (Hseq 0 i).
-  specialize (Lt.lt_irrefl k0); intro H; elim H.
+  specialize (Lt.lt_irrefl k0); intro Hk0; elim Hk0.
   destruct i; subst; try assumption.
   apply Lt.lt_trans with k; try assumption.
   apply Hseq.
-  lia.
+  auto with arith.
 Qed.
 
 
 Lemma stream_filter_prefix
-  {A : Type}
-  (P : A -> Prop)
-  (decP : forall a:A, {P a} + {~P a})
+  `{forall (a : A), Decision (P a)}
   (ss : Stream A)
   (ks : monotone_nat_stream)
   (Hfs : filtering_subsequence P ss ks)
@@ -798,12 +792,12 @@ Lemma stream_filter_prefix
   (kn := Str_nth n (proj1_sig ks))
   (ss_to_kn := stream_prefix ss (S kn))
   : stream_prefix (stream_subsequence ss ks) (S n)
-    = filter (predicate_to_function decP) ss_to_kn.
+    = filter (fun a => bool_decide (P a)) ss_to_kn.
 Proof.
   generalize dependent ks. generalize dependent ss.
   induction n; try apply stream_filter_prefix_0.
   intros ss kss Hfs; intros.
-  specialize (stream_filter_prefix_0 P decP ss kss Hfs); intro H0.
+  specialize (stream_filter_prefix_0 ss kss Hfs); intro H0.
   remember (Str_nth 0 (proj1_sig kss)) as k0.
   specialize (filtering_subsequence_suffix P ss kss Hfs); intros Hfs'.
   remember (monotone_nat_stream_suffix kss) as kss'.
@@ -816,15 +810,15 @@ Proof.
   assert
     (IHn':
       stream_prefix (stream_subsequence ss' kss') (S n)
-      = filter (predicate_to_function decP) (stream_prefix ss' (S (Str_nth n (proj1_sig kss'))))
+      = filter (fun a => bool_decide (P a)) (stream_prefix ss' (S (Str_nth n (proj1_sig kss'))))
     ) by assumption.
   clear IHn.
   subst; simpl in Hpref. specialize (Hpref (S (S n))).
   inversion Hpref.
   remember (stream_prefix (stream_suffix (tl ss) k)) as sp.
   simpl in IHn'.
+  rewrite <- H3 in IHn'.
   rewrite <- H2 in IHn'.
-  rewrite <- H1 in IHn'.
   simpl.
   rewrite IHn'.
   unfold ss_to_kn.
@@ -850,7 +844,7 @@ Proof.
   rewrite <- Hps.
   rewrite filter_app.
   rewrite stream_prefix_prefix.
-  + assert (H0' : filter (predicate_to_function decP) (stream_prefix ss (S k)) = [Str_nth k ss])
+  + assert (H0' : filter (fun a => bool_decide (P a)) (stream_prefix ss (S k)) = [Str_nth k ss])
     by (symmetry; apply H0).
     rewrite H0'.
     remember (stream_prefix ss) as spss.
