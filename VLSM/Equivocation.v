@@ -2,7 +2,7 @@ Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus Coq.
 Import ListNotations.
 
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition CBC.Common CBC.Equivocation.
+Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition CBC.Common CBC.Equivocation VLSM.ProjectionTraces.
 
 (**
 *** Summary
@@ -209,6 +209,27 @@ Section Simple.
                (m : message),
                has_not_been_sent_prop has_not_been_sent s m;
     }.
+
+    Lemma has_been_sent_initially_false
+      {Hbs : has_been_sent_capability}
+      (s : vstate vlsm)
+      (Hs : vinitial_state_prop vlsm s)
+      (m : message)
+      : has_been_sent s m = false.
+    Proof.
+      destruct (has_been_sent s m) eqn:Hsm; try reflexivity.
+      specialize (proper_sent s) as Hproper.
+      spec Hproper.
+      { apply initial_is_protocol. assumption. }
+      spec Hproper m. unfold has_been_sent_prop in Hproper.
+      unfold all_traces_have_message_prop in Hproper.
+      apply Hproper in Hsm.
+      specialize (Hsm s []).
+      spec Hsm.
+      { split; try assumption. constructor. apply initial_is_protocol. assumption. }
+      specialize (Hsm eq_refl). apply Exists_exists in Hsm.
+      destruct Hsm as [item [Hitem _]]. contradict Hitem.
+    Qed.
 
     Lemma has_been_sent_consistency
       {Hbs : has_been_sent_capability}
@@ -703,12 +724,27 @@ Section Composite.
      (* begin hide *)
      Lemma sent_component_protocol_composed
       (s : vstate X)
+      (Hs : protocol_state_prop X s)
       (i : index)
       (m : message)
       (Hsent : (@has_been_sent _ _ (has_been_sent_capabilities i)
                (s i) m) = true) :
       protocol_message_prop X m.
       Proof.
+        specialize (protocol_state_projection IM i0 constraint i _ Hs) as Hsi.
+
+        destruct Hs as [_om Hs].
+        apply protocol_is_trace in Hs as Hs'.
+        destruct Hs' as [Hs' | [is [tr [Htr [Hs' H_om]]]]].
+        - specialize (Hs' i).
+          specialize (has_been_sent_initially_false (IM i) _ Hs' m) as Hnotsent.
+          congruence.
+        - destruct Hsi as [_omsi Hsi].
+          apply (proj_pre_loaded_with_all_messages_protocol_prop IM i0 constraint i) in Hsi.
+          assert (Hsi' : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i))
+            by (exists _omsi; assumption).
+        apply (@proper_sent _ (IM i) (has_been_sent_capabilities i) _ Hsi' m) in Hsent.
+        
       Admitted.
       
      (* end hide *)
