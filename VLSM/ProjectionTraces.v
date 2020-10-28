@@ -46,10 +46,8 @@ Definition from_projection
   : Prop
   := j = projT1 (l a).
 
-Definition dec_from_projection
-  (a : transition_item)
-  : {from_projection a} + {~from_projection a}
-  := decide (j = projT1 (l a)).
+Instance dec_from_projection (a : transition_item) : Decision (from_projection a) :=
+  decide (from_projection a).
 
 Definition finite_trace_projection_list_alt
   (trx : list (vtransition_item X))
@@ -379,23 +377,21 @@ Proof.
       (succ n))
     with
       (list_annotate from_projection (stream_prefix (stream_subsequence ss ks) (succ n)) Hall).
-    specialize
-      (stream_filter_prefix
-        from_projection
-        dec_from_projection
-        ss
-        ks
-        Hfilter
-        n
-      ); intros Hsfilter.
-      remember stream_prefix as sp.
-      simpl in Hsfilter. subst.
-      unfold succ in *.
-      generalize dependent Hall.
-      rewrite Hsfilter.
-      intros.
-      unfold ss_to_kn. unfold kn.
-      apply finite_trace_projection_list_alt_iff.
+  specialize
+    (stream_filter_prefix
+       ss
+       ks
+       Hfilter
+       n
+    ); intros Hsfilter.
+  remember stream_prefix as sp.
+  simpl in Hsfilter. subst.
+  unfold succ in *.
+  generalize dependent Hall.
+  rewrite Hsfilter.
+  intros.
+  unfold ss_to_kn. unfold kn.
+  apply finite_trace_projection_list_alt_iff.
 Qed.
 
 Definition trace_projection
@@ -757,4 +753,3 @@ Proof.
 Qed.
 
 End ProjectionTraces.
-
