@@ -631,5 +631,12 @@ Check fold_right.
 
 Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
   fold_right (set_remove decide_eq) l2 l1.
+  
+Definition get_maximal_elements {A}
+  (preceeds : A -> A -> Prop)
+  (rd : RelDecision preceeds) 
+  (l : list A) 
+  : list A :=
+  filter (fun a => existsb (fun b => bool_decide (preceeds b a)) l) l.
 
 Unset Implicit Arguments.

@@ -722,5 +722,11 @@ Context
           rewrite H1 in eq_cs2.
           discriminate eq_cs2.
    Admitted.
+   
+    Definition get_candidates 
+      (s : vstate X)
+      (target : index) :
+      list state :=
+      List.map ((flip project) target) (component_list s index_listing).
  
 End Composition.
