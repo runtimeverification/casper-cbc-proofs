@@ -699,7 +699,20 @@ Section Composite.
             (T : R)
             (X := composite_vlsm IM i0 constraint)
             .
-
+            
+     (* begin hide *)
+     Lemma sent_component_protocol_composed
+      (s : vstate X)
+      (i : index)
+      (m : message)
+      (Hsent : (@has_been_sent _ _ (has_been_sent_capabilities i)
+               (s i) m) = true) :
+      protocol_message_prop X m.
+      Proof.
+      Admitted.
+      
+     (* end hide *)
+     
      (** It is now straightforward to define a [no_equivocations] composition constraint.
          An equivocating transition can be detected by calling the [has_been_sent]
          oracle on its arguments and we simply forbid them **)

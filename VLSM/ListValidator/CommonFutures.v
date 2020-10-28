@@ -31,7 +31,8 @@ Context
   {Rindex : ReachableThreshold index}
   (est' := fun (i : index) => (@EquivocationAwareListValidator.equivocation_aware_estimator _ i _ Hfinite _ _ _ ))
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec (est' i))
-  (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec ListValidator.estimator)
+  (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec (est' i))
+  (has_been_received_capabilities := fun i : index => @has_been_received_lv index i index_listing Hfinite idec (est' i))
   (X := composite_vlsm IM_index i0 (free_constraint IM_index))
   (preX := pre_loaded_with_all_messages_vlsm X)
   (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
@@ -563,16 +564,6 @@ Context
     finite_protocol_action_from X s a.
    Proof.
     generalize dependent s.
-   (*
-    assert (Hsnb : (s to) <> Bottom). {
-      apply protocol_state_component_no_bottom.
-      assumption.
-    }
-    
-    assert (Hs'nb : (s' from) <> Bottom). {
-      apply protocol_state_component_no_bottom.
-      assumption.
-    } *)
     
     induction a.
     - intros. simpl in *.
@@ -602,8 +593,11 @@ Context
       assert (eq_cs' := eq_cs).
       rewrite <- app_assoc in eq_cs.
       apply (@unfold_history index index_listing Hfinite) in eq_cs.
-      Check @eq_history_eq_project.
-      apply (@eq_history_eq_project index to index_listing Hfinite _ (est' to) _ _ _ _) in eq_cs.
+      
+      assert (Hecs: project (s to) from = project sa from). {
+        apply (@eq_history_eq_project index index_listing Hfinite _ (s to) sa from).
+        assumption.
+      }
       
       assert (Hinsa: In sa (get_history (s' from) from)). {
         rewrite eq_cs'.
@@ -617,20 +611,36 @@ Context
       unfold lift_to_receive_item in Hh'.
       rewrite <- Hh' in Hh.
       unfold lift_to_composite_action_item in Hh.
-
+      
+      assert (Hinp: input_a = Some (from, sa)). {
+        inversion Hh.
+        reflexivity.
+      }
+      
       assert (protocol_transition X label_a (s, input_a) (s0, o)). {
         unfold protocol_transition.
         repeat split.
         - assumption.
-        - inversion Hh.
+        - subst input_a.
+          apply option_protocol_message_Some.
+          eapply sent_component_protocol_composed.
+          exact Hfinite.
+          exact Rindex.
+          exact Hfinite.
+          exact has_been_received_capabilities.
+          admit.
+          admit.
+          exact 0%R.
+          admit.
+          
+          (*
           apply option_protocol_message_Some.
           apply protocol_message_prop_composite_free_lift with (j := from).
           apply can_emit_protocol.
-          Check (@in_history_can_emits).
           apply (@in_history_can_emits index from index_listing Hfinite _ (est' from) _ _  _) in Hinsa.
           unfold IM_index.
           assumption.
-          admit.
+          admit. *)
         - simpl in *.
           inversion Hh.
           unfold vvalid.
@@ -639,7 +649,8 @@ Context
           repeat split; assumption.
         - assumption.
       }
-     
+      
+      subst input_a.
       split.
       + unfold finite_protocol_action_from.
         unfold apply_action. simpl in *.
@@ -659,10 +670,28 @@ Context
         
         assert (Honefold: get_history (s0 to) from = [sa] ++ get_history (s to) from). {
             assert (project (s0 to) from = sa). {
-              admit.
+              unfold protocol_transition in H.
+              unfold vtransition in eq_vtrans.
+              unfold transition in eq_vtrans.
+              inversion Hh.
+              rewrite <- H2 in eq_vtrans.
+              simpl in eq_vtrans.
+              unfold vtransition in eq_vtrans.
+              unfold transition in eq_vtrans.
+              simpl in eq_vtrans.
+              inversion eq_vtrans.
+              rewrite state_update_eq.
+              apply (@project_same index index_listing Hfinite).
+              apply protocol_state_component_no_bottom.
+              assumption.
             }
             rewrite <- H1. simpl.
-            (* apply unfold_history_cons *).
+            rewrite eq_cs.
+            rewrite <- H1.
+            apply (@unfold_history_cons index index_listing Hfinite).
+            rewrite H1.
+            apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
+            assumption.
         }
         
         unfold sync.
@@ -693,8 +722,5 @@ Context
           rewrite H1 in eq_cs2.
           discriminate eq_cs2.
    Admitted.
-    
-     
-                 
  
 End Composition.

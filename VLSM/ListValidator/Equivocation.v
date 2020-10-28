@@ -2435,7 +2435,7 @@ Context
     
     Lemma in_history_can_emits
       (s sm : state)
-      (Hpr : protocol_state_prop X s)
+      (Hpr : protocol_state_prop preX s)
       (i : index) 
       (Hin : In sm (get_history s i)) : 
       can_emit X (i, sm).
