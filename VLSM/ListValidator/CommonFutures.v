@@ -623,7 +623,9 @@ Context
         - assumption.
         - subst input_a.
           apply option_protocol_message_Some.
-          eapply sent_component_protocol_composed.
+          protocol_is_trace
+          Print sent_component_protocol_composed.
+          specialize (sent_component_protocol_composed index_listing).
           exact Hfinite.
           exact Rindex.
           exact Hfinite.
