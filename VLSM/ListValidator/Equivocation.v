@@ -523,7 +523,13 @@ Context
         (fun i : index =>
           existsb (fun s : state => negb (inb decide_eq s (get_history' s1 i))) (get_history' s2 i))
         index_listing.
-        
+     
+     Definition state_lt'
+     (i : index)
+     (s1 s2 : (@state index index_listing))
+     : Prop
+     := In s1 (get_history s2 i).
+     
      Definition state_ltb'
       (i : index)
       (s1 s2 : (@state index index_listing))

@@ -623,9 +623,7 @@ Context
         - assumption.
         - subst input_a.
           apply option_protocol_message_Some.
-          protocol_is_trace
-          Print sent_component_protocol_composed.
-          specialize (sent_component_protocol_composed index_listing).
+          eapply sent_component_protocol_composed.
           exact Hfinite.
           exact Rindex.
           exact Hfinite.
@@ -633,6 +631,7 @@ Context
           admit.
           admit.
           exact 0%R.
+          admit.
           admit.
           
           (*
@@ -728,7 +727,15 @@ Context
     Definition get_candidates 
       (s : vstate X)
       (target : index) :
-      list state :=
+      list state 
+      :=
       List.map ((flip project) target) (component_list s index_listing).
- 
+    
+    Definition get_topmost_candidates
+      (s : vstate X)
+      (target : index) :
+      list state 
+      :=
+      get_maximal_elements (state_lt' target) _ (get_candidates s target).
+      
 End Composition.

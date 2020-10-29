@@ -14,6 +14,7 @@ Definition last_error {S} (l : list S) : option S :=
   | a :: t => Some (last t a)
   end.
 
+
 Lemma unfold_last_hd {S} : forall (random a b : S) (l : list S),
   last (a :: (b :: l)) random = last (b :: l) random.
 Proof.
@@ -82,6 +83,18 @@ Proof.
   rewrite map_cons.
   repeat rewrite unroll_last.
   apply IHt.
+Qed.
+
+Lemma last_error_some {S} 
+  (l : list S)
+  (s random : S)
+  (Herr : last_error l = Some s) :
+  last l random = s.
+Proof.
+  destruct l.
+  - simpl in *. discriminate Herr.
+  - simpl in Herr. inversion Herr.
+    apply unroll_last.
 Qed.
 
 Lemma incl_empty : forall A (l : list A),
