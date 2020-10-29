@@ -68,17 +68,12 @@ Lemma min_predecessors_in
   (min := min_predecessors l' a)
   : min = a \/ In min l'.
 Proof.
-  unfold min; clear min. generalize dependent a.
-  induction l'; try (left; reflexivity).
+  unfold min; clear min. revert a.
+  induction l';try (left; reflexivity).
   intro a0. simpl.
-  destruct (lt_dec (count_predecessors a) (count_predecessors a0)).
-  - right.
-    specialize (IHl' a). destruct IHl' as [Heq | Hin].
-    + left. symmetry. assumption.
-    + right. assumption.
-  - specialize (IHl' a0). destruct IHl' as [Heq | Hin].
-    + left. assumption.
-    + right. right. assumption.
+  destruct (lt_dec _ _);
+    [specialize (IHl' a)|specialize (IHl' a0)];
+    destruct IHl';intuition.
 Qed.
 
 Lemma min_predecessors_correct
@@ -161,11 +156,11 @@ Lemma preceeds_asymmetric
   : ~ preceeds b a.
 Proof.
   intro Hba.
-  contradict
+  exact
     (StrictOrder_Asymmetric Hso
       (exist P a Ha) (exist P b Hb)
       Hab Hba
-    ).  
+    ).
 Qed.
 
 Lemma preceeds_transitive
@@ -177,13 +172,11 @@ Lemma preceeds_transitive
   (Hbc : preceeds b c)
   : preceeds a c.
 Proof.
-  specialize
+  exact
     (RelationClasses.StrictOrder_Transitive
       (exist P a Ha) (exist P b Hb) (exist P c Hc)
       Hab Hbc
     ).
-  intro.
-  assumption.
 Qed.
 
 (** If <<preceeds>> is a [StrictOrder] on <<l>>, then there must exist an
@@ -195,49 +188,33 @@ Lemma count_predecessors_zero
 Proof.
   unfold count_predecessors.
   induction l.
-  - elim Hl. reflexivity.
-  - inversion HPl; subst.
-    specialize (IHl0 H2).
+  - elim Hl;reflexivity.
+  - inversion_clear HPl as [|? ? HPa HPl0].
+    specialize (IHl0 HPl0).
     apply Exists_cons.
-    destruct l0 as [|b l1].
-    + left. simpl.
-      rewrite bool_decide_decide.
-      rewrite decide_False.
-      reflexivity.
-      apply preceeds_irreflexive.
-      assumption.
-    + assert (Hbl1 : b :: l1 <> []) by (intro; discriminate).
-      specialize (IHl0 Hbl1).
+    simpl.
+    rewrite bool_decide_eq_false_2 by (apply preceeds_irreflexive;assumption).
+
+    assert ({l0=[]}+{l0<>[]}) by (destruct l0;clear;[left|right];congruence).
+    destruct H as [?|Hl0];[subst l0|].
+    + left. reflexivity.
+    + specialize (IHl0 Hl0).
       apply Exists_exists in IHl0.
-      destruct IHl0 as [x [Hin Hlen]].      
+      destruct IHl0 as [x [Hin Hlen]].
       destruct (decide (preceeds a x)).
-      * left. inversion H2; subst.
-        specialize (Forall_forall P (b :: l1)); intros [Hall _].
-        specialize (Hall H2 x Hin).
-        assert
-          (Hax : forall ll (Hll: Forall P ll),
-            Forall (fun c => bool_decide (preceeds c a) = true -> bool_decide (preceeds c x) = true) ll
-          ).
-        { intros. rewrite Forall_forall. intros c Hinc Hac.
-          apply bool_decide_eq_true.
-          apply bool_decide_eq_true in Hac.
-          apply preceeds_transitive with a; try assumption.
-          rewrite Forall_forall in Hll.
-          apply Hll.
-          assumption.
-        }
-        specialize (Hax (b :: l1) H2).
-        specialize (filter_length_fn _ _ (b :: l1) Hax); intro Hlena.
-        simpl in *.
-        rewrite bool_decide_decide.
-        destruct (decide (preceeds a a)) as [Hp|Hp].
-        contradict Hp.
-        apply preceeds_irreflexive; assumption.
+      * left. (* inversion H2; subst. *)
+        specialize (Forall_forall P l0); intros [Hall _].
+        specialize (Hall HPl0 x Hin).
+        match goal with |- ?X = 0  => cut (X <= 0) end.
         lia.
+        rewrite <- Hlen;clear Hlen.
+        apply filter_length_fn.
+        revert HPl0.
+        apply Forall_impl.
+        setoid_rewrite bool_decide_eq_true.
+        intros;apply preceeds_transitive with a;assumption.
       * right. apply Exists_exists. exists x. split; try assumption.
-        simpl in *.        
-        rewrite bool_decide_decide.
-        destruct (decide (preceeds a x)); intuition.
+        rewrite bool_decide_eq_false_2;assumption.
 Qed.
 
 (**

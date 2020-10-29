@@ -275,11 +275,8 @@ Lemma in_correct_refl `{EqDecision X} :
     In x l <-> inb decide_eq x l.
 Proof.
   intros s msg.
-  split; intros.
-  - apply Is_true_eq_left.
-    apply in_correct; assumption.
-  - apply in_correct.
-    apply Is_true_eq_true; assumption.
+  rewrite in_correct, Is_true_iff_eq_true.
+  reflexivity.
 Qed.
 
 Lemma in_correct' `{EqDecision X} :
@@ -287,8 +284,8 @@ Lemma in_correct' `{EqDecision X} :
     ~ In x l <-> inb decide_eq x l = false.
 Proof.
   intros s msg.
-  symmetry. apply mirror_reflect_curry.
-  symmetry; now apply in_correct.
+  rewrite in_correct, not_true_iff_false.
+  reflexivity.
 Qed.
 
 Definition inclb

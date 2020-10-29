@@ -246,16 +246,8 @@ Context
 
 Existing Instance message_events.
 
-Instance happens_before_rel : RelDecision happens_before_fn.
-Proof.
-unfold RelDecision; intros.
-unfold Decision.
-destruct (happens_before_fn x y) eqn:?.
-- apply left; reflexivity.
-- apply right.
-  intro H.
-  contradict H.
-Defined.
+Instance happens_before_rel : RelDecision happens_before_fn :=
+  fun x y => bool_decision.
 
 Definition sorted_state_union
   (s : vstate FreeX)
@@ -756,22 +748,12 @@ Instance StrictOrder_preceeds_happens_before_fn :
 Proof.
 unfold preceeds_P; simpl.
 assert (Hstr: StrictOrder
- (fun x0 y : {x : State.message C V | byzantine_message_prop FreeX x} =>
-  validator_message_preceeds C V (proj1_sig x0) (proj1_sig y))).
-apply free_full_byzantine_message_preceeds_stict_order.
+ (fun x y => validator_message_preceeds C V (proj1_sig x) (proj1_sig y)))
+       by apply free_full_byzantine_message_preceeds_stict_order.
 unfold validator_message_preceeds in Hstr.
-destruct Hstr.
-constructor.
-* intro x'; specialize (StrictOrder_Irreflexive x').
-  generalize StrictOrder_Irreflexive.
-  unfold complement; simpl; intros.
-  apply StrictOrder_Irreflexive0.
-  apply Bool.Is_true_eq_true.
-  assumption.
-* intros x' y' z'. specialize (StrictOrder_Transitive x' y' z').
-  generalize StrictOrder_Transitive; intros.
-  apply Bool.Is_true_eq_left.
-  apply StrictOrder_Transitive0; apply Bool.Is_true_eq_true; assumption.
+revert Hstr.
+apply StrictOrder_reexpress_impl. intros x y;simpl.
+split;[apply Bool.Is_true_eq_left|apply Bool.Is_true_eq_true].
 Qed.
 
 Lemma receive_messages_protocol
@@ -823,7 +805,7 @@ Proof.
       assumption.
     + assert (Hx : In x (ms ++ [x])).
         { apply in_app_iff. right. left. reflexivity. }
-      simpl. 
+      simpl.
       destruct i as [v | client]; simpl; repeat split
       ; try
         (intro Hx'
