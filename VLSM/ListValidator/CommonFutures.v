@@ -623,25 +623,20 @@ Context
         - assumption.
         - subst input_a.
           apply option_protocol_message_Some.
-          eapply sent_component_protocol_composed.
-          exact Hfinite.
-          exact Rindex.
-          exact Hfinite.
-          exact has_been_received_capabilities.
-          admit.
-          admit.
-          exact 0%R.
-          admit.
-          admit.
-          
-          (*
-          apply option_protocol_message_Some.
-          apply protocol_message_prop_composite_free_lift with (j := from).
-          apply can_emit_protocol.
-          apply (@in_history_can_emits index from index_listing Hfinite _ (est' from) _ _  _) in Hinsa.
-          unfold IM_index.
-          assumption.
-          admit. *)
+          specialize (sent_component_protocol_composed IM_index i0 (free_constraint IM_index) has_been_sent_capabilities (fun m => Some (fst m)) s') as Hope.
+          spec Hope. assumption.
+          specialize (Hope from (from, sa)).
+          apply Hope.
+          unfold has_been_sent.
+          unfold has_been_sent_capabilities.
+          unfold has_been_sent_lv.
+          unfold send_oracle.
+          simpl.
+          rewrite decide_True.
+          apply existsb_exists.
+          exists sa.
+          split. assumption.
+          unfold state_eqb. rewrite decide_True. all : reflexivity. 
         - simpl in *.
           inversion Hh.
           unfold vvalid.
@@ -722,7 +717,7 @@ Context
           }
           rewrite H1 in eq_cs2.
           discriminate eq_cs2.
-   Admitted.
+   Qed.
    
     Definition get_candidates 
       (s : vstate X)
