@@ -149,7 +149,7 @@ Proof.
   split. apply Is_true_eq_left. apply Is_true_eq_true.
 Qed.
 
-Definition bool_decision {b:bool} : Decision b :=
+Instance bool_decision {b:bool} : Decision b :=
   match b return {b}+{~b} with
           | true => left I
           | false => right (fun H => H)
