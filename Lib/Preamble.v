@@ -204,6 +204,12 @@ Proof.
   - right. apply (predicate_function2_neg _ _ _ _ H). assumption.
 Qed.
 
+Lemma bool_decide_predicate_function2: forall A B (P : A -> B -> Prop) (P_dec : RelDecision P),
+  PredicateFunction2 P (fun a b => bool_decide (P a b)).
+Proof.
+  intros. intros a b. symmetry. apply bool_decide_eq_true.
+Qed.
+
 (* Reflexivity of comparison operators *)
 Class CompareReflexive {A} (compare : A -> A -> comparison) : Prop :=
     compare_eq : forall x y, compare x y = Eq <-> x = y.
