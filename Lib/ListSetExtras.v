@@ -627,4 +627,18 @@ Proof.
   reflexivity.
 Qed.
 
+Require Import Setoid.
+
+Add Parametric Relation A : (set A) (@set_eq A)
+ reflexivity proved by (@set_eq_refl A)
+ transitivity proved by (@set_eq_tran A) as set_eq_rel.
+
+Add Parametric Morphism A : (@In A)
+  with signature @eq A ==> @set_eq A ==> iff as In_set_eq.
+Proof.
+  intros a l1 l2 H.
+  split;apply H.
+Qed.
+
+
 Unset Implicit Arguments.

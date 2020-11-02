@@ -242,18 +242,16 @@ Proof.
 Qed.
 
 Context
-  (message_events := full_node_message_comparable_events C V).
+  (message_preceeds := validator_message_preceeds C V)
+  (message_preceeds_dec := validator_message_preceeds_dec C V).
 
-Existing Instance message_events.
-
-Instance happens_before_rel : RelDecision happens_before_fn :=
-  fun x y => bool_decision.
+Existing Instance message_preceeds_dec.
 
 Definition sorted_state_union
   (s : vstate FreeX)
   : set message
   :=
-  top_sort happens_before_fn (state_union s).
+  top_sort message_preceeds (state_union s).
 
 Lemma sorted_state_union_nodup
   (s : vstate FreeX)
@@ -743,17 +741,42 @@ Proof.
   - right. exists client. assumption.
 Qed.
 
-Instance StrictOrder_preceeds_happens_before_fn :
- StrictOrder (preceeds_P happens_before_fn (byzantine_message_prop FreeX)).
+Instance StrictOrder_preceeds_message_preceeds:
+  StrictOrder (preceeds_P message_preceeds (byzantine_message_prop FreeX))
+  := free_full_byzantine_message_preceeds_stict_order.
+
+Lemma preceeds_closed_contains_justification
+  (x m : message)
+  (ms : list message)
+  (Hm : In m (get_message_set (unmake_justification (get_justification x))))
+  (Hmsj : preceeds_closed message_preceeds (ms ++ [x])):
+  In m (ms ++ [x]).
 Proof.
-unfold preceeds_P; simpl.
-assert (Hstr: StrictOrder
- (fun x y => validator_message_preceeds C V (proj1_sig x) (proj1_sig y)))
-       by apply free_full_byzantine_message_preceeds_stict_order.
-unfold validator_message_preceeds in Hstr.
-revert Hstr.
-apply StrictOrder_reexpress_impl. intros x y;simpl.
-split;[apply Bool.Is_true_eq_left|apply Bool.Is_true_eq_true].
+  clear -Hmsj Hm.
+  unfold preceeds_closed in Hmsj.
+  rewrite Forall_forall in Hmsj.
+  apply (Hmsj x);clear Hmsj.
+  { apply in_app_iff;right;left;reflexivity. }
+  unfold message_preceeds, validator_message_preceeds;simpl.
+  rewrite Is_true_iff_eq_true.
+  destruct x;simpl.
+  rewrite <- in_correct_refl.
+  assumption.
+Qed.
+
+Lemma byzantine_message_prop_justification_excludes_self
+  (x: message)
+  (Hmsb : byzantine_message_prop FreeX x):
+  ~In x (get_message_set (unmake_justification (get_justification x))).
+Proof.
+  clear -Hmsb.
+  intro Hcycle.
+  destruct
+    (free_full_byzantine_message_preceeds_irreflexive
+       (exist _ _ Hmsb)) as [].
+  apply in_correct in Hcycle.
+  destruct x.
+  exact Hcycle.
 Qed.
 
 Lemma receive_messages_protocol
@@ -762,9 +785,9 @@ Lemma receive_messages_protocol
   (i : index)
   (ms : list message)
   (Hms : NoDup ms)
-  (Hmsj : preceeds_closed happens_before_fn ms)
+  (Hmsj : preceeds_closed message_preceeds ms)
   (Hmsi : incl ms (state_union s))
-  (Hmst : topologically_sorted happens_before_fn ms)
+  (Hmst : topologically_sorted message_preceeds ms)
   : finite_protocol_trace_from Full_constrained_composition s (receive_messages s i (rev ms)).
 Proof.
   induction ms using rev_ind.
@@ -776,15 +799,14 @@ Proof.
       apply state_union_free_byzantine_message.
       assumption.
     }
-    assert (Hmsj' : preceeds_closed happens_before_fn ms).
+    assert (Hmsj' : preceeds_closed message_preceeds ms).
     { apply topologically_sorted_preceeds_closed_remove_last
         with (byzantine_message_prop FreeX) (ms ++ [x]) x
       ; try assumption; try reflexivity.
-      apply StrictOrder_preceeds_happens_before_fn.
+      apply StrictOrder_preceeds_message_preceeds.
     }
-    assert (Hmst' : topologically_sorted happens_before_fn ms ).
+    assert (Hmst' : topologically_sorted message_preceeds ms ).
     { apply toplogically_sorted_remove_last with (ms ++ [x]) x; try assumption.
-      apply happens_before_rel.
       reflexivity.
     }
     apply NoDup_remove in Hms.
@@ -805,47 +827,27 @@ Proof.
       assumption.
     + assert (Hx : In x (ms ++ [x])).
         { apply in_app_iff. right. left. reflexivity. }
-      simpl.
-      destruct i as [v | client]; simpl; repeat split
-      ; try
-        (intro Hx'
-        ; apply (proj1 (receive_messages_v s (inl v) ms))in Hx'
-        || apply (proj1 (receive_messages_v s (inr client) ms))in Hx'
-        ; apply set_union_iff in Hx'
-        ; destruct Hx'; try (elim Hnx; assumption)
-        ; elim n
-        ; assumption
-        )
-      ; try
-        (intros m Hm
-        ; apply (receive_messages_v s (inl v))
-        ||
-        apply (receive_messages_v s (inr client))
-        ; apply set_union_iff; right
-        ; unfold preceeds_closed in Hmsj
-        ; rewrite Forall_forall in Hmsj
-        ; specialize (Hmsj x Hx m)
-        ; destruct x as (c, v', j)
-        ; unfold happens_before_fn in Hmsj; simpl in Hmsj
-        ; simpl in Hm; apply in_correct_refl in Hm
-        ; specialize (Hmsj Hm)
-        ; apply in_app_iff in Hmsj
-        ; destruct Hmsj as [Hmsj | [Heqm | Hn]]
-        ; try inversion Hn
-        ; try assumption
-        ; subst m
-        ; rewrite Forall_forall in Hmsb; specialize (Hmsb ((c, v', j)) Hx)
-        ; specialize
-          (free_full_byzantine_message_preceeds_irreflexive
-          (exist _ ((c, v', j)) Hmsb)
-          )
-        ; intro Hc; elim Hc
-        ; unfold free_full_byzantine_message_preceeds; simpl
-        ; unfold validator_message_preceeds
-        ; unfold validator_message_preceeds_fn
-        ; unfold unmake_justification
-        ; apply Bool.Is_true_eq_true
-        ; assumption).
+        simpl.
+        set (ix:=i).
+        destruct i as [v | client]; simpl; repeat split;
+        lazymatch goal with
+        | |- ~ In _ ?L =>
+          intro Hx';apply (receive_messages_v s ix), set_union_iff in Hx';
+          clear -Hx' n Hnx;tauto
+        | |- incl _ _ =>
+          intros m Hm
+          ; apply (receive_messages_v s ix), set_union_iff
+          ; right
+          ; apply (preceeds_closed_contains_justification x m _ Hm) in Hmsj
+          ; apply in_app_iff in Hmsj
+          ; destruct Hmsj as [Hmsj | [Heqm | []]];[assumption|subst m]
+          ; exfalso
+          ; rewrite Forall_forall in Hmsb; specialize (Hmsb _ Hx)
+          ; apply byzantine_message_prop_justification_excludes_self in Hmsb
+          ; exact (Hmsb Hm)
+        | |- not_heavy _ => idtac
+        end.
+      unfold ix;clear ix.
       pose (Full_composition_constraint_state_not_heavy s Hs) as Hsnh.
       specialize (receive_messages_set_eq s (inr client) (ms ++ [x]) Hmsi).
       intros [_ Hincl].
@@ -1230,7 +1232,7 @@ Qed.
 Lemma state_union_justification_closed
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
-  : preceeds_closed happens_before_fn (state_union s).
+  : preceeds_closed message_preceeds (state_union s).
 Proof.
   unfold preceeds_closed.
   rewrite Forall_forall.
@@ -1243,10 +1245,10 @@ Proof.
     apply constraint_free_protocol_prop with Full_composition_constraint.
     assumption.
   }
-  unfold happens_before_fn in Hmj. simpl in Hmj.
+  unfold message_preceeds, validator_message_preceeds in Hmj.
   unfold validator_message_preceeds_fn in Hmj. simpl in Hmj.
   destruct m as (cm, vm, jm).
-  specialize (in_correct_refl (unmake_message_set (justification_message_set jm)) mj); intro Hin.
+  specialize (in_correct (unmake_message_set (justification_message_set jm)) mj); intro Hin.
   apply Hin in Hmj.
   pose (in_free_byzantine_state_justification s Hs' ((cm, vm, jm))) as Hinm.
   destruct Hm as [[v Hm] | [client Hm]].
@@ -1260,11 +1262,11 @@ Lemma receive_sorted_messages_protocol
   (Hs : protocol_state_prop Full_constrained_composition s)
   (ms : set message)
   (Hnodup : NoDup ms)
-  (Hms : topological_sorting happens_before_fn (state_union s) ms)
+  (Hms : topological_sorting message_preceeds (state_union s) ms)
   (tr := receive_messages_iterated s ms is)
   : finite_protocol_trace_from Full_constrained_composition s tr.
 Proof.
-  assert (Hmsj : preceeds_closed happens_before_fn ms).
+  assert (Hmsj : preceeds_closed message_preceeds ms).
   { destruct Hms as [Hmseq _].
     apply preceeds_closed_set_eq with (state_union s).
     - apply set_eq_comm. assumption.
@@ -1272,7 +1274,7 @@ Proof.
   }
   assert (Hmsi : incl ms (state_union s)).
   { destruct Hms as [[_ Hincl] _]. assumption. }
-  assert (Hmst : topologically_sorted happens_before_fn ms).
+  assert (Hmst : topologically_sorted message_preceeds ms).
   { destruct Hms as [_ Hts]. assumption. }
   clear Hms.
   generalize dependent s.
@@ -1304,7 +1306,7 @@ Proof.
   unfold union_state.
   specialize (receive_messages_iterated_in s (sorted_state_union s) indices i Hi).
   intros Heq.
-  specialize (top_sort_set_eq happens_before_fn (state_union s)).
+  specialize (top_sort_set_eq message_preceeds (state_union s)).
   intro Heq'.
   apply set_eq_tran with (set_union decide_eq (get_message_set (project s i)) (sorted_state_union s))
   ; try assumption.
@@ -1338,11 +1340,11 @@ Proof.
       assumption.
     + specialize
         (@top_sort_correct _ _
-          happens_before_fn
-          happens_before_rel (byzantine_message_prop FreeX)).
+          message_preceeds
+          message_preceeds_dec (byzantine_message_prop FreeX)).
       intro H.
       apply H.
-      * apply StrictOrder_preceeds_happens_before_fn.
+      * apply StrictOrder_preceeds_message_preceeds.
       * apply state_union_free_byzantine_message. assumption.
   - intros i i'.
     specialize (union_state_state_union s).

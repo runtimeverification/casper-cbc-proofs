@@ -57,6 +57,11 @@ Definition validator_message_preceeds
   :=
   validator_message_preceeds_fn m1 m2 = true.
 
+Definition validator_message_preceeds_dec: RelDecision validator_message_preceeds.
+  refine (fun m1 m2 => if validator_message_preceeds_fn m1 m2 as b return Decision (b = true)
+                       then left _ else right _);congruence.
+Defined.
+
 Lemma  validator_message_preceeds_irreflexive'
   (c : C)
   (v : V)
@@ -131,12 +136,5 @@ Proof.
   apply validator_message_preceeds_irreflexive'.
   apply justification_incl_refl.
 Qed.
-
-Definition full_node_message_comparable_events
-  : comparable_events (State.message C V)
-  :=
-  {|
-    happens_before_fn := validator_message_preceeds_fn
-  |}.
 
 End Equivocation.

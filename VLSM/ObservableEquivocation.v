@@ -37,9 +37,8 @@ Class observation_based_equivocation_evidence
   {
     observable_events : state -> validator -> set event;
     equivocation_evidence (s : state) (v : validator) : Prop :=
-      exists e1 e2,
-        In e1 (observable_events s v) /\
-        In e2 (observable_events s v) /\
+      exists e1, In e1 (observable_events s v) /\
+      exists e2, In e2 (observable_events s v) /\
         ~ comparable happens_before e1 e2
   }.
 
@@ -51,13 +50,6 @@ Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
   (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
 Proof. firstorder. Qed.
 
-Lemma happens_before_function
-      `{Hevidence: observation_based_equivocation_evidence}:
-  PredicateFunction2 happens_before (fun e1 e2 => bool_decide (happens_before e1 e2)).
-Proof.
-  exact (bool_decide_predicate_function2 _ _ happens_before _).
-Qed.
-
 Instance equivocation_evidence_dec {state validator event:Type}
       `{Hevidence: observation_based_equivocation_evidence state validator event}:
       RelDecision equivocation_evidence.
@@ -67,7 +59,7 @@ Proof.
                                    (observable_events s v)) (observable_events s v)
           <-> equivocation_evidence s v).
   {
-  unfold equivocation_evidence. setoid_rewrite ex_out.
+  unfold equivocation_evidence.
   rewrite Exists_exists.
   apply Morphisms_Prop.ex_iff_morphism; intro e1.
   apply and_iff_compat_l.
@@ -80,10 +72,7 @@ Proof.
   apply (iff_dec H);clear H.
   apply Exists_dec;intro e1.
   apply Exists_dec;intro e2.
-  pose proof (Hcomp:= comparable_function _ _ happens_before_function e1 e2).
-  destruct (comparableb (fun a b => bool_decide (happens_before a b)) e1 e2).
-  right. firstorder.
-  left. rewrite Hcomp. discriminate.
+  destruct (comparable_dec happens_before e1 e2);[right|left];tauto.
 Qed.
 
 (** We can use this notion of [observation_based_equivocation_evidence]
@@ -839,7 +828,7 @@ Lemma evidence_implies_equivocation_converse
   (He2 : In e2 (observable_events s v))
   : comparable happens_before e1 e2.
 Proof.
-  destruct (Bool.iff_reflect _ _ (comparable_function _ _ happens_before_function e1 e2)) as [Hcmp|Hcmp].
+  destruct (comparable_dec happens_before e1 e2) as [|Hcmp].
   assumption.
   specialize (evidence_implies_equivocation s Hs v e1 e2 He1 He2 Hcmp)
     as Heqv.
@@ -1005,7 +994,7 @@ Proof.
   symmetry.
   apply filter_nil. rewrite Forall_forall. intros v Hv.
   apply bool_decide_eq_false.
-  intros [e1 [e2 [He1 H]]].
+  intros [e1 [He1 H]].
   rewrite no_events_in_initial_state in He1 by assumption;assumption.
 Qed.
 

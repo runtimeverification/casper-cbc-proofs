@@ -33,11 +33,12 @@ messages, implementing a limited equivocation tolerance policy.
     {Hrt : ReachableThreshold V}
     (eq_V := @strictly_comparable_eq_dec _ about_V)
     (message := State.message C V)
-    (message_events := full_node_message_comparable_events C V)
+    (happens_before := validator_message_preceeds C V)
+    (happens_before_dec := validator_message_preceeds_dec C V)
     .
 
   Existing Instance eq_V.
-  Existing Instance message_events.
+  Existing Instance happens_before_dec.
 
   Definition full_node_client_observable_events
     (s : set message)
@@ -47,7 +48,7 @@ messages, implementing a limited equivocation tolerance policy.
     filter (fun m => if decide (sender m = v) then true else false) s.
 
   Definition full_node_client_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (set message) V message decide_eq message_events
+    : observation_based_equivocation_evidence (set message) V message decide_eq _ happens_before_dec
     :=
     {|
       observable_events := full_node_client_observable_events
@@ -71,7 +72,7 @@ messages, implementing a limited equivocation tolerance policy.
   Definition client_basic_equivocation
     : basic_equivocation (set message) V
     := basic_observable_equivocation (set message) V message
-        full_node_client_state_validators full_node_client_state_validators_nodup.
+        _ full_node_client_state_validators full_node_client_state_validators_nodup.
 
   Existing Instance client_basic_equivocation.
 

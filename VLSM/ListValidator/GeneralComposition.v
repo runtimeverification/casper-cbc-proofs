@@ -32,17 +32,17 @@ Context
   {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
   (X := composite_vlsm IM_index i0 constraint)
   (preX := pre_loaded_with_all_messages_vlsm X)
-  (Hevidence := fun (i : index) => @observable_full index index_listing idec)
+  (Hevidence := fun (i : index) => @observable_full index index_listing Hfinite idec)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
   .
 
   Definition composed_eqv_evidence
-  : observation_based_equivocation_evidence (vstate X) index state state_eq_dec comparable_states
+  : observation_based_equivocation_evidence (vstate X) index state state_eq_dec state_lt state_lt_dec
   :=
   (@composed_observation_based_equivocation_evidence
     message index state
-    state_eq_dec comparable_states
+    state_eq_dec state_lt state_lt_dec
     index index_listing IM_index Hevidence
   ).
 
@@ -60,7 +60,7 @@ Context
       (dest : vstate X)
       (Ht : protocol_transition X l som (dest, Some m))
       : incl (message_observable_events_lv m i)
-      (@observable_events _ _ _ _ _ (Hevidence i) (dest (projT1 l)) i).
+      (@observable_events _ _ _ _ _ _ (Hevidence i) (dest (projT1 l)) i).
    Proof.
     unfold message_observable_events_lv.
     unfold observable_events.
@@ -286,7 +286,6 @@ Context
   Qed.
 
   Let id := fun i : index => i.
-  Existing Instance comparable_states.
   Let trace_generated_event_lv := trace_generated_event index_listing IM_index Hevidence i0 constraint.
   Let trace_generated_index_lv := trace_generated_index index_listing IM_index Hevidence i0 constraint (fun i:index => i).
 
@@ -397,7 +396,7 @@ Context
     (e1 e2 : state)
     (He1 : trace_generated_event_lv is tr v e1)
     (He2 : trace_generated_event_lv is tr v e2)
-    : comparableb happens_before_fn e1 e2 = true.
+    : comparable state_lt e1 e2.
   Proof.
     apply generated_events_lv_sent in He1; try assumption.
     apply generated_events_lv_sent in He2; try assumption.
@@ -406,23 +405,22 @@ Context
     assert (Heq := Heq2).
     rewrite Heq1 in Heq.
     apply order_decompositions in Heq.
-    unfold comparableb.
-    destruct (decide (e1 = e2)); try reflexivity.
-    destruct Heq as [Heq | [Hgt | Hlt]]
-    ; try (elim n; subst; reflexivity)
-    ; apply orb_true_iff.
+    unfold comparable.
+    destruct (decide (e1 = e2)) as [?|n];[left;assumption|].
+    destruct Heq as [Heq | Hord];
+      [left;congruence|right].
+    destruct Hord as  [Hgt | Hlt].
     - right.
-      apply @state_lt_function; try assumption.
       apply
         (@state_lt_in_futures index v index_listing Hfinite idec est e2 e1)
-      ; try (intro contra; elim n; symmetry; assumption).
+      ;[| intro contra; elim n; symmetry; assumption].
       remember (composite_vlsm_constrained_projection IM_index i0 constraint v) as Xj.
       apply
         (VLSM_incl_in_futures
           (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
           (pre_loaded_with_all_messages_vlsm_machine (@VLSM_list index v index_listing idec est))
-        )
-      ; try apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v).
+        );
+      [solve[apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v)]|].
       subst e1 e2.
       apply (in_futures_projection IM_index i0 constraint v).
       destruct Hgt as [suf1' Hgt].
@@ -437,17 +435,16 @@ Context
         assumption.
       + subst pre1. rewrite map_app. rewrite last_app. reflexivity.
     - left.
-      apply @state_lt_function; try assumption.
       apply
         (@state_lt_in_futures index v index_listing Hfinite idec est e1 e2)
-      ; try assumption.
+      ;[|assumption].
       remember (composite_vlsm_constrained_projection IM_index i0 constraint v) as Xj.
       apply
         (VLSM_incl_in_futures
           (composite_vlsm_constrained_projection_machine IM_index i0 constraint v)
           (pre_loaded_with_all_messages_vlsm_machine (@VLSM_list index v index_listing idec est))
         )
-      ; try apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v).
+      ;[solve[apply (proj_pre_loaded_with_all_messages_incl IM_index i0 constraint v)]|].
       subst e1 e2.
       apply (in_futures_projection IM_index i0 constraint v).
       destruct Hlt as [suf2' Hlt].

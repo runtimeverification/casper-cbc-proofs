@@ -32,7 +32,8 @@ Section ClientsAndValidators.
     {Hrt : ReachableThreshold V}
     {Hestimator : Estimator (state C V) C}
     (message := State.message C V)
-    (message_events := full_node_message_comparable_events C V)
+    (message_preceeds := validator_message_preceeds C V)
+    (message_preceeds_dec := validator_message_preceeds_dec C V)
     .
 Parameter clients : Type.
 Parameter clients_eq_dec : EqDecision clients.
@@ -505,7 +506,7 @@ Qed.
 Definition free_observation_based_equivocation_evidence_index
   (i : index)
   : observation_based_equivocation_evidence
-        (vstate (IM_index i)) V message message_eq (full_node_message_comparable_events C V).
+        (vstate (IM_index i)) V message message_eq _ message_preceeds_dec.
 Proof.
   destruct i.
   - apply full_node_validator_observation_based_equivocation_evidence.
@@ -539,15 +540,15 @@ Proof.
 Qed.
 
 Definition composed_equivocation_evidence
-  : observation_based_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq  (full_node_message_comparable_events C V)
-  := @composed_observation_based_equivocation_evidence message V message message_eq (full_node_message_comparable_events C V) index indices IM_index free_observation_based_equivocation_evidence_index.
+  : observation_based_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq message_preceeds message_preceeds_dec
+  := @composed_observation_based_equivocation_evidence message V message message_eq message_preceeds message_preceeds_dec index indices IM_index free_observation_based_equivocation_evidence_index.
 
 Existing Instance composed_equivocation_evidence.
 
 Definition composed_basic_observable_equivocation
   : basic_equivocation (vstate VLSM_full_composed_free) V
   := @composed_observable_basic_equivocation
-      message V message message_eq (full_node_message_comparable_events C V)
+      message V message message_eq message_preceeds message_preceeds_dec
       index indices IM_index
       free_observation_based_equivocation_evidence_index
       Hmeasurable Hrt
@@ -587,7 +588,7 @@ Next Obligation.
 Qed.
 
 Existing Instance message_eq.
-Existing Instance message_events.
+Existing Instance message_preceeds_dec.
 
 (**
 Equivocation is defined as non-heaviness of the full set of exchanged messages.
@@ -647,14 +648,14 @@ Proof.
   - intro H.
     apply set_union_in_iterated.
     apply Exists_exists.
-    exists (@observable_events _ _ _ _ _ composed_equivocation_evidence s (sender m)).
+    exists (@observable_events _ _ _ _ _ _ composed_equivocation_evidence s (sender m)).
     split.
     + apply in_map_iff. exists (sender m). split; try reflexivity.
       apply (proj2 finite_validators).
     + simpl. apply set_union_in_iterated. apply Exists_exists.
       destruct H as [[v Hm] | [client Hm]]
-      ; exists (@observable_events _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence (s (inl v)) (sender m))
-      || exists (@observable_events _ _ _ _ _ full_node_client_observation_based_equivocation_evidence (s (inr client)) (sender m))
+      ; exists (@observable_events _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence (s (inl v)) (sender m))
+      || exists (@observable_events _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence (s (inr client)) (sender m))
       ; split; try (apply in_map_iff; exists (inl v) || exists (inr client); split; try reflexivity; apply (proj2 finite_index))
       ; simpl; apply filter_In; split; try assumption
       ; rewrite decide_True; auto.
@@ -703,14 +704,14 @@ Qed.
 Lemma observable_events_commute
   (s : vstate VLSM_full_composed_free)
   (v : V)
-  : set_eq (observable_events s v) (@observable_events _ _ _ _ _  full_node_client_observation_based_equivocation_evidence (state_union s) v).
+  : set_eq (observable_events s v) (@observable_events _ _ _ _ _  _ full_node_client_observation_based_equivocation_evidence (state_union s) v).
 Proof.
   split; intros m Hm.
   - simpl.
     apply filter_In.
     split.
     + apply set_union_in_iterated. apply Exists_exists.
-      exists (@observable_events _ _ _ _ _  composed_equivocation_evidence s v).
+      exists (@observable_events _ _ _ _ _ _  composed_equivocation_evidence s v).
       split; try assumption.
       apply in_map_iff. exists v. split; try reflexivity.
       apply (proj2 finite_validators).
@@ -732,35 +733,24 @@ Lemma not_heavy_commute
   : not_heavy (state_union s).
 Proof.
   unfold not_heavy in *.
-  apply Rle_trans with (equivocation_fault s); try assumption.
-  clear Hnheavy.
-  unfold equivocation_fault in *.
-  apply sum_weights_incl
-  ; unfold equivocating_validators
-  ; try apply NoDup_filter
-  ; unfold state_validators
-  ; simpl
-  ; try apply (proj1 finite_validators)
-  ; unfold full_node_client_state_validators
-  ; try apply set_map_nodup
-  .
-  assert (Hincl : incl (set_map decide_eq sender (state_union s)) validators)
-    by (intros v Hv; apply (proj2 finite_validators)).
-  apply incl_tran with
-    (@filter V
-      (@equivocation_evidence (set (State.message C V)) V
-         (State.message C V) (@message_eq C V about_C about_V)
-         (@full_node_message_comparable_events C V about_C about_V)
-         (@full_node_client_observation_based_equivocation_evidence C V
-            about_C about_V) (state_union s))
-      validators
-    ); try (apply filter_incl; assumption).
-  apply filter_incl_fn.
-  intro v. unfold equivocation_evidence.
-  repeat rewrite existsb_exists. intros [e1 [He1 He2]]. exists e1.
-  split; try (apply observable_events_commute; assumption).
-  rewrite existsb_exists in *. destruct He2 as [e2 [He2 Heqv]]. exists e2.
-  split; try apply observable_events_commute; assumption.
+  apply Rle_trans with (equivocation_fault s);[clear Hnheavy|assumption].
+  unfold equivocation_fault.
+  apply sum_weights_incl;
+    [apply NoDup_filter, set_map_nodup
+    |apply NoDup_filter, finite_validators
+    |];[].
+  unfold equivocating_validators.
+
+  apply incl_tran with (filter (is_equivocating_fn (state_union s)) (state_validators s)).
+  * apply filter_incl. intros v Hv. apply finite_validators.
+
+  * apply filter_incl_fn.
+    simpl. intro v.
+    rewrite !bool_decide_eq_true.
+    unfold equivocation_evidence.
+    intro H.
+    setoid_rewrite observable_events_commute.
+    exact H.
 Qed.
 
 End ClientsAndValidators.

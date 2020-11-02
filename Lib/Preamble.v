@@ -204,10 +204,16 @@ Proof.
   - right. apply (predicate_function2_neg _ _ _ _ H). assumption.
 Qed.
 
-Lemma bool_decide_predicate_function2: forall A B (P : A -> B -> Prop) (P_dec : RelDecision P),
+Lemma bool_decide_predicate_function2 {A B} (P : A -> B -> Prop) {P_dec : RelDecision P}:
   PredicateFunction2 P (fun a b => bool_decide (P a b)).
 Proof.
   intros. intros a b. symmetry. apply bool_decide_eq_true.
+Qed.
+
+Lemma Is_true_predicate_function2: forall A B (f : A -> B -> bool),
+  PredicateFunction2 (fun a b => Is_true (f a b)) f.
+Proof.
+  intros. intros a b. symmetry. apply Is_true_iff_eq_true.
 Qed.
 
 (* Reflexivity of comparison operators *)
@@ -376,6 +382,24 @@ Definition comparableb
   if decide (a = b) then true
   else orb (f a b) (f b a).
 
+Definition incomparableb
+  `{EqDecision A}
+  (f : A -> A -> bool)
+  (a b : A)
+  : bool
+  :=
+  if decide (a = b) then false
+  else andb (negb (f a b)) (negb (f b a)).
+
+Lemma negb_comparableb `{EqDecision A} (f : A -> A -> bool) (a b : A):
+  incomparableb f a b = negb (comparableb f a b).
+Proof.
+  unfold incomparableb, comparableb.
+  destruct (decide (a = b));[reflexivity|].
+  rewrite negb_orb.
+  reflexivity.
+Qed.
+
 Lemma comparable_function
   {A : Type}
   {eq_A : EqDecision A}
@@ -398,6 +422,18 @@ Proof.
     + right. assumption.
 Qed.
 
+Instance comparable_dec
+  {A : Type}
+  {eq_A : EqDecision A}
+  (R : A -> A -> Prop)
+  {HR : RelDecision R}
+  : RelDecision (comparable R).
+Proof.
+  intros a b.
+  eapply reflect_dec.
+  apply iff_reflect, comparable_function, bool_decide_predicate_function2.
+Qed.
+
 Lemma comparable_function_neg
   `{EqDecision A}
   (f : A -> A -> bool)
@@ -415,6 +451,16 @@ Proof.
   apply (predicate_function2_neg _ _ _ _ HR) in Hab.
   apply (predicate_function2_neg _ _ _ _ HR) in Hba.
   split; assumption.
+Qed.
+
+Lemma comparable_function_bool
+  {A : Type}
+  {eq_A : EqDecision A}
+  (f : A -> A -> bool)
+  : PredicateFunction2 (comparable f) (comparableb f).
+Proof.
+  apply comparable_function.
+  apply Is_true_predicate_function2.
 Qed.
 
 Lemma compare_two_cases

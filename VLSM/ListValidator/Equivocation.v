@@ -609,6 +609,13 @@ Context
         rewrite contra in Hs1. discriminate Hs1.
     Qed.
 
+    Lemma state_lt_dec: RelDecision state_lt.
+    Proof.
+      intros a b.
+      eapply reflect_dec.
+      apply iff_reflect, state_lt_function.
+    Qed.
+
     Lemma state_le_refl
       (s1 : state)
       : state_le s1 s1.
@@ -2797,12 +2804,6 @@ Context
       intuition.
     Qed.
 
-    Definition comparable_states : comparable_events state := {|
-      happens_before_fn := state_ltb
-    |}.
-
-    Existing Instance comparable_states.
-
     Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
       match s with
       | Bottom => []
@@ -3639,7 +3640,7 @@ Context
        (@state index index_listing)
        index
        (@state index index_listing)
-       state_eq_dec comparable_states) := {|
+       state_eq_dec state_lt state_lt_dec) := {|
        observable_events := full_observations;
       |}.
 
@@ -3662,7 +3663,8 @@ Context
       index
       (@state index index_listing)
       state_eq_dec
-      comparable_states
+      state_lt
+      state_lt_dec
       observable_full
       Mindex
       Rindex
