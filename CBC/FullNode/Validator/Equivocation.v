@@ -58,6 +58,7 @@ Definition validator_message_preceeds
   validator_message_preceeds_fn m1 m2 = true.
 
 Definition validator_message_preceeds_dec: RelDecision validator_message_preceeds.
+Proof.
   refine (fun m1 m2 => if validator_message_preceeds_fn m1 m2 as b return Decision (b = true)
                        then left _ else right _);congruence.
 Defined.
