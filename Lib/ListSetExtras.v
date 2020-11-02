@@ -640,5 +640,8 @@ Proof.
   split;apply H.
 Qed.
 
+Add Parametric Morphism A : (@In A)
+  with signature @eq A ==> @incl A ==> Basics.impl as In_incl.
+Proof. firstorder. Qed.
 
 Unset Implicit Arguments.
