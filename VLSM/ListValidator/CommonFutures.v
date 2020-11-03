@@ -505,7 +505,18 @@ Context
           2 : discriminate Hsync.
           apply complete_suffix_correct in eq_cs.
           assert (l = []). {
-            admit.
+            inversion Hsync.
+            assert (length l = 0). {
+              assert (length (sync_action to from (rev l)) = 0). {
+                apply length_zero_iff_nil. assumption.
+              }
+              unfold sync_action in H.
+              rewrite map_length in H.
+              rewrite map_length in H.
+              rewrite rev_length in H.
+              assumption.
+            }
+            apply length_zero_iff_nil. assumption.
           }
           rewrite H in eq_cs.
           simpl in eq_cs.
