@@ -36,6 +36,7 @@ Context
   (has_been_received_capabilities := fun i : index => @has_been_received_lv index i index_listing Hfinite idec (est' i))
   (X := composite_vlsm IM_index i0 (free_constraint IM_index))
   (preX := pre_loaded_with_all_messages_vlsm X)
+  (complete_observations := @complete_observations index i0 index_listing decide_eq)
   (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
   (ce := @composed_observation_based_equivocation_evidence
     message index lv_event
@@ -44,12 +45,13 @@ Context
     get_event_subject
     index index_listing IM_index Hevidence).
   
+  Check complete_observations.
+  
   Definition component_list (s : vstate X) (li : list index) :=
     List.map s li.
-    
-  (* TODO : figure out why this doesn't work anymore 
+  
   Definition unite_observations (ls : list state) : set lv_event := 
-    fold_right (set_union decide_eq) [] (List.map (@complete_observations) ls). *)
+    fold_right (set_union decide_eq) [] (List.map (complete_observations) ls).
   
   Definition GH (s : vstate X) : list index := 
     List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index lv_event _ comparable_lv_events get_event_subject ce s i)) index_listing.
@@ -68,9 +70,16 @@ Context
   
   (* TODO: decide where to place "not-everyone-equivocating" constraint *)
   
+  Check @no_equivocating_decisions.
+  Check @equivocating_validators.
+  
   Lemma feasible_update_value_correct 
     (s : (@state index index_listing))
-    (who : index) :
+    (who : index)
+    (*
+    (Hne : @no_equivocating_decisions index index_listing idec s 
+          (@equivocating_validators (@state index index_listing) index Mindex Rindex (Hevidence who) s) <> []) *)
+    :
     (@equivocation_aware_estimator index who index_listing Hfinite decide_eq _ _ s (feasible_update_value s who)).
   Proof.
    destruct (feasible_update_value s who) eqn : eq_fv.
@@ -367,8 +376,6 @@ Context
     apply ((proj2 Hfinite) i).
   Qed.
   
-  (*
-  TODO: refactor for new event type
   Lemma everything_in_projections 
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
@@ -454,7 +461,7 @@ Context
       }
       rewrite H0 in Hina.
       assumption.
-  Qed. *)
+  Qed.
   
   Definition lift_to_receive_item (to from : index) (s : state): vaction_item (IM_index to) :=
     @Build_action_item _ (type (IM_index to)) receive (Some (from, s)).
@@ -482,17 +489,29 @@ Context
     (a : vaction X)
     (Hsync : sync s (s' from) to from = Some a) :
     let res := snd (apply_action X s a) in
-    finite_protocol_action_from X s a.
-    (* TODO: Should also speak about project (fst (apply_action X s a)) from *)
-    
+    finite_protocol_action_from X s a /\
+    (project (res to) from = project (s' from) from).
    Proof.
     generalize dependent s.
-    
     induction a.
     - intros. simpl in *.
       unfold finite_protocol_action_from. simpl.
-      apply finite_ptrace_empty. 
-      assumption.
+      split.
+        + apply finite_ptrace_empty.
+          assumption. 
+        + unfold res.
+          unfold sync in Hsync.
+          destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_cs.
+          2 : discriminate Hsync.
+          apply complete_suffix_correct in eq_cs.
+          assert (l = []). {
+            admit.
+          }
+          rewrite H in eq_cs.
+          simpl in eq_cs.
+          symmetry in eq_cs.
+          apply (@eq_history_eq_project index index_listing Hfinite) in eq_cs.
+          assumption.
     - intros. simpl in *.
       
       replace (a :: a0) with ([a] ++ a0). 2: auto.
@@ -570,25 +589,15 @@ Context
       }
       
       subst input_a.
-      split.
-      + unfold finite_protocol_action_from.
-        unfold apply_action. simpl in *.
-        rewrite eq_vtrans. simpl.
-        apply finite_ptrace_extend.
-        apply finite_ptrace_empty.
-        apply protocol_transition_destination in H. 
-        assumption.
-        assumption.
-      + unfold apply_action. simpl.
-        rewrite eq_vtrans. simpl.
-        specialize (IHa s0).
-        spec IHa.
-        apply protocol_transition_destination in H.
-        assumption.
-        apply IHa.
-        
-        assert (Honefold: get_history (s0 to) from = [sa] ++ get_history (s to) from). {
-            assert (project (s0 to) from = sa). {
+      unfold res.
+      
+      specialize (IHa s0).
+      spec IHa.
+      apply protocol_transition_destination in H.
+      assumption.
+      
+      assert (Honefold: get_history (s0 to) from = [sa] ++ get_history (s to) from). {
+          assert (project (s0 to) from = sa). {
               unfold protocol_transition in H.
               unfold vtransition in eq_vtrans.
               unfold transition in eq_vtrans.
@@ -603,7 +612,7 @@ Context
               apply (@project_same index index_listing Hfinite).
               apply protocol_state_component_no_bottom.
               assumption.
-            }
+          }
             rewrite <- H1. simpl.
             rewrite eq_cs.
             rewrite <- H1.
@@ -613,10 +622,10 @@ Context
             assumption.
         }
         
+      spec IHa. {
         unfold sync.
-        
         destruct (complete_suffix (get_history (s' from) from) (get_history (s0 to) from)) eqn : eq_cs2.
-        * f_equal.
+        f_equal.
           unfold sync_action.
           rewrite <- Htl.
           rewrite <- Htl'.
@@ -630,7 +639,7 @@ Context
           destruct eq_cs2.
           rewrite <- H1.
           apply rev_involutive.
-        * rewrite Honefold in eq_cs2.
+        + rewrite Honefold in eq_cs2.
           rewrite eq_cs' in eq_cs2.
           rewrite <- app_assoc in eq_cs2.
           assert (complete_suffix (rev tls ++ [sa] ++ get_history (s to) from)
@@ -640,7 +649,47 @@ Context
           }
           rewrite H1 in eq_cs2.
           discriminate eq_cs2.
-   Qed.
+      }
+    
+      repeat split.
+      + unfold finite_protocol_action_from.
+        unfold apply_action. simpl in *.
+        rewrite eq_vtrans. simpl.
+        apply finite_ptrace_extend.
+        apply finite_ptrace_empty.
+        apply protocol_transition_destination in H. 
+        assumption.
+        assumption.
+      + unfold apply_action. simpl.
+        rewrite eq_vtrans. simpl.
+        apply IHa.
+      + destruct IHa as [_ IHa].
+        rewrite <- IHa.
+        f_equal.
+        unfold apply_action. simpl.
+        rewrite fold_right_app. simpl.
+        rewrite eq_vtrans. simpl.
+        (*
+        destruct (fold_right (apply_action_folder X)
+        (s0, [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) 
+        (rev a0)) eqn : eq_f1.
+        destruct (fold_right (apply_action_folder X) (s0, []) (rev a0)) eqn : eq_f2.
+        replace (@fold_right
+             (prod (@vstate (@message index index_listing) X)
+                (list (@vtransition_item (@message index index_listing) X)))
+             (@vaction_item (@message index index_listing) X)
+             (@apply_action_folder (@message index index_listing) X)
+             (@pair
+                (@Common.state (@message index index_listing)
+                   (@projT1 (VLSM_type (@message index index_listing))
+                      (fun T : VLSM_type (@message index index_listing) =>
+                       @sigT (@VLSM_sign (@message index index_listing) T)
+                         (fun S : @VLSM_sign (@message index index_listing) T =>
+                          @VLSM_class (@message index index_listing) T S)) X))
+                (list (@vtransition_item (@message index index_listing) X)) s0
+                (@nil (@vtransition_item (@message index index_listing) X)))
+             (@rev (@vaction_item (@message index index_listing) X) a0)) with (v, l0). *)
+   Admitted.
    
     Definition get_candidates 
       (s : vstate X)
@@ -685,7 +734,6 @@ Context
         (Hpr : protocol_state_prop X s)
         (from : index) :
         finite_protocol_action_from X s (get_receives_for s from).
-    (* TODO: decide if this should use "free_trace_reordering" from Composition.v *)
     Proof.
     Admitted.
       

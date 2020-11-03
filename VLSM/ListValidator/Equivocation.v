@@ -3025,8 +3025,8 @@ Context
     Inductive lv_event : Type :=
       Obs: lv_event_type -> index -> (@state index index_listing) -> lv_event.
     
-    Instance event_eq_dec : EqDecision lv_event.
-    solve_decision.
+    Global Instance event_eq_dec : EqDecision lv_event.
+      solve_decision.
     Defined. 
     
     Definition get_event_subject (e : lv_event) : index :=
