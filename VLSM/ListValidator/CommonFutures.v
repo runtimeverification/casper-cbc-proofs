@@ -29,6 +29,7 @@ Context
   {idec : EqDecision index}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
+  (Rtemp := fun (i : index) => RelDecision (@state_lt' index index_listing _ i))
   (est' := fun (i : index) => (@EquivocationAwareListValidator.equivocation_aware_estimator _ i _ Hfinite _ _ _ ))
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec (est' i))
   (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec (est' i))
@@ -45,7 +46,8 @@ Context
   
   Definition component_list (s : vstate X) (li : list index) :=
     List.map s li.
-  (*
+    
+  (* TODO : figure out why this doesn't work anymore 
   Definition unite_observations (ls : list state) : set lv_event := 
     fold_right (set_union decide_eq) [] (List.map (@complete_observations) ls). *)
   
@@ -54,62 +56,6 @@ Context
   
   Definition GE (s : vstate X) : list index :=
     set_diff idec index_listing (GH s).
-    
-  Definition can_receive_prop (to : index) (s : state) (m : message) :=
-    @list_valid index to index_listing decide_eq (ListValidator.estimator) receive (s, (Some m)).
-  
-  Definition can_receive (to : index) (s : (@state index index_listing)) (m : message) : bool :=
-    let s' := snd m in
-    let from := fst m in 
-    match decide_eq from to with
-    | left _ => false
-    | right _ => match decide_eq s' Bottom with
-                 | left _ => false
-                 | right _ => match decide_eq (project s from) (project s' from) with
-                              | left _ => true
-                              | right _ => false
-                              end
-                 end
-    end.
-  
-  (*
-  Lemma can_receive_function (to : index) : PredicateFunction2 (can_receive_prop to) (can_receive to).
-  Proof.
-    unfold PredicateFunction2.
-    intros.
-    split.
-    - intros.
-      unfold can_receive_prop in H.
-      unfold can_receive.
-      unfold list_valid in H.
-      destruct H as [Hproject [Hnb Hnself]]; try
-      rewrite decide_False.
-      rewrite decide_False.
-      rewrite decide_False.
-      reflexivity.
-      assumption.
-      assumption.
-      intuition.
-    - intros.
-      unfold can_receive in H.
-      unfold can_receive_prop.
-      unfold list_valid.
-      destruct (eq_dec (project a (fst b)) (project (snd b) (fst b))).
-      destruct (eq_dec (fst b) to).
-      discriminate H.
-      destruct (eq_dec (snd b) Bottom).
-      discriminate H.
-      intuition.
-      destruct (eq_dec (fst b) to); destruct (eq_dec (snd b) Bottom); discriminate H.
-  Qed. *)
-  
-  Definition can_receive_extended (to : index) (s : (@state index index_listing)) (m : message) : bool :=
-    let s' := snd m in
-    let from := fst m in
-    match decide_eq s Bottom with
-    | left _ => true 
-    | right _ => state_ltb (project s from) s'
-    end.
   
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
@@ -119,6 +65,8 @@ Context
                         | false => true
                         end
     end.
+  
+  (* TODO: decide where to place "not-everyone-equivocating" constraint *)
   
   Lemma feasible_update_value_correct 
     (s : (@state index index_listing))
@@ -420,6 +368,7 @@ Context
   Qed.
   
   (*
+  TODO: refactor for new event type
   Lemma everything_in_projections 
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
@@ -507,34 +456,6 @@ Context
       assumption.
   Qed. *)
   
-  Definition latest_versions (s : vstate X) (i : index) : list state :=
-    let sc := List.map s index_listing in
-    List.map ((flip project) i) sc.
-  
-  Definition pick_version (s : vstate X) (from to : index) : option message :=
-    let latest_messages := List.map (pair from) (latest_versions s from) in
-    find (can_receive_extended to (s to)) latest_messages.
-  
-  (* 
-  Definition sync_component'
-    (s target : (@state index index_listing))
-    (i : index) : list (@transition_item message (type X)) := [].
-  
-  Definition sync_to_from 
-    (s : vstate X) 
-    (to from : index) 
-    (target : (@state index index_listing)) :
-    option (list (@transition_item message (type X))) :=
-    Some [].
-    
-  Definition sync_all_from
-    (s : vstate X)
-    (to from : index)
-  *)
-  
-  (* 
-  Definition sync_action' (to from : index) (ls : state) : (@action _ (type (IM_index t *)
-  
   Definition lift_to_receive_item (to from : index) (s : state): vaction_item (IM_index to) :=
     @Build_action_item _ (type (IM_index to)) receive (Some (from, s)).
   
@@ -552,7 +473,7 @@ Context
                  Some rem_action
     end.
     
-   Lemma something
+   Lemma one_sender_receive_protocol
     (s s': vstate X)
     (Hpr : protocol_state_prop X s)
     (Hpr' : protocol_state_prop X s')
@@ -562,6 +483,8 @@ Context
     (Hsync : sync s (s' from) to from = Some a) :
     let res := snd (apply_action X s a) in
     finite_protocol_action_from X s a.
+    (* TODO: Should also speak about project (fst (apply_action X s a)) from *)
+    
    Proof.
     generalize dependent s.
     
@@ -731,6 +654,39 @@ Context
       (target : index) :
       list state 
       :=
-      get_maximal_elements (state_lt' target) _ (get_candidates s target).
+      get_maximal_elements (state_ltb' target) (get_candidates s target).
+      
+    Definition get_matching_state
+      (s : vstate X)
+      (to from : index) : option state :=
+      let candidates := (get_topmost_candidates s from) in
+      List.find (fun s' => state_ltb' to (project (s to) from) s') candidates.
+      
+    Definition get_matching_action
+      (s : vstate X)
+      (from to : index) : vaction X :=
+      let res := get_matching_state s to from in
+      match res with
+      | None => []
+      | Some s' => match (sync s s' to from) with
+                   | None => []
+                   | Some a => a
+                   end
+      end.
+      
+    Definition get_receives_for
+      (s : vstate X)
+      (from : index) : vaction X :=
+      let matching_actions := List.map (get_matching_action s from) index_listing in
+      List.fold_right (@List.app action_item) [] matching_actions.
+      
+    Lemma get_receives_correct
+        (s : vstate X)
+        (Hpr : protocol_state_prop X s)
+        (from : index) :
+        finite_protocol_action_from X s (get_receives_for s from).
+    (* TODO: decide if this should use "free_trace_reordering" from Composition.v *)
+    Proof.
+    Admitted.
       
 End Composition.

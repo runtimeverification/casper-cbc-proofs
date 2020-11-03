@@ -1181,71 +1181,55 @@ All results from regular projections carry to these "free" projections.
       + rewrite state_update_neq; try assumption. apply Hs.
   Qed.
   
-  (* 
   Definition independent_actions
-    (a b : action X) : Prop :=
+    (a b : vaction X) : Prop :=
     let ind_a := List.map (@projT1 _ _) (List.map (@label_a _ _) a) in
     let ind_b := List.map (@projT1 _ _) (List.map (@label_a _ _) b) in
-    set_inter eq_dec ind_a ind_b = [].
+    set_inter decide_eq ind_a ind_b = [].
   
   Lemma free_trace_reordering 
     (s : vstate X)
     (Hs : protocol_state_prop X s)
-    (a b : action X)
-    (Ha : protocol_action _ a s)
-    (Hb : protocol_action _ b s)
+    (a b : vaction X)
+    (Ha : finite_protocol_action_from _ s a)
+    (Hb : finite_protocol_action_from _ s b)
     (Hindependent : independent_actions a b) :
-    protocol_action _ (a ++ b) s.
+    finite_protocol_action_from _ s (a ++ b).
   Proof.
-  Admitted.
-  (* 
-    apply finite_protocol_trace_from_app_iff.
+    apply finite_protocol_action_from_app_iff.
     split.
     assumption.
+    generalize dependent a.
     generalize dependent s.
-    induction b.
-    - intros.
+    induction b as [| b0 b]; intros.
+    
+    assert (Hpr_after: protocol_state_prop X (snd (apply_action X s a))). {
+      rewrite <- apply_action_last.
+      apply finite_ptrace_last_pstate.
+      unfold finite_protocol_action_from in Ha.
+      assumption.
+    } 
+    - unfold finite_protocol_action_from. simpl.
       apply finite_ptrace_empty.
+      rewrite <- apply_action_last.
       apply finite_ptrace_last_pstate.
+      unfold finite_protocol_action_from in Ha.
       assumption.
-    - intros.
-      destruct a0 as [l' input dest output].
-      apply finite_ptrace_extend.
-      inversion Hb.
-      assumption.
-      inversion Hb.
-      unfold protocol_transition in *.
-      unfold protocol_valid in *.
-      destruct H6 as [Hvalid Htransition].
-      destruct Hvalid as [Hprot [Ho Hvalid]].
-      repeat split.
-      apply finite_ptrace_last_pstate.
-      assumption.
-      intuition.
-      unfold free_composite_valid.
-      destruct l'.
-      assert (last (map destination a) s x = s x) as Hpres. {
+    - remember (snd (apply_action X s a)) as after_a.
+      replace (b0 :: b) with ([b0] ++ b). 2: auto.
+      apply finite_protocol_action_from_app_iff.
+      replace (b0 :: b) with ([b0] ++ b) in Hb.
+      apply finite_protocol_action_from_app_iff in Hb.
+      destruct Hb as [Hb_one Hb_rem].
+      split.
+      + unfold finite_protocol_action_from in Hb_one.
+        unfold apply_action in Hb_one. simpl in Hb_one.
+        destruct b0.
+        destruct (vtransition X label_a (s, input_a)). simpl in *.
+        inversion Hb_one.
         admit.
-      }
-      rewrite Hpres.
-      simpl in Hvalid.
-      unfold constrained_composite_valid in Hvalid.
-      simpl in Hvalid.
-      intuition.
-      simpl.
-      destruct l'.
-      assert (last (map destination a) s x = s x) as Hpres. {
-        admit.
-      }
-      simpl.
-      unfold vtransition.
-      unfold transition.
-      unfold machine.
-      
-      replace (last (map destination a) s x, input) with (s x, input).
- Admitted.
- *)
- *)
+      + admit. 
+  Admitted.
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_eq
     (s1 s2 : vstate X)
     (om1 om2 : option message)
