@@ -38,6 +38,7 @@ Context
   (preX := pre_loaded_with_all_messages_vlsm X)
   (complete_observations := @complete_observations index i0 index_listing decide_eq)
   (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
+  (Hbasic := fun (i : index) => @lv_basic_equivocation index i index_listing Hfinite idec Mindex Rindex)
   (ce := @composed_observation_based_equivocation_evidence
     message index lv_event
     decide_eq 
@@ -73,13 +74,18 @@ Context
   Check @no_equivocating_decisions.
   Check @equivocating_validators.
   
+  Definition not_all_equivocating
+    (s : (@state index index_listing))
+    (who : index) 
+    : Prop
+    := @no_equivocating_decisions index index_listing idec s 
+      (@equivocating_validators (@state index index_listing) index Mindex Rindex (Hbasic who) s) <> [].
+    
+  
   Lemma feasible_update_value_correct 
     (s : (@state index index_listing))
     (who : index)
-    (*
-    (Hne : @no_equivocating_decisions index index_listing idec s 
-          (@equivocating_validators (@state index index_listing) index Mindex Rindex (Hevidence who) s) <> []) *)
-    :
+    (Hne : not_all_equivocating s who) :
     (@equivocation_aware_estimator index who index_listing Hfinite decide_eq _ _ s (feasible_update_value s who)).
   Proof.
    destruct (feasible_update_value s who) eqn : eq_fv.
@@ -90,7 +96,7 @@ Context
      discriminate eq_fv.
      apply ea_estimator_total in eq_ewb.
      assumption.
-     admit.
+     assumption.
    - unfold feasible_update_value in eq_fv.
      destruct s.
      simpl.
@@ -99,7 +105,7 @@ Context
      unfold equivocation_aware_estimator. 
      assumption.
      discriminate eq_fv.
-  Admitted.
+  Qed.
   
   Definition feasible_update_single (s : (@state index index_listing)) (who : index) : transition_item :=
     let cv := feasible_update_value s who in
@@ -113,6 +119,7 @@ Context
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
     (who : index) 
+    (Hne : not_all_equivocating (s who) who)
     (item := feasible_update_composite s who) :
     protocol_transition X (l item) (s, input item) (destination item, output item).
   Proof.
@@ -122,6 +129,7 @@ Context
     simpl.
     apply option_protocol_message_None.
     apply feasible_update_value_correct with (s := s who) (who := who).
+    assumption.
   Qed.
   (* pair (stare, transition_item) *)
   
@@ -173,6 +181,7 @@ Context
         simpl.
         split.
         apply feasible_update_value_correct with (s := s a) (who := a).
+        admit.
         reflexivity.
         rewrite Heqitem.
         simpl.
@@ -193,7 +202,7 @@ Context
         assumption.
       + rewrite Heqitem in H.
         assumption.
-  Qed.
+  Admitted.
   
   Lemma phase_one_future 
     (s : vstate X)
@@ -357,11 +366,12 @@ Context
           rewrite Heqx.
           apply feasible_update_protocol.
           assumption.
+          admit.
         }
         apply protocol_transition_destination with (l := (l x)) (s0 := s) (om := input x) (om' := output x).
         assumption.
         assumption.
-  Qed.
+  Admitted.
   
   Lemma phase_one_projections 
     (s : vstate X)
@@ -680,27 +690,69 @@ Context
         unfold apply_action. simpl.
         rewrite fold_right_app. simpl.
         rewrite eq_vtrans. simpl.
-        (*
-        destruct (fold_right (apply_action_folder X)
-        (s0, [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) 
-        (rev a0)) eqn : eq_f1.
-        destruct (fold_right (apply_action_folder X) (s0, []) (rev a0)) eqn : eq_f2.
-        replace (@fold_right
-             (prod (@vstate (@message index index_listing) X)
-                (list (@vtransition_item (@message index index_listing) X)))
-             (@vaction_item (@message index index_listing) X)
-             (@apply_action_folder (@message index index_listing) X)
-             (@pair
-                (@Common.state (@message index index_listing)
-                   (@projT1 (VLSM_type (@message index index_listing))
-                      (fun T : VLSM_type (@message index index_listing) =>
-                       @sigT (@VLSM_sign (@message index index_listing) T)
-                         (fun S : @VLSM_sign (@message index index_listing) T =>
-                          @VLSM_class (@message index index_listing) T S)) X))
-                (list (@vtransition_item (@message index index_listing) X)) s0
-                (@nil (@vtransition_item (@message index index_listing) X)))
-             (@rev (@vaction_item (@message index index_listing) X) a0)) with (v, l0). *)
-   Admitted.
+        specialize (@apply_action_folder_additive _ X s0 (rev a0) s0 [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) as Hadd.
+        destruct (@fold_right
+         (prod (@vstate (@message index index_listing) X)
+            (list (@vtransition_item (@message index index_listing) X)))
+         (@vaction_item (@message index index_listing) X)
+         (@apply_action_folder (@message index index_listing) X)
+         (@pair (@_composite_state (@message index index_listing) index IM_index)
+            (list
+               (@transition_item (@message index index_listing)
+                  (@composite_type (@message index index_listing) index IM_index))) s0
+            (@cons
+               (@transition_item (@message index index_listing)
+                  (@composite_type (@message index index_listing) index IM_index))
+               (@Build_transition_item (@message index index_listing)
+                  (@composite_type (@message index index_listing) index IM_index) label_a
+                  (@Some (prod index (@state index index_listing))
+                     (@pair index (@state index index_listing) from sa)) s0 o)
+               (@nil (@vtransition_item (@message index index_listing) X))))
+         (@rev (@vaction_item (@message index index_listing) X) a0)) as (tr, dest) eqn : eqf1.
+         destruct (@fold_right
+         (prod (@vstate (@message index index_listing) X)
+            (list (@vtransition_item (@message index index_listing) X)))
+         (@vaction_item (@message index index_listing) X)
+         (@apply_action_folder (@message index index_listing) X)
+         (@pair (@vstate (@message index index_listing) X)
+            (list (@vtransition_item (@message index index_listing) X)) s0
+            (@nil (@vtransition_item (@message index index_listing) X)))
+         (@rev (@vaction_item (@message index index_listing) X) a0)) as (tr', dest') eqn : eqf2.
+         simpl.
+         replace (@fold_right
+            (prod (@vstate (@message index index_listing) X)
+               (list (@vtransition_item (@message index index_listing) X)))
+            (@vaction_item (@message index index_listing) X)
+            (@apply_action_folder (@message index index_listing) X)
+            (@pair (@_composite_state (@message index index_listing) index IM_index)
+               (list
+                  (@transition_item (@message index index_listing)
+                     (@composite_type (@message index index_listing) index IM_index))) s0
+               (@cons
+                  (@transition_item (@message index index_listing)
+                     (@composite_type (@message index index_listing) index IM_index))
+                  (@Build_transition_item (@message index index_listing)
+                     (@composite_type (@message index index_listing) index IM_index) label_a
+                     (@Some (prod index (@state index index_listing))
+                        (@pair index (@state index index_listing) from sa)) s0 o)
+                  (@nil (@vtransition_item (@message index index_listing) X))))
+            (@rev (@vaction_item (@message index index_listing) X) a0)) with 
+            (@pair (@vstate (@message index index_listing) X)
+            (list (@vtransition_item (@message index index_listing) X)) tr'
+            (@app (@vtransition_item (@message index index_listing) X) dest'
+               (@cons
+                  (@transition_item (@message index index_listing)
+                     (@type (@message index index_listing) X))
+                  (@Build_transition_item (@message index index_listing)
+                     (@type (@message index index_listing) X) label_a
+                     (@Some (prod index (@state index index_listing))
+                        (@pair index (@state index index_listing) from sa)) s0 o)
+                  (@nil
+                     (@transition_item (@message index index_listing)
+                        (@type (@message index index_listing) X)))))) in eqf1.
+            inversion eqf1.
+            reflexivity.
+    Qed.
    
     Definition get_candidates 
       (s : vstate X)
