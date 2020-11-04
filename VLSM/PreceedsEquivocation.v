@@ -55,26 +55,23 @@ Class message_equivocation_evidence
       exists m, In m msgs /\ equivocating_with msg m
   }.
 
-Lemma equivocating_with_dec
-      `{Hinstance:message_equivocation_evidence message validator}:
-  forall msg1 msg2, Decision (equivocating_with msg1 msg2).
+Instance equivocating_with_dec `{message_equivocation_evidence}:
+  RelDecision equivocating_with.
 Proof.
   intros msg1 msg2.
   unfold equivocating_with.
   apply Decision_and;[solve[apply EqDecision1]|].
   apply Decision_not.
-  apply comparable_dec.
-  exact message_preceeds_dec.
+  typeclasses eauto.
 Qed.
 
-Instance equivocating_in_set_dec
-         `{Hinstance:message_equivocation_evidence message validator}:
+Instance equivocating_in_set_dec `{message_equivocation_evidence} :
   Decision (equivocating_in_set msg msgs).
 Proof.
   intros msg msgs.
   apply (Decision_iff (Exists_exists _ _)).
-  apply Exists_dec.
-  apply equivocating_with_dec.
+  apply @Exists_dec.
+  typeclasses eauto.
 Qed.
 
 (**
