@@ -55,18 +55,6 @@ Class message_equivocation_evidence
       exists m, In m msgs /\ equivocating_with msg m
   }.
 
-Lemma and_iff_l {P Q R:Prop} : P -> (Q <-> R) -> (P /\ Q <-> P /\ R).
-Proof.
-  firstorder.
-Qed.
-Lemma Decision_iff : forall {P Q}, (P <-> Q) -> Decision P -> Decision Q.
-Proof. firstorder. Qed.
-
-Lemma Decision_and : forall {P Q}, Decision P -> Decision Q -> Decision (P /\ Q).
-Proof. firstorder. Qed.
-Lemma Decision_not : forall {P}, Decision P -> Decision (~P).
-Proof. firstorder. Qed.
-
 Lemma equivocating_with_dec
       `{Hinstance:message_equivocation_evidence message validator}:
   forall msg1 msg2, Decision (equivocating_with msg1 msg2).

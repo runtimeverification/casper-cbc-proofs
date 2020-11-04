@@ -82,6 +82,13 @@ Arguments total {_} _ {_} _ _ : assert.
 Arguments trichotomy {_} _ {_} _ _ : assert.
 Arguments trichotomyT {_} _ {_} _ _ : assert.
 
+Lemma Decision_iff : forall {P Q}, (P <-> Q) -> Decision P -> Decision Q.
+Proof. firstorder. Qed.
+Lemma Decision_and : forall {P Q}, Decision P -> Decision Q -> Decision (P /\ Q).
+Proof. firstorder. Qed.
+Lemma Decision_not : forall {P}, Decision P -> Decision (~P).
+Proof. firstorder. Qed.
+
 Lemma not_symmetry `{R : relation A, !Symmetric R} x y : ~R x y -> ~R y x.
 Proof. intuition. Qed.
 Lemma symmetry_iff `(R : relation A) `{!Symmetric R} x y : R x y <-> R y x.

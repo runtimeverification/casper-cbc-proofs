@@ -63,6 +63,11 @@ Proof.
     left. split; assumption.
 Qed.
 
+Lemma and_iff_l {P Q R:Prop} : P -> (Q <-> R) -> (P /\ Q <-> P /\ R).
+Proof.
+  firstorder.
+Qed.
+
 Lemma not_ex_all_not
   {A : Type}
   (P : A -> Prop)
