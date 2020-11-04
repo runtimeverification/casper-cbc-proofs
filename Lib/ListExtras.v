@@ -1037,38 +1037,15 @@ Proof.
     exists n. assumption.
 Qed.
 
-Lemma Exists_dec
-  {A : Type}
-  (P : A -> Prop)
-  (l : list A)
-  (P_dec : forall a : A, {P a} + {~ P a})
-  : {List.Exists P l} + {~ List.Exists P l}.
+Instance Exists_dec `{forall (a : A), Decision (P a)} l : Decision (Exists P l).
 Proof.
   induction l.
-  - right. intro. inversion H.
-  - specialize (P_dec a).
-    destruct P_dec as [Pa | Pna].
+  - right. intro Hl. inversion Hl.
+  - destruct (decide (P a)) as [Pa | Pna].
     + left. left. assumption.
-    + destruct IHl as [Pl | Pnl] .
+    + destruct IHl as [Pl | Pnl].
       * left. right. assumption.
-      * right. intro. inversion H; subst; contradiction.
-Qed.
-
-Lemma Forall_dec
-  {A : Type}
-  (P : A -> Prop)
-  (l : list A)
-  (P_dec : forall a : A, {P a} + {~ P a})
-  : {List.Forall P l} + {~ List.Forall P l}.
-Proof.
-  induction l.
-  - left. constructor.
-  - specialize (P_dec a).
-    destruct P_dec as [Pa | Pna].
-    + destruct IHl as [Pl | Pnl] .
-      * left. constructor;  assumption.
-      * right. intro. inversion H; subst; contradiction.
-    + right. intro. inversion H; contradiction.
+      * right. intro Hl. inversion Hl; subst; contradiction.
 Qed.
 
 Definition map_option

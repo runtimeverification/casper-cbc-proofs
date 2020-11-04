@@ -70,9 +70,9 @@ Proof.
   }
 
   apply (iff_dec H);clear H.
-  apply Exists_dec;intro e1.
-  apply Exists_dec;intro e2.
-  destruct (comparable_dec happens_before e1 e2);[right|left];tauto.
+  apply @Exists_dec;intro e1.
+  apply @Exists_dec;intro e2.
+  destruct (decide (comparable happens_before e1 e2)); [right|left]; tauto.
 Qed.
 
 (** We can use this notion of [observation_based_equivocation_evidence]
