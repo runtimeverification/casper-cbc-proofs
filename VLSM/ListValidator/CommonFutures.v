@@ -494,14 +494,14 @@ Context
     (s s': vstate X)
     (Hpr : protocol_state_prop X s)
     (Hpr' : protocol_state_prop X s')
-    (to from :index)
+    (to inter from :index)
     (Hdif : to <> from)
     (a : vaction X)
-    (Hsync : sync s (s' from) to from = Some a) :
+    (Hsync : sync s (s' inter) to from = Some a) :
     let res := snd (apply_action X s a) in
     finite_protocol_action_from X s a /\
-    (project (res to) from = project (s' from) from).
-   Proof.
+    (project (res to) from = project (s' inter) from).
+   Proof. (*
     generalize dependent s.
     induction a.
     - intros. simpl in *.
@@ -511,7 +511,7 @@ Context
           assumption. 
         + unfold res.
           unfold sync in Hsync.
-          destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_cs.
+          destruct (complete_suffix (get_history (s' inter) from) (get_history (s to) from)) eqn : eq_cs.
           2 : discriminate Hsync.
           apply complete_suffix_correct in eq_cs.
           assert (l = []). {
@@ -539,7 +539,7 @@ Context
       rewrite <- finite_protocol_action_from_app_iff.
       
       unfold sync in Hsync.
-      destruct (complete_suffix (get_history (s' from) from) (get_history (s to) from)) eqn : eq_cs. 2: discriminate Hsync.
+      destruct (complete_suffix (get_history (s' inter) from) (get_history (s to) from)) eqn : eq_cs. 2: discriminate Hsync.
       
       inversion Hsync.
       unfold sync_action in H0.
@@ -562,7 +562,7 @@ Context
         assumption.
       }
       
-      assert (Hinsa: In sa (get_history (s' from) from)). {
+      assert (Hinsa: In sa (get_history (s' inter) from)). {
         rewrite eq_cs'.
         rewrite <- app_assoc.
         apply in_elt.
@@ -752,7 +752,8 @@ Context
                         (@type (@message index index_listing) X)))))) in eqf1.
             inversion eqf1.
             reflexivity.
-    Qed.
+    *)
+    Admitted.
    
     Definition get_candidates 
       (s : vstate X)
@@ -813,10 +814,12 @@ Context
         + unfold get_matching_action.
           destruct (get_matching_state s a from) eqn : eq_matching.
           destruct (sync s s0 a from) eqn : eq_sync.
+          (*
           apply one_sender_receive_protocol with (from := from) (s' := s) (to := a).
           assumption. assumption. admit. admit.
           apply finite_protocol_action_empty. assumption.
-          apply finite_protocol_action_empty. assumption.
+          apply finite_protocol_action_empty. assumption. *)
+          admit. admit. admit.
         + assumption.
         + admit.
         (*
