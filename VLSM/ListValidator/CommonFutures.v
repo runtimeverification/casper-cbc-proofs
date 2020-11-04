@@ -788,16 +788,47 @@ Context
       
     Definition get_receives_for
       (s : vstate X)
+      (li : list index)
       (from : index) : vaction X :=
-      let matching_actions := List.map (get_matching_action s from) index_listing in
+      let matching_actions := List.map (get_matching_action s from) li in
       List.fold_right (@List.app action_item) [] matching_actions.
       
     Lemma get_receives_correct
         (s : vstate X)
         (Hpr : protocol_state_prop X s)
+        (li : list index)
         (from : index) :
-        finite_protocol_action_from X s (get_receives_for s from).
+        (* let res := snd (apply_action X s (get_receives_for s li from)) in *)
+        finite_protocol_action_from X s (get_receives_for s li from). 
     Proof.
+      induction li; intros.
+      - unfold get_receives_for. simpl.
+        apply finite_protocol_action_empty.
+        assumption.
+      - unfold get_receives_for.
+        rewrite map_cons. simpl.
+        unfold get_receives_for in IHli.
+        apply free_trace_reordering.
+        + assumption.
+        + unfold get_matching_action.
+          destruct (get_matching_state s a from) eqn : eq_matching.
+          destruct (sync s s0 a from) eqn : eq_sync.
+          apply one_sender_receive_protocol with (from := from) (s' := s) (to := a).
+          assumption. assumption. admit. admit.
+          apply finite_protocol_action_empty. assumption.
+          apply finite_protocol_action_empty. assumption.
+        + assumption.
+        + admit.
+        (*
+        apply finite_protocol_action_from_app_iff.
+        remember (snd (apply_action X s (get_matching_action s from a))) as s'. 
+        repeat split.
+        + admit.
+        + 
+          (*specialize (IHli s'). 
+          spec IHli. {
+            admit.
+          } *) *)
     Admitted.
       
 End Composition.

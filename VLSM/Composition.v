@@ -1230,6 +1230,7 @@ All results from regular projections carry to these "free" projections.
         admit.
       + admit. 
   Admitted.
+  
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_eq
     (s1 s2 : vstate X)
     (om1 om2 : option message)

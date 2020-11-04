@@ -132,6 +132,16 @@ Section apply_actions.
     rewrite Happ. simpl. clear Happ. subst afinal.
     apply finite_protocol_trace_from_app_iff.
   Qed.
+  
+  Lemma finite_protocol_action_empty
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)  :
+    finite_protocol_action_from s [].
+  Proof.
+    unfold finite_protocol_action_from. simpl.
+    apply finite_ptrace_empty.
+    assumption.
+  Qed. 
 
   Definition transition_item_to_action_item
     (item : vtransition_item X)
