@@ -867,17 +867,16 @@ Proof.
   unfold equivocation in Hconstr.
   assert
     (Hconstr' :
-      existsb (fun i : index => has_been_sent (IM i) (last (map destination pre) is i) m) index_listing = true).
-  { destruct (existsb (fun i : index => has_been_sent (IM i) (last (map destination pre) is i) m) index_listing)
-      eqn: Hexist; try reflexivity.
-    rewrite existsb_forall in Hexist.
-    elim Hconstr.
-    intro i.
-    specialize (Hexist i (proj2 finite_index i)).
-    unfold has_not_been_sent. apply Bool.negb_true_iff. assumption.
+      exists i : index, has_been_sent (IM i) (last (map destination pre) is i) m).
+  { rewrite (forall_finite (proj2 finite_index)) in Hconstr.
+    unfold has_not_been_sent in Hconstr.
+    apply neg_Forall_Exists_neg in Hconstr.
+    rewrite <- exists_finite in Hconstr;[|solve[apply finite_index]].
+    destruct Hconstr as [i Hconstr].
+    exists i. apply dec_stable;assumption.
+    intro x;apply Decision_not;typeclasses eauto.
   }
-  apply existsb_exists in Hconstr'.
-  destruct Hconstr' as [i [_ Hconstr']].
+  destruct Hconstr' as [i Hconstr'].
   elim contra.
   apply (protocol_state_projection IM i0 constraint i) in Hps.
   destruct Hps as [_oms Hps].

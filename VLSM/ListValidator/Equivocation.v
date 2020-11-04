@@ -88,6 +88,10 @@ Context
     | left _ => existsb (state_eqb what) (get_history s who)
     end.
 
+  Global Instance send_oracle_dec
+    : RelDecision send_oracle
+    := fun s m => bool_decision.
+
   Definition receive_oracle (s : state) (m : message) : bool :=
     let who := fst m in
     let what := snd m in
@@ -96,11 +100,15 @@ Context
     | right _ => existsb (state_eqb what) (get_history s who)
     end.
 
-    Definition not_send_oracle (s : state) (m : message)  : bool :=
-      negb (send_oracle s m).
+  Global Instance receive_oracle_dec
+    : RelDecision receive_oracle
+    := fun s m => bool_decision.
 
-    Definition not_receive_oracle (s : state) (m : message) : bool :=
-      negb (receive_oracle s m).
+    Definition not_send_oracle (s : state) (m : message)  : Prop :=
+      ~ send_oracle s m.
+
+    Definition not_receive_oracle (s : state) (m : message) : Prop :=
+      ~ receive_oracle s m.
 
     Lemma protocol_no_bottom
       (s : protocol_state preX) :
@@ -1681,10 +1689,10 @@ Context
       - intros.
         unfold send_oracle in H.
         destruct (decide (fst m = index_self)) eqn:eq.
-        2: discriminate H.
+        2: contradiction H.
         destruct s eqn:eq_s.
-        + discriminate H.
-        + apply existsb_exists in H.
+        + contradiction H.
+        + apply Is_true_eq_true, existsb_exists in H.
           destruct H as [x [Hin Heq_state]].
           rewrite e in Hin.
           specialize (no_bottom_in_history (Something b is) x index_self Hin) as Hxgood.
@@ -1919,7 +1927,7 @@ Context
               assumption.
             }
 
-            apply existsb_exists.
+            apply Is_true_iff_eq_true, existsb_exists.
             exists (snd m).
             split.
             assumption.
@@ -1946,10 +1954,10 @@ Context
       - intros.
         unfold receive_oracle in H.
         destruct (decide (fst m = index_self)) eqn:eq.
-        + discriminate H.
+        + contradiction H.
         + destruct s eqn:eq_s.
-          * discriminate H.
-          * apply existsb_exists in H.
+          * contradiction H.
+          * apply Is_true_iff_eq_true, existsb_exists in H.
             destruct H as [x [Hin Heq_state]].
           (* Somewhere, the message shows up as somebody's projection *)
 
@@ -2203,7 +2211,7 @@ Context
             }
 
             specialize (Hpersists Hfutures (fst m) _ Hproject).
-            rewrite existsb_exists.
+            apply Is_true_iff_eq_true, existsb_exists.
             exists (snd m).
             split; try assumption.
             rewrite state_eqb_eq.
@@ -2223,7 +2231,6 @@ Context
       split.
       - intros.
         unfold not_send_oracle in H.
-        rewrite negb_true_iff in H.
         rewrite <- Forall_Exists_neg.
         rewrite Forall_forall.
         intros.
@@ -2247,7 +2254,8 @@ Context
         + destruct s.
           * simpl in H1.
             assumption.
-          * rewrite existsb_forall in H.
+          * apply negb_prop_intro, Is_true_iff_eq_true in H.
+            rewrite negb_true_iff, existsb_forall in H.
             specialize (H (snd m)).
             rewrite <- e in H1.
             specialize (H H1).
@@ -2271,8 +2279,7 @@ Context
           assumption.
       - intros.
         unfold not_send_oracle.
-        rewrite negb_true_iff.
-        destruct (send_oracle s m) eqn : send_oracle_eq.
+        intro send_oracle_eq.
         + exfalso.
           specialize (send_oracle_prop s Hprotocol m).
           intros.
@@ -2317,7 +2324,6 @@ Context
             specialize (H x Hin).
             elim H.
             assumption.
-        + reflexivity.
     Qed.
 
     Lemma not_receive_oracle_prop
@@ -2333,7 +2339,8 @@ Context
       split.
       - intros.
         unfold not_receive_oracle in H.
-        rewrite negb_true_iff in H.
+        rewrite <- Is_true_iff_eq_true in H.
+        apply not_true_is_false in H.
         rewrite <- Forall_Exists_neg.
         rewrite Forall_forall.
         intros.
@@ -2382,8 +2389,7 @@ Context
           reflexivity.
       - intros.
         unfold not_receive_oracle.
-        rewrite negb_true_iff.
-        destruct (receive_oracle s m) eqn : receive_oracle_eq.
+        intro receive_oracle_eq.
         + exfalso.
           specialize (receive_oracle_prop s Hprotocol m).
           intros.
@@ -2428,7 +2434,6 @@ Context
             specialize (H x Hin).
             elim H.
             assumption.
-        + reflexivity.
     Qed.
 
     Global Instance has_been_sent_lv : (has_been_sent_capability X) := {
@@ -2653,11 +2658,12 @@ Context
       (Hin : In s'(get_history s index_self)) :
       protocol_state_prop preX s'.
     Proof.
-      assert (send_oracle s (index_self, s') = true). {
+      assert (send_oracle s (index_self, s')). {
         unfold send_oracle.
         simpl.
         destruct (decide (index_self = index_self)).
-        - rewrite existsb_exists.
+        - apply Is_true_iff_eq_true.
+          rewrite existsb_exists.
           exists s'.
           split.
           assumption.

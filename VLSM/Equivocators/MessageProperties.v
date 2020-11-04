@@ -241,12 +241,23 @@ of the internal machines.
 Definition equivocator_has_been_sent
   (s : vstate equivocator_vlsm)
   (m : message)
-  : bool
+  : Prop
   :=
   let (n, bs) := s in
-  existsb
-    (fun i => has_been_sent X (bs i) m)
-    (fin_t_listing (S n)).
+  exists i: Fin.t (S n), has_been_sent X (bs i) m.
+
+Global Instance equivocator_has_been_sent_dec
+  : RelDecision equivocator_has_been_sent.
+Proof.
+  intros [n bs] m.
+  apply (Decision_iff
+           (P:=Exists (fun i => has_been_sent X (bs i) m) (fin_t_listing (S n)))).
+  - unfold equivocator_has_been_sent. rewrite Exists_exists.
+    split.
+    * intros [x [_ H]];exists x;exact H.
+    * intros [i H];exists i;split;[solve[apply fin_t_full]|exact H].
+  - apply Exists_dec.
+Qed.
 
 (**
 The [equivocator_vlsm] has the [selected_messages_consistency_prop]
@@ -257,17 +268,15 @@ Lemma equivocator_has_been_sent_consistency
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
   (m : message)
-  : selected_messages_consistency_prop equivocator_vlsm output s m.  
+  : selected_messages_consistency_prop equivocator_vlsm output s m.
 Proof.
   split.
   - intros [bis [btr [Hbtr [Hlast Hsome]]]].
     destruct (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Hbtr) _ Hsome)
       as [j [i [trX [Hproject Hsomex]]]].
-    destruct j as [sj | j fj]
-    ; try
-      (rewrite equivocator_vlsm_trace_project_on_new_machine in Hproject
-      ; inversion Hproject; subst; inversion Hsomex
-      ).
+    destruct j as [sj | j fj];
+      [solve[rewrite equivocator_vlsm_trace_project_on_new_machine in Hproject
+      ; inversion Hproject; subst; inversion Hsomex]|].
     assert (Hntr : btr <> []) by (intro contra; subst; inversion Hsome).
     specialize
       (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr Hbtr _ _ _ _ Hproject)
@@ -333,8 +342,7 @@ Proof.
   split.
   - intro Hbbs. intro start; intros.
     destruct s as (n, bs).
-    apply existsb_exists in Hbbs.
-    destruct Hbbs as [j [_ Hjbs]].
+    destruct Hbbs as [j Hjbs].
     apply (proper_sent X) in Hjbs
     ; try apply (preloaded_equivocator_state_project_protocol_state _ _ Hs j).
     specialize (preloaded_equivocator_vlsm_project_protocol_trace _ start tr Htr) as Hpre.
@@ -383,8 +391,7 @@ Proof.
     destruct HpreX as [Hj Hi].
     unfold equivocator_has_been_sent.
     destruct s as (ns, bs).
-    apply existsb_exists.
-    exists (of_nat_lt Hj). split; try apply fin_t_full.
+    exists (of_nat_lt Hj).
     assert (Hbsj : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (bs (of_nat_lt Hj))).
     { simpl in *.
       specialize
@@ -414,10 +421,11 @@ Lemma equivocator_proper_not_sent
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
   (m : message)
-  (equivocator_has_not_been_sent := fun s m => negb (equivocator_has_been_sent s m))
+  (equivocator_has_not_been_sent := fun s m => ~ equivocator_has_been_sent s m)
   : has_not_been_sent_prop equivocator_vlsm equivocator_has_not_been_sent s m.
 Proof.
   apply has_been_sent_consistency_proper_not_sent.
+  - typeclasses eauto.
   - apply equivocator_proper_sent. assumption.
   - apply equivocator_has_been_sent_consistency. assumption.
 Qed.

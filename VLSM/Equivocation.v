@@ -220,7 +220,7 @@ Section Simple.
 
     Class has_been_sent_capability := {
       has_been_sent: state_message_oracle;
-      has_been_sent_dec: RelDecision has_been_sent;
+      has_been_sent_dec :> RelDecision has_been_sent;
 
       proper_sent:
         forall (s : state)

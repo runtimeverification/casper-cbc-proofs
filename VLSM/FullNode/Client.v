@@ -255,10 +255,18 @@ messages, implementing a limited equivocation tolerance policy.
     :=
     fun _ _ => false.
 
+  Global Instance client_has_been_sent_dec
+    : RelDecision client_has_been_sent
+    := fun _ _ => right (fun Hn => Hn).
+
   Definition client_has_been_received
     : state_message_oracle vlsm
     :=
-    fun s m => inb decide_eq m s.
+    fun s m => In m s.
+  Global Instance client_has_been_received_dec
+    : RelDecision client_has_been_received
+    :=
+    fun s m => in_dec decide_eq m s.
 
   Lemma has_been_sent_in_trace
     (s : set message)
@@ -290,7 +298,7 @@ messages, implementing a limited equivocation tolerance policy.
     : has_been_sent_prop vlsm client_has_been_sent s m.
   Proof.
     unfold has_been_sent_prop. unfold all_traces_have_message_prop.
-    split; intro H; try discriminate H.
+    split;[contradiction|intro H].
     - destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
@@ -352,9 +360,9 @@ messages, implementing a limited equivocation tolerance policy.
   Definition client_has_not_been_sent
     (s : set message)
     (m : message)
-    : bool
+    : Prop
     :=
-    negb (client_has_been_sent s m).
+    ~ client_has_been_sent s m.
 
   Lemma VLSM_full_client_proper_not_sent
     (s : set message)
@@ -364,7 +372,7 @@ messages, implementing a limited equivocation tolerance policy.
   Proof.
     unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
     unfold client_has_not_been_sent. simpl.
-    split; intros; try reflexivity.
+    split; intros;[|tauto].
     unfold selected_message_exists_in_no_trace.
     intros.
     rewrite <- Forall_Exists_neg.
@@ -389,7 +397,6 @@ messages, implementing a limited equivocation tolerance policy.
   Proof.
     unfold has_been_received_prop. unfold all_traces_have_message_prop.
     unfold client_has_been_received.
-    pose (@in_correct _ decide_eq s m) as Heq. rewrite <- Heq. clear Heq.
     unfold selected_message_exists_in_all_traces.
     split; intros.
     - apply Exists_exists.
@@ -438,9 +445,9 @@ messages, implementing a limited equivocation tolerance policy.
   Definition client_has_not_been_received
     (s : set message)
     (m : message)
-    : bool
+    : Prop
     :=
-    negb (client_has_been_received s m).
+    ~ client_has_been_received s m.
 
   Lemma VLSM_full_client_proper_not_received
     (s : set message)
@@ -449,10 +456,8 @@ messages, implementing a limited equivocation tolerance policy.
     : has_not_been_received_prop vlsm client_has_not_been_received s m.
   Proof.
     unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
-    unfold client_has_not_been_received. rewrite Bool.negb_true_iff.
+    unfold client_has_not_been_received.
     unfold client_has_been_received.
-    pose (@in_correct' _ decide_eq s m) as Hin.
-    rewrite <- Hin. clear Hin.
     unfold selected_message_exists_in_no_trace.
     split.
     - intros.
@@ -475,8 +480,6 @@ messages, implementing a limited equivocation tolerance policy.
         unfold has_been_received_prop in Hreceived.
         unfold all_traces_have_message_prop in Hreceived.
         unfold client_has_been_received in Hreceived.
-        pose (@in_correct _ decide_eq s m) as Hin.
-        rewrite <- Hin in Hreceived. clear Hin.
         rewrite Hreceived in Hbr.
         specialize (Hbr is tr Htr Hlst).
         elim H. assumption.
