@@ -95,7 +95,7 @@ Section CompositeValidator.
              | Some msg => pair (pair (set_add decide_eq msg msgs) final) None
            end
     | Some c =>
-      let msg := (c, v, make_justification s) in
+      let msg := Msg c v (make_justification s) in
       pair (pair (set_add decide_eq msg msgs) (Some msg)) (Some msg)
     end.
 
@@ -576,14 +576,14 @@ Section proper_sent_received.
     - inversion Ht; subst. destruct final as [m|]; clear Ht.
       + elim
         (in_justification_recursive'
-          ((c, v, LastSent C V (make_message_set msgs) m))
+          (Msg c v (LastSent (make_message_set msgs) m))
           msgs
           eq_refl
         ).
         assumption.
       + elim
         (in_justification_recursive'
-          ((c, v, NoSent C V (make_message_set msgs)))
+          (Msg c v (NoSent (make_message_set msgs)))
           msgs
           eq_refl
         ).

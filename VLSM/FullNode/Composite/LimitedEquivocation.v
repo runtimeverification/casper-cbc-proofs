@@ -1250,7 +1250,7 @@ Proof.
   destruct m as (cm, vm, jm).
   specialize (in_correct (unmake_message_set (justification_message_set jm)) mj); intro Hin.
   apply Hin in Hmj.
-  pose (in_free_byzantine_state_justification s Hs' ((cm, vm, jm))) as Hinm.
+  pose (in_free_byzantine_state_justification s Hs' (Msg cm vm jm)) as Hinm.
   destruct Hm as [[v Hm] | [client Hm]].
   - specialize (Hinm (inl v) Hm mj Hmj). left. exists v. assumption.
   - specialize (Hinm (inr client) Hm mj Hmj). right. exists client. assumption.

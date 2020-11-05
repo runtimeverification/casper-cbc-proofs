@@ -393,7 +393,7 @@ Proof.
   specialize
     (in_correct
       (get_message_set (unmake_justification jy))
-      ((cx, vx, jx))
+      (Msg cx vx jx)
     ); intro Hin_in
   ; apply proj2 in Hin_in
   ; apply Hin_in in Hxy; clear Hin_in.
@@ -402,7 +402,7 @@ Proof.
   specialize
     (in_correct
       (get_message_set (unmake_justification jz))
-      ((cx, vx, jx))
+      (Msg cx vx jx)
     ); intro Hin_in
   ; apply proj1 in Hin_in
   ; apply Hin_in; clear Hin_in.

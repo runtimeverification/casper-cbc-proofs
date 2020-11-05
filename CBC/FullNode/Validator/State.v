@@ -14,6 +14,8 @@ From CasperCBC
 
 Import ListNotations.
 
+Set Contextual Implicit.
+Set Implicit Arguments.
 Section FullNodeState.
 
 (** * Full-node state tracking sent messages *)
@@ -57,14 +59,11 @@ optional message representing the last message sent.
 Definition state : Type := set message * option message.
 
 End FullNodeState.
+Unset Implicit Arguments.
 
 Definition get_message_set {C V} (s : state C V) : set (message C V) := fst s.
 
 Definition last_sent {C V} (s : state C V) : option (message C V) := snd s.
-
-Notation "( c , v , j )" :=
-  (Msg _ _ c v j)
-  (at level 20).
 
 Section FullNodeStateProperties.
 
@@ -89,27 +88,27 @@ Definition estimate
   (msg : message C V)
   : C
   :=
-  match msg with (c,_,_) => c end.
+  let (c,_,_) := msg in c.
 
 Definition sender
   (msg : message C V)
   : V
   :=
-  match msg with (_,v,_) => v end.
+  let (_,v,_) := msg in v.
 
 Definition get_justification
   (msg : message C V)
   : justification C V
   :=
-  match msg with (_,_,j) => j end.
+  let (_,_,j) := msg in j.
 
 Definition justification_last_sent
   (j : justification C V)
   : option (message C V)
   :=
   match j with
-  | NoSent _ _ _ => None
-  | LastSent _ _ _ m => Some m
+  | NoSent _ => None
+  | LastSent _ m => Some m
   end.
 
 Definition justification_message_set
@@ -117,8 +116,8 @@ Definition justification_message_set
   : message_set C V
   :=
   match j with
-  | NoSent _ _ msgs => msgs
-  | LastSent _ _ msgs _ => msgs
+  | NoSent msgs => msgs
+  | LastSent msgs _ => msgs
   end.
 
 Definition message_compare_helper
@@ -126,8 +125,8 @@ Definition message_compare_helper
   (msg1 msg2 : message C V)
   : comparison
   :=
-  match msg1, msg2 with
-    (c1, v1, j1), (c2, v2, j2) =>
+  let (c1, v1, j1) := msg1 in
+  let (c2, v2, j2) := msg2 in
     match compare c1 c2 with
     | Eq =>
       match compare v1 v2 with
@@ -135,19 +134,18 @@ Definition message_compare_helper
       | cmp_v => cmp_v
       end
     | cmp_c => cmp_c
-    end
-  end.
+    end.
 
 Fixpoint justification_compare
   (sigma1 sigma2 : justification C V)
   : comparison
   :=
   match sigma1, sigma2 with
-    | NoSent _ _ msgs1, NoSent _ _ msgs2 =>
+    | NoSent msgs1, NoSent msgs2 =>
       message_set_compare_helper msgs1 msgs2
-    | NoSent _ _ _, _ => Lt
-    | _, NoSent _ _ _ => Gt
-    | LastSent _ _ msgs1 last1, LastSent _ _ msgs2 last2 =>
+    | NoSent _, _ => Lt
+    | _, NoSent _ => Gt
+    | LastSent msgs1 last1, LastSent msgs2 last2 =>
       match message_set_compare_helper msgs1 msgs2 with
       | Eq => message_compare_helper justification_compare last1 last2
       | cmp => cmp
@@ -159,10 +157,10 @@ with message_set_compare_helper
   : comparison
   :=
   match msgs1, msgs2 with
-  | Empty _ _, Empty _ _ => Eq
-  | Empty _ _, _ => Lt
-  | _, Empty _ _ => Gt
-  | add _ _ m1 msgs1', add _ _ m2 msgs2' =>
+  | Empty, Empty => Eq
+  | Empty, _ => Lt
+  | _, Empty => Gt
+  | add m1 msgs1', add m2 msgs2' =>
     match message_compare_helper justification_compare m1 m2 with
     | Eq => message_set_compare_helper msgs1' msgs2'
     | cmp => cmp
@@ -174,7 +172,7 @@ Lemma justification_compare_reflexive
 Proof.
   intro x.
   apply
-    (justification_mut_ind C V
+    (justification_mut_ind
       (fun x : justification C V =>
         forall y : justification C V, justification_compare x y = Eq <-> x = y
       )
@@ -260,7 +258,7 @@ Proof.
   destruct (@compare_strictorder V about_V) as [Rv Tv].
   intros x y. generalize dependent x.
   apply
-    (justification_mut_ind C V
+    (justification_mut_ind
       (fun y : justification C V =>
         forall (x z : justification C V) (comp : comparison)
           (Hxy : justification_compare x y = comp)
@@ -355,7 +353,7 @@ Qed.
 Global Instance justification_type
   : StrictlyComparable (justification C V) :=
   {
-    inhabited := justification0 C V;
+    inhabited := justification0;
     compare := justification_compare;
     compare_strictorder := justification_compare_strict_order;
   }.
@@ -363,7 +361,7 @@ Global Instance justification_type
 Definition message0
   : message C V
   :=
-  (@inhabited _ about_C, @inhabited _ about_V, justification0 C V).
+  Msg inhabited inhabited justification0.
 
 Definition message_compare
   : message C V -> message C V -> comparison
@@ -410,8 +408,8 @@ Fixpoint in_message_set
   : Prop
   :=
   match msgs with
-    | Empty _ _ => False
-    | add _ _ m' msgs' => m' = m \/ in_message_set m msgs'
+    | Empty => False
+    | add m' msgs' => m' = m \/ in_message_set m msgs'
   end.
 
 Definition message_set_incl
@@ -435,12 +433,12 @@ Fixpoint message_set_add
   : message_set C V
   :=
   match s with
-  | Empty _ _ => add _ _ m (Empty _ _)
-  | add _ _ m' s' =>
+  | Empty => add m Empty
+  | add m' s' =>
     match message_compare m m' with
     | Eq => s
-    | Lt => add _ _ m s
-    | Gt => add _ _ m' (message_set_add m s')
+    | Lt => add m s
+    | Gt => add m' (message_set_add m s')
     end
   end.
 
@@ -468,7 +466,7 @@ Definition make_message_set
   (msgs : set (message C V))
   : message_set C V
   :=
-  fold_right message_set_add (Empty C V) msgs.
+  fold_right message_set_add Empty msgs.
 
 Lemma in_make_message_set
   (msgs : set (message C V))
@@ -512,8 +510,8 @@ Fixpoint unmake_message_set
   : set (message C V)
   :=
   match msgs with
-  | Empty _ _ => []
-  | add _ _ m msgs' => set_add decide_eq m (unmake_message_set msgs')
+  | Empty => []
+  | add m msgs' => set_add decide_eq m (unmake_message_set msgs')
   end.
 
 Lemma in_unmake_message_set
@@ -576,16 +574,16 @@ Lemma in_justification_recursive
   (v : V)
   (j j' : justification C V)
   (Hs : justification_incl j' j)
-  : ~ in_message_set ((c,v,j)) (justification_message_set j').
+  : ~ in_message_set (Msg c v j) (justification_message_set j').
 Proof.
   generalize dependent j.
   revert v. revert c. revert j'.
   apply
-    (justification_mut_ind C V
+    (justification_mut_ind
       (fun j' : justification C V =>
         forall c v j,
           justification_incl j' j ->
-          ~ in_message_set ((c, v, j)) (justification_message_set j')
+          ~ in_message_set (Msg c v j) (justification_message_set j')
       )
       (fun m : message C V =>
         forall (msgs : message_set C V),
@@ -595,7 +593,7 @@ Proof.
       (fun msgs : message_set C V =>
         forall c v j,
           message_set_incl msgs (justification_message_set j) ->
-          ~ in_message_set ((c,v,j)) msgs
+          ~ in_message_set (Msg c v j) msgs
       )
     ); intros; simpl; intro Hin.
   - unfold justification_incl in H0. simpl in H0.
@@ -611,7 +609,7 @@ Proof.
       specialize (H (justification_message_set j) (message_set_incl_refl _)).
       elim H. apply H1. constructor. reflexivity.
     + specialize (H0 c v j). apply H0; try assumption.
-      apply message_set_incl_trans with (add C V m m0); try assumption.
+      apply message_set_incl_trans with (add m m0); try assumption.
       intros msg Hmsg. right. assumption.
 Qed.
 
@@ -663,24 +661,24 @@ Qed.
 
 Inductive message_set_locally_sorted
   : message_set C V -> Prop :=
-  | LSorted_Empty : message_set_locally_sorted (Empty _ _)
+  | LSorted_Empty : message_set_locally_sorted Empty
   | LSorted_one : forall msg,
-          message_set_locally_sorted (add _ _ msg (Empty _ _))
+          message_set_locally_sorted (add msg Empty)
   | LSorted_more : forall msg msg' msgs,
           message_lt msg msg' ->
-          message_set_locally_sorted (add _ _ msg' msgs) ->
-          message_set_locally_sorted (add _ _  msg (add _ _ msg' msgs))
+          message_set_locally_sorted (add msg' msgs) ->
+          message_set_locally_sorted (add msg (add msg' msgs))
   .
 
 Lemma message_set_locally_sorted_strong
   (msg : message C V)
   (msgs : message_set C V)
-  (Hls : message_set_locally_sorted (add _ _ msg msgs))
+  (Hls : message_set_locally_sorted (add msg msgs))
   (msg' : message C V)
   (Hmsg' : in_message_set msg' msgs)
   : message_lt msg msg'.
 Proof.
-  remember (add _ _ msg msgs) as msgs'.
+  remember (add msg msgs) as msgs'.
   generalize dependent msg'. generalize dependent msgs. generalize dependent msg.
   induction Hls; intros; inversion Heqmsgs'; subst; clear Heqmsgs'.
   - inversion Hmsg'.
@@ -693,7 +691,7 @@ Qed.
 Lemma message_set_locally_sorted_tail
   (msg : message C V)
   (msgs : message_set C V)
-  (Hls : message_set_locally_sorted (add _ _ msg msgs))
+  (Hls : message_set_locally_sorted (add msg msgs))
   : message_set_locally_sorted msgs.
 Proof.
   inversion Hls; subst; try constructor.
@@ -745,7 +743,7 @@ Proof.
     split; intros msg Hmsg.
     + assert (Hlt := message_set_locally_sorted_strong _ _ Hmsgs1 _ Hmsg).
       specialize (Hincl12 msg).
-      assert (Hmsg' : in_message_set msg (add C V m0 msgs2))
+      assert (Hmsg' : in_message_set msg (add m0 msgs2))
         by (apply Hincl12; right; assumption).
       destruct Hmsg'; try assumption.
       subst.
@@ -755,7 +753,7 @@ Proof.
       inversion Hlt.
     + assert (Hlt := message_set_locally_sorted_strong _ _ Hmsgs2 _ Hmsg).
       specialize (Hincl21 msg).
-      assert (Hmsg' : in_message_set msg (add C V m0 msgs1))
+      assert (Hmsg' : in_message_set msg (add m0 msgs1))
         by (apply Hincl21; right; assumption).
       destruct Hmsg'; try assumption.
       subst.
@@ -816,23 +814,23 @@ Qed.
 
 Inductive message_set_recursively_sorted
   : message_set C V -> Prop :=
-  | RSorted_Empty : message_set_recursively_sorted (Empty _ _)
+  | RSorted_Empty : message_set_recursively_sorted Empty
   | RSorted_one
     : forall msg
       (Hmsg : message_recursively_sorted msg),
-    message_set_recursively_sorted (add _ _ msg (Empty _ _))
+    message_set_recursively_sorted (add msg Empty)
   | RSorted_more
     : forall msg msg' msgs
       (Hmsg : message_recursively_sorted msg)
       (Hlt : message_lt msg msg')
-      (Hmsgs : message_set_recursively_sorted (add _ _ msg' msgs)),
-    message_set_recursively_sorted (add _ _  msg (add _ _ msg' msgs))
+      (Hmsgs : message_set_recursively_sorted (add msg' msgs)),
+    message_set_recursively_sorted (add msg (add msg' msgs))
 
 with message_recursively_sorted
   : message C V -> Prop :=
   | RSorted_msg : forall c v j
     (Hj : justification_recursively_sorted j),
-    message_recursively_sorted (Msg _ _ c v j)
+    message_recursively_sorted (Msg c v j)
 
 with justification_recursively_sorted
   : justification C V -> Prop :=
@@ -840,14 +838,14 @@ with justification_recursively_sorted
     : forall
       msgs
       (Hmsgs : message_set_recursively_sorted msgs),
-    justification_recursively_sorted (NoSent _ _ msgs)
+    justification_recursively_sorted (NoSent msgs)
   | RSorted_LastSent
     : forall
       msgs
       msg
       (Hmsgs : message_set_recursively_sorted msgs)
       (Hmsg : in_message_set msg msgs),
-    justification_recursively_sorted (LastSent _ _ msgs msg)
+    justification_recursively_sorted (LastSent msgs msg)
   .
 
 Definition sorted_state_property
@@ -968,8 +966,8 @@ Definition make_justification
   let (msgs, last) := s in
   let msg_set := make_message_set msgs in
   match last with
-  | None => NoSent C V msg_set
-  | Some m => LastSent C V msg_set m
+  | None => NoSent msg_set
+  | Some m => LastSent msg_set m
   end.
 
 Lemma make_justification_sorted
@@ -1061,9 +1059,9 @@ Fixpoint sent_messages_justification
   : set (message C V)
   :=
   match j with
-  | NoSent _ _ _ => []
-  | LastSent _ _ msgs ((c,v,j)) =>
-    set_add decide_eq ((c,v,j)) (sent_messages_justification j)
+  | NoSent _ => []
+  | LastSent msgs (Msg c v j) =>
+    set_add decide_eq (Msg c v j) (sent_messages_justification j)
   end.
 
 Definition sent_messages
@@ -1072,8 +1070,8 @@ Definition sent_messages
   :=
   match last_sent s with
   | None => []
-  | Some ((c, v, j)) =>
-    set_add decide_eq ((c, v, j)) (sent_messages_justification j)
+  | Some (Msg c v j) =>
+    set_add decide_eq (Msg c v j) (sent_messages_justification j)
   end.
 
 Definition received_messages
