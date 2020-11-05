@@ -80,7 +80,11 @@ Context
     : Prop
     := @no_equivocating_decisions index index_listing idec s 
       (@equivocating_validators (@state index index_listing) index Mindex Rindex (Hbasic who) s) <> [].
-    
+  
+  Definition no_component_fully_equivocating
+    (s : vstate X)
+    (li : list index) : Prop
+    := forall (i : index), In i li -> not_all_equivocating (s i) i.
   
   Lemma feasible_update_value_correct 
     (s : (@state index index_listing))
@@ -154,9 +158,12 @@ Context
   Lemma chain_updates_protocol 
     (s : vstate X)
     (Hspr : protocol_state_prop _ s)
-    (li : list index) :
+    (li : list index)
+    (Hnodup : NoDup li)
+    (Hnf : no_component_fully_equivocating s li) :
     finite_protocol_trace_from _ s (chain_updates li s).
   Proof.
+    unfold no_component_fully_equivocating in Hnf.
     generalize dependent s.
     induction li.
     - intros.
@@ -181,14 +188,17 @@ Context
         simpl.
         split.
         apply feasible_update_value_correct with (s := s a) (who := a).
-        admit.
+        specialize (Hnf a).
+        spec Hnf; intuition; assumption.
         reflexivity.
         rewrite Heqitem.
         simpl.
         reflexivity.
       }
       apply finite_ptrace_extend.
-      + specialize (IHli (destination item)).
+      + apply NoDup_cons_iff in Hnodup.
+        destruct Hnodup as [Hnoa Hnoli].
+        specialize (IHli Hnoli (destination item)).
         rewrite <- Heqitem.
         spec IHli.
         apply protocol_transition_destination with (l := (l item)) (s0 := s) (om := input item) (om' := output item).
@@ -198,14 +208,26 @@ Context
         unfold feasible_update_composite in IHli.
         simpl in IHli.
         simpl.
+        spec IHli. {
+          intros.
+          destruct (decide (i = a)).
+          - rewrite e.
+            congruence.
+          - unfold lift_to_composite_state'.
+            rewrite state_update_neq.
+            specialize (Hnf i).
+            spec Hnf. intuition. assumption.
+            assumption.
+        }
         rewrite Heqitem.
         assumption.
       + rewrite Heqitem in H.
         assumption.
-  Admitted.
+  Qed.
   
   Lemma phase_one_future 
     (s : vstate X)
+    (Hnf : no_component_fully_equivocating s index_listing)
     (Hspr : protocol_state_prop _ s) :
     in_futures _ s (phase_one s).
   Proof.
@@ -214,6 +236,8 @@ Context
     split.
     - unfold phase_one_transitions.
       apply chain_updates_protocol.
+      assumption.
+      apply (proj1 Hfinite).
       assumption.
     - unfold phase_one_transitions.
       reflexivity.
@@ -280,6 +304,7 @@ Context
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
     (li : list index)
+    (Hnf : no_component_fully_equivocating s li)
     (Hnodup: NoDup li)
     (i : index)
     (Hi : In i li)
@@ -366,21 +391,42 @@ Context
           rewrite Heqx.
           apply feasible_update_protocol.
           assumption.
-          admit.
+          specialize (Hnf a).
+          spec Hnf; intuition.
         }
         apply protocol_transition_destination with (l := (l x)) (s0 := s) (om := input x) (om' := output x).
         assumption.
+        spec IHli. {
+          unfold no_component_fully_equivocating.
+          intros.
+          apply NoDup_cons_iff in Hnodup.
+          destruct Hnodup as [Hnoa Hnoli].
+          destruct (decide (i1 = a)).
+            - congruence.
+            - rewrite Heqx.
+              unfold feasible_update_composite.
+              unfold lift_to_composite_transition_item'.
+              unfold lift_to_composite_state'; simpl.
+              rewrite state_update_neq.
+              unfold no_component_fully_equivocating in Hnf.
+              specialize (Hnf i1). 
+              spec Hnf. intuition.
+              assumption.
+              assumption.
+        }
         assumption.
-  Admitted.
+  Qed.
   
   Lemma phase_one_projections 
     (s : vstate X)
     (Hprss : protocol_state_prop _ s)
+    (Hnf : no_component_fully_equivocating s index_listing)
     (i : index)
     (s' := phase_one s) :
     project (s' i) i = (s i).
   Proof.
     apply chain_updates_projections_in.
+    assumption.
     assumption.
     apply (proj1 Hfinite).
     apply ((proj2 Hfinite) i).
@@ -389,6 +435,7 @@ Context
   Lemma everything_in_projections 
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
+    (Hnf : no_component_fully_equivocating s index_listing)
     (li : list index)
     (s' := phase_one s) :
     set_eq 
@@ -432,6 +479,7 @@ Context
       rewrite Heq.
       assumption.
       assumption.
+      assumption.
     - unfold incl.
       intros.
       unfold unite_observations in *.
@@ -467,6 +515,7 @@ Context
         rewrite <- H0 in caroten.
         rewrite <- caroten.
         apply phase_one_projections.
+        assumption.
         assumption.
       }
       rewrite H0 in Hina.
@@ -603,8 +652,20 @@ Context
             rewrite <- e.
             assumption.
             unfold state_eqb. rewrite decide_True. all : auto.
-          + (* specialize (received_component_protocol_composed index_listing index_listing IM_index i0 (free_constraint IM_index) has_been_received_capabilities (fun m => Some (fst m)) s') as Hope. *)
-            admit.
+          + specialize (received_component_protocol_composed IM_index i0 (free_constraint IM_index) has_been_received_capabilities (fun m => Some (fst m)) s') as Hope.
+            spec Hope. assumption.
+            specialize (Hope inter (from, sa)).
+            apply Hope.
+            unfold has_been_received.
+            unfold has_been_received_capabilities.
+            unfold has_been_received_lv.
+            unfold receive_oracle; simpl.
+            rewrite decide_False.
+            apply existsb_exists.
+            exists sa.
+            split.
+            assumption.
+            unfold state_eqb. rewrite decide_True. all : auto.
         - simpl in *.
           inversion Hh.
           unfold vvalid.
@@ -760,7 +821,7 @@ Context
                         (@type (@message index index_listing) X)))))) in eqf1.
             inversion eqf1.
             reflexivity.
-    Admitted.
+    Qed.
    
     Definition get_candidates 
       (s : vstate X)
@@ -849,10 +910,6 @@ Context
           assumption.
         + specialize (IHli Hnfli); assumption.
         + unfold independent_actions.
-          unfold get_matching_action.
-          destruct (get_matching_state s a from) eqn : eq_ms.
-          * destruct (sync s s0 a from) eqn : eq_sync.
-            -- 
           admit.
     Admitted.
       
