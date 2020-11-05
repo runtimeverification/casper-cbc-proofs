@@ -477,9 +477,7 @@ Context
       rewrite phase_one_projections.
       rewrite Heqi.
       rewrite Heq.
-      assumption.
-      assumption.
-      assumption.
+      all : assumption.
     - unfold incl.
       intros.
       unfold unite_observations in *.
@@ -867,6 +865,7 @@ Context
         (Hpr : protocol_state_prop X s)
         (li : list index)
         (from : index)
+        (Hnodup : NoDup li)
         (Hnf : ~ In from li) :
         (* let res := snd (apply_action X s (get_receives_for s li from)) in *)
         finite_protocol_action_from X s (get_receives_for s li from). 
@@ -899,16 +898,15 @@ Context
           rewrite in_map_iff in Hin_cand.
           destruct Hin_cand as [inter [Hproj Hinc]].
           destruct (sync s s0 a from) eqn : eq_sync.
-          
           apply one_sender_receive_protocol with (from := from) (s' := s) (to := a) (inter := inter).
           assumption.
           assumption.
           intuition.
           rewrite Hproj; assumption.
-          apply finite_protocol_action_empty. 
-          assumption.
-          assumption.
-        + specialize (IHli Hnfli); assumption.
+          apply finite_protocol_action_empty.
+          all : assumption. 
+        + apply NoDup_cons_iff in Hnodup.
+          spec IHli; intuition.
         + unfold independent_actions.
           admit.
     Admitted.

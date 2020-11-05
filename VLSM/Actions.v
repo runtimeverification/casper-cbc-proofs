@@ -275,5 +275,44 @@ Section apply_actions.
         destruct Hinput_ai as [_s Hinput_a0].
         apply protocol_generated with _oma _s; assumption.
   Qed.
-
+  
+  Definition preserves
+    (a : vaction X)
+    (P : vstate X -> Prop) :
+    Prop :=
+    forall (s : vstate X),
+    (P s -> P (snd (apply_action s a))).
+    
+  Definition assures
+    (a : vaction X)
+    (P : vstate X -> Prop) : 
+    Prop :=
+    forall (s : vstate X),
+    (P s -> finite_protocol_action_from s a).
+  
+   Lemma action_independence
+    (a b : vaction X)
+    (Pa Pb : vstate X -> Prop) 
+    (s : state)
+    (Hhave : Pa s /\ Pb s)
+    (Hassures : assures a Pa /\ assures b Pb)
+    (Hpreserves : preserves a Pb /\ preserves b Pa) :
+   finite_protocol_action_from s (a ++ b).
+   Proof.
+    destruct Hassures.
+    destruct Hpreserves.
+    destruct Hhave.
+    unfold assures in *.
+    unfold preserves in *.
+    apply finite_protocol_action_from_app_iff.
+    split. 
+    - apply H. assumption.
+    - remember (snd (apply_action s a)) as s'.
+      specialize (H0 s').
+      apply H0.
+      rewrite Heqs'.
+      apply H1.
+      assumption.
+   Qed.
+    
 End apply_actions.
