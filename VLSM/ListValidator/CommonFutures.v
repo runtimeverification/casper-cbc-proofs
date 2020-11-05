@@ -501,7 +501,7 @@ Context
     let res := snd (apply_action X s a) in
     finite_protocol_action_from X s a /\
     (project (res to) from = project (s' inter) from).
-   Proof. (*
+   Proof. 
     generalize dependent s.
     induction a.
     - intros. simpl in *.
@@ -586,26 +586,34 @@ Context
         - assumption.
         - subst input_a.
           apply option_protocol_message_Some.
-          specialize (sent_component_protocol_composed IM_index i0 (free_constraint IM_index) has_been_sent_capabilities (fun m => Some (fst m)) s') as Hope.
-          spec Hope. assumption.
-          specialize (Hope from (from, sa)).
-          apply Hope.
-          unfold has_been_sent.
-          unfold has_been_sent_capabilities.
-          unfold has_been_sent_lv.
-          unfold send_oracle.
-          simpl.
-          rewrite decide_True.
-          apply existsb_exists.
-          exists sa.
-          split. assumption.
-          unfold state_eqb. rewrite decide_True. all : reflexivity. 
+          destruct (decide (inter = from)).
+          + specialize (sent_component_protocol_composed IM_index i0 (free_constraint IM_index) has_been_sent_capabilities (fun m => Some (fst m)) s') as Hope.
+            spec Hope. assumption.
+            specialize (Hope inter (from, sa)).
+            apply Hope.
+            unfold has_been_sent.
+            unfold has_been_sent_capabilities.
+            unfold has_been_sent_lv.
+            unfold send_oracle; simpl.
+            rewrite decide_True.
+            apply existsb_exists.
+            exists sa.
+            split.
+            rewrite <- e in Hinsa.
+            rewrite <- e.
+            assumption.
+            unfold state_eqb. rewrite decide_True. all : auto.
+          + (* specialize (received_component_protocol_composed index_listing index_listing IM_index i0 (free_constraint IM_index) has_been_received_capabilities (fun m => Some (fst m)) s') as Hope. *)
+            admit.
         - simpl in *.
           inversion Hh.
           unfold vvalid.
           apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
           unfold valid. simpl.
-          repeat split; assumption.
+          repeat split.
+          assumption.
+          assumption.
+          assumption.
         - assumption.
       }
       
@@ -645,7 +653,7 @@ Context
         
       spec IHa. {
         unfold sync.
-        destruct (complete_suffix (get_history (s' from) from) (get_history (s0 to) from)) eqn : eq_cs2.
+        destruct (complete_suffix (get_history (s' inter) from) (get_history (s0 to) from)) eqn : eq_cs2.
         f_equal.
           unfold sync_action.
           rewrite <- Htl.
@@ -752,7 +760,6 @@ Context
                         (@type (@message index index_listing) X)))))) in eqf1.
             inversion eqf1.
             reflexivity.
-    *)
     Admitted.
    
     Definition get_candidates 
@@ -760,7 +767,7 @@ Context
       (target : index) :
       list state 
       :=
-      List.map ((flip project) target) (component_list s index_listing).
+    component_list s index_listing.
     
     Definition get_topmost_candidates
       (s : vstate X)
@@ -792,13 +799,14 @@ Context
       (li : list index)
       (from : index) : vaction X :=
       let matching_actions := List.map (get_matching_action s from) li in
-      List.fold_right (@List.app action_item) [] matching_actions.
+      List.concat matching_actions.
       
     Lemma get_receives_correct
         (s : vstate X)
         (Hpr : protocol_state_prop X s)
         (li : list index)
-        (from : index) :
+        (from : index)
+        (Hnf : ~ In from li) :
         (* let res := snd (apply_action X s (get_receives_for s li from)) in *)
         finite_protocol_action_from X s (get_receives_for s li from). 
     Proof.
@@ -809,29 +817,43 @@ Context
       - unfold get_receives_for.
         rewrite map_cons. simpl.
         unfold get_receives_for in IHli.
+        apply not_in_cons in Hnf.
+        destruct Hnf as [Hnfa Hnfli].
+        
         apply free_trace_reordering.
         + assumption.
         + unfold get_matching_action.
           destruct (get_matching_state s a from) eqn : eq_matching.
+          2 : apply finite_protocol_action_empty.
+          unfold get_matching_state in eq_matching.
+          apply find_some in eq_matching.
+          destruct eq_matching as [Hin_top Hinltb].
+          unfold get_topmost_candidates in Hin_top.
+          unfold get_maximal_elements in Hin_top.
+          apply filter_In in Hin_top.
+          destruct Hin_top as [Hin_cand Htop].
+          rewrite forallb_forall in Htop.
+          unfold get_candidates in Hin_cand.
+          unfold component_list in Hin_cand.
+          rewrite in_map_iff in Hin_cand.
+          destruct Hin_cand as [inter [Hproj Hinc]].
           destruct (sync s s0 a from) eqn : eq_sync.
-          (*
-          apply one_sender_receive_protocol with (from := from) (s' := s) (to := a).
-          assumption. assumption. admit. admit.
-          apply finite_protocol_action_empty. assumption.
-          apply finite_protocol_action_empty. assumption. *)
-          admit. admit. admit.
-        + assumption.
-        + admit.
-        (*
-        apply finite_protocol_action_from_app_iff.
-        remember (snd (apply_action X s (get_matching_action s from a))) as s'. 
-        repeat split.
-        + admit.
-        + 
-          (*specialize (IHli s'). 
-          spec IHli. {
-            admit.
-          } *) *)
+          
+          apply one_sender_receive_protocol with (from := from) (s' := s) (to := a) (inter := inter).
+          assumption.
+          assumption.
+          intuition.
+          rewrite Hproj; assumption.
+          apply finite_protocol_action_empty. 
+          assumption.
+          assumption.
+        + specialize (IHli Hnfli); assumption.
+        + unfold independent_actions.
+          unfold get_matching_action.
+          destruct (get_matching_state s a from) eqn : eq_ms.
+          * destruct (sync s s0 a from) eqn : eq_sync.
+            -- 
+          admit.
     Admitted.
       
 End Composition.
