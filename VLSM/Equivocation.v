@@ -247,7 +247,7 @@ Section Simple.
     Proof.
       split.
       - intro Hsome.
-        destruct (has_been_sent_dec s m) as [Hsm|Hsm].
+        destruct (decide (has_been_sent s m)) as [Hsm|Hsm].
         apply proper_sent in Hsm;assumption.
         apply proper_not_sent in Hsm;[|assumption].
         exfalso.
@@ -288,7 +288,7 @@ Section Simple.
 
     Class has_been_received_capability := {
       has_been_received: state_message_oracle;
-      has_been_received_dec: RelDecision has_been_received;
+      has_been_received_dec :> RelDecision has_been_received;
 
       proper_received:
         forall (s : state)
@@ -315,7 +315,7 @@ Section Simple.
     Proof.
       split.
       - intro Hsome.
-        destruct (has_been_received_dec s m) as [Hsm|Hsm];
+        destruct (decide (has_been_received s m)) as [Hsm|Hsm];
           [apply proper_received in Hsm;assumption|].
         apply proper_not_received in Hsm;[|assumption].
         destruct Hsome as [is [tr [Htr [Hlast Hsome]]]].
@@ -353,7 +353,7 @@ Section Simple.
           by (exists is; exists tr; exists Htr; exists Hlast; assumption).
         apply Hconsistency in Hsm'.
         apply proper_received in Hsm'. contradiction.
-      - intro Hnone. destruct (has_been_received_dec s m) as [Hsm|Hsm];[|assumption].
+      - intro Hnone. destruct (decide (has_been_received s m)) as [Hsm|Hsm];[|assumption].
         exfalso.
         apply proper_received in Hsm. apply Hconsistency in Hsm.
         destruct Hsm as [is [tr [Htr [Hlast Hsm]]]].
@@ -436,16 +436,21 @@ Section Simple.
 
     Definition computable_sent_messages_has_been_sent
       {Hsm : computable_sent_messages}
-      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : Prop
       :=
       In m (sent_messages_fn s).
 
+    Global Instance computable_sent_message_has_been_sent_dec
+      {Hsm : computable_sent_messages}
+      {eq_message: EqDecision message}
+      : RelDecision computable_sent_messages_has_been_sent
+      :=
+        fun s m => in_dec decide_eq m (sent_messages_fn s).
+
     Lemma computable_sent_messages_has_been_sent_proper
       {Hsm : computable_sent_messages}
-      {eq_message : EqDecision message}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -467,7 +472,6 @@ Section Simple.
 
     Definition computable_sent_messages_has_not_been_sent
       {Hsm : computable_sent_messages}
-      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : Prop
@@ -476,7 +480,6 @@ Section Simple.
 
     Lemma computable_sent_messages_has_not_been_sent_proper
       {Hsm : computable_sent_messages}
-      {eq_message : EqDecision message}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -509,7 +512,6 @@ Section Simple.
       :=
       {|
         has_been_sent := computable_sent_messages_has_been_sent;
-        has_been_sent_dec := fun s m => in_dec eq_message m (sent_messages_fn s);
         proper_sent := computable_sent_messages_has_been_sent_proper;
         proper_not_sent := computable_sent_messages_has_not_been_sent_proper
       |}.
@@ -548,16 +550,21 @@ Section Simple.
 
     Definition computable_received_messages_has_been_received
       {Hsm : computable_received_messages}
-      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : Prop
       :=
       In m (received_messages_fn s).
 
-    Lemma computable_received_messages_has_been_received_proper
+    Global Instance computable_received_messages_has_been_received_dec
       {Hsm : computable_received_messages}
       {eq_message : EqDecision message}
+      : RelDecision computable_received_messages_has_been_received
+      :=
+      fun s m => in_dec decide_eq m (received_messages_fn s).
+
+    Lemma computable_received_messages_has_been_received_proper
+      {Hsm : computable_received_messages}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -577,7 +584,6 @@ Section Simple.
 
     Definition computable_received_messages_has_not_been_received
       {Hsm : computable_received_messages}
-      {eq_message : EqDecision message}
       (s : vstate vlsm)
       (m : message)
       : Prop
@@ -586,7 +592,6 @@ Section Simple.
 
     Lemma computable_received_messages_has_not_been_received_proper
       {Hsm : computable_received_messages}
-      {eq_message : EqDecision message}
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
@@ -610,7 +615,6 @@ Section Simple.
       :=
       {|
         has_been_received := computable_received_messages_has_been_received;
-        has_been_received_dec := fun s m => in_dec eq_message m (received_messages_fn s);
         proper_received := computable_received_messages_has_been_received_proper;
         proper_not_received := computable_received_messages_has_not_been_received_proper
       |}.
