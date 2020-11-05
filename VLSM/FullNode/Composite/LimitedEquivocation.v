@@ -400,7 +400,7 @@ Proof.
     specialize (I1 m Hm).
     apply state_union_iff in I1.
     apply state_union_iff.
-    destruct I1 as [[v' HI1] | [client' HI1]]; try destruct (decide (inr client' = inr client)).
+    destruct I1 as [[v' HI1] | [client' HI1]];[|destruct (decide ((inr client':index) = inr client))].
     + simpl. left. exists v'.  rewrite state_update_neq by (intro; discriminate).
       assumption.
     + inversion e. subst client'. right. exists client.
@@ -476,7 +476,7 @@ Proof.
             (@rev message ms))) s (@inr V clients client))
       as msgs eqn:Ht.
     apply state_union_iff in Hm.
-    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (decide (inr client' = inr client)).
+    destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (decide ((inr client':index) = inr client)).
     + simpl in Hm. rewrite state_update_neq in Hm by (intro; discriminate).
       apply I2. apply state_union_iff.
       left. exists v'.

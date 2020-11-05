@@ -401,7 +401,8 @@ Definition compareb {A} `{StrictlyComparable A} (a1 a2 : A) : bool :=
   | _ => false
   end.
 
-Lemma is_member_correct {W} `{StrictlyComparable W} : forall l w, is_member w l = true <-> In w l.
+Lemma is_member_correct {W} `{StrictlyComparable W}
+  : forall l (w : W), is_member w l = true <-> In w l.
 Proof.
   intros l w.
   induction l as [|hd tl IHl].
@@ -428,7 +429,8 @@ Proof.
         assumption.
 Qed.
 
-Lemma is_member_correct' {W} `{StrictlyComparable W} : forall l w, is_member w l = false <-> ~ In w l.
+Lemma is_member_correct' {W} `{StrictlyComparable W}
+  : forall l (w : W), is_member w l = false <-> ~ In w l.
 Proof.
   intros.
   apply mirror_reflect.
