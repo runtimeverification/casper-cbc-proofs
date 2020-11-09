@@ -852,13 +852,32 @@ Context
                    | Some a => a
                    end
       end.
-      
+    
+    Lemma get_matching_action_thing
+      (from to i : index) 
+      (s : vstate X)
+      (Hdif : i <> to)
+      (res := snd (apply_action X s (get_matching_action s from to))) :
+      (res i) = (s i).
+    Proof.
+    Admitted.
+    
     Definition get_receives_for
       (s : vstate X)
       (li : list index)
       (from : index) : vaction X :=
       let matching_actions := List.map (get_matching_action s from) li in
       List.concat matching_actions.
+      
+    Lemma get_receives_for_thing
+      (s : vstate X)
+      (li : list index)
+      (from i : index)
+      (Hdif : ~ In i li)
+      (res := snd (apply_action X s (get_receives_for s li from))) :
+      (res i) = (s i).
+    Proof.
+    Admitted.
       
     Lemma get_receives_correct
         (s : vstate X)
@@ -880,7 +899,38 @@ Context
         apply not_in_cons in Hnf.
         destruct Hnf as [Hnfa Hnfli].
         
-        apply free_trace_reordering.
+        specialize (@action_independence _ X (get_matching_action s from a) (concat (map (get_matching_action s from) li))) as Hind.
+        
+        remember (fun s' => (s' a) = (s a)) as Pa.
+        remember (fun s' => forall (i : index), In i li -> (s' i) = (s i)) as Pb.
+        
+        specialize (Hind Pa Pb s).
+        
+        spec Hind. {
+          split.
+          rewrite HeqPa.
+          reflexivity.
+          rewrite HeqPb.
+          intros.
+          reflexivity.
+        }
+        
+        spec Hind. {
+          split; unfold ensures; intros.
+          - rewrite HeqPa in H.
+            admit.
+          - admit.
+        }
+        
+        spec Hind. {
+          unfold preserves.
+          rewrite HeqPb in *.
+          intros.
+          unfold preserves.
+          intros.
+          admit.
+        }
+        
         + assumption.
         + unfold get_matching_action.
           destruct (get_matching_state s a from) eqn : eq_matching.

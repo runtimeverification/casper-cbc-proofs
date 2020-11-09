@@ -283,7 +283,7 @@ Section apply_actions.
     forall (s : vstate X),
     (P s -> P (snd (apply_action s a))).
     
-  Definition assures
+  Definition ensures
     (a : vaction X)
     (P : vstate X -> Prop) : 
     Prop :=
@@ -295,14 +295,13 @@ Section apply_actions.
     (Pa Pb : vstate X -> Prop) 
     (s : state)
     (Hhave : Pa s /\ Pb s)
-    (Hassures : assures a Pa /\ assures b Pb)
-    (Hpreserves : preserves a Pb /\ preserves b Pa) :
+    (Hensures : ensures a Pa /\ ensures b Pb)
+    (Hpreserves : preserves a Pb) :
    finite_protocol_action_from s (a ++ b).
    Proof.
-    destruct Hassures.
-    destruct Hpreserves.
+    destruct Hensures.
     destruct Hhave.
-    unfold assures in *.
+    unfold ensures in *.
     unfold preserves in *.
     apply finite_protocol_action_from_app_iff.
     split. 
@@ -311,7 +310,7 @@ Section apply_actions.
       specialize (H0 s').
       apply H0.
       rewrite Heqs'.
-      apply H1.
+      apply Hpreserves.
       assumption.
    Qed.
     
