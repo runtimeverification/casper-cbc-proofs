@@ -1181,6 +1181,23 @@ All results from regular projections carry to these "free" projections.
       + rewrite state_update_neq; try assumption. apply Hs.
   Qed.
   
+  Lemma relevant_components
+    (s s' : vstate X)
+    (Hprs' : protocol_state_prop X s')
+    (a : vaction X)
+    (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
+    (li : list index)
+    (Heq : forall (i : index), In i li -> (s' i) = (s i))
+    (Hincl : incl a_indices li)
+    (Hpr : finite_protocol_action_from X s a) :
+    finite_protocol_action_from X s' a.
+  Proof.
+    induction a.
+    - apply finite_ptrace_empty. assumption.
+    - admit.
+  Admitted.
+  
+  (*
   Definition independent_actions
     (a b : vaction X) : Prop :=
     let ind_a := List.map (@projT1 _ _) (List.map (@label_a _ _) a) in
@@ -1229,7 +1246,7 @@ All results from regular projections carry to these "free" projections.
         inversion Hb_one.
         admit.
       + admit. 
-  Admitted.
+  Admitted. *)
   
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_eq
     (s1 s2 : vstate X)

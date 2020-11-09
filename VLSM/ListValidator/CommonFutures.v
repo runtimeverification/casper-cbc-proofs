@@ -853,7 +853,32 @@ Context
                    end
       end.
     
-    Lemma get_matching_action_thing
+    Lemma get_matching_action_index
+      (s : vstate X)
+      (from to : index)
+      (ai : action_item)
+      (Hin : In ai (get_matching_action s from to)) :
+      (projT1 (label_a ai) = to).
+    Proof.
+      unfold get_matching_action in Hin.
+      destruct (get_matching_state s to from) eqn : eq_matching.
+      - destruct (sync s s0 to from) eqn : eq_sync.
+        + unfold sync in eq_sync.
+          destruct (complete_suffix (get_history s0 from) (get_history (s to) from)).
+          inversion eq_sync.
+          unfold sync_action in H0.
+          rewrite <- H0 in Hin.
+          apply in_map_iff in Hin.
+          destruct Hin as [x [Hlift Hinx]].
+          unfold lift_to_composite_action_item in Hlift.
+          rewrite <- Hlift.
+          destruct x. simpl. reflexivity.
+          discriminate eq_sync.
+        + contradict Hin.
+      - contradict Hin.
+    Qed.
+    
+    Lemma get_matching_action_thing''
       (from to i : index) 
       (s : vstate X)
       (Hdif : i <> to)
@@ -869,13 +894,14 @@ Context
       let matching_actions := List.map (get_matching_action s from) li in
       List.concat matching_actions.
       
-    Lemma get_receives_for_thing
+    Lemma get_matching_action_thing
       (s : vstate X)
       (li : list index)
-      (from i : index)
+      (from i j : index)
+      (Hj : In j li)
       (Hdif : ~ In i li)
-      (res := snd (apply_action X s (get_receives_for s li from))) :
-      (res i) = (s i).
+      (res := snd (apply_action X s (get_matching_action s from i))) :
+      (res j) = (s j).
     Proof.
     Admitted.
       
@@ -898,39 +924,88 @@ Context
         unfold get_receives_for in IHli.
         apply not_in_cons in Hnf.
         destruct Hnf as [Hnfa Hnfli].
+        apply NoDup_cons_iff in Hnodup as Hnodup'.
         
         specialize (@action_independence _ X (get_matching_action s from a) (concat (map (get_matching_action s from) li))) as Hind.
         
-        remember (fun s' => (s' a) = (s a)) as Pa.
         remember (fun s' => forall (i : index), In i li -> (s' i) = (s i)) as Pb.
         
-        specialize (Hind Pa Pb s).
+        specialize (Hind Pb s).
         
         spec Hind. {
-          split.
-          rewrite HeqPa.
+          unfold get_matching_action.
+          destruct (get_matching_state s a from) eqn : eq_matching.
+          2 : apply finite_protocol_action_empty.
+          unfold get_matching_state in eq_matching.
+          apply find_some in eq_matching.
+          destruct eq_matching as [Hin_top Hinltb].
+          unfold get_topmost_candidates in Hin_top.
+          unfold get_maximal_elements in Hin_top.
+          apply filter_In in Hin_top.
+          destruct Hin_top as [Hin_cand Htop].
+          rewrite forallb_forall in Htop.
+          unfold get_candidates in Hin_cand.
+          unfold component_list in Hin_cand.
+          rewrite in_map_iff in Hin_cand.
+          destruct Hin_cand as [inter [Hproj Hinc]].
+          destruct (sync s s0 a from) eqn : eq_sync.
+          apply one_sender_receive_protocol with (from := from) (s' := s) (to := a) (inter := inter).
+          assumption.
+          assumption.
+          intuition.
+          rewrite Hproj; assumption.
+          apply finite_protocol_action_empty.
+          assumption.
+          assumption.
+        }
+        
+        spec Hind. {
+          rewrite HeqPb. intros.
           reflexivity.
+        }
+        
+        (* ensures *)
+        
+        spec Hind. {
+          unfold ensures. intros.
+          rewrite HeqPb in H0.
+          apply relevant_components with (s1 := s) (li0 := li).
+          assumption.
+          assumption.
+          unfold incl. intros.
+          rewrite in_map_iff in H1.
+          destruct H1 as [x [Hproj Hinx]].
+          rewrite in_map_iff in Hinx.
+          destruct Hinx as [x0 [H_label Hincon]].
+          apply in_concat in Hincon.
+          destruct Hincon as [y [Hiny Hinx0]].
+          rewrite in_map_iff in Hiny.
+          destruct Hiny as [z [Hmatching Hindex]].
+          rewrite <- H_label in Hproj.
+          unfold free_composite_vlsm.
+          assert (a0 = z). {
+            rewrite <- Hproj.
+            apply get_matching_action_index with (s := s) (from := from).
+            rewrite <- Hmatching in Hinx0.
+            assumption.
+          }
+          rewrite H1.
+          assumption.
+          apply IHli.
+          all : intuition.
+        }
+        
+        (* preserves *)
+        
+        spec Hind. {
           rewrite HeqPb.
-          intros.
-          reflexivity.
-        }
-        
-        spec Hind. {
-          split; unfold ensures; intros.
-          - rewrite HeqPa in H.
-            admit.
-          - admit.
-        }
-        
-        spec Hind. {
-          unfold preserves.
-          rewrite HeqPb in *.
-          intros.
           unfold preserves.
           intros.
-          admit.
+          (* apply get_matching_action_thing. *)
         }
         
+        assumption.
+        (* 
         + assumption.
         + unfold get_matching_action.
           destruct (get_matching_state s a from) eqn : eq_matching.
@@ -958,7 +1033,7 @@ Context
         + apply NoDup_cons_iff in Hnodup.
           spec IHli; intuition.
         + unfold independent_actions.
-          admit.
+          admit. *)
     Admitted.
       
 End Composition.

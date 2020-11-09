@@ -281,37 +281,38 @@ Section apply_actions.
     (P : vstate X -> Prop) :
     Prop :=
     forall (s : vstate X),
-    (P s -> P (snd (apply_action s a))).
+    (P s -> finite_protocol_action_from s a -> P (snd (apply_action s a))).
     
   Definition ensures
     (a : vaction X)
     (P : vstate X -> Prop) : 
     Prop :=
     forall (s : vstate X),
-    (P s -> finite_protocol_action_from s a).
+    (protocol_state_prop X s -> P s -> finite_protocol_action_from s a).
   
    Lemma action_independence
     (a b : vaction X)
-    (Pa Pb : vstate X -> Prop) 
+    (Pb : vstate X -> Prop) 
     (s : state)
-    (Hhave : Pa s /\ Pb s)
-    (Hensures : ensures a Pa /\ ensures b Pb)
+    (Ha : finite_protocol_action_from s a)
+    (Hhave : Pb s)
+    (Hensures : ensures b Pb)
     (Hpreserves : preserves a Pb) :
    finite_protocol_action_from s (a ++ b).
    Proof.
-    destruct Hensures.
-    destruct Hhave.
     unfold ensures in *.
     unfold preserves in *.
     apply finite_protocol_action_from_app_iff.
     split. 
-    - apply H. assumption.
+    - assumption.
     - remember (snd (apply_action s a)) as s'.
-      specialize (H0 s').
-      apply H0.
+      specialize (Hensures s').
+      apply Hensures.
+      admit.
       rewrite Heqs'.
       apply Hpreserves.
       assumption.
-   Qed.
+      assumption.
+   Admitted.
     
 End apply_actions.
