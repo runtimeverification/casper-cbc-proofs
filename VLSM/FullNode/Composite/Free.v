@@ -34,11 +34,11 @@ Section ClientsAndValidators.
     (message := State.message C V)
     (message_preceeds := validator_message_preceeds C V)
     (message_preceeds_dec := validator_message_preceeds_dec C V)
+    {clients : Type}
+    {clients_eq_dec : EqDecision clients}
+    (index : Type := (V + clients)%type)
+    {i0 : index}
     .
-Parameter clients : Type.
-Parameter clients_eq_dec : EqDecision clients.
-Let index : Type := V + clients.
-Parameter i0 : index.
 
 Existing Instance clients_eq_dec.
 
@@ -513,8 +513,9 @@ Proof.
   - apply full_node_client_observation_based_equivocation_evidence.
 Defined.
 
-Parameter indices : list index.
-Parameter finite_index : Listing indices.
+Context
+  (indices : list index)
+  (finite_index : Listing indices).
 
 Definition validators : list V
   := flat_map (fun i : index => match i with inl v => [v] | _ => [] end) indices.
@@ -523,7 +524,7 @@ Lemma finite_validators : Listing validators.
 Proof.
   split.
   - unfold validators. assert (Hnodup := proj1 finite_index).
-    induction indices.
+    revert Hnodup;generalize indices as l;induction l;intro Hnodup.
     + constructor.
     + simpl. inversion Hnodup; subst. specialize (IHl H2).
       destruct a; try assumption.
