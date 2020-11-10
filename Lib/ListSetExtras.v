@@ -627,6 +627,33 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma set_prod_nodup `(s1: set A) `(s2: set B):
+  NoDup s1 ->
+  NoDup s2 ->
+  NoDup (set_prod s1 s2).
+Proof.
+  intros Hs1 HS2.
+  induction Hs1.
+  + constructor.
+  + simpl.
+    apply nodup_append.
+    * apply FinFun.Injective_map_NoDup;[|assumption].
+      intros y1 y2.
+      apply (f_equal snd).
+    * assumption.
+    * intros [a b].
+      rewrite in_map_iff.
+      intros [_ [[= <- _] _]].
+      rewrite in_prod_iff.
+      tauto.
+    * intros [a b].
+      rewrite in_prod_iff.
+      intros [Ha _].
+      rewrite in_map_iff.
+      intros [_ [[= Hax _] _]].
+      congruence.
+Qed.
+
 Require Import Setoid.
 
 Add Parametric Relation A : (set A) (@set_eq A)

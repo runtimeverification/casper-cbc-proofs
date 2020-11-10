@@ -30,6 +30,8 @@ VLSM/ListValidator/Equivocation.v
 VLSM/ListValidator/GeneralComposition.v
 VLSM/ListValidator/NoEquivocationComposition.v
 VLSM/ListValidator/EquivocationAwareListValidator.v
+VLSM/Liveness.v
+VLSM/Liveness/SimpleFragileProtocol.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
