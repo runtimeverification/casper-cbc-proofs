@@ -933,6 +933,10 @@ Context
         specialize (Hind Pb s).
         
         spec Hind. {
+          assumption.
+        }
+        
+        assert (Hfrs : finite_protocol_action_from X s (get_matching_action s from a)). {
           unfold get_matching_action.
           destruct (get_matching_state s a from) eqn : eq_matching.
           2 : apply finite_protocol_action_empty.
@@ -959,17 +963,24 @@ Context
           assumption.
         }
         
+        spec Hind. { 
+          auto.
+        }
+        
         spec Hind. {
           rewrite HeqPb. intros.
           reflexivity.
         }
         
+        specialize (@relevant_components (@message index index_listing) index idec IM_index) as Hrel.
+        specialize (Hrel i0 s).
         (* ensures *)
         
-        spec Hind. {
+        spec Hind save. {
           unfold ensures. intros.
           rewrite HeqPb in H0.
-          apply relevant_components with (s1 := s) (li0 := li).
+          (* apply relevant_components with (s1 := s) (li0 := li) *)
+          apply Hrel with (li := li).
           assumption.
           assumption.
           unfold incl. intros.
@@ -1001,10 +1012,19 @@ Context
           rewrite HeqPb.
           unfold preserves.
           intros.
-          (* apply get_matching_action_thing. *)
-        }
-        
-        assumption.
+          specialize (Hrel s0).
+          assert (snd (apply_action X s0 (get_matching_action s from a)) i =
+                  snd (apply_action X s (get_matching_action s from a)) i). {
+                 spec Hrel. { assumption. }
+                 specialize (Hrel (get_matching_action s from a) li H0).
+                 (* Refactor this *)
+                 spec Hrel. { admit. }
+                 admit.
+                } 
+            admit.
+          }
+
+        intuition.
         (* 
         + assumption.
         + unfold get_matching_action.

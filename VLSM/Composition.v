@@ -1181,6 +1181,96 @@ All results from regular projections carry to these "free" projections.
       + rewrite state_update_neq; try assumption. apply Hs.
   Qed.
   
+  Lemma relevant_component_transition
+    (s s' : vstate X)
+    (l : vlabel X)
+    (input : option message)
+    (i := projT1 l)
+    (Heq : (s i) = (s' i))
+    (Hprs : protocol_state_prop X s')
+    (Hpr : protocol_valid X l (s, input)) :
+    protocol_valid X l (s', input).
+  Proof.
+    unfold protocol_valid in *. 
+    split; [intuition|intuition|..].
+    unfold valid in *; simpl in *.
+    unfold constrained_composite_valid in *.
+    unfold free_composite_valid in *.
+    unfold free_constraint in *; simpl.
+    unfold vvalid in *.
+    destruct l.
+    simpl in i.
+    unfold i in Heq.
+    rewrite <- Heq.
+    assumption.
+  Qed.
+  
+  Lemma relevant_component_transition2
+    (s s' : vstate X)
+    (l : vlabel X)
+    (input : option message)
+    (i := projT1 l)
+    (Heq : (s i) = (s' i))
+    (Hprs : protocol_state_prop X s') :
+    let (dest, output) := vtransition X l (s, input) in 
+    let (dest', output') := vtransition X l (s', input) in
+    output = output' /\ (dest i) = (dest' i).
+  Proof.
+    unfold vtransition.
+    unfold transition.
+    destruct l; simpl.
+    simpl in i.
+    unfold i in Heq.
+    rewrite Heq.
+    destruct (vtransition (IM x) v (s' x, input)); [intuition|..].
+    unfold i.
+    rewrite state_update_eq.
+    rewrite state_update_eq.
+    reflexivity.
+  Qed.
+  
+  Lemma relevant_components_one
+    (s s' : vstate X)
+    (Hprs' : protocol_state_prop X s')
+    (ai : vaction_item X)
+    (i := projT1 (label_a ai))
+    (Heq : (s i) = (s' i))
+    (Hpr : finite_protocol_action_from X s [ai]) :
+    let res' := snd (apply_action X s' [ai]) in
+    let res := snd (apply_action X s [ai]) in 
+    finite_protocol_action_from X s' [ai] /\ 
+    (res' i) = res i.
+  Proof.
+    simpl.
+    unfold finite_protocol_action_from in *.
+    unfold apply_action in *.
+    destruct ai; simpl in *.
+    destruct (vtransition X label_a (s', input_a)) eqn : eq_trans'.
+    destruct (vtransition X label_a (s, input_a)) eqn : eq_trans.
+    inversion Hpr.
+    
+    split.
+    - assert (protocol_transition X label_a (s', input_a) (s0, o)). {
+        unfold protocol_transition in *.
+        destruct H6 as [Hpr_valid Htrans].
+        apply relevant_component_transition with (s' := s') in Hpr_valid.
+        all : intuition.
+      }
+      
+      apply finite_ptrace_extend.
+      apply finite_ptrace_empty.
+      apply protocol_transition_destination in H7; assumption.
+      assumption.
+    - simpl.
+      specialize (relevant_component_transition2 s s' l input_a) as Hrel.
+      simpl in Hrel. unfold i in Heq. rewrite <- H in Heq. specialize (Hrel Heq Hprs').
+      rewrite H in Hrel.
+      rewrite eq_trans in Hrel.
+      rewrite eq_trans' in Hrel.
+      unfold i.
+      intuition.
+  Qed.
+  
   Lemma relevant_components
     (s s' : vstate X)
     (Hprs' : protocol_state_prop X s')
@@ -1190,11 +1280,36 @@ All results from regular projections carry to these "free" projections.
     (Heq : forall (i : index), In i li -> (s' i) = (s i))
     (Hincl : incl a_indices li)
     (Hpr : finite_protocol_action_from X s a) :
-    finite_protocol_action_from X s' a.
+    let res' := snd (apply_action X s' a) in
+    let res := snd (apply_action X s a) in 
+    finite_protocol_action_from X s' a /\ 
+    (forall (i : index), In i li -> (res' i) = res i).
   Proof.
     induction a.
-    - apply finite_ptrace_empty. assumption.
-    - admit.
+    - split.
+      apply finite_protocol_action_empty.
+      assumption.
+      simpl. assumption.
+    - simpl in *.
+      replace (a :: a0) with ([a] ++ a0) in *. 2: auto.
+      apply finite_protocol_action_from_app_iff in Hpr.
+      destruct Hpr as [Hsingle Hrem].
+      specialize (relevant_components_one s s' Hprs' a) as Hrel.
+      simpl in Hrel.
+      spec Hrel. {
+        specialize (Heq (projT1 (label_a a))).
+        symmetry.
+        apply Heq.
+        unfold incl in Hincl.
+        apply Hincl.
+        unfold a_indices.
+        simpl. intuition.
+      }
+      specialize (Hrel Hsingle).
+      split.
+      + apply finite_protocol_action_from_app_iff.
+        intuition.
+             
   Admitted.
   
   (*

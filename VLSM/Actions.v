@@ -281,7 +281,7 @@ Section apply_actions.
     (P : vstate X -> Prop) :
     Prop :=
     forall (s : vstate X),
-    (P s -> finite_protocol_action_from s a -> P (snd (apply_action s a))).
+    (P s -> protocol_state_prop X s -> finite_protocol_action_from s a -> P (snd (apply_action s a))).
     
   Definition ensures
     (a : vaction X)
@@ -294,6 +294,7 @@ Section apply_actions.
     (a b : vaction X)
     (Pb : vstate X -> Prop) 
     (s : state)
+    (Hpr : protocol_state_prop X s)
     (Ha : finite_protocol_action_from s a)
     (Hhave : Pb s)
     (Hensures : ensures b Pb)
@@ -311,6 +312,7 @@ Section apply_actions.
       admit.
       rewrite Heqs'.
       apply Hpreserves.
+      assumption.
       assumption.
       assumption.
    Admitted.

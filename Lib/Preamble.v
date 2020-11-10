@@ -6,6 +6,10 @@ Tactic Notation "spec" hyp(H) :=
   match type of H with ?a -> _ =>
   let H1 := fresh in (assert (H1: a);
   [|generalize (H H1); clear H H1; intro H]) end.
+Tactic Notation "spec" hyp(H) "save" :=
+  match type of H with ?a -> _ =>
+  let H1 := fresh in (assert (H1: a);
+  [|generalize (H H1); clear H; intro H]) end.
 Tactic Notation "spec" hyp(H) constr(a) :=
   (generalize (H a); clear H; intro H).
 Tactic Notation "spec" hyp(H) constr(a) constr(b) :=
