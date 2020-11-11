@@ -1271,18 +1271,7 @@ All results from regular projections carry to these "free" projections.
       intuition.
   Qed.
   
-  Lemma irrelevant_components
-    (s : state)
-    (a : vaction X)
-    (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
-    (i : index)
-    (Hdif : ~In i a_indices) :
-    let res := snd (apply_action X s a) in  
-    (res i) = (s i).
-  Proof.
-  Admitted.
-  
-  Lemma different_index_not_affected
+  Lemma irrelevant_components_one
     (s : state)
     (ai : vaction_item X)
     (i : index)
@@ -1337,6 +1326,43 @@ All results from regular projections carry to these "free" projections.
     rewrite state_update_neq.
     reflexivity.
     assumption.
+  Qed.
+  
+    
+  Lemma irrelevant_components
+    (s : state)
+    (a : vaction X)
+    (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
+    (i : index)
+    (Hdif : ~In i a_indices) :
+    let res := snd (apply_action X s a) in  
+    (res i) = (s i).
+  Proof.
+    induction a using rev_ind.
+    - simpl; intuition.
+    - simpl in *.
+      rewrite apply_action_app.
+      destruct (apply_action X s a) eqn : eq_a; simpl in *.
+      destruct (apply_action X v [x]) eqn : eq_x; simpl in *.
+      
+      unfold a_indices in Hdif.
+      rewrite map_app in Hdif.
+      rewrite map_app in Hdif.
+      
+      spec IHa. {
+        intuition.
+      }
+      
+      rewrite <- IHa.
+      replace v0 with (snd (apply_action X v [x])).
+      apply irrelevant_components_one.
+      intros contra.
+      rewrite contra in Hdif.
+
+      rewrite in_app_iff in Hdif; simpl in Hdif.
+      intuition.
+      rewrite eq_x.
+      intuition.
   Qed.
   
   Lemma relevant_components
@@ -1418,10 +1444,10 @@ All results from regular projections carry to these "free" projections.
         simpl in *.
         destruct (decide (i = (projT1 (label_a x)))).
         * rewrite e; intuition.
-        * specialize (different_index_not_affected v) as Hdiff.
+        * specialize (irrelevant_components_one v) as Hdiff.
           specialize (Hdiff x i n).
           
-          specialize (different_index_not_affected v0) as Hdiff0.
+          specialize (irrelevant_components_one v0) as Hdiff0.
           specialize (Hdiff0 x i n).
           simpl in *.
           replace v1 with (snd (apply_action X v [x])).
