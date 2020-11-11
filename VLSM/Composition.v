@@ -1271,6 +1271,63 @@ All results from regular projections carry to these "free" projections.
       intuition.
   Qed.
   
+  Lemma different_index_not_affected
+    (s : state)
+    (ai : vaction_item X)
+    (i : index)
+    (Hdif : i <> projT1 (label_a ai)) :
+    let res := snd (apply_action X s [ai]) in  
+    (res i) = (s i).
+  Proof.
+    unfold apply_action.
+    simpl.
+    destruct ai.
+    destruct (vtransition X label_a (s, input_a)) eqn : eq_trans.
+    replace (@vtransition message X label_a (@pair (@vstate message X) (option message) s input_a))
+    with (s0, o); simpl in *.
+    unfold vtransition in eq_trans.
+    unfold transition in eq_trans.
+    simpl in eq_trans.
+    destruct label_a; simpl in *.
+    unfold vtransition in eq_trans.
+    destruct (@transition message
+                 (@projT1 (VLSM_type message)
+                    (fun T : VLSM_type message =>
+                     @sigT (@VLSM_sign message T)
+                       (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
+                    (IM x))
+                 (@projT1
+                    (@VLSM_sign message
+                       (@projT1 (VLSM_type message)
+                          (fun T : VLSM_type message =>
+                           @sigT (@VLSM_sign message T)
+                             (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
+                          (IM x)))
+                    (fun
+                       S : @VLSM_sign message
+                             (@projT1 (VLSM_type message)
+                                (fun T : VLSM_type message =>
+                                 @sigT (@VLSM_sign message T)
+                                   (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
+                                (IM x)) =>
+                     @VLSM_class message
+                       (@projT1 (VLSM_type message)
+                          (fun T : VLSM_type message =>
+                           @sigT (@VLSM_sign message T)
+                             (fun S0 : @VLSM_sign message T => @VLSM_class message T S0)) 
+                          (IM x)) S)
+                    (@projT2 (VLSM_type message)
+                       (fun T : VLSM_type message =>
+                        @sigT (@VLSM_sign message T)
+                          (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
+                       (IM x))) (@machine message (IM x)) v
+                 (@pair (@vstate message (IM x)) (option message) (s x) input_a)).
+    inversion eq_trans.
+    rewrite state_update_neq.
+    reflexivity.
+    assumption.
+  Qed.
+  
   Lemma relevant_components
     (s s' : vstate X)
     (Hprs' : protocol_state_prop X s')
@@ -1285,83 +1342,86 @@ All results from regular projections carry to these "free" projections.
     finite_protocol_action_from X s' a /\ 
     (forall (i : index), In i li -> (res' i) = res i).
   Proof.
-    induction a.
+    induction a using rev_ind.
     - split.
       apply finite_protocol_action_empty.
       assumption.
       simpl. assumption.
     - simpl in *.
-      replace (a :: a0) with ([a] ++ a0) in *. 2: auto.
+      (* replace (a :: a0) with ([a] ++ a0) in *. 2: auto. *)
       apply finite_protocol_action_from_app_iff in Hpr.
-      destruct Hpr as [Hsingle Hrem].
-      specialize (relevant_components_one s s' Hprs' a) as Hrel.
-      simpl in Hrel.
+      destruct Hpr as [Hrem Hsingle].
+      
+      spec IHa. {
+        remember (map (projT1 (P:=fun n : index => vlabel (IM n))) (map label_a a)) as small.
+        apply incl_tran with (m := a_indices).
+        unfold a_indices.
+        unfold incl; intros; simpl.
+        rewrite map_app.
+        rewrite map_app.
+        all : intuition.
+      }
+      
+      spec IHa. {
+        assumption.
+      }
+      
+      destruct IHa as [IHapr IHaind].
+      
+      specialize (relevant_components_one (snd (apply_action X s a)) (snd (apply_action X s' a))) as Hrel.
+      
       spec Hrel. {
-        specialize (Heq (projT1 (label_a a))).
+        apply apply_action_last_protocol.
+        all : intuition.
+      }
+      
+      specialize (Hrel x); simpl in *.
+      
+      spec Hrel. {
+        specialize (IHaind (projT1 (label_a x))).
         symmetry.
-        apply Heq.
+        apply IHaind.
         unfold incl in Hincl.
+        specialize (Hincl (projT1 (label_a x))).
         apply Hincl.
         unfold a_indices.
-        simpl. intuition.
+        rewrite map_app.
+        rewrite map_app.
+        apply in_app_iff.
+        right; simpl; intuition.
       }
+      
       specialize (Hrel Hsingle).
+      destruct Hrel as [Hrelpr Hrelind].
       split.
       + apply finite_protocol_action_from_app_iff.
-        intuition.
-             
-  Admitted.
-  
-  (*
-  Definition independent_actions
-    (a b : vaction X) : Prop :=
-    let ind_a := List.map (@projT1 _ _) (List.map (@label_a _ _) a) in
-    let ind_b := List.map (@projT1 _ _) (List.map (@label_a _ _) b) in
-    set_inter decide_eq ind_a ind_b = [].
-  
-  Lemma free_trace_reordering 
-    (s : vstate X)
-    (Hs : protocol_state_prop X s)
-    (a b : vaction X)
-    (Ha : finite_protocol_action_from _ s a)
-    (Hb : finite_protocol_action_from _ s b)
-    (Hindependent : independent_actions a b) :
-    finite_protocol_action_from _ s (a ++ b).
-  Proof.
-    apply finite_protocol_action_from_app_iff.
-    split.
-    assumption.
-    generalize dependent a.
-    generalize dependent s.
-    induction b as [| b0 b]; intros.
-    
-    assert (Hpr_after: protocol_state_prop X (snd (apply_action X s a))). {
-      rewrite <- apply_action_last.
-      apply finite_ptrace_last_pstate.
-      unfold finite_protocol_action_from in Ha.
-      assumption.
-    } 
-    - unfold finite_protocol_action_from. simpl.
-      apply finite_ptrace_empty.
-      rewrite <- apply_action_last.
-      apply finite_ptrace_last_pstate.
-      unfold finite_protocol_action_from in Ha.
-      assumption.
-    - remember (snd (apply_action X s a)) as after_a.
-      replace (b0 :: b) with ([b0] ++ b). 2: auto.
-      apply finite_protocol_action_from_app_iff.
-      replace (b0 :: b) with ([b0] ++ b) in Hb.
-      apply finite_protocol_action_from_app_iff in Hb.
-      destruct Hb as [Hb_one Hb_rem].
-      split.
-      + unfold finite_protocol_action_from in Hb_one.
-        unfold apply_action in Hb_one. simpl in Hb_one.
-        destruct b0.
-        destruct (vtransition X label_a (s, input_a)). simpl in *.
-        inversion Hb_one.
-        admit.
-      + admit. 
-  Admitted. *)
+        split; intuition.
+      + intros.
+        rewrite apply_action_app.
+        rewrite apply_action_app.
+        destruct (apply_action X s' a) eqn : eq_as'.
+        destruct (apply_action X s a) eqn : eq_as.
+        simpl in *.
+        destruct (apply_action X v [x]) eqn : eq_xv.
+        destruct (apply_action X v0 [x]) eqn : eq_xv0.
+        simpl in *.
+        destruct (decide (i = (projT1 (label_a x)))).
+        * rewrite e; intuition.
+        * specialize (different_index_not_affected v) as Hdiff.
+          specialize (Hdiff x i n).
+          
+          specialize (different_index_not_affected v0) as Hdiff0.
+          specialize (Hdiff0 x i n).
+          simpl in *.
+          replace v1 with (snd (apply_action X v [x])).
+          replace v2 with (snd (apply_action X v0 [x])).
+          rewrite Hdiff.
+          rewrite Hdiff0.
+          apply IHaind.
+          intuition.
+          rewrite eq_xv0; intuition.
+          rewrite eq_xv; intuition.
+    Qed.
   
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_eq
     (s1 s2 : vstate X)

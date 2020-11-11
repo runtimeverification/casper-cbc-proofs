@@ -141,7 +141,21 @@ Section apply_actions.
     unfold finite_protocol_action_from. simpl.
     apply finite_ptrace_empty.
     assumption.
-  Qed. 
+  Qed.
+    
+  Lemma apply_action_last_protocol
+    (s : vstate X)
+    (Hprs : protocol_state_prop X s)
+    (a : vaction X)
+    (Hpra : finite_protocol_action_from s a)
+    (after_a := apply_action s a) :
+    protocol_state_prop X (snd after_a).
+  Proof.
+    unfold after_a.
+    rewrite <- apply_action_last.
+    apply finite_ptrace_last_pstate.
+    assumption.
+  Qed.
 
   Definition transition_item_to_action_item
     (item : vtransition_item X)
