@@ -141,7 +141,7 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
 *)
 
     Lemma pre_loaded_with_all_messages_validating_proj_incl
-        : VLSM_incl (machine PreLoaded) (machine Xi).
+        : VLSM_incl PreLoaded Xi.
     Proof.
         apply (basic_VLSM_incl (machine PreLoaded) (machine Xi))
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
@@ -157,7 +157,7 @@ trace-equal.  This means that all the byzantine behavior of a
 validating component is exhibited by its corresponding projection.
 *)
     Lemma pre_loaded_with_all_messages_validating_proj_eq
-        : VLSM_eq (machine PreLoaded) (machine Xi).
+        : VLSM_eq PreLoaded Xi.
     Proof.
         split.
         - apply pre_loaded_with_all_messages_validating_proj_incl.
@@ -215,7 +215,7 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
 *)
 
     Lemma pre_loaded_with_all_messages_validating_vlsm_incl
-        : VLSM_incl (machine PreLoaded) (machine X).
+        : VLSM_incl PreLoaded X.
     Proof.
         apply (basic_VLSM_incl (machine PreLoaded) (machine X))
         ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
@@ -230,7 +230,7 @@ We conclude that <<X>> and <<Preloaded>> are trace-equal.
 *)
 
     Lemma pre_loaded_with_all_messages_validating_vlsm_eq
-        : VLSM_eq (machine PreLoaded) (machine X).
+        : VLSM_eq PreLoaded X.
     Proof.
         split.
         - apply pre_loaded_with_all_messages_validating_vlsm_incl.

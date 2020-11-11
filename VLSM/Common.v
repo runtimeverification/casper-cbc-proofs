@@ -1949,27 +1949,29 @@ is also available to Y.
       {vtype : VLSM_type message}
       .
 
-    Definition VLSM_eq
+    Definition VLSM_eq_part
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       :=
       forall t : Trace,
         protocol_trace_prop X t <-> protocol_trace_prop Y t .
+    Local Notation VLSM_eq X Y := (VLSM_eq_part (machine X) (machine Y)).
 
-    Definition VLSM_incl
+    Definition VLSM_incl_part
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       :=
       forall t : Trace,
         protocol_trace_prop X t -> protocol_trace_prop Y t.
+    Local Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
 
     Lemma VLSM_incl_in_futures
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
-      (Hincl : VLSM_incl MX MY)
+      (Hincl : VLSM_incl X Y)
       (s1 s2 : vstate X)
       (Hfuture: in_futures X s1 s2)
       : in_futures Y s1 s2.
@@ -1986,7 +1988,8 @@ is also available to Y.
     Lemma VLSM_eq_incl_l
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
-      : VLSM_eq MX MY -> VLSM_incl MX MY.
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      : VLSM_eq X Y -> VLSM_incl X Y.
     Proof.
       intro Heq.
       intros t Hxt.
@@ -1997,7 +2000,8 @@ is also available to Y.
     Lemma VLSM_eq_incl_r
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
-      : VLSM_eq MX MY -> VLSM_incl MY MX.
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      : VLSM_eq X Y -> VLSM_incl Y X.
     Proof.
       intro Heq.
       intros t Hyt.
@@ -2008,7 +2012,8 @@ is also available to Y.
     Lemma VLSM_eq_incl_iff
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
-      : VLSM_eq MX MY <-> VLSM_incl MX MY /\ VLSM_incl MY MX.
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      : VLSM_eq X Y <-> VLSM_incl X Y /\ VLSM_incl Y X.
     Proof.
       split.
       - intro Heq.
@@ -2023,6 +2028,9 @@ is also available to Y.
     Qed.
   (* end hide *)
   End VLSM_equality.
+
+Notation VLSM_eq X Y := (VLSM_eq_part (machine X) (machine Y)).
+Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
 
 (** It is natural to look for sufficient conditions for VLSM inclusion (or equality),
 which are easy to verify in a practical setting. One such result is the following.
@@ -2153,7 +2161,7 @@ Qed.
   (* end hide *)
 
   Lemma basic_VLSM_incl
-    : VLSM_incl MX MY.
+    : VLSM_incl X Y.
   Proof.
     intros [s ls| s ss]; simpl; intros [Hxt Hinit].
     - apply VLSM_incl_finite_ptrace in Hxt.
@@ -2266,7 +2274,7 @@ Byzantine fault tolerance analysis. *)
   (* end hide *)
 
   Lemma vlsm_incl_pre_loaded_with_all_messages_vlsm
-    : VLSM_incl (machine X) pre_loaded_with_all_messages_vlsm_machine.
+    : VLSM_incl X pre_loaded_with_all_messages_vlsm.
   Proof.
     apply (basic_VLSM_incl (machine X) pre_loaded_with_all_messages_vlsm_machine)
     ; intros; try (assumption || reflexivity)

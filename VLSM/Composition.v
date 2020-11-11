@@ -465,7 +465,7 @@ Then <<X1>> is trace-included into <<X2>>.
 *)
 
     Lemma constraint_subsumption_incl
-      : VLSM_incl (machine X1) (machine X2).
+      : VLSM_incl X1 X2.
     Proof.
       apply (basic_VLSM_incl (machine X1) (machine X2))
       ; intros; try (assumption || reflexivity).
@@ -477,7 +477,7 @@ Then <<X1>> is trace-included into <<X2>>.
     Qed.
 
     Lemma constraint_subsumption_pre_loaded_with_all_messages_incl
-      : VLSM_incl (machine (pre_loaded_with_all_messages_vlsm X1)) (machine (pre_loaded_with_all_messages_vlsm X2)).
+      : VLSM_incl (pre_loaded_with_all_messages_vlsm X1) (pre_loaded_with_all_messages_vlsm X2).
     Proof.
       apply (basic_VLSM_incl (machine (pre_loaded_with_all_messages_vlsm X1)) (machine (pre_loaded_with_all_messages_vlsm X2)))
       ; intros; try (assumption || reflexivity).
@@ -513,7 +513,7 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
 
     Lemma constraint_free_incl
       (constraint : composite_label -> composite_state  * option message -> Prop)
-      : VLSM_incl (machine (composite_vlsm constraint)) (machine free_composite_vlsm).
+      : VLSM_incl (composite_vlsm constraint) free_composite_vlsm.
     Proof.
       apply constraint_subsumption_incl.
       intro l; intros. exact I.
@@ -839,7 +839,7 @@ We can now finally prove the main result for this section:
 *)
     Lemma proj_pre_loaded_with_all_messages_incl
       (PreLoaded := pre_loaded_with_all_messages_vlsm (IM j))
-      : VLSM_incl (machine Xj) (machine PreLoaded).
+      : VLSM_incl Xj PreLoaded.
     Proof.
       apply (basic_VLSM_incl (machine Xj) (machine PreLoaded))
       ; intros; try (assumption || reflexivity).
@@ -1255,4 +1255,3 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
     := composite_vlsm_free_projection binary_IM first second.
 
 End binary_free_composition.
-

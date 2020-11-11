@@ -209,7 +209,7 @@ of <<Alt1>> into <<Preloaded>>
 *)
 
     Lemma alt_pre_loaded_with_all_messages_incl
-        : VLSM_incl (machine Alt1) (machine PreLoaded).
+        : VLSM_incl Alt1 PreLoaded.
     Proof.
         intros t Hpt.
         apply byzantine_pre_loaded_with_all_messages.
@@ -347,7 +347,7 @@ results above to show that <<Preloaded>> is included in <<Alt1>>.
 *)
 
     Lemma pre_loaded_with_all_messages_alt_incl
-        : VLSM_incl (machine PreLoaded) (machine Alt1).
+        : VLSM_incl PreLoaded Alt1.
     Proof.
         apply (basic_VLSM_incl (machine PreLoaded) (machine Alt1))
         ; intros; try (assumption || reflexivity).
@@ -364,7 +364,7 @@ results above to show that <<Preloaded>> is included in <<Alt1>>.
 Hence, <<Preloaded>> and <<Alt1>> are actually trace-equal:
 *)
     Lemma pre_loaded_with_all_messages_alt_eq
-        : VLSM_eq (machine PreLoaded) (machine Alt1)
+        : VLSM_eq PreLoaded Alt1
         .
     Proof.
         split.
@@ -451,7 +451,7 @@ We can now apply the meta-lemma [basic_VLSM_incl], using
 Lemma [pre_loaded_with_all_messages_composite_free_protocol_message] above to prove that:
 *)
     Lemma pre_loaded_with_all_messages_composite_free_incl
-        : VLSM_incl (machine PreLoadedX) (machine FreeX).
+        : VLSM_incl PreLoadedX FreeX.
     Proof.
         apply basic_VLSM_incl
         ; intros; try (assumption || reflexivity).
