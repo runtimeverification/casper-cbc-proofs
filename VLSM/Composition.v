@@ -1271,6 +1271,17 @@ All results from regular projections carry to these "free" projections.
       intuition.
   Qed.
   
+  Lemma irrelevant_components
+    (s : state)
+    (a : vaction X)
+    (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
+    (i : index)
+    (Hdif : ~In i a_indices) :
+    let res := snd (apply_action X s a) in  
+    (res i) = (s i).
+  Proof.
+  Admitted.
+  
   Lemma different_index_not_affected
     (s : state)
     (ai : vaction_item X)

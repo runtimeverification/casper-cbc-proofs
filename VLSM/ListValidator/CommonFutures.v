@@ -1013,47 +1013,25 @@ Context
           unfold preserves.
           intros.
           specialize (Hrel s0).
-          assert (snd (apply_action X s0 (get_matching_action s from a)) i =
-                  snd (apply_action X s (get_matching_action s from a)) i). {
-                 spec Hrel. { assumption. }
-                 specialize (Hrel (get_matching_action s from a) li H0).
-                 (* Refactor this *)
-                 spec Hrel. { admit. }
-                 admit.
-                } 
-            admit.
+          specialize (H0 i H3).
+          rewrite <- H0.
+          apply irrelevant_components.
+          intros contra.
+          rewrite in_map_iff in contra.
+          destruct contra as [x [Hproj Hinx]].
+          rewrite in_map_iff in Hinx.
+          destruct Hinx as [x0 [Hlabel Hinx0]].
+          apply get_matching_action_index in Hinx0.
+          rewrite <- Hlabel in Hproj.
+          assert (a = i). {
+            rewrite <- Hproj.
+            rewrite <- Hinx0.
+            intuition.
           }
-
-        intuition.
-        (* 
-        + assumption.
-        + unfold get_matching_action.
-          destruct (get_matching_state s a from) eqn : eq_matching.
-          2 : apply finite_protocol_action_empty.
-          unfold get_matching_state in eq_matching.
-          apply find_some in eq_matching.
-          destruct eq_matching as [Hin_top Hinltb].
-          unfold get_topmost_candidates in Hin_top.
-          unfold get_maximal_elements in Hin_top.
-          apply filter_In in Hin_top.
-          destruct Hin_top as [Hin_cand Htop].
-          rewrite forallb_forall in Htop.
-          unfold get_candidates in Hin_cand.
-          unfold component_list in Hin_cand.
-          rewrite in_map_iff in Hin_cand.
-          destruct Hin_cand as [inter [Hproj Hinc]].
-          destruct (sync s s0 a from) eqn : eq_sync.
-          apply one_sender_receive_protocol with (from := from) (s' := s) (to := a) (inter := inter).
-          assumption.
-          assumption.
+          rewrite <- H4 in H3.
           intuition.
-          rewrite Hproj; assumption.
-          apply finite_protocol_action_empty.
-          all : assumption. 
-        + apply NoDup_cons_iff in Hnodup.
-          spec IHli; intuition.
-        + unfold independent_actions.
-          admit. *)
-    Admitted.
+        }
+        intuition.
+    Qed.
       
 End Composition.
