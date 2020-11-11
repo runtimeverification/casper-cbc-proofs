@@ -878,32 +878,12 @@ Context
       - contradict Hin.
     Qed.
     
-    Lemma get_matching_action_thing''
-      (from to i : index) 
-      (s : vstate X)
-      (Hdif : i <> to)
-      (res := snd (apply_action X s (get_matching_action s from to))) :
-      (res i) = (s i).
-    Proof.
-    Admitted.
-    
     Definition get_receives_for
       (s : vstate X)
       (li : list index)
       (from : index) : vaction X :=
       let matching_actions := List.map (get_matching_action s from) li in
       List.concat matching_actions.
-      
-    Lemma get_matching_action_thing
-      (s : vstate X)
-      (li : list index)
-      (from i j : index)
-      (Hj : In j li)
-      (Hdif : ~ In i li)
-      (res := snd (apply_action X s (get_matching_action s from i))) :
-      (res j) = (s j).
-    Proof.
-    Admitted.
       
     Lemma get_receives_correct
         (s : vstate X)
@@ -979,7 +959,6 @@ Context
         spec Hind save. {
           unfold ensures. intros.
           rewrite HeqPb in H0.
-          (* apply relevant_components with (s1 := s) (li0 := li) *)
           apply Hrel with (li := li).
           assumption.
           assumption.
