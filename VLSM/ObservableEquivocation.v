@@ -165,7 +165,7 @@ Context
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
   (X := composite_vlsm IM i0 constraint)
   (PreX := pre_loaded_with_all_messages_vlsm X)
-  (witness_set : set index).
+  .
 
 (**
 It is easy to define a [observation_based_equivocation_evidence] mechanism for
@@ -173,19 +173,28 @@ the composition, by just defining the [observable_events] for the composite stat
 to be the union of [observable_events] for each of the component states.
 *)
 
-Definition composed_observable_events
+Definition composed_witness_observable_events
+  (witness_set : set index)
   (s : composite_state IM)
   (v : validator)
   : set event
   :=
   fold_right (set_union decide_eq) [] (map (fun i => observable_events (s i) v) witness_set).
 
-Program Instance composed_observation_based_equivocation_evidence
+Definition composed_observable_events
+  (s : composite_state IM)
+  (v : validator)
+  : set event
+  :=
+  composed_witness_observable_events index_listing s v.
+
+Program Definition composed_witness_observation_based_equivocation_evidence
+  (witness_set : set index)
   : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq event_comparable subject_of_observation
   :=
-  {| observable_events := composed_observable_events |}.
+  {| observable_events := (composed_witness_observable_events witness_set)|}.
   Next Obligation.
-  unfold composed_observable_events in He.
+  unfold composed_witness_observable_events in He.
   rewrite set_union_in_iterated in He.
   rewrite Exists_exists in He.
   destruct He as [x [Hinx Hine]].
@@ -196,31 +205,9 @@ Program Instance composed_observation_based_equivocation_evidence
   assumption.
   Qed.
 
-Existing Instance composed_observation_based_equivocation_evidence.
-End observable_equivocation_in_composition.
-
-Section composite_vlsm_observable_messages.
-
-Context
-  {message validator event : Type}
-  `{EqDecision event}
-  {event_comparable : comparable_events event}
-  {subject_of_observation : event -> validator}
-  {index : Type}
-  `{EqDecision index}
-  (index_listing : list index)
-  (finite_index : Listing index_listing)
-  (IM : index -> VLSM message)
-  (Hevidence : forall (i : index),
-    observation_based_equivocation_evidence
-        (vstate (IM i)) validator event decide_eq event_comparable subject_of_observation
-  )
-  (i0 : index)
-  (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-  (X := composite_vlsm IM i0 constraint)
-  (PreX := pre_loaded_with_all_messages_vlsm X)
-  (ce := @composed_observation_based_equivocation_evidence 
-         message validator event _ _ subject_of_observation index IM Hevidence index_listing).
+Instance composed_observation_based_equivocation_evidence
+  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq event_comparable subject_of_observation
+  := composed_witness_observation_based_equivocation_evidence index_listing.
 
 (**
 Let us now factor [VLSM]s into the event observability framework.
@@ -1139,10 +1126,9 @@ Context
   (A : validator -> index)
   (X := composite_vlsm IM i0 constraint)
   (PreX := pre_loaded_with_all_messages_vlsm X)
-  (witness_set : set index)
   {Hobservable_messages :
     @composite_vlsm_observable_messages _ _ _ decide_eq event_comparable subject_of_observation _ decide_eq
-    IM Hevidence i0 constraint witness_set}.
+    index_listing IM Hevidence i0 constraint}.
 
 Class unforgeable_messages
   :=
@@ -1164,7 +1150,7 @@ gather information through the messages it receives.
         (observable_events (s' i) v)
         (set_union decide_eq
           (observable_events (s i) v)
-          (option_message_observable_events IM Hevidence i0 constraint witness_set om v)
+          (option_message_observable_events index_listing IM Hevidence i0 constraint om v)
         );
   }.
 
@@ -1206,7 +1192,7 @@ Lemma trace_generated_index
         (observable_events (s' i) v)
         (set_union decide_eq
           (observable_events (s i) v)
-          (option_message_observable_events IM Hevidence i0 constraint witness_set (input item) v)
+          (option_message_observable_events index_listing IM Hevidence i0 constraint (input item) v)
         )
       )
   )
