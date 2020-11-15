@@ -302,6 +302,26 @@ Proof.
       exists x. split; assumption.
 Qed.
 
+Lemma set_union_iterated_incl
+  `{EqDecision A}
+  (ss ss': list (set A))
+  (Hincl : incl ss ss')
+  :
+  incl 
+  (fold_right (set_union decide_eq) nil ss)
+  (fold_right (set_union decide_eq) nil ss').
+Proof.
+  unfold incl.
+  intros.
+  apply set_union_in_iterated in H.
+  apply set_union_in_iterated.
+  rewrite Exists_exists in *.
+  destruct H as [x Heqx].
+  exists x.
+  unfold incl in Hincl.
+  intuition.
+Qed.
+
 Lemma set_union_empty_left `{EqDecision A}  : forall (s : list A),
   NoDup s ->
   set_eq (set_union decide_eq nil s) s.

@@ -54,12 +54,81 @@ Context
   Definition unite_observations (ls : list state) : set lv_event := 
     fold_right (set_union decide_eq) [] (List.map (complete_observations) ls).
   
-  Definition GH (s : vstate X) : list index := 
+  Definition GH (s : vstate X) : set index := 
     List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index lv_event _ comparable_lv_events get_event_subject ce s i)) index_listing.
   
-  Definition GE (s : vstate X) : list index :=
+  Definition GE (s : vstate X) : set index :=
     set_diff idec index_listing (GH s).
+ 
+  Definition ce' (s : vstate X) := @composed_witness_observation_based_equivocation_evidence
+    message index lv_event
+    decide_eq 
+    comparable_lv_events
+    get_event_subject
+    index IM_index Hevidence (GH s).
+ 
+  Definition LH (s : vstate X) : set index :=
+    List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index lv_event _ comparable_lv_events get_event_subject (ce' s) s i)) index_listing.
   
+  Definition LE (s : vstate X) : set index :=
+    set_diff idec index_listing (LH s).
+  
+  Lemma GH_incl_all
+    (s : vstate X) :
+    incl (GH s) index_listing.
+  Proof.
+    unfold incl.
+    simpl.
+    intros.
+    apply ((proj2 Hfinite) a).
+  Qed.
+  
+  Lemma GH_incl_LH 
+    (s : vstate X) :
+    incl (GH s) (LH s).
+  Proof.
+    unfold incl; intros.
+    unfold GH in H.
+    unfold LH.
+    apply filter_In in H.
+    apply filter_in.
+    apply ((proj2 Hfinite) a).
+    destruct H as [_ H].
+    unfold equivocation_evidence in *.
+    unfold observable_events in *.
+    unfold ce'; unfold ce in H.
+    simpl in *.
+    rewrite negb_true_iff in *.
+    rewrite existsb_forall in *.
+    intros.
+    specialize (H x).
+    
+    spec H save. {
+      unfold composed_witness_observable_events in *.
+      rewrite set_union_in_iterated.
+      rewrite set_union_in_iterated in H0.
+      rewrite Exists_exists in *.
+      destruct H0 as [e [Hine Hinx]].
+      exists e.
+      split.
+      apply in_map_iff in Hine.
+      apply in_map_iff.
+      destruct Hine as [j [Hobj Hinj]].
+      exists j; intuition.
+      apply ((proj2 Hfinite) j).
+      assumption.
+    }
+    
+    rewrite existsb_forall in *.
+    intros.
+    specialize (H x0).
+    apply H.
+    unfold composed_witness_observable_events in *.
+    unfold observable_events. simpl.
+    eapply set_union_iterated_incl with (ss' :=  (map (fun i : index => lv_observations (s i) a) index_listing)) in H2.
+    unfold lv_observations in *. simpl in *.
+  Admitted.
+    
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
     | Bottom => false
@@ -68,11 +137,6 @@ Context
                         | false => true
                         end
     end.
-  
-  (* TODO: decide where to place "not-everyone-equivocating" constraint *)
-  
-  Check @no_equivocating_decisions.
-  Check @equivocating_validators.
   
   Definition not_all_equivocating
     (s : (@state index index_listing))
@@ -853,6 +917,61 @@ Context
                    end
       end.
     
+    Lemma get_matching_action_some 
+      (s : vstate X)
+      (Hprs : protocol_state_prop X s)
+      (s' : state)
+      (from to : index)
+      (Hdif : from <> to)
+      (Hmatch : get_matching_state s to from = Some s') :
+      let res := snd (apply_action X s (get_matching_action s from to)) in
+      project (res to) from = s'.
+    Proof.
+      simpl.
+      unfold get_matching_action.
+      rewrite Hmatch.
+      destruct (sync s s' to from) eqn : eq_sync.
+      - unfold sync in eq_sync.
+        destruct (complete_suffix (get_history s' from) (get_history (s to) from)) eqn : eq_suf.
+        2 : discriminate eq_sync.
+        apply complete_suffix_correct in eq_suf.
+        inversion eq_sync.
+        specialize (one_sender_receive_protocol s s Hprs Hprs to) as Hone.
+        unfold get_matching_state in Hmatch.
+        apply find_some in Hmatch.
+        destruct Hmatch as [Hmatch_in Hmatch_eq].
+        unfold get_topmost_candidates in Hmatch_in.
+        unfold get_maximal_elements in Hmatch_in.
+        apply filter_In in Hmatch_in.
+        destruct Hmatch_in as [Hmatch_in' Hmatch_in_eq].
+        unfold get_candidates in Hmatch_in'.
+        unfold component_list in Hmatch_in'.
+        rewrite in_map_iff in Hmatch_in'.
+        destruct Hmatch_in' as [inter [Heq _]].
+        specialize (Hone inter from).
+        spec Hone. {
+          intuition.
+        }
+        specialize (Hone (sync_action to from (rev l))).
+        spec Hone. {
+          admit.
+        }
+        simpl in Hone.
+    Admitted.
+    
+    Lemma get_matching_action_none
+      (s : vstate X)
+      (from to : index)
+      (Hmatch : get_matching_state s to from = None) :
+      let res := snd (apply_action X s (get_matching_action s from to)) in
+      res to = s to.
+    Proof.
+      unfold get_matching_action.
+      rewrite Hmatch.
+      simpl.
+      reflexivity.
+    Qed.
+    
     Lemma get_matching_action_index
       (s : vstate X)
       (from to : index)
@@ -892,7 +1011,7 @@ Context
         (from : index)
         (Hnodup : NoDup li)
         (Hnf : ~ In from li) :
-        (* let res := snd (apply_action X s (get_receives_for s li from)) in *)
+        let res := snd (apply_action X s (get_receives_for s li from)) in
         finite_protocol_action_from X s (get_receives_for s li from). 
     Proof.
       induction li; intros.
