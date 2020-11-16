@@ -886,8 +886,7 @@ Context
     Qed.
    
     Definition get_candidates 
-      (s : vstate X)
-      (target : index) :
+      (s : vstate X) :
       list state 
       :=
     component_list s index_listing.
@@ -897,35 +896,80 @@ Context
       (target : index) :
       list state 
       :=
-      get_maximal_elements (state_ltb' target) (get_candidates s target).
+      get_maximal_elements (fun s s' => state_ltb' target (project s target) (project s' target)) (get_candidates s).
       
     Definition get_matching_state
       (s : vstate X)
-      (to from : index) : option state :=
+      (to from : index) : state :=
       let candidates := (get_topmost_candidates s from) in
-      List.find (fun s' => state_ltb' to (project (s to) from) s') candidates.
+      let found := List.find (fun s' => state_ltb' from (project (s to) from) s') candidates in
+      match found with
+      | Some s' => s'
+      | None => (s to)
+      end.
       
     Definition get_matching_action
       (s : vstate X)
       (from to : index) : vaction X :=
-      let res := get_matching_state s to from in
-      match res with
+      let s' := get_matching_state s to from in
+      match (sync s s' to from) with
       | None => []
-      | Some s' => match (sync s s' to from) with
-                   | None => []
-                   | Some a => a
-                   end
+      | Some a => a
       end.
+      
+    Lemma sync_some 
+      (s : vstate X)
+      (from to : index) :
+      sync s (get_matching_state s to from) to from <> None.
+    Proof.
+      intros contra.
+      unfold get_matching_state in contra.
+      destruct (find (fun s' : state => state_ltb' from (project (s to) from) s')
+               (get_topmost_candidates s from)) eqn : eq_find.
+      - apply find_some in eq_find.
+        destruct eq_find as [_ eq_find].
+        unfold sync in contra.
+        destruct (complete_suffix (get_history s0 from) (get_history (s to) from)) eqn : eq_suf.
+        discriminate contra.
+        unfold state_ltb' in eq_find.
+        apply in_correct in eq_find.
+        assert (eq_find' := eq_find).
+        apply in_split in eq_find.
+        destruct eq_find as [pref [suff Heq]].
+        apply (@unfold_history index index_listing) in Heq as Hsufhist.
+        rewrite Hsufhist in Heq.
+        apply complete_suffix_correct in Heq.
+        assert ((project (s to) from :: get_history (project (s to) from) from) = get_history (s to) from). {
+          symmetry.
+          apply (@unfold_history_cons index index_listing).
+          assumption.
+          apply (@no_bottom_in_history index index_listing Hfinite idec s0 _ from).
+          intuition.
+        }
+        rewrite H in Heq.
+        rewrite Heq in eq_suf.
+        discriminate eq_suf.
+        intuition.
+       - unfold sync in contra.
+         destruct (complete_suffix (get_history (s to) from) (get_history (s to) from)) eqn : eq_suf.
+         + discriminate contra.
+         + assert (get_history (s to) from = [] ++ (get_history (s to) from)). {
+            intuition.
+           }
+           apply complete_suffix_correct in H.
+           rewrite H in eq_suf.
+           discriminate eq_suf. 
+    Qed.
     
-    Lemma get_matching_action_some 
+    Lemma get_matching_action_effect 
       (s : vstate X)
       (Hprs : protocol_state_prop X s)
       (s' : state)
       (from to : index)
       (Hdif : from <> to)
-      (Hmatch : get_matching_state s to from = Some s') :
+      (Hmatch : get_matching_state s to from = s') :
       let res := snd (apply_action X s (get_matching_action s from to)) in
-      project (res to) from = s'.
+      project (res to) from = project s' from.
     Proof.
       simpl.
       unfold get_matching_action.
@@ -934,42 +978,55 @@ Context
       - unfold sync in eq_sync.
         destruct (complete_suffix (get_history s' from) (get_history (s to) from)) eqn : eq_suf.
         2 : discriminate eq_sync.
+        assert (eq_suf_original := eq_suf).
         apply complete_suffix_correct in eq_suf.
         inversion eq_sync.
         specialize (one_sender_receive_protocol s s Hprs Hprs to) as Hone.
         unfold get_matching_state in Hmatch.
-        apply find_some in Hmatch.
-        destruct Hmatch as [Hmatch_in Hmatch_eq].
-        unfold get_topmost_candidates in Hmatch_in.
-        unfold get_maximal_elements in Hmatch_in.
-        apply filter_In in Hmatch_in.
-        destruct Hmatch_in as [Hmatch_in' Hmatch_in_eq].
-        unfold get_candidates in Hmatch_in'.
-        unfold component_list in Hmatch_in'.
-        rewrite in_map_iff in Hmatch_in'.
-        destruct Hmatch_in' as [inter [Heq _]].
-        specialize (Hone inter from).
-        spec Hone. {
-          intuition.
-        }
-        specialize (Hone (sync_action to from (rev l))).
-        spec Hone. {
-          admit.
-        }
-        simpl in Hone.
-    Admitted.
-    
-    Lemma get_matching_action_none
-      (s : vstate X)
-      (from to : index)
-      (Hmatch : get_matching_state s to from = None) :
-      let res := snd (apply_action X s (get_matching_action s from to)) in
-      res to = s to.
-    Proof.
-      unfold get_matching_action.
-      rewrite Hmatch.
-      simpl.
-      reflexivity.
+        destruct (find (fun s' : state => state_ltb' from (project (s to) from) s')
+             (get_topmost_candidates s from)) eqn : eq_find.
+        + apply find_some in eq_find.
+          destruct eq_find as [eq_find _].
+          unfold get_topmost_candidates in eq_find.
+          unfold get_maximal_elements in eq_find.
+          apply filter_In in eq_find.
+          destruct eq_find as [eq_find _].
+          unfold get_candidates in eq_find.
+          unfold component_list in eq_find.
+          apply in_map_iff in eq_find.
+          destruct eq_find as [inter [Hinter _]].
+          
+          specialize (Hone inter from).
+          spec Hone. {
+            intuition.
+          }
+          
+          specialize (Hone (sync_action to from (rev l))).
+          
+          spec Hone. {
+             unfold sync.
+             rewrite <- Hmatch in eq_suf_original.
+             rewrite <- Hinter in eq_suf_original.
+             rewrite eq_suf_original.
+             reflexivity.
+          }
+          simpl in Hone.
+          rewrite <- Hmatch.
+          rewrite <- Hinter.
+          apply Hone.
+        + rewrite <- Hmatch.
+          rewrite <- Hmatch in eq_suf.
+          assert (Hempty: l = []). {
+            replace (get_history (s to) from) with ([] ++ (get_history (s to) from)) in eq_suf at 1.
+            apply app_inv_tail in eq_suf.
+            all : intuition.
+          }
+          rewrite Hempty.
+          simpl.
+          reflexivity.
+      - rewrite <- Hmatch in eq_sync.
+        apply sync_some in eq_sync.
+        intuition. 
     Qed.
     
     Lemma get_matching_action_index
@@ -980,8 +1037,8 @@ Context
       (projT1 (label_a ai) = to).
     Proof.
       unfold get_matching_action in Hin.
-      destruct (get_matching_state s to from) eqn : eq_matching.
-      - destruct (sync s s0 to from) eqn : eq_sync.
+      remember (get_matching_state s to from) as s0.
+      destruct (sync s s0 to from) eqn : eq_sync.
         + unfold sync in eq_sync.
           destruct (complete_suffix (get_history s0 from) (get_history (s to) from)).
           inversion eq_sync.
@@ -994,7 +1051,6 @@ Context
           destruct x. simpl. reflexivity.
           discriminate eq_sync.
         + contradict Hin.
-      - contradict Hin.
     Qed.
     
     Definition get_receives_for
@@ -1037,9 +1093,7 @@ Context
         
         assert (Hfrs : finite_protocol_action_from X s (get_matching_action s from a)). {
           unfold get_matching_action.
-          destruct (get_matching_state s a from) eqn : eq_matching.
-          2 : apply finite_protocol_action_empty.
-          unfold get_matching_state in eq_matching.
+          unfold get_matching_stat
           apply find_some in eq_matching.
           destruct eq_matching as [Hin_top Hinltb].
           unfold get_topmost_candidates in Hin_top.
