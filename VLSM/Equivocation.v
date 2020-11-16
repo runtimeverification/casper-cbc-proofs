@@ -243,20 +243,22 @@ Section Simple.
       (s : vstate vlsm)
       (Hs : vinitial_state_prop vlsm s)
       (m : message)
-      : has_been_sent s m = false.
+      : ~has_been_sent s m.
     Proof.
-      destruct (has_been_sent s m) eqn:Hsm; try reflexivity.
+      destruct (decide (has_been_sent s m)); try reflexivity.
       specialize (proper_sent s) as Hproper.
       spec Hproper.
       { apply initial_is_protocol. assumption. }
       spec Hproper m. unfold has_been_sent_prop in Hproper.
       unfold all_traces_have_message_prop in Hproper.
-      apply Hproper in Hsm.
-      specialize (Hsm s []).
-      spec Hsm.
+      destruct Hproper as [Hproper Hproper'].
+      apply Hproper in h.
+      specialize (h s []).
+      spec h.
       { split; try assumption. constructor. apply initial_is_protocol. assumption. }
-      specialize (Hsm eq_refl). apply Exists_exists in Hsm.
-      destruct Hsm as [item [Hitem _]]. contradict Hitem.
+      specialize (h eq_refl). apply Exists_exists in h.
+      destruct h as [item [Hitem _]]. contradict Hitem.
+      intuition.
     Qed.
 
     Lemma has_been_sent_consistency
@@ -332,20 +334,21 @@ Section Simple.
       (s : vstate vlsm)
       (Hs : vinitial_state_prop vlsm s)
       (m : message)
-      : has_been_received s m = false.
+      : ~ has_been_received s m.
    Proof.
-      destruct (has_been_received s m) eqn:Hsm; try reflexivity.
+      destruct (decide (has_been_received s m)); try reflexivity.
       specialize (proper_received s) as Hproper.
       spec Hproper.
       { apply initial_is_protocol. assumption. }
       spec Hproper m. unfold has_been_sent_prop in Hproper.
       unfold all_traces_have_message_prop in Hproper.
-      apply Hproper in Hsm.
-      specialize (Hsm s []).
-      spec Hsm.
+      apply Hproper in h.
+      specialize (h s []).
+      spec h.
       { split; try assumption. constructor. apply initial_is_protocol. assumption. }
-      specialize (Hsm eq_refl). apply Exists_exists in Hsm.
-      destruct Hsm as [item [Hitem _]]. contradict Hitem.
+      specialize (h eq_refl). apply Exists_exists in h.
+      destruct h as [item [Hitem _]]. contradict Hitem.
+      assumption.
     Qed.
 
     Lemma has_been_received_consistency
@@ -708,7 +711,7 @@ Section Composite.
       (i : index)
       (m : message)
       (Hsent : (@has_been_sent _ _ (has_been_sent_capabilities i)
-               (s i) m) = true) :
+               (s i) m)) :
       protocol_message_prop X m.
       Proof.
         specialize (protocol_state_projection IM i0 constraint i _ Hs) as Hsi.
@@ -783,7 +786,7 @@ Section Composite.
       (i : index)
       (m : message)
       (Hreceived : (@has_been_received _ _ (has_been_received_capabilities i)
-               (s i) m) = true) :
+               (s i) m)) :
       protocol_message_prop X m.
      Proof.
      specialize (protocol_state_projection IM i0 constraint i _ Hs) as Hsi.

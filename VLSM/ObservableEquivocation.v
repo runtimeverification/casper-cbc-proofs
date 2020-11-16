@@ -118,7 +118,7 @@ Context
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
   (validators_nodup : forall (s : state), NoDup (validators s))
-  (basic_eqv := basic_observable_equivocation state validator event subject_of_observation validators validators_nodup)
+  (basic_eqv := basic_observable_equivocation state validator event subject_of_observation happens_before validators validators_nodup)
   .
 
 Existing Instance basic_eqv.
@@ -207,10 +207,8 @@ Definition composed_observable_events
 
 Program Definition composed_witness_observation_based_equivocation_evidence
   (witness_set : set index)
-  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq happens_before happens_before_dec subject_of_observation
-Definition composed_observation_based_equivocation_evidence
-  :=
-  {| observable_events := (composed_witness_observable_events witness_set)|}.
+  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq happens_before happens_before_dec subject_of_observation 
+  := {| observable_events := (composed_witness_observable_events witness_set)|}.
   Next Obligation.
   unfold composed_witness_observable_events in He.
   rewrite set_union_in_iterated in He.
@@ -224,7 +222,7 @@ Definition composed_observation_based_equivocation_evidence
   Qed.
 
 Instance composed_observation_based_equivocation_evidence
-  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq event_comparable subject_of_observation
+  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq happens_before happens_before_dec subject_of_observation
   := composed_witness_observation_based_equivocation_evidence index_listing.
 
 (**
@@ -246,7 +244,7 @@ initial states.
       (ei e: event)
       (Hsubj : subject_of_observation e = v)
       (Hin : In ei (observable_events s v)) :
-      comparableb happens_before_fn ei e = true;
+      comparable happens_before ei e;
 
 (**
 We assume that machines communicate through messages,
@@ -1091,7 +1089,14 @@ Proof.
   apply filter_nil. rewrite Forall_forall. intros v Hv.
   apply bool_decide_eq_false.
   intros [e1 [He1 H]].
-  rewrite no_events_in_initial_state in He1 by assumption;assumption.
+  destruct H as [e2 [Hine2 Hcomp]].
+  specialize (no_events_in_initial_state is Hs v e1 e2) as Hno.
+  spec Hno. {
+    apply observed_event_subject with (s := is).
+    assumption.
+  }
+  specialize (Hno He1).
+  intuition.
 Qed.
 
 End observable_equivocation_in_composition.
@@ -1103,7 +1108,6 @@ Section unforgeable_messages.
 Context
   {message validator event : Type}
   `{EqDecision event}
-  {event_comparable : comparable_events event}
   {happens_before: event -> event -> Prop}
   {happens_before_dec: RelDecision happens_before}
   {subject_of_observation : event -> validator}
