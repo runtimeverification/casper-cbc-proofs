@@ -1670,12 +1670,12 @@ Context
       apply H4.
       assumption.
     Qed.
-
+  
     Lemma send_oracle_prop
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_been_sent_prop X (@send_oracle index index_self _ _) s m.
+      has_been_sent_prop X send_oracle s m.
     Proof.
       unfold has_been_sent_prop.
       unfold all_traces_have_message_prop.
@@ -1927,7 +1927,7 @@ Context
             split.
             assumption.
             unfold state_eqb.
-            rewrite decide_True.
+            rewrite eq_dec_if_true.
             reflexivity.
             reflexivity.
            * rewrite H1 in n.
@@ -1939,7 +1939,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_been_received_prop X (@receive_oracle index index_self _ _) s m.
+      has_been_received_prop X receive_oracle s m.
     Proof.
       unfold has_been_received_prop.
       unfold all_traces_have_message_prop.
@@ -2216,7 +2216,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_not_been_sent_prop X (@not_send_oracle index index_self _ _) s m.
+      has_not_been_sent_prop X not_send_oracle s m.
     Proof.
       intros.
       unfold has_not_been_sent_prop.
@@ -2324,7 +2324,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      has_not_been_received_prop X (@not_receive_oracle index index_self _ _) s m.
+      has_not_been_received_prop X not_receive_oracle s m.
      Proof.
       intros.
       unfold has_not_been_received_prop.
@@ -2563,7 +2563,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      (@send_oracle index index_self _ _) s m = true <-> In m (get_sent_messages s).
+      send_oracle s m = true <-> In m (get_sent_messages s).
 
     Proof.
       split.
@@ -2676,7 +2676,7 @@ Context
       (s : state)
       (Hprotocol : protocol_state_prop preX s)
       (m : message) :
-      (@receive_oracle index index_self _ _) s m = true <-> In m (get_received_messages s).
+      receive_oracle s m = true <-> In m (get_received_messages s).
 
     Proof.
       split.
@@ -3128,10 +3128,6 @@ Context
                end  
         end
     end.
-    
-    Definition comparable_lv_events : comparable_events lv_event := {|
-      happens_before_fn := lv_event_ltb
-    |}.
 
     Existing Instance comparable_lv_events.
     
