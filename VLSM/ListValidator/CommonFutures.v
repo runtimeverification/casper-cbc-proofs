@@ -1064,7 +1064,7 @@ Context
       let matching_actions := List.map (get_matching_action s from) li in
       List.concat matching_actions.
       
-    Lemma get_receives_correct
+    Lemma get_receives_for_correct
         (s : vstate X)
         (Hpr : protocol_state_prop X s)
         (li : list index)
@@ -1306,5 +1306,54 @@ Context
            apply Hrel.
            rewrite eq_second; intuition.
     Qed.
+    
+    Definition others (i : index) := 
+      set_remove idec i index_listing.
+    
+    Definition get_receives_all
+      (s : vstate X)
+      (lfrom : set index) : vaction X :=
+      let lis := (List.map others lfrom) in
+      let receive_fors := zip_apply (List.map (get_receives_for s) lis) lfrom in
+      List.concat receive_fors.
+      
+    Lemma get_receives_all_protocol
+      (s : vstate X)
+      (lfrom : set index)
+      (Hnodup : NoDup lfrom)
+      (Hprs : protocol_state_prop X s) :
+      finite_protocol_action_from X s (get_receives_all s lfrom).
+    Proof.
+      induction lfrom; unfold get_receives_all.
+      - simpl. apply finite_protocol_action_empty. assumption.
+      - simpl.
+        specialize (action_independence X (get_receives_for s (others a) a) (
+        concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom))) as Hind.
+        
+        remember (fun (s' : vstate X) => forall (i j : index), In j lfrom -> project (s' i) j = project (s i) j) as Pb.
+        
+        specialize (Hind Pb s Hprs).
+        
+        spec Hind. {
+          unfold others.
+          apply get_receives_for_correct.
+          assumption.
+          apply set_remove_nodup. apply (proj1 Hfinite).
+          admit.
+        }
+        
+        spec Hind. {
+          rewrite HeqPb.
+          intros.
+          reflexivity.
+        }
+        
+        spec Hind. {
+          unfold ensures.
+          intros.
+          rewrite HeqPb in H0.
+          admit.
+        }
+    Admitted.
       
 End Composition.
