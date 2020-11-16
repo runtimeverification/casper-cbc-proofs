@@ -8,6 +8,7 @@ Class InhabitedTwice V := { inhabited_twice : exists (v1 v2 : V), v1 <> v2 }.
 Definition pos_R := {r : R | (r > 0)%R}.
 
 Class Measurable V := { weight : V -> pos_R}.
+Hint Mode Measurable ! : typeclass_instances.
 
 Definition sum_weights `{Measurable V} (l : list V) : R :=
   fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R l.
@@ -24,7 +25,7 @@ Qed.
 
 Class ReachableThreshold V `{Hm : Measurable V} :=
   { threshold : {r | (r >= 0)%R}
-  ; reachable_threshold : exists vs, NoDup vs /\ (sum_weights vs > (proj1_sig threshold))%R
+  ; reachable_threshold : exists (vs:list V), NoDup vs /\ (sum_weights vs > (proj1_sig threshold))%R
   }.
 
 Class DistinctChoice V `{HscV : StrictlyComparable V} `{Hit : InhabitedTwice V}.
@@ -71,7 +72,7 @@ Coercion weight_proj1_sig : pos_R >-> R.
 
 Lemma sum_weights_in
   `{EqDecision V} `{Hm : Measurable V}
-  : forall v vs,
+  : forall v (vs:list V),
   NoDup vs ->
   In v vs ->
   sum_weights vs = (proj1_sig (weight v) + sum_weights (set_remove decide_eq v vs))%R.
@@ -87,7 +88,7 @@ Qed.
 
 Lemma sum_weights_incl
   `{EqDecision V} `{Hm : Measurable V}
-  : forall vs vs',
+  : forall (vs vs':list V),
   NoDup vs ->
   NoDup vs' ->
   incl vs vs' ->
@@ -123,7 +124,7 @@ Qed.
 
 Lemma sum_weights_app
   `{Hm : Measurable V}
-  : forall vs vs',
+  : forall (vs vs':list V),
   sum_weights (vs ++ vs') = (sum_weights vs + sum_weights vs')%R.
 Proof.
   induction vs; intros; simpl.

@@ -82,6 +82,13 @@ Arguments total {_} _ {_} _ _ : assert.
 Arguments trichotomy {_} _ {_} _ _ : assert.
 Arguments trichotomyT {_} _ {_} _ _ : assert.
 
+Lemma Decision_iff : forall {P Q}, (P <-> Q) -> Decision P -> Decision Q.
+Proof. firstorder. Qed.
+Lemma Decision_and : forall {P Q}, Decision P -> Decision Q -> Decision (P /\ Q).
+Proof. firstorder. Qed.
+Lemma Decision_not : forall {P}, Decision P -> Decision (~P).
+Proof. firstorder. Qed.
+
 Lemma not_symmetry `{R : relation A, !Symmetric R} x y : ~R x y -> ~R y x.
 Proof. intuition. Qed.
 Lemma symmetry_iff `(R : relation A) `{!Symmetric R} x y : R x y <-> R y x.
@@ -144,7 +151,16 @@ Coercion Is_true : bool >-> Sortclass.
 Hint Unfold Is_true : core.
 Hint Immediate Is_true_eq_left : core.
 Hint Resolve orb_prop_intro andb_prop_intro : core.
+Lemma Is_true_iff_eq_true: forall x: bool, x = true <-> x.
+Proof.
+  split. apply Is_true_eq_left. apply Is_true_eq_true.
+Qed.
 
+Instance bool_decision {b:bool} : Decision b :=
+  match b return {b}+{~b} with
+          | true => left I
+          | false => right (fun H => H)
+  end.
 (** ** Basic instances *)
 
 Instance prop_inhabited : Inhabited Prop := populate True.
@@ -292,3 +308,32 @@ Proof. solve_decision. Defined.
 
 Instance sum_eq_dec `{EqDecision A, EqDecision B} : EqDecision (A + B).
 Proof. solve_decision. Defined.
+
+(* Some relation facts *)
+Lemma Reflexive_reexpress_impl {A} (R S: Relation_Definitions.relation A):
+  relation_equivalence R S -> Reflexive R -> Reflexive S.
+Proof.
+  clear;firstorder.
+Qed.
+Lemma complement_equivalence {A}:
+  Morphisms.Proper (Morphisms.respectful relation_equivalence relation_equivalence) (@complement A).
+Proof.
+  clear;firstorder.
+Qed.
+Lemma Transitive_reexpress_impl {A} (R S: Relation_Definitions.relation A):
+  relation_equivalence R S -> Transitive R -> Transitive S.
+Proof.
+  clear.
+  unfold relation_equivalence, predicate_equivalence; simpl.
+  intros Hrel HtransR x y z.
+  rewrite <- !Hrel.
+  apply HtransR.
+Qed.
+Lemma StrictOrder_reexpress_impl {A} (R S: Relation_Definitions.relation A):
+  relation_equivalence R S -> StrictOrder R -> StrictOrder S.
+Proof.
+  clear.
+  intros Hrel [Hirr Htrans]. constructor.
+  revert Hirr;apply Reflexive_reexpress_impl. apply complement_equivalence. assumption.
+  revert Htrans;apply Transitive_reexpress_impl. assumption.
+Qed.

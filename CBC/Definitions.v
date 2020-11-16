@@ -109,7 +109,7 @@ Instance state_type
   {C} `{about_C : StrictlyComparable C} {V} `{about_V : StrictlyComparable V}
   : StrictlyComparable state :=
   {
-    inhabited := state_inhabited;
+    inhabited := @state_inhabited C V _ _;
     compare := state_compare;
     compare_strictorder := state_compare_strict_order;
   }.
@@ -452,8 +452,6 @@ Proof.
     + exfalso. apply (no_confusion_next_empty _ _ H).
     + apply no_confusion_next in H. destruct H; subst. apply Hj.
     + apply no_confusion_next in Heq. destruct Heq; subst.
-      assert (CompareTransitive message_compare) by
-          apply message_type.
       apply (compare_lt_transitive  _ _ _ Hlt) in Hlt2.
       clear Hlt.
       destruct msg1' as [(c1', v1') j1']. destruct msg3 as [(c3, v3) j3].
@@ -538,7 +536,7 @@ Proof.
   apply H1 in Hin'. rewrite get_messages_next in Hin'.
   destruct Hin'; try assumption; subst.
   exfalso.
-  assert (CompareReflexive message_compare) by apply message_type. apply (compare_lt_irreflexive _ Hlt).
+  apply (compare_lt_irreflexive _ Hlt).
 Qed.
 
 Lemma sorted_syntactic_state_inclusion
@@ -567,11 +565,10 @@ Proof.
     assert (Hlt1 : message_lt msg' msg1).
     { destruct Hin1; subst; try assumption.
       apply (locally_sorted_first msg) in H3; try assumption.
-      assert (CompareTransitive message_compare) by apply message_type.
       apply compare_lt_transitive with msg; assumption.
     }
     destruct H1in'; try assumption; subst.
-    exfalso. assert (CompareReflexive message_compare) by apply message_type. apply (compare_lt_irreflexive _ Hlt1).
+    exfalso. apply (compare_lt_irreflexive _ Hlt1).
 Qed.
 
 

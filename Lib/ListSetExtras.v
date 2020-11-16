@@ -647,8 +647,6 @@ Proof.
   reflexivity.
 Qed.
 
-Check fold_right.
-
 Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
   fold_right (set_remove decide_eq) l2 l1.
   
@@ -657,5 +655,22 @@ Definition get_maximal_elements {A}
   (l : list A) 
   : list A :=
   filter (fun a => forallb (fun b => negb (preceeds b a)) l) l.
+
+Require Import Setoid.
+
+Add Parametric Relation A : (set A) (@set_eq A)
+ reflexivity proved by (@set_eq_refl A)
+ transitivity proved by (@set_eq_tran A) as set_eq_rel.
+
+Add Parametric Morphism A : (@In A)
+  with signature @eq A ==> @set_eq A ==> iff as In_set_eq.
+Proof.
+  intros a l1 l2 H.
+  split;apply H.
+Qed.
+
+Add Parametric Morphism A : (@In A)
+  with signature @eq A ==> @incl A ==> Basics.impl as In_incl.
+Proof. firstorder. Qed.
 
 Unset Implicit Arguments.

@@ -46,14 +46,12 @@ Definition from_projection
   : Prop
   := j = projT1 (l a).
 
-Definition dec_from_projection
-  (a : transition_item)
-  : {from_projection a} + {~from_projection a}
-  := decide (j = projT1 (l a)).
+Instance dec_from_projection (a : transition_item) : Decision (from_projection a) :=
+  decide (from_projection a).
 
 Definition finite_trace_projection_list_alt
   (trx : list (vtransition_item X))
-  (ftrx := (filter (predicate_to_function dec_from_projection) trx))
+  (ftrx := (filter (fun a => bool_decide (from_projection a)) trx))
   (Hall: Forall from_projection ftrx)
   :=
   List.map
@@ -70,7 +68,7 @@ Definition finite_trace_projection_list_alt
 
 Lemma finite_trace_projection_list_alt_iff
   (trx : list (vtransition_item X))
-  (ftrx := (filter (predicate_to_function dec_from_projection) trx))
+  (ftrx := (filter (fun a => bool_decide (from_projection a)) trx))
   (Hall: Forall from_projection ftrx)
   : finite_trace_projection_list_alt trx Hall = finite_trace_projection_list trx.
 Proof.
@@ -85,10 +83,11 @@ Proof.
     eqn:Heq.
   - assert
     (Hunroll :
-      filter (predicate_to_function dec_from_projection) (a :: trx)
-      = a :: filter (predicate_to_function dec_from_projection) trx
+      filter (fun a => bool_decide (from_projection a)) (a :: trx)
+      = a :: filter (fun a => bool_decide (from_projection a)) trx
     ).
-    { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
+    { simpl.
+      unfold bool_decide, dec_from_projection, from_projection.
       replace
         (decide (j =
         (@projT1 index (fun n : index => @vlabel message (IM n))
@@ -115,21 +114,15 @@ Proof.
     simpl.
     f_equal.
     f_equal; try reflexivity.
-    replace
-      (@Forall_hd (@vtransition_item message X) from_projection a
-      (@filter
-         (@transition_item message (@composite_type message index IM))
-         (@predicate_to_function
-            (@transition_item message (@composite_type message index IM))
-            from_projection dec_from_projection) trx) Hall)
-      with e; try reflexivity.
+    replace (Forall_hd Hall) with e; try reflexivity.
     apply UIP.
   - assert
     (Hunroll :
-      filter (predicate_to_function dec_from_projection) (a :: trx)
-      = filter (predicate_to_function dec_from_projection) trx
+      filter (fun a => bool_decide (from_projection a)) (a :: trx)
+      = filter (fun a => bool_decide (from_projection a)) trx
     ).
-    { simpl. unfold predicate_to_function at 1. unfold dec_from_projection at 1.
+    { simpl.
+      unfold bool_decide, dec_from_projection, from_projection.
       replace
         (decide (j =
         (@projT1 index (fun n0 : index => @vlabel message (IM n0))
@@ -379,23 +372,21 @@ Proof.
       (succ n))
     with
       (list_annotate from_projection (stream_prefix (stream_subsequence ss ks) (succ n)) Hall).
-    specialize
-      (stream_filter_prefix
-        from_projection
-        dec_from_projection
-        ss
-        ks
-        Hfilter
-        n
-      ); intros Hsfilter.
-      remember stream_prefix as sp.
-      simpl in Hsfilter. subst.
-      unfold succ in *.
-      generalize dependent Hall.
-      rewrite Hsfilter.
-      intros.
-      unfold ss_to_kn. unfold kn.
-      apply finite_trace_projection_list_alt_iff.
+  specialize
+    (stream_filter_prefix
+       ss
+       ks
+       Hfilter
+       n
+    ); intros Hsfilter.
+  remember stream_prefix as sp.
+  simpl in Hsfilter. subst.
+  unfold succ in *.
+  generalize dependent Hall.
+  rewrite Hsfilter.
+  intros.
+  unfold ss_to_kn. unfold kn.
+  apply finite_trace_projection_list_alt_iff.
 Qed.
 
 Definition trace_projection
@@ -531,7 +522,7 @@ Lemma projection_friendly_in_futures'
   (sj: state)
   (Hsx: sx j = sj)
   (Hall: Forall from_projection
-         (filter (predicate_to_function dec_from_projection) trx))
+         (filter (fun a => bool_decide (from_projection a)) trx))
   (s1 s2: state)
   (n1 n2: nat)
   (Hle: n1 <= n2)
@@ -564,21 +555,17 @@ Proof.
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (predicate_to_function dec_from_projection) trx)
+            (filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n2
           ); intros [oitem [Hoa Hnth]].
-
         replace
           (@nth_error
             (@sig (@vtransition_item message X)
                (fun a : @vtransition_item message X => from_projection a))
             (@list_annotate (@vtransition_item message X)
                from_projection
-               (@filter (@transition_item message (@type message X))
-                  (@predicate_to_function
-                     (@transition_item message (@type message X))
-                     from_projection dec_from_projection) trx) Hall) n2)
+               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n2)
           with oitem in Hs2.
         clear Hoa.
         destruct oitem as [[item Hitem]|]; try inversion Hs2; subst; clear Hs2.
@@ -607,14 +594,14 @@ Proof.
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (predicate_to_function dec_from_projection) trx)
+            (filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n2
           ); intros [oitem2 [Hoa2 Hn2th]].
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (predicate_to_function dec_from_projection) trx)
+            (filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n1
           ); intros [oitem1 [Hoa1 Hn1th]].
@@ -624,10 +611,7 @@ Proof.
                (fun a : @vtransition_item message X => from_projection a))
             (@list_annotate (@vtransition_item message X)
                from_projection
-               (@filter (@transition_item message (@type message X))
-                  (@predicate_to_function
-                     (@transition_item message (@type message X))
-                     from_projection dec_from_projection) trx) Hall) n2)
+               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n2)
           with oitem2 in Hs2.
         clear Hoa2.
         replace
@@ -636,10 +620,7 @@ Proof.
                (fun a : @vtransition_item message X => from_projection a))
             (@list_annotate (@vtransition_item message X)
                from_projection
-               (@filter (@transition_item message (@type message X))
-                  (@predicate_to_function
-                     (@transition_item message (@type message X))
-                     from_projection dec_from_projection) trx) Hall) n1)
+               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n1)
            with oitem1 in Hs1.
         clear Hoa1.
         destruct oitem2 as [[item2 Hitem2]|]; try inversion Hs2; subst; clear Hs2.
@@ -694,7 +675,7 @@ Proof.
   - specialize (Hfr sj (list_prefix lj n2) Hpref).
     destruct Hfr as [sx [trx [Htrx [Hsx Hproj]]]].
     assert (Hall : Forall from_projection
-              (filter (predicate_to_function dec_from_projection) trx))
+              (filter (fun a => bool_decide (from_projection a)) trx))
       by apply filter_Forall.
     specialize (finite_trace_projection_list_alt_iff trx Hall); intro Heq.
     rewrite <- Heq in Hproj.
@@ -725,7 +706,7 @@ Proof.
   - specialize (Hfr sj (stream_prefix lj n2) Hpref).
     destruct Hfr as [sx [trx [Htrx [Hsx Hproj]]]].
     assert (Hall : Forall from_projection
-              (filter (predicate_to_function dec_from_projection) trx))
+              (filter (fun a => bool_decide (from_projection a)) trx))
       by apply filter_Forall.
     specialize (finite_trace_projection_list_alt_iff trx Hall); intro Heq.
     rewrite <- Heq in Hproj.
@@ -757,4 +738,3 @@ Proof.
 Qed.
 
 End ProjectionTraces.
-

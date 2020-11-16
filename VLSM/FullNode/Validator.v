@@ -28,11 +28,10 @@ Section CompositeValidator.
     {Hestimator : Estimator (state C V) C}
     (eq_V := @strictly_comparable_eq_dec _ about_V)
     (message := State.message C V)
-    (message_events := full_node_message_comparable_events C V)
+    (message_preceeds_dec := validator_message_preceeds_dec C V)
     .
-
   Existing Instance eq_V.
-  Existing Instance message_events.
+  Existing Instance message_preceeds_dec.
 
   Definition full_node_validator_observable_events
     (s : state C V)
@@ -41,21 +40,12 @@ Section CompositeValidator.
     :=
     full_node_client_observable_events (get_message_set s) v.
 
-  Program Instance full_node_validator_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (state C V) V message decide_eq message_events sender
+  Definition full_node_validator_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (state C V) V message decide_eq _ message_preceeds_dec
     :=
     {|
       observable_events := full_node_validator_observable_events
     |}.
-    Next Obligation.
-    unfold full_node_validator_observable_events in He.
-    unfold full_node_client_observable_events in He.
-    apply filter_In in He.
-    destruct He as [_ Hdecide].
-    destruct (decide (sender e = v)).
-    assumption.
-    discriminate Hdecide.
-  Qed.
 
   Existing Instance full_node_validator_observation_based_equivocation_evidence.
 
@@ -74,9 +64,8 @@ Section CompositeValidator.
 
   Definition validator_basic_equivocation
     : basic_equivocation (state C V) V
-    := basic_observable_equivocation (state C V) V message sender
+    := basic_observable_equivocation (state C V) V message _
         full_node_validator_state_validators full_node_validator_state_validators_nodup.
-
 
   (** * Full-node validator VLSM instance
 
@@ -106,7 +95,7 @@ Section CompositeValidator.
              | Some msg => pair (pair (set_add decide_eq msg msgs) final) None
            end
     | Some c =>
-      let msg := (c, v, make_justification s) in
+      let msg := Msg c v (make_justification s) in
       pair (pair (set_add decide_eq msg msgs) (Some msg)) (Some msg)
     end.
 
@@ -587,14 +576,14 @@ Section proper_sent_received.
     - inversion Ht; subst. destruct final as [m|]; clear Ht.
       + elim
         (in_justification_recursive'
-          ((c, v, LastSent C V (make_message_set msgs) m))
+          (Msg c v (LastSent (make_message_set msgs) m))
           msgs
           eq_refl
         ).
         assumption.
       + elim
         (in_justification_recursive'
-          ((c, v, NoSent C V (make_message_set msgs)))
+          (Msg c v (NoSent (make_message_set msgs)))
           msgs
           eq_refl
         ).

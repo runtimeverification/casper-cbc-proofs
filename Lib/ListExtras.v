@@ -289,11 +289,8 @@ Lemma in_correct_refl `{EqDecision X} :
     In x l <-> inb decide_eq x l.
 Proof.
   intros s msg.
-  split; intros.
-  - apply Is_true_eq_left.
-    apply in_correct; assumption.
-  - apply in_correct.
-    apply Is_true_eq_true; assumption.
+  rewrite in_correct, Is_true_iff_eq_true.
+  reflexivity.
 Qed.
 
 Lemma in_correct' `{EqDecision X} :
@@ -301,8 +298,8 @@ Lemma in_correct' `{EqDecision X} :
     ~ In x l <-> inb decide_eq x l = false.
 Proof.
   intros s msg.
-  symmetry. apply mirror_reflect_curry.
-  symmetry; now apply in_correct.
+  rewrite in_correct, not_true_iff_false.
+  reflexivity.
 Qed.
 
 Definition inclb
@@ -418,7 +415,8 @@ Definition compareb {A} `{StrictlyComparable A} (a1 a2 : A) : bool :=
   | _ => false
   end.
 
-Lemma is_member_correct {W} `{StrictlyComparable W} : forall l w, is_member w l = true <-> In w l.
+Lemma is_member_correct {W} `{StrictlyComparable W}
+  : forall l (w : W), is_member w l = true <-> In w l.
 Proof.
   intros l w.
   induction l as [|hd tl IHl].
@@ -445,7 +443,8 @@ Proof.
         assumption.
 Qed.
 
-Lemma is_member_correct' {W} `{StrictlyComparable W} : forall l w, is_member w l = false <-> ~ In w l.
+Lemma is_member_correct' {W} `{StrictlyComparable W}
+  : forall l (w : W), is_member w l = false <-> ~ In w l.
 Proof.
   intros.
   apply mirror_reflect.
@@ -822,17 +821,15 @@ Proof.
 Qed.
 
 Fixpoint filter_Forall
-  {A : Type}
-  (P : A -> Prop)
-  (decP : forall a:A, {P a} + {~P a})
+  `{forall a : A, Decision (P a)}
   (l : list A)
-  : Forall P (filter (predicate_to_function decP) l).
+  : Forall P (filter (fun a => bool_decide (P a)) l).
 Proof.
   destruct l; simpl.
   - exact (Forall_nil P).
-  - unfold predicate_to_function.
-    specialize (filter_Forall A P decP l).
-    destruct (decP a); simpl.
+  - specialize (filter_Forall A P _ l).
+    rewrite <- decide_bool_decide.
+    destruct (decide (P a)).
     + constructor; assumption.
     + assumption.
 Defined.
@@ -1056,38 +1053,15 @@ Proof.
     exists n. assumption.
 Qed.
 
-Lemma Exists_dec
-  {A : Type}
-  (P : A -> Prop)
-  (l : list A)
-  (P_dec : forall a : A, {P a} + {~ P a})
-  : {List.Exists P l} + {~ List.Exists P l}.
+Instance Exists_dec `{forall (a : A), Decision (P a)} l : Decision (Exists P l).
 Proof.
   induction l.
-  - right. intro. inversion H.
-  - specialize (P_dec a).
-    destruct P_dec as [Pa | Pna].
+  - right. intro Hl. inversion Hl.
+  - destruct (decide (P a)) as [Pa | Pna].
     + left. left. assumption.
-    + destruct IHl as [Pl | Pnl] .
+    + destruct IHl as [Pl | Pnl].
       * left. right. assumption.
-      * right. intro. inversion H; subst; contradiction.
-Qed.
-
-Lemma Forall_dec
-  {A : Type}
-  (P : A -> Prop)
-  (l : list A)
-  (P_dec : forall a : A, {P a} + {~ P a})
-  : {List.Forall P l} + {~ List.Forall P l}.
-Proof.
-  induction l.
-  - left. constructor.
-  - specialize (P_dec a).
-    destruct P_dec as [Pa | Pna].
-    + destruct IHl as [Pl | Pnl] .
-      * left. constructor;  assumption.
-      * right. intro. inversion H; subst; contradiction.
-    + right. intro. inversion H; contradiction.
+      * right. intro Hl. inversion Hl; subst; contradiction.
 Qed.
 
 Definition map_option
