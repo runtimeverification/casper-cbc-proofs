@@ -969,6 +969,7 @@ Context
       (Hdif : from <> to)
       (Hmatch : get_matching_state s to from = s') :
       let res := snd (apply_action X s (get_matching_action s from to)) in
+      finite_protocol_action_from X s (get_matching_action s from to) /\
       project (res to) from = project s' from.
     Proof.
       simpl.
@@ -1023,7 +1024,10 @@ Context
           }
           rewrite Hempty.
           simpl.
-          reflexivity.
+          unfold sync_action; simpl.
+          intuition.
+          apply finite_protocol_action_empty.
+          assumption.
       - rewrite <- Hmatch in eq_sync.
         apply sync_some in eq_sync.
         intuition. 
@@ -1068,12 +1072,15 @@ Context
         (Hnodup : NoDup li)
         (Hnf : ~ In from li) :
         let res := snd (apply_action X s (get_receives_for s li from)) in
-        finite_protocol_action_from X s (get_receives_for s li from). 
+        finite_protocol_action_from X s (get_receives_for s li from) /\
+        forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from. 
     Proof.
       induction li; intros.
       - unfold get_receives_for. simpl.
+        split.
         apply finite_protocol_action_empty.
         assumption.
+        intuition.
       - unfold get_receives_for.
         rewrite map_cons. simpl.
         unfold get_receives_for in IHli.
@@ -1092,28 +1099,8 @@ Context
         }
         
         assert (Hfrs : finite_protocol_action_from X s (get_matching_action s from a)). {
-          unfold get_matching_action.
-          unfold get_matching_stat
-          apply find_some in eq_matching.
-          destruct eq_matching as [Hin_top Hinltb].
-          unfold get_topmost_candidates in Hin_top.
-          unfold get_maximal_elements in Hin_top.
-          apply filter_In in Hin_top.
-          destruct Hin_top as [Hin_cand Htop].
-          rewrite forallb_forall in Htop.
-          unfold get_candidates in Hin_cand.
-          unfold component_list in Hin_cand.
-          rewrite in_map_iff in Hin_cand.
-          destruct Hin_cand as [inter [Hproj Hinc]].
-          destruct (sync s s0 a from) eqn : eq_sync.
-          apply one_sender_receive_protocol with (from := from) (s' := s) (to := a) (inter := inter).
-          assumption.
-          assumption.
-          intuition.
-          rewrite Hproj; assumption.
-          apply finite_protocol_action_empty.
-          assumption.
-          assumption.
+          apply get_matching_action_effect with (s' := (get_matching_state s a from)).
+          all : intuition.
         }
         
         spec Hind. { 
@@ -1127,6 +1114,31 @@ Context
         
         specialize (@relevant_components (@message index index_listing) index idec IM_index) as Hrel.
         specialize (Hrel i0 s).
+        
+        assert (Hincl: incl
+               (map (projT1 (P:=fun n : index => vlabel (IM_index n)))
+               (map label_a (concat (map (get_matching_action s from) li)))) li). {
+          unfold incl. intros.
+          rewrite in_map_iff in H.
+          destruct H as [x [Hproj Hinx]].
+          apply in_map_iff in Hinx.
+          destruct Hinx as [x0 [H_label Hincon]].
+          apply in_concat in Hincon.
+          destruct Hincon as [y [Hiny Hinx0]].
+          rewrite in_map_iff in Hiny.
+          destruct Hiny as [z [Hmatching Hindex]].
+          rewrite <- H_label in Hproj.
+          unfold free_composite_vlsm.
+          assert (a0 = z). {
+            rewrite <- Hproj.
+            apply get_matching_action_index with (s := s) (from := from).
+            rewrite <- Hmatching in Hinx0.
+            assumption.
+          }
+          rewrite H.
+          assumption.
+       }
+        
         (* ensures *)
         
         spec Hind save. {
@@ -1160,7 +1172,7 @@ Context
         
         (* preserves *)
         
-        spec Hind. {
+        spec Hind save. {
           rewrite HeqPb.
           unfold preserves.
           intros.
@@ -1183,7 +1195,116 @@ Context
           rewrite <- H4 in H3.
           intuition.
         }
-        intuition.
+        split. 
+        + intuition.
+        + intros.
+          unfold res.
+          unfold get_receives_for.
+          simpl.
+          rewrite apply_action_app.
+          destruct (apply_action X s (get_matching_action s from a)) as (tr0, res0) eqn : eq_first.
+          destruct (apply_action X res0 (concat (map (get_matching_action s from) li))) as (tr, res') eqn : eq_second.
+          simpl.
+          destruct H1.
+          rewrite <- H1.
+          * assert (project (res0 a) from = project (get_matching_state s a from) from). {
+              specialize (get_matching_action_effect s Hpr (get_matching_state s a from) from a) as Heff.
+              spec Heff. {
+                intuition.
+              }
+              spec Heff. {
+                intuition.
+              }
+              simpl in Heff.
+              replace res0 with (snd (apply_action X s (get_matching_action s from a))).
+              apply Heff.
+              rewrite eq_first; intuition.
+            }
+            rewrite <- H2.
+            
+            assert ((res' a) = (res0 a)). {
+              replace res' with (snd (apply_action X res0 (concat (map (get_matching_action s from) li)))).
+              apply irrelevant_components.
+              intros contra.
+              rewrite in_map_iff in contra.
+              destruct contra as [x [Hproj Hinx]].
+              rewrite in_map_iff in Hinx.
+              destruct Hinx as [x0 [Hl Hinx0]].
+              apply in_concat in Hinx0.
+              destruct Hinx0 as [x' [Hinx' Hinx0']].
+              rewrite in_map_iff in Hinx'.
+              destruct Hinx' as [j [Hmatch Hli]].
+              rewrite <- Hl in Hproj.
+              rewrite <- Hmatch in Hinx0'.
+              apply get_matching_action_index in Hinx0'.
+              replace (@projT1 index (fun n : index => @vlabel (@message index index_listing) (IM_index n))
+              (@label_a (@message index index_listing) (@type (@message index index_listing) X)
+                 x0)) with a in Hinx0'.
+              rewrite <- Hinx0' in Hli.
+              intuition.
+              rewrite eq_second.
+              intuition.
+            }
+            rewrite H3; intuition.
+         * clear Hind.
+           replace res' with (snd (apply_action X res0 (concat (map (get_matching_action s from) li)))).
+           spec IHli. { intuition. }
+           spec IHli. { intuition. }
+           destruct IHli as [left IHli].
+           specialize (IHli i H1).
+           rewrite <- IHli.
+           assert (forall (i : index), In i li -> res0 i = s i). {
+            intros.
+            replace res0 with (snd (apply_action X s (get_matching_action s from a))).
+            apply irrelevant_components.
+            intros contra. 
+            apply in_map_iff in contra.
+            destruct contra as [x [y contra]].
+            apply in_map_iff in contra.
+            destruct contra as [x0 [Hl Hinx0]].
+            apply get_matching_action_index in Hinx0.
+            rewrite <- Hl in y.
+            replace (@projT1 index (fun n : index => @vlabel (@message index index_listing) (IM_index n))
+             (@label_a (@message index index_listing) (@type (@message index index_listing) X) x0))
+             with i1 in Hinx0.
+             rewrite Hinx0 in H2.
+             intuition.
+             rewrite eq_first; intuition.
+           }
+           
+           f_equal.
+           specialize (Hrel res0).
+           spec Hrel. {
+             replace res0 with (snd (apply_action X s (get_matching_action s from a))).
+             apply apply_action_last_protocol.
+             assumption.
+             assumption.
+             rewrite eq_first; intuition.
+           }
+           
+           specialize (Hrel (concat (map (get_matching_action s from) li))).
+           simpl in Hrel.
+           specialize (Hrel li).
+           spec Hrel. {
+             assumption.
+           }
+           
+           spec Hrel. {
+            assumption.
+           }
+           
+           spec Hrel. {
+            assumption.
+           }
+           
+           simpl in Hrel.
+           destruct Hrel as [_ Hrel].
+           specialize (Hrel i).
+           spec Hrel. {
+            intuition.
+           }
+           apply Hrel.
+           rewrite eq_second; intuition.
     Qed.
       
 End Composition.
