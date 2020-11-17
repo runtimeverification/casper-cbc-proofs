@@ -42,7 +42,8 @@ Context
   (ce := @composed_observation_based_equivocation_evidence
     message index lv_event
     decide_eq 
-    comparable_lv_events
+    lv_event_lt
+    lv_event_lt_dec
     get_event_subject
     index index_listing IM_index Hevidence).
   
@@ -55,7 +56,8 @@ Context
     fold_right (set_union decide_eq) [] (List.map (complete_observations) ls).
   
   Definition GH (s : vstate X) : set index := 
-    List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index lv_event _ comparable_lv_events get_event_subject ce s i)) index_listing.
+    List.filter (fun i : index => negb (
+    bool_decide (@equivocation_evidence (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject ce s i))) index_listing.
   
   Definition GE (s : vstate X) : set index :=
     set_diff idec index_listing (GH s).

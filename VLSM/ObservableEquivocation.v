@@ -58,7 +58,7 @@ Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
   (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
 Proof. firstorder. Qed.
 
-Instance equivocation_evidence_dec {state validator event:Type}
+Global Instance equivocation_evidence_dec {state validator event:Type}
       `{Hevidence: observation_based_equivocation_evidence state validator event}:
       RelDecision equivocation_evidence.
 Proof.

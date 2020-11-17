@@ -581,7 +581,7 @@ Context
         (fun i : index =>
           existsb (fun s : state => negb (inb decide_eq s (get_history' s1 i))) (get_history' s2 i))
         index_listing.
-     
+          
      Definition state_lt'
      (i : index)
      (s1 s2 : (@state index index_listing))
@@ -593,6 +593,22 @@ Context
       (s1 s2 : (@state index index_listing))
       : bool
       := inb decide_eq s1 (get_history s2 i).
+      
+    Lemma state_lt'_dec 
+      (i : index)
+      : RelDecision (state_lt' i).
+    Proof.
+      unfold RelDecision; intros.
+      unfold Decision.
+      destruct (state_ltb' i x y) eqn : eqb; 
+      (unfold state_lt'; unfold state_ltb' in eqb).
+      - left. apply in_correct in eqb. assumption.
+      - right. intros contra. 
+        apply in_correct in contra. 
+        rewrite eqb in contra.
+        discriminate contra. 
+    Qed.
+
 
     Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
     Proof.
@@ -3107,29 +3123,33 @@ Context
         Obs type subject state => state
       end.
     
-    Definition lv_event_ltb (e1 e2 : lv_event) : bool :=
+    Definition lv_event_lt (e1 e2 : lv_event) : Prop :=
     match e1, e2 with
       Obs type1 subject1 state1, Obs type2 subject2 state2 =>
         match decide_eq subject1 subject2 with
-        | right _ => false
+        | right _ => False
         | _ => match type1, type2 with
-               | State, State => false
-               | State, Sent => false
-               | State, Received => false
-               | _, _ => state_ltb' subject1 state1 state2
-               (*
-               | Sent, State => state_ltb state1 state2
-               | Sent, Sent => state_ltb state1 state2
-               | Sent, Received => state_ltb state1 state2
-               | Received, State => state_ltb state1 state2
-               | Received, Sent => state_ltb state1 state2
-               | Received, Received => state_ltb state1 state2
-               *)
+               | State, State => False
+               | State, Sent => False
+               | State, Received => False
+               | _, _ => state_lt' subject1 state1 state2
                end  
         end
     end.
-
-    Existing Instance comparable_lv_events.
+    
+    Lemma lv_event_lt_dec : RelDecision lv_event_lt.
+    Proof.
+      unfold RelDecision. intros.
+      unfold Decision.
+      unfold lv_event_lt.
+      destruct x as [type1 subject1 state1]; destruct y as [type2 subject2 state2].
+      destruct (decide (subject1 = subject2)).
+      - destruct type1 eqn : eq1.
+        + right. destruct type2; auto.
+        + exact (state_lt'_dec subject1 state1 state2).
+        + exact (state_lt'_dec subject1 state1 state2).
+      - right. auto.
+    Qed.
     
     Definition lv_observations (s : state) (target : index) : set lv_event :=
       let messages := (get_observations target (depth s) s) in
@@ -3151,7 +3171,8 @@ Context
        index
        lv_event
        decide_eq 
-       comparable_lv_events
+       lv_event_lt
+       lv_event_lt_dec 
        get_event_subject) := {|
        observable_events := lv_observations;
       |}.
@@ -3202,7 +3223,8 @@ Context
       lv_event
       get_event_subject
       decide_eq
-      comparable_lv_events
+      lv_event_lt
+      lv_event_lt_dec
       observable_full
       Mindex
       Rindex

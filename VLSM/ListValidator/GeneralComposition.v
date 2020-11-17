@@ -56,13 +56,15 @@ Context
   Definition composed_eqv_evidence
   : observation_based_equivocation_evidence (vstate X) index lv_event 
     decide_eq 
-    comparable_lv_events 
+    lv_event_lt
+    lv_event_lt_dec 
     get_event_subject
   :=
   (@composed_observation_based_equivocation_evidence
     message index lv_event
     decide_eq 
-    comparable_lv_events
+    lv_event_lt
+    lv_event_lt_dec
     get_event_subject
     index index_listing IM_index Hevidence
   ).
