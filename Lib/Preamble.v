@@ -842,3 +842,25 @@ Proof.
   exists n2.
   split; assumption.
 Qed.
+
+(** optionally extracts an element belonging to first type from a sum type *)
+Definition sum_project_left
+  {A B : Type}
+  (x : A + B)
+  : option A
+  :=
+  match x with
+  | inl a => Some a
+  | inr _ => None
+  end.
+
+(** optionally extracts an element belonging to second type from a sum type *)
+Definition sum_project_right
+  {A B : Type}
+  (x : A + B)
+  : option B
+  :=
+  match x with
+  | inl _ => None
+  | inr b => Some b
+  end.

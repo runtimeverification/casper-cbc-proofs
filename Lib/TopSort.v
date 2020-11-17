@@ -349,7 +349,7 @@ End topologically_sorted.
 
 Lemma toplogically_sorted_remove_last
   {A : Type}
-  (preceeds : A -> A -> Prop)    
+  (preceeds : A -> A -> Prop)
   {rd: RelDecision preceeds}
   (l : list A)
   (Hts : topologically_sorted preceeds l)

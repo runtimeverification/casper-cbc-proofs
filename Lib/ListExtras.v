@@ -7,6 +7,34 @@ Require Import Coq.Logic.FinFun.
 
 From CasperCBC.Lib Require Import Preamble.
 
+(** It is decidable whether a list is null or not *)
+Lemma null_dec {S} (l : list S) : Decision (l = []).
+Proof.
+  destruct l; [left; reflexivity|right; congruence].
+Qed.
+
+(** A list is either null or it can be decomposed into an initial prefix
+and a last element *)
+Lemma null_or_exists_last {S} (l : list S)
+  : l = [] \/ exists (l' : list S) (a : S), l = l' ++ [a].
+Proof.
+  destruct (null_dec l).
+  - left. assumption.
+  - right. apply exists_last in n. destruct n as [l' [a Heq]].
+    exists l'. exists a. assumption.
+Qed.
+
+(** destructs a list in @l@ in either null or a prefix @l'@ and
+a last element @a@ with an equation @Heq@ stating that @l = l' ++ [a]@
+*)
+Ltac destruct_list_last l l' a Heq := destruct (null_or_exists_last l) as [Heq | [l' [a Heq]]]; rewrite Heq in *.
+
+Lemma last_not_null {S} (l : list S) (a : S)
+  : l ++ [a] <> [].
+Proof.
+  intro contra. destruct l; discriminate contra.
+Qed.
+
 Definition last_error {S} (l : list S) : option S :=
   match l with
   | [] => None
@@ -1390,3 +1418,19 @@ Proof.
       * destruct Hlt as [suf2' Hlt].
         right. right. exists suf2'. simpl. f_equal. assumption.
 Qed.
+
+(** elements belonging to first type in a list of a sum type *)
+Definition list_sum_project_left
+  {A B : Type}
+  (x : list (A + B))
+  : list A
+  :=
+  map_option sum_project_left x.
+
+(** elements belonging to second type in a list of a sum type *)
+Definition list_sum_project_right
+  {A B : Type}
+  (x : list (A + B))
+  : list B
+  :=
+  map_option sum_project_right x.

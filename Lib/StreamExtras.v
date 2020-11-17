@@ -758,8 +758,8 @@ Proof.
     apply Hfs.
     exists 0.
     reflexivity.
-  }  
-  destruct (decide (P (Str_nth k ss))); [|tauto].  
+  }
+  destruct (decide (P (Str_nth k ss))); [|tauto].
   replace (filter _ (stream_prefix ss k)) with (@nil A)
   ; try reflexivity.
   symmetry.
