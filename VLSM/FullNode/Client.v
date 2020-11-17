@@ -398,6 +398,7 @@ messages, implementing a limited equivocation tolerance policy.
     unfold has_been_received_prop. unfold all_traces_have_message_prop.
     unfold client_has_been_received.
     unfold selected_message_exists_in_all_traces.
+    unfold specialized_selected_message_exists_in_all_traces.
     split; intros.
     - apply Exists_exists.
       destruct Htr as [Htr Hinit].

@@ -139,6 +139,24 @@ The next few results describe several properties of the [state_update] operation
       - repeat rewrite state_update_neq; try assumption.
         reflexivity.
     Qed.
+
+    Lemma state_update_twice_neq
+               (s : composite_state)
+               (i j : index)
+               (si : vstate (IM i))
+               (sj : vstate (IM j))
+               (Hij : j <> i)
+      : state_update (state_update s i si) j sj
+      = state_update (state_update s j sj) i si.
+    Proof.
+      apply functional_extensionality_dep_good.
+      intro k.
+      destruct (decide (k = j)); destruct (decide (k = i)); subst
+      ; repeat (rewrite state_update_eq ; try (rewrite state_update_neq; try assumption))
+      ; try reflexivity.
+      repeat (rewrite state_update_neq; try assumption).
+      reflexivity.
+    Qed.
   End composite_type.
 
   Section composite_sig.
@@ -617,6 +635,60 @@ for the [free_composite_vlsm].
           with (sj, om0).
           f_equal.
           apply state_update_twice.
+    Qed.
+
+    (** Updating a composite initial state with a component initial state
+    yields a composite initial state *)
+    Lemma composite_free_update_initial_state_with_initial
+      (s : vstate free_composite_vlsm)
+      (Hs : vinitial_state_prop free_composite_vlsm s)
+      (i : index)
+      (si : vstate (IM i))
+      (Hsi : vinitial_state_prop (IM i) si)
+      : vinitial_state_prop free_composite_vlsm (state_update s i si).
+    Proof.
+      intro j. destruct (decide (j = i)).
+      - subst. rewrite state_update_eq. assumption.
+      - rewrite state_update_neq; try assumption. apply Hs.
+    Qed.
+
+    (** Updating a composite protocol state for the free composition with
+    a component initial state yields a composite protocol state *)
+    Lemma composite_free_update_state_with_initial
+      (s : vstate free_composite_vlsm)
+      (Hs : protocol_state_prop free_composite_vlsm s)
+      (i : index)
+      (si : vstate (IM i))
+      (Hsi : vinitial_state_prop (IM i) si)
+      : protocol_state_prop free_composite_vlsm (state_update s i si).
+    Proof.
+      generalize dependent s. apply protocol_state_prop_ind; intros.
+      - remember (state_update s i si) as s'.
+        assert (Hs' : vinitial_state_prop free_composite_vlsm s')
+          by (subst; apply composite_free_update_initial_state_with_initial; assumption).
+        exists None. replace s' with (proj1_sig (exist _ _ Hs')) by reflexivity.
+        apply protocol_initial_state.
+      - destruct Ht as [[Hps [Hom Hv]] Ht].
+        unfold transition in Ht. simpl in Ht.
+        destruct Hv as [Hv _]. simpl in Hv.
+        destruct l as (j, lj).
+        destruct (vtransition (IM j) lj (s j, om)) as (sj', omj') eqn:Htj.
+        inversion Ht. subst s' om'. clear Ht.
+        destruct (decide (i = j)).
+        + subst. rewrite state_update_twice. assumption.
+        + rewrite state_update_twice_neq; try assumption.
+          destruct Hs as [_om Hs].
+          destruct Hom as [_s Hom].
+          specialize
+            (protocol_generated free_composite_vlsm (existT _ j lj) _ _ Hs _ _ Hom)
+            as Hgen.
+          assert (n' : j <> i) by (intro contra; subst; elim n; reflexivity).
+          spec Hgen.
+          { split; try exact I. simpl. rewrite state_update_neq; assumption. }
+          simpl in Hgen.
+          rewrite state_update_neq in Hgen; try assumption. simpl in *.
+          rewrite Htj in Hgen.
+          eexists _. apply Hgen.
     Qed.
 
   End composite_vlsm.

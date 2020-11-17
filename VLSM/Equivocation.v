@@ -2,7 +2,7 @@ Require Import List Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus Coq.
 Import ListNotations.
 
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition CBC.Common CBC.Equivocation.
+Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition VLSM.ProjectionTraces CBC.Common CBC.Equivocation.
 
 Lemma exists_proj1_sig {A:Type} (P:A -> Prop) (a:A):
   (exists xP:{x | P x}, proj1_sig xP = a) <-> P a.
@@ -82,7 +82,8 @@ Section Simple.
     Definition state_message_oracle
       := vstate vlsm -> message -> Prop.
 
-    Definition selected_message_exists_in_all_traces
+    Definition specialized_selected_message_exists_in_all_traces
+      (X : VLSM message)
       (message_selector : transition_item -> option message)
       (s : state)
       (m : message)
@@ -91,11 +92,15 @@ Section Simple.
       forall
       (start : state)
       (tr : list transition_item)
-      (Htr : finite_protocol_trace pre_vlsm start tr)
+      (Htr : finite_protocol_trace X start tr)
       (Hlast : last (List.map destination tr) start = s),
       List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
 
-    Definition selected_message_exists_in_some_traces
+    Definition selected_message_exists_in_all_traces
+      := specialized_selected_message_exists_in_all_traces pre_vlsm.
+
+    Definition specialized_selected_message_exists_in_some_traces
+      (X : VLSM message)
       (message_selector : transition_item -> option message)
       (s : state)
       (m : message)
@@ -104,9 +109,12 @@ Section Simple.
       exists
       (start : state)
       (tr : list transition_item)
-      (Htr : finite_protocol_trace pre_vlsm start tr)
+      (Htr : finite_protocol_trace X start tr)
       (Hlast : last (List.map destination tr) start = s),
       List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+
+    Definition selected_message_exists_in_some_traces
+      := specialized_selected_message_exists_in_some_traces pre_vlsm.
 
     Definition selected_message_exists_in_no_trace
       (message_selector : transition_item -> option message)
@@ -135,6 +143,38 @@ Section Simple.
         exists is, tr, Htr, Hlast. exact Hsend.
       - intros Hno [is [tr [Htr [Hlast Hsend]]]].
         exact (Hno is tr Htr Hlast Hsend).
+    Qed.
+
+    (** Sufficient condition for 'specialized_selected_message_exists_in_some_traces'
+    *)
+    Lemma specialized_selected_message_exists_in_some_traces_from
+      (X : VLSM message)
+      (message_selector : transition_item -> option message)
+      (s : state)
+      (m : message)
+      (start : state)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace_from X start tr)
+      (Hlast : last (List.map destination tr) start = s)
+      (Hsome : List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr)
+      : specialized_selected_message_exists_in_some_traces X message_selector s m.
+    Proof.
+      apply finite_ptrace_first_pstate in Htr as Hstart.
+      destruct Hstart as [_om Hstart].
+      apply (protocol_is_trace X) in Hstart as Htr_start.
+      destruct Htr_start as [Hinit| Htr_start].
+      - exists start. exists tr. exists (conj Htr Hinit). exists Hlast. assumption.
+      - destruct Htr_start as [is_start [tr_start [Htr_start [Heqstart Hout]]]].
+        apply last_error_destination_last with (default := is_start) in Heqstart.
+        exists is_start. exists (tr_start ++ tr).
+        destruct Htr_start as [Htr_start His_start].
+        split.
+        + split; [|assumption]. subst s. subst start.
+          apply finite_protocol_trace_from_app_iff.
+          split; assumption.
+        + rewrite map_app. rewrite last_app. rewrite Heqstart.
+          exists Hlast.
+          rewrite Exists_app. right. assumption.
     Qed.
 
     Definition selected_messages_consistency_prop
@@ -238,6 +278,26 @@ Section Simple.
                has_not_been_sent_prop has_not_been_sent s m;
     }.
 
+    (** Reverse implication for 'selected_messages_consistency_prop'
+    always holds. *)
+    Lemma consistency_from_protocol_proj2
+      (s : state)
+      (Hs: protocol_state_prop pre_vlsm s)
+      (m : message)
+      (selector : transition_item -> option message)
+      (Hall : selected_message_exists_in_all_traces selector s m)
+      : selected_message_exists_in_some_traces selector s m.
+    Proof.
+      destruct Hs as [om Hs].
+      apply protocol_is_trace in Hs.
+      destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
+      ; [elim (selected_message_exists_in_all_traces_initial_state s Hinit selector m); assumption|].
+      exists is. exists tr. exists Htr.
+      assert (Hlst := last_error_destination_last _ _ Hlast is).
+      exists Hlst.
+      apply (Hall _ _ Htr Hlst).
+    Qed.
+
     Lemma has_been_sent_consistency
       {Hbs : has_been_sent_capability}
       (s : state)
@@ -254,16 +314,62 @@ Section Simple.
         destruct Hsome as [is [tr [Htr [Hlast Hsome]]]].
         elim (Hsm _ _ Htr Hlast).
         assumption.
-      - intro Hall.
-        destruct Hs as [om Hs].
-        apply protocol_is_trace in Hs.
-        destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]];
-          [elim (selected_message_exists_in_all_traces_initial_state s Hinit output m)
-          ; assumption|].
-        exists is. exists tr. exists Htr.
-        assert (Hlst := last_error_destination_last _ _ Hlast is).
-        exists Hlst.
-        apply (Hall _ _ Htr Hlst).
+      - apply consistency_from_protocol_proj2.
+        assumption.
+    Qed.
+
+    (** Sufficent condition for 'proper_sent' avoiding the
+    'pre_loaded_with_all_messages_vlsm'
+    *)
+    Lemma specialized_proper_sent
+      {Hbs : has_been_sent_capability}
+      (s : state)
+      (Hs : protocol_state_prop vlsm s)
+      (m : message)
+      (Hsome : specialized_selected_message_exists_in_some_traces vlsm output s m)
+      : has_been_sent s m.
+    Proof.
+      destruct Hs as [_om Hs].
+      assert (Hpres : protocol_state_prop pre_vlsm s).
+      { exists _om. apply (pre_loaded_with_all_messages_protocol_prop vlsm). assumption. }
+      apply proper_sent; [assumption|].
+      specialize (has_been_sent_consistency s Hpres m) as Hcons.
+      apply Hcons.
+      destruct Hsome as [is [tr [Htr Hsome]]].
+      exists is. exists tr.
+      split; [|assumption].
+      destruct Htr as [Htr Hinit].
+      split; [|assumption].
+      apply (VLSM_incl_finite_trace (machine vlsm) (machine pre_vlsm)).
+      - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
+      - clear -Htr.
+        simpl in *. destruct vlsm. destruct s. simpl. assumption.
+    Qed.
+
+    (** 'proper_sent' condition specialized to regular vlsm traces
+    (avoiding 'pre_loaded_with_all_messages_vlsm')
+    *)
+    Lemma specialized_proper_sent_rev
+      {Hbs : has_been_sent_capability}
+      (s : state)
+      (Hs : protocol_state_prop vlsm s)
+      (m : message)
+      (Hsm : has_been_sent s m)
+      : specialized_selected_message_exists_in_all_traces vlsm output s m.
+    Proof.
+      destruct Hs as [_om Hs].
+      assert (Hpres : protocol_state_prop pre_vlsm s).
+      { exists _om. apply (pre_loaded_with_all_messages_protocol_prop vlsm). assumption. }
+      apply proper_sent in Hsm; [|assumption].
+      intros is tr Htr.
+      specialize (Hsm is tr).
+      spec Hsm;[|assumption].
+      destruct Htr as [Htr Hinit].
+      split; [|assumption].
+      apply (VLSM_incl_finite_trace (machine vlsm) (machine pre_vlsm)).
+      - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
+      - clear -Htr.
+        simpl in *. destruct vlsm. destruct s. simpl. assumption.
     Qed.
 
     Lemma has_been_sent_consistency_proper_not_sent
@@ -321,16 +427,8 @@ Section Simple.
         destruct Hsome as [is [tr [Htr [Hlast Hsome]]]].
         elim (Hsm _ _ Htr Hlast).
         assumption.
-      - intro Hall.
-        destruct Hs as [om Hs].
-        apply protocol_is_trace in Hs.
-        destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]];
-          [elim (selected_message_exists_in_all_traces_initial_state s Hinit input m)
-          ; assumption|].
-        exists is. exists tr. exists Htr.
-        assert (Hlst := last_error_destination_last _ _ Hlast is).
-        exists Hlst.
-        apply (Hall _ _ Htr Hlst).
+      - apply consistency_from_protocol_proj2.
+        assumption.
     Qed.
 
     Lemma has_been_received_consistency_proper_not_received
@@ -638,206 +736,423 @@ End Simple.
 
 Section Composite.
 
-    Context {message : Type}
-            {index : Type}
-            (index_listing : list index)
-            {finite_index : Listing index_listing}
-            {validator : Type}
-            {measurable_V : Measurable validator}
-            {threshold_V : ReachableThreshold validator}
-            (validator_listing : list validator)
-            {finite_validator : Listing validator_listing}
-            {IndEqDec : EqDecision index}
-            (IM : index -> VLSM message)
-            (i0 : index)
-            (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
-            (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
-            (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
-            (sender : message -> option validator)
-            (A : validator -> index)
-            (T : R)
-            (X := composite_vlsm IM i0 constraint)
-            .
+  Context {message : Type}
+          {index : Type}
+          {IndEqDec : EqDecision index}
+          (IM : index -> VLSM message)
+          (i0 : index)
+          (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
+          (X := composite_vlsm IM i0 constraint)
+          {index_listing : list index}
+          (finite_index : Listing index_listing)
+          (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
+          .
 
-     (** It is now straightforward to define a [no_equivocations] composition constraint.
-         An equivocating transition can be detected by calling the [has_been_sent]
-         oracle on its arguments and we simply forbid them **)
+  (** A message 'has_been_sent' for a composite state if it 'has_been_sent' for any of
+  its components.*)
+  Definition composite_has_been_sent
+    (s : vstate X)
+    (m : message)
+    : Prop
+    := exists (i : index), has_been_sent (IM i) (s i) m.
 
-     Definition equivocation
-      (m : message)
-      (s : vstate X)
-      : Prop
-      :=
-      forall (i : index),
-      has_not_been_sent (IM i) (s i) m.
+  (** 'composite_has_been_sent' is decidable. *)
+  Lemma composite_has_been_sent_dec : RelDecision composite_has_been_sent.
+  Proof.
+    intros s m.
+    destruct (existsb (fun i => bool_decide(has_been_sent (IM i) (s i) m)) index_listing)
+      eqn:Hexists.
+    - left.
+      apply existsb_exists in Hexists.
+      destruct Hexists as [i [_ Hi]].
+      exists i.
+      apply bool_decide_eq_true_1 in Hi.
+      assumption.
+    - right.
+      rewrite existsb_forall in Hexists.
+      intros Hbs.
+      destruct Hbs as [i Hbs].
+      spec Hexists i (proj2 finite_index i).
+      apply bool_decide_eq_false_1 in Hexists.
+      elim Hexists. assumption.
+  Qed.
 
-      (* TODO: Reevaluate if this looks better in a positive form *)
+  (** 'composite_has_been_sent' has the 'proper_sent' property. *)
+  Lemma composite_proper_sent
+    (s : vstate X)
+    (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
+    (m : message)
+    : has_been_sent_prop X composite_has_been_sent s m.
+  Proof.
+    split.
+    - intros Hcomposite is tr Htr Hlast.
+      destruct Hcomposite as [i Hbsi].
+      destruct Hs as [_om Hs].
+      apply constraint_subsumption_preloaded_protocol_prop
+        with (constraint2 := free_constraint IM) in Hs
+      ; [|firstorder].
+      apply proper_sent in Hbsi
+      ; [|apply (preloaded_composed_protocol_state IM i0); exists _om; assumption ].
+      specialize (Hbsi (is i) (finite_trace_projection_list IM i0 constraint i tr) ).
+      destruct Htr as [Htr His].
+      spec Hbsi.
+      {
+        specialize (His i).
+        split; [|assumption].
+        apply
+          (preloaded_finite_ptrace_projection IM i0 constraint i); [|assumption].
+        apply initial_is_protocol. assumption.
+      }
+      spec Hbsi.
+      {
+        subst.
+        apply (preloaded_finite_trace_projection_last_state IM i0 constraint i).
+        assumption.
+      }
+      apply Exists_exists. apply Exists_exists in Hbsi.
+      destruct Hbsi as [itemi [Hitemi Hout]].
+      apply (finite_trace_projection_list_in_rev IM i0 constraint) in Hitemi.
+      destruct Hitemi as [itemX [Houtput [Hinput [Hl1 [Hl2 [Hdestination HitemX]]]]]].
+      exists itemX. split; [assumption|]. simpl in *. congruence.
+    - intro Hall.
+      destruct Hs as [_om Hs].
+      apply protocol_is_trace in Hs as Htr.
+      destruct Htr as [Hinit | [is [tr [Htr [Hlast _]]]]]
+      ; [
+        elim (selected_message_exists_in_all_traces_initial_state X s Hinit output m)
+        ; assumption|].
+      specialize (Hall is tr Htr).
+      apply last_error_destination_last with (default := is) in Hlast.
+      spec Hall Hlast.
+      apply Exists_exists in Hall.
+      destruct Hall as [itemX [HitemX Hout]].
+      exists (projT1 (l itemX)).
+      assert
+        (Hsj : protocol_state_prop
+          (pre_loaded_with_all_messages_vlsm (IM (projT1 (l itemX))))
+          (s (projT1 (l itemX))))
+      ; [| apply proper_sent; [assumption|]].
+      + apply (preloaded_composed_protocol_state IM i0).
+        exists _om.
+        apply (constraint_subsumption_preloaded_protocol_prop IM i0 constraint (free_constraint IM))
+        ; [intro; intros; exact I|].
+        assumption.
+      + apply has_been_sent_consistency
+        ; [apply has_been_sent_capabilities|assumption|].
+        exists (is (projT1 (l itemX))).
+        exists (finite_trace_projection_list IM i0 constraint (projT1 (l itemX)) tr).
+        assert
+          (Hisj : protocol_state_prop
+            (pre_loaded_with_all_messages_vlsm (IM (projT1 (l itemX))))
+            (is (projT1 (l itemX))))
+          by (apply initial_is_protocol; apply (proj2 Htr (projT1 (l itemX)))).
+        specialize
+          (preloaded_finite_ptrace_projection IM i0 constraint (projT1 (l itemX)) is
+            Hisj tr (proj1 Htr)
+          ) as Htrj.
+        exists (conj Htrj (proj2 Htr (projT1 (l itemX)))).
+        specialize
+          (preloaded_finite_trace_projection_last_state IM i0 constraint
+            (projT1 (l itemX)) is tr (proj1 Htr)) as Hlst.
+        simpl in Hlst. subst s. exists Hlst.
+        apply Exists_exists.
+        specialize (finite_trace_projection_list_in IM i0 constraint _ _ HitemX)
+          as Hitemj.
+        simpl in Hitemj.
+        exists ({|
+        l := projT2 (l itemX);
+        input := input itemX;
+        destination := destination itemX (projT1 (l itemX));
+        output := output itemX |}).
+        split; assumption.
+  Qed.
 
-      Definition no_equivocations
-        (l : vlabel X)
-        (som : vstate X * option message)
-        : Prop
-        :=
-        let (s, om) := som in
-        match om with
-        | None => True
-        | Some m => ~equivocation m s
-        end.
+  (** 'composite_has_been_sent' has the consistency property for 'output' messages. *)
+  Lemma composite_output_consistency
+    (s : vstate X)
+    (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
+    (m : message)
+    : selected_messages_consistency_prop X output s m.
+  Proof.
+    split.
+    - intros Hsome is. intros.
+      destruct Hsome as [is0 [tr0 [Htr0 [Hlst0 Hsome]]]].
+      apply Exists_exists in Hsome.
+      destruct Hsome as [item0 [Hitem0 Houtput0]].
+      pose (projT1 (l item0)) as j.
+      assert (Hsomej : selected_message_exists_in_some_traces (IM j) output (s j) m).
+      { exists (is0 j).
+        exists (finite_trace_projection_list IM i0 constraint j tr0).
+        assert
+          (His0j : protocol_state_prop
+            (pre_loaded_with_all_messages_vlsm (IM j))
+            (is0 j))
+          by (apply initial_is_protocol; apply (proj2 Htr0 j)).
+        specialize
+          (preloaded_finite_ptrace_projection IM i0 constraint j is0
+            His0j tr0 (proj1 Htr0)
+          ) as Htr0j.
+        exists (conj Htr0j (proj2 Htr0 j)).
+        specialize
+          (preloaded_finite_trace_projection_last_state IM i0 constraint
+            j is0 tr0 (proj1 Htr0)) as Hlst0'.
+        simpl in Hlst0. rewrite <- Hlst0. exists Hlst0'.
+        apply Exists_exists.
+        specialize
+          (finite_trace_projection_list_in IM i0 constraint _ _ Hitem0) as Hitem0j.
+        simpl in Hitem0j.
+        exists {|
+        l := projT2 (l item0);
+        input := input item0;
+        destination := destination item0 (projT1 (l item0));
+        output := output item0 |}.
+        split; assumption.
+      }
+      assert
+        (Hisj : protocol_state_prop
+          (pre_loaded_with_all_messages_vlsm (IM j))
+          (is j))
+        by (apply initial_is_protocol; apply (proj2 Htr j)).
+      specialize
+        (preloaded_finite_ptrace_projection IM i0 constraint j is
+          Hisj tr (proj1 Htr)
+        ) as Htrj.
+      specialize
+          (preloaded_finite_trace_projection_last_state IM i0 constraint
+            j is tr (proj1 Htr)) as Hlst.
+      apply has_been_sent_consistency in Hsomej.
+      + spec Hsomej (is j) (finite_trace_projection_list IM i0 constraint j tr).
+        specialize (Hsomej (conj Htrj (proj2 Htr j))).
+        simpl in Hlst. rewrite <- Hlast in Hsomej. specialize (Hsomej Hlst).
+        apply Exists_exists in Hsomej.
+        destruct Hsomej as [itemj [Hitemj Hout]].
+        apply (finite_trace_projection_list_in_rev IM i0 constraint) in Hitemj.
+        destruct Hitemj as [item [Houtput [_ [_ [_ [_ HitemX]]]]]].
+        apply Exists_exists. exists item.
+        split; [assumption|].
+        simpl in *.
+        congruence.
+      + apply has_been_sent_capabilities.
+      + apply finite_ptrace_last_pstate in Htrj as Hsj.
+        simpl in *. rewrite Hlst in Hsj.
+        rewrite <- Hlast.
+        assumption.
+    - apply consistency_from_protocol_proj2.
+      assumption.
+  Qed.
 
+  (** The negation of 'composite_has_been_sent' has the 'proper_not_sent' property.*)
+  Lemma composite_proper_not_sent
+    (s: vstate X)
+    (Hs: protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
+    (m: message)
+    : has_not_been_sent_prop X
+      (fun (s0 : vstate X) (m0 : message) => ~ composite_has_been_sent s0 m0) s m.
+  Proof.
+    apply has_been_sent_consistency_proper_not_sent.
+    - apply composite_has_been_sent_dec.
+    - apply composite_proper_sent. assumption.
+    - apply composite_output_consistency. assumption.
+  Qed.
 
-      (** Definitions for safety and nontriviality of the [sender] function.
-          Safety means that if we designate a validator as the sender
-          of a certain messsage, then it is impossible for other components
-          to produce that message
+  Global Instance composite_has_been_sent_capability : has_been_sent_capability X
+    :=
+    { has_been_sent := composite_has_been_sent
+    ; has_been_sent_dec := composite_has_been_sent_dec
+    ; proper_sent := composite_proper_sent
+    ; proper_not_sent := composite_proper_not_sent
+    }.
 
-          Weak/strong nontriviality say that each validator should
-          be designated sender for at least one/all its protocol
-          messages.
-      **)
+  (** It is now straightforward to define a [no_equivocations] composition constraint.
+      An equivocating transition can be detected by calling the [has_been_sent]
+      oracle on its arguments and we simply forbid them **)
 
-      Definition sender_safety_prop : Prop :=
-        forall
-        (i : index)
-        (m : message)
-        (v : validator)
-        (Hid : A v = i)
-        (Hsender : sender m = Some v),
-        can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m /\
-        forall (j : index)
-               (Hdif : i <> j),
-               ~can_emit (composite_vlsm_constrained_projection IM i0 constraint j) m.
+  Definition equivocation
+   (m : message)
+   (s : vstate X)
+   : Prop
+   :=
+   has_not_been_sent X s m.
 
-       (** An alternative, possibly friendlier, formulation. Note that it is
-           slightly weaker, in that it does not require that the sender
-           is able to send the message. **)
+  Definition no_equivocations
+    (l : vlabel X)
+    (som : vstate X * option message)
+    : Prop
+    :=
+    let (s, om) := som in
+    match om with
+    | None => True
+    | Some m => has_been_sent X s m
+    end.
 
-       Definition sender_safety_alt_prop : Prop :=
-        forall
-        (i : index)
-        (m : message)
-        (v : validator)
-        (Hsender : sender m = Some v),
-        can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m ->
-        A v = i.
+  Context
+        {validator : Type}
+        (A : validator -> index)
+        (sender : message -> option validator)
+        .
 
-       Definition sender_weak_nontriviality_prop : Prop :=
-        forall (v : validator),
-        exists (m : message),
-        can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m /\
-        sender m = Some v.
+  (** Definitions for safety and nontriviality of the [sender] function.
+      Safety means that if we designate a validator as the sender
+      of a certain messsage, then it is impossible for other components
+      to produce that message
 
-       Definition sender_strong_nontriviality_prop : Prop :=
-        forall (v : validator),
-        forall (m : message),
-        can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m ->
-        sender m = Some v.
+      Weak/strong nontriviality say that each validator should
+      be designated sender for at least one/all its protocol
+      messages.
+  **)
 
-       (** We say that a validator <v> (with associated component <i>) is equivocating wrt.
-       to another component <j>, if there exists a message which [has_been_received] by
-       <j> but [has_not_been_sent] by <i> **)
+  Definition sender_safety_prop : Prop :=
+    forall
+    (i : index)
+    (m : message)
+    (v : validator)
+    (Hid : A v = i)
+    (Hsender : sender m = Some v),
+    can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m /\
+    forall (j : index)
+           (Hdif : i <> j),
+           ~can_emit (composite_vlsm_constrained_projection IM i0 constraint j) m.
 
-       Definition equivocating_wrt
-        (v : validator)
-        (j : index)
-        (sv sj : state)
-        (i := A v)
-        : Prop
-        :=
-        exists (m : message),
-        sender(m) = Some v /\
-        has_not_been_sent  (IM i) sv m /\
-        has_been_received  (IM j) sj m.
+   (** An alternative, possibly friendlier, formulation. Note that it is
+       slightly weaker, in that it does not require that the sender
+       is able to send the message. **)
 
-        (** We can now decide whether a validator is equivocating in a certain state. **)
+  Definition sender_safety_alt_prop : Prop :=
+    forall
+    (i : index)
+    (m : message)
+    (v : validator)
+    (Hsender : sender m = Some v),
+    can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m ->
+    A v = i.
 
-        Definition is_equivocating_statewise
-          (s : vstate X)
-          (v : validator)
-          : Prop
-          :=
-          exists (j : index),
-          j <> (A v) /\
-          equivocating_wrt v j (s (A v)) (s j).
+  Definition sender_weak_nontriviality_prop : Prop :=
+    forall (v : validator),
+    exists (m : message),
+    can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m /\
+    sender m = Some v.
 
-        (** An alternative definition for detecting equivocation in a certain state,
-            which checks if for every [protocol_trace] there exists equivocation
-            involving the given validator
+  Definition sender_strong_nontriviality_prop : Prop :=
+    forall (v : validator),
+    forall (m : message),
+    can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m ->
+    sender m = Some v.
 
-            Notably, this definition is not generally equivalent to [is_equivocating_statewise],
-            which does not verify the order in which receiving and sending occurred.
-        **)
+  Context
+        (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
+        .
+   (** We say that a validator <v> (with associated component <i>) is equivocating wrt.
+   to another component <j>, if there exists a message which [has_been_received] by
+   <j> but [has_not_been_sent] by <i> **)
 
-        Definition is_equivocating_tracewise
-          (s : vstate X)
-          (v : validator)
-          (j := A v)
-          : Prop
-          :=
-          forall (tr : protocol_trace X)
-          (last : transition_item)
-          (prefix : list transition_item)
-          (Hpr : trace_prefix X (proj1_sig tr) last prefix)
-          (Hlast : destination last = s),
-          exists (m : message),
-          (sender m = Some v) /\
-          List.Exists
-          (fun (elem : vtransition_item X) =>
-          input elem = Some m
-          /\ ~has_been_sent (IM j) ((destination elem) j) m
-          ) prefix.
+  Definition equivocating_wrt
+    (v : validator)
+    (j : index)
+    (sv sj : state)
+    (i := A v)
+    : Prop
+    :=
+    exists (m : message),
+    sender(m) = Some v /\
+    has_not_been_sent  (IM i) sv m /\
+    has_been_received  (IM j) sj m.
 
-        (** A possibly friendlier version using a previously defined primitive. **)
-        Definition is_equivocating_tracewise_alt
-          (s : vstate X)
-          (v : validator)
-          (j := A v)
-          : Prop
-          :=
-          forall (tr : protocol_trace X)
-          (last : transition_item)
-          (prefix : list transition_item)
-          (Hpr : trace_prefix X (proj1_sig tr) last prefix)
-          (Hlast : destination last = s),
-          exists (m : message),
-          (sender m = Some v) /\
-          equivocation_in_trace X m (prefix ++ [last]).
+  (** We can now decide whether a validator is equivocating in a certain state. **)
 
-        (** For the equivocation sum fault to be computable, we require that
-            our is_equivocating property is decidable. The current implementation
-            refers to [is_equivocating_statewise], but this might change
-            in the future **)
+  Definition is_equivocating_statewise
+    (s : vstate X)
+    (v : validator)
+    : Prop
+    :=
+    exists (j : index),
+    j <> (A v) /\
+    equivocating_wrt v j (s (A v)) (s j).
 
-        Definition equivocation_dec_statewise
-           (Hdec : forall (s : vstate X) (v : validator),
-             {is_equivocating_statewise s v} + {~is_equivocating_statewise s v})
-            : basic_equivocation (vstate X) (validator)
-          :=
-          {|
-            state_validators := fun _ => validator_listing;
-            state_validators_nodup := fun _ => proj1 finite_validator;
-            is_equivocating_fn := fun (s : vstate X) (v : validator) =>
-              if Hdec s v then true else false
-          |}.
+  (** An alternative definition for detecting equivocation in a certain state,
+      which checks if for every [protocol_trace] there exists equivocation
+      involving the given validator
 
-        Definition equivocation_dec_tracewise
-           (Hdec : forall (s : vstate X) (v : validator),
-             {is_equivocating_tracewise s v} + {~is_equivocating_tracewise s v})
-            : basic_equivocation (vstate X) (validator)
-          :=
-          {|
-            state_validators := fun _ => validator_listing;
-            state_validators_nodup := fun _ => proj1 finite_validator;
-            is_equivocating_fn := fun (s : vstate X) (v : validator) =>
-              if Hdec s v then true else false
-          |}.
+      Notably, this definition is not generally equivalent to [is_equivocating_statewise],
+      which does not verify the order in which receiving and sending occurred.
+  **)
 
-        Definition equivocation_fault_constraint
-          (Dec : basic_equivocation (vstate X) validator)
-          (l : vlabel X)
-          (som : vstate X * option message)
-          : Prop
-          :=
-          let (s', om') := (vtransition X l som) in
-          not_heavy s'.
+  Definition is_equivocating_tracewise
+    (s : vstate X)
+    (v : validator)
+    (j := A v)
+    : Prop
+    :=
+    forall (tr : protocol_trace X)
+    (last : transition_item)
+    (prefix : list transition_item)
+    (Hpr : trace_prefix X (proj1_sig tr) last prefix)
+    (Hlast : destination last = s),
+    exists (m : message),
+    (sender m = Some v) /\
+    List.Exists
+    (fun (elem : vtransition_item X) =>
+    input elem = Some m
+    /\ ~has_been_sent (IM j) ((destination elem) j) m
+    ) prefix.
+
+  (** A possibly friendlier version using a previously defined primitive. **)
+  Definition is_equivocating_tracewise_alt
+    (s : vstate X)
+    (v : validator)
+    (j := A v)
+    : Prop
+    :=
+    forall (tr : protocol_trace X)
+    (last : transition_item)
+    (prefix : list transition_item)
+    (Hpr : trace_prefix X (proj1_sig tr) last prefix)
+    (Hlast : destination last = s),
+    exists (m : message),
+    (sender m = Some v) /\
+    equivocation_in_trace X m (prefix ++ [last]).
+
+  Context
+      (validator_listing : list validator)
+      {finite_validator : Listing validator_listing}
+      {measurable_V : Measurable validator}
+      {threshold_V : ReachableThreshold validator}
+      .
+  (** For the equivocation sum fault to be computable, we require that
+      our is_equivocating property is decidable. The current implementation
+      refers to [is_equivocating_statewise], but this might change
+      in the future **)
+
+  Definition equivocation_dec_statewise
+     (Hdec : forall (s : vstate X) (v : validator),
+       {is_equivocating_statewise s v} + {~is_equivocating_statewise s v})
+      : basic_equivocation (vstate X) (validator)
+    :=
+    {|
+      state_validators := fun _ => validator_listing;
+      state_validators_nodup := fun _ => proj1 finite_validator;
+      is_equivocating_fn := fun (s : vstate X) (v : validator) =>
+        if Hdec s v then true else false
+    |}.
+
+  Definition equivocation_dec_tracewise
+     (Hdec : forall (s : vstate X) (v : validator),
+       {is_equivocating_tracewise s v} + {~is_equivocating_tracewise s v})
+      : basic_equivocation (vstate X) (validator)
+    :=
+    {|
+      state_validators := fun _ => validator_listing;
+      state_validators_nodup := fun _ => proj1 finite_validator;
+      is_equivocating_fn := fun (s : vstate X) (v : validator) =>
+        if Hdec s v then true else false
+    |}.
+
+  Definition equivocation_fault_constraint
+    (Dec : basic_equivocation (vstate X) validator)
+    (l : vlabel X)
+    (som : vstate X * option message)
+    : Prop
+    :=
+    let (s', om') := (vtransition X l som) in
+    not_heavy s'.
 
 End Composite.

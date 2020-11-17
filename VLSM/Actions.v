@@ -9,10 +9,10 @@ Section actions.
     {T : VLSM_type message}.
 
   Record action_item :=
-    { label_a : label;   
+    { label_a : label;
       input_a : option message
     }.
-    
+
 End actions.
 
 Section apply_actions.
@@ -23,7 +23,7 @@ Section apply_actions.
 
   Definition vaction_item {message : Type} (X : VLSM message) : Type
     := @action_item message (type X).
-  
+
   Definition vaction {message : Type} (X : VLSM message) : Type
     := list (vaction_item X).
 
@@ -31,7 +31,7 @@ Section apply_actions.
     (a : vaction_item X)
     (sl : vstate X * list (vtransition_item X))
     : vstate X * list (vtransition_item X)
-    := 
+    :=
     let (s, items) := sl in
     match a with {| label_a := l'; input_a := input' |} =>
       let (dest, out) := (vtransition X l' (s, input')) in
@@ -60,7 +60,7 @@ Section apply_actions.
   Qed.
 
   Definition apply_action
-    (start : vstate X) 
+    (start : vstate X)
     (a : vaction X)
     : list (vtransition_item X) * vstate X
     :=
@@ -69,7 +69,7 @@ Section apply_actions.
     (rev items, final).
 
   Lemma apply_action_last
-    (start : vstate X) 
+    (start : vstate X)
     (a : vaction X)
     (after_a := apply_action start a)
     : last (map destination (fst after_a)) start = snd after_a.
@@ -116,7 +116,7 @@ Section apply_actions.
     (a : vaction X)
     : Prop :=
     finite_protocol_trace_from _ s (fst (apply_action s a)).
-  
+
   Lemma finite_protocol_action_from_app_iff
     (s : vstate X)
     (a b : vaction X)
@@ -137,12 +137,12 @@ Section apply_actions.
     (item : vtransition_item X)
     : vaction_item X
     := {| label_a := l item; input_a := input item |}.
-  
+
   Definition trace_to_action
     (items : list (vtransition_item X))
     : vaction X
     := map transition_item_to_action_item items.
-  
+
   Lemma trace_to_action_to_trace
     (s : vstate X)
     (tr : list (vtransition_item X))

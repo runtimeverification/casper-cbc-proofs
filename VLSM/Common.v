@@ -113,6 +113,15 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
         ;   output : option message
     }.
 
+  (** 'proto_run's are used for an alternative definition of 'protocol_prop' which
+  takes intro account transitions. See 'vlsm_run_prop'.
+  *)
+  Record proto_run : Type := mk_proto_run
+    { start : state
+      ; transitions : list transition_item
+      ; final : state * option message
+    }.
+
   Inductive Trace : Type :=
   | Finite : state -> list transition_item -> Trace
   | Infinite : state -> Stream transition_item -> Trace.
@@ -178,6 +187,7 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition vvalid := @valid _ _ _ machine.
   Definition vtransition_item := @transition_item _ type.
   Definition vTrace := @Trace _ type.
+  Definition vproto_run := @proto_run _ type.
 
 End vlsm_projections.
 
@@ -786,12 +796,17 @@ decompose the above properties in proofs.
     Qed.
 
     Lemma extend_right_finite_trace_from
-      : forall s1 ts s3 iom3 oom3 l3 (s2 := List.last (List.map destination ts) s1),
-        finite_protocol_trace_from s1 ts ->
-        protocol_transition l3 (s2, iom3) (s3, oom3) ->
-        finite_protocol_trace_from s1 (ts ++ [{| l := l3; destination := s3; input := iom3; output := oom3 |}]).
+      (s1 : state)
+      (ts : list transition_item)
+      (Ht12 : finite_protocol_trace_from s1 ts)
+      (l3 : label)
+      (s2 := List.last (List.map destination ts) s1)
+      (iom3 : option message)
+      (s3 : state)
+      (oom3 : option message)
+      (Hv23 : protocol_transition l3 (s2, iom3) (s3, oom3))
+      : finite_protocol_trace_from s1 (ts ++ [{| l := l3; destination := s3; input := iom3; output := oom3 |}]).
     Proof.
-      intros s1 ts s3 iom3 oom3 l3 s2 Ht12 Hv23.
       induction Ht12.
       - simpl. apply finite_ptrace_extend; try assumption.
         constructor. apply (protocol_transition_destination Hv23).
@@ -1172,22 +1187,17 @@ It inherits some previously introduced definitions, culminating with the
 
     (* begin hide *)
     (* Protocol runs *)
-    Record proto_run : Type := mk_proto_run
-                                 { start : initial_state
-                                   ; transitions : list transition_item
-                                   ; final : state * option message
-                                 }.
 
     Inductive vlsm_run_prop : proto_run -> Prop :=
     | empty_run_initial_state
-        (is : initial_state)
-        (s : state := proj1_sig is)
-      : vlsm_run_prop {| start := is; transitions := []; final := (s, None) |}
+        (is : state)
+        (His : initial_state_prop is)
+      : vlsm_run_prop {| start := is; transitions := []; final := (is, None) |}
     | empty_run_initial_message
-        (im : initial_message)
+        (im : message)
+        (Him : initial_message_prop im)
         (s : state := proj1_sig s0)
-        (om : option message := Some (proj1_sig im))
-      : vlsm_run_prop {| start := s0; transitions := []; final := (s, om) |}
+      : vlsm_run_prop {| start := s; transitions := []; final := (s, Some im) |}
     | extend_run
         (state_run : proto_run)
         (Hs : vlsm_run_prop state_run)
@@ -1207,6 +1217,21 @@ It inherits some previously introduced definitions, culminating with the
           ;   output := snd som'
           |}]; final := som' |}.
 
+    (** The output message of a vlsm_run with no transitions must be initial*)
+    Lemma vlsm_run_no_transitions_output
+      (run : proto_run)
+      (Hrun : vlsm_run_prop run)
+      (Hno_transitions : transitions run = [])
+      (m : message)
+      (Houtput : snd (final run) = Some m)
+      : initial_message_prop m.
+    Proof.
+      destruct run. destruct final0. simpl in *.
+      subst.
+      inversion Hrun; subst; [assumption|].
+      destruct ts; discriminate H1.
+    Qed.
+
     Definition vlsm_run : Type :=
       { r : proto_run | vlsm_run_prop r }.
 
@@ -1214,7 +1239,7 @@ It inherits some previously introduced definitions, culminating with the
     Lemma vlsm_run_last_state
       (vr : vlsm_run)
       (r := proj1_sig vr)
-      : last (List.map destination (transitions r)) (proj1_sig (start r)) = fst (final r).
+      : last (List.map destination (transitions r)) (start r) = fst (final r).
     Proof.
       unfold r; clear r; destruct vr as [r Hr]; simpl.
       induction Hr; simpl; try reflexivity.
@@ -1242,11 +1267,13 @@ It inherits some previously introduced definitions, culminating with the
       : protocol_prop (final (proj1_sig vr)).
     Proof.
       destruct vr as [r Hr]; simpl.
-      induction Hr; simpl in *; try constructor.
-      unfold om in *; clear om. unfold s in *; clear s.
-      destruct (final state_run) as [s _om].
-      destruct (final msg_run) as [_s om].
-      specialize (protocol_generated l1 s _om IHHr1 _s om IHHr2 Hv). intro. assumption.
+      induction Hr; simpl in *.
+      - replace is with (proj1_sig (exist _ is His)) by reflexivity. constructor.
+      - replace im with (proj1_sig (exist _ im Him)) by reflexivity. constructor.
+      - unfold om in *; clear om. unfold s in *; clear s.
+        destruct (final state_run) as [s _om].
+        destruct (final msg_run) as [_s om].
+        specialize (protocol_generated l1 s _om IHHr1 _s om IHHr2 Hv). intro. assumption.
     Qed.
 
     Lemma protocol_is_run
@@ -1255,8 +1282,8 @@ It inherits some previously introduced definitions, culminating with the
       : exists vr : vlsm_run, (som' = final (proj1_sig vr)).
     Proof.
       induction Hp.
-      - exists (exist _ _ (empty_run_initial_state is)); reflexivity.
-      - exists (exist _ _ (empty_run_initial_message im)); reflexivity.
+      - exists (exist _ _ (empty_run_initial_state _ (proj2_sig is))); reflexivity.
+      - exists (exist _ _ (empty_run_initial_message _ (proj2_sig im))); reflexivity.
       - destruct IHHp1 as [[state_run Hsr] Heqs]. destruct IHHp2 as [[msg_run Hmr] Heqm].
         specialize (extend_run state_run Hsr). simpl. intros Hvr.
         specialize (Hvr msg_run Hmr l1). simpl in Heqs. simpl in Heqm.
@@ -1267,12 +1294,12 @@ It inherits some previously introduced definitions, culminating with the
     Lemma run_is_trace
           (vr : vlsm_run)
           (r := proj1_sig vr)
-      : protocol_trace_prop (Finite (proj1_sig (start r)) (transitions r)).
+      : protocol_trace_prop (Finite (start r) (transitions r)).
     Proof.
       unfold r; clear r; destruct vr as [r Hr]; simpl.
       induction Hr; simpl.
-      - specialize (protocol_initial_state is); intro Hpis; simpl in Hpis.
-        destruct is as [is His]; simpl. constructor; try assumption. constructor.
+      - specialize (protocol_initial_state (exist _ is His)) as Hpis; simpl in Hpis.
+        constructor; try assumption. constructor.
         exists None. assumption.
       - specialize (protocol_initial_state s0); intro Hps0; simpl in Hps0.
         destruct s0 as [s0 Hs0]; simpl. constructor; try assumption. constructor.
@@ -1291,29 +1318,25 @@ It inherits some previously introduced definitions, culminating with the
     Qed.
 
     Lemma trace_is_run
-      (is : initial_state)
+      (is : state)
       (tr : list transition_item)
-      (Htr : finite_protocol_trace_from (proj1_sig is) tr)
+      (Htr : finite_protocol_trace is tr)
       : exists r : proto_run,
         vlsm_run_prop r /\
         start r = is /\ transitions r = tr.
     Proof.
-      generalize dependent tr.
-      apply (rev_ind (fun tr => (finite_protocol_trace_from (proj1_sig is) tr ->
-                exists r : proto_run, vlsm_run_prop r /\ start r = is /\ transitions r = tr))).
-      - intros H.
-        exists {| start := is; transitions := []; final := (proj1_sig is, None) |}; simpl; repeat split; try reflexivity.
-        apply empty_run_initial_state.
-      - intros lst prefix IHprefix H.
-        apply finite_protocol_trace_from_app_iff in H.
-        destruct H as [Hprefix Hlst].
-        specialize (IHprefix Hprefix).
-        destruct IHprefix as [r0 [Hr0 [Hstart Htr_r0]]].
-        exists {| start := is; transitions := prefix ++ [lst]; final := (destination lst, output lst) |}.
+      induction tr using rev_ind.
+      - exists {| start := is; transitions := []; final := (is, None) |}; simpl; repeat split; try reflexivity.
+        apply empty_run_initial_state. apply (proj2 Htr).
+      - destruct Htr as [Htr Hinit]. apply finite_protocol_trace_from_app_iff in Htr.
+        destruct Htr as [Hprefix Hlst].
+        specialize (IHtr (conj Hprefix Hinit)).
+        destruct IHtr as [r0 [Hr0 [Hstart Htr_r0]]].
+        exists {| start := is; transitions := tr ++ [x]; final := (destination x, output x) |}.
         simpl. repeat split; try reflexivity.
         specialize (extend_run r0 Hr0); simpl; intro Hextend.
         apply finite_ptrace_first_valid_transition in Hlst.
-        destruct lst as [lst_l lst_in lst_dest lst_out].
+        destruct x as [lst_l lst_in lst_dest lst_out].
         simpl in *.
         specialize (vlsm_run_last_state (exist _ r0 Hr0)); intro Hlast_state.
         simpl in Hlast_state. rewrite Htr_r0 in Hlast_state.
@@ -1330,13 +1353,13 @@ It inherits some previously introduced definitions, culminating with the
         rewrite Htransition in Hextend. simpl in Hextend.
         rewrite Htr_r0 in Hextend.
         apply Hextend.
-        Qed.
+    Qed.
 
     Lemma trace_is_protocol
-      (is : initial_state)
+      (is : state)
       (tr : list transition_item)
-      (Htr : finite_protocol_trace_from (proj1_sig is) tr)
-      : protocol_state_prop (last (List.map destination tr) (proj1_sig is)).
+      (Htr : finite_protocol_trace is tr)
+      : protocol_state_prop (last (List.map destination tr) is).
     Proof.
       specialize (trace_is_run is tr Htr); simpl; intro Hrun.
       destruct Hrun as [run [Hrun [Hstart Htrans]]].
@@ -1372,14 +1395,36 @@ in <<s>> by outputting <<m>> *)
       destruct vr as [r Hvr]; simpl in *.
       destruct (transitions r) eqn:Htrace.
       - inversion Hvr; subst; simpl in Htrace; simpl in Heq; inversion Heq; subst.
-        + destruct is as [s0 His]. left. assumption.
+        + left. assumption.
         + destruct s0 as [s0 His]. left. assumption.
         + destruct ts; inversion Htrace.
-      - right. exists (proj1_sig (start r)). exists (transitions r). rewrite Htrace.
+      - right. exists (start r). exists (transitions r). rewrite Htrace.
         split; try assumption.
         specialize (vlsm_run_last_final (exist _ r Hvr)); simpl; rewrite Htrace; simpl.
         rewrite <- Heq.
         intros Hlf; apply Hlf. intros HC; inversion HC.
+    Qed.
+
+    (** Any trace with the 'finite_protocol_trace_from' property can be completed
+    (to the left) to start in an initial state*)
+    Lemma finite_protocol_trace_from_complete_left
+      (s : state)
+      (tr : list transition_item)
+      (Htr : finite_protocol_trace_from s tr)
+      : exists (is : state) (trs : list transition_item),
+        finite_protocol_trace is (trs ++ tr).
+    Proof.
+      apply finite_ptrace_first_pstate in Htr as Hs.
+      destruct Hs as [om Hs].
+      apply protocol_is_trace in Hs.
+      destruct Hs as [Hs | [is [trs [Htrs [Hs Hom]]]]].
+      - exists s. exists []. split; assumption.
+      - exists is. exists trs.
+        destruct Htrs as [Htrs His].
+        split; [|assumption].
+        apply last_error_destination_last with (default := is) in Hs.
+        apply finite_protocol_trace_from_app_iff. split; [assumption|].
+        rewrite Hs. assumption.
     Qed.
 
 (**
@@ -1520,18 +1565,18 @@ This relation is often used in stating safety and liveness properties.*)
       destruct prefix_run as [prefix_run Hpref_run].
       destruct prefix_run as [prefix_start prefix_tr prefix_final].
       subst; simpl in *.
-      specialize (finite_protocol_trace_from_app_iff (proj1_sig prefix_start) prefix_tr suffix_tr); intro Happ.
+      specialize (finite_protocol_trace_from_app_iff prefix_start prefix_tr suffix_tr); intro Happ.
       simpl in Happ.
       rewrite Hprefix_last in Happ. rewrite <- Hprefix_run in Happ.
       simpl in Happ.
       destruct Happ as [Happ _].
       destruct Hprefix_tr as [Hprefix_tr Hinit].
       specialize (Happ (conj Hprefix_tr Hsuffix_tr)).
-      assert (Hfinite_tr: finite_protocol_trace (proj1_sig prefix_start) (prefix_tr ++ suffix_tr))
+      assert (Hfinite_tr: finite_protocol_trace prefix_start (prefix_tr ++ suffix_tr))
         by (constructor; assumption).
-      assert (Htr : protocol_trace_prop (Finite (proj1_sig prefix_start) (prefix_tr ++ suffix_tr)))
+      assert (Htr : protocol_trace_prop (Finite prefix_start (prefix_tr ++ suffix_tr)))
         by assumption.
-      exists (exist _ (Finite (proj1_sig prefix_start) (prefix_tr ++ suffix_tr)) Htr).
+      exists (exist _ (Finite prefix_start (prefix_tr ++ suffix_tr)) Htr).
       simpl.
       exists (length prefix_tr).
       exists (length prefix_tr + length suffix_tr).
@@ -1554,7 +1599,7 @@ This relation is often used in stating safety and liveness properties.*)
             - specialize (nth_error_last (List.map destination prefix_tr) m); intro Hnth.
               assert (Hlen : S m = length (List.map destination prefix_tr))
                 by (rewrite map_length; assumption).
-              specialize (Hnth Hlen (proj1_sig prefix_start)).
+              specialize (Hnth Hlen prefix_start).
               rewrite Hnth. f_equal. subst.
               rewrite Hprefix_last. reflexivity.
             - rewrite map_length. rewrite <- Heqm. constructor.
@@ -2026,6 +2071,37 @@ is also available to Y.
         + apply Hxy.
         + apply Hyx.
     Qed.
+
+    (** VLSM inclusion specialized to finite trace. *)
+    Lemma VLSM_incl_finite_trace
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (Hincl : VLSM_incl_part MX MY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (s : vstate X)
+      (tr : list (vtransition_item X))
+      (Htr : finite_protocol_trace_from X s tr)
+      : finite_protocol_trace_from Y s tr.
+    Proof.
+      specialize (finite_ptrace_first_pstate X _ _ Htr) as Hs.
+      destruct Hs as [_om Hs].
+      apply (protocol_is_trace X) in Hs.
+      destruct Hs as [Hs | [is [trs [Htrs [Hs _]]]]].
+      - assert (Hptr : protocol_trace_prop X (Finite s tr)) by (split; assumption).
+        apply Hincl in Hptr. destruct Hptr as [HtrY _]. assumption.
+      - destruct Htrs as [Htrs His].
+        apply last_error_destination_last with (default := is) in Hs.
+        rewrite <- Hs in Htr.
+        specialize (finite_protocol_trace_from_app_iff X is trs tr) as Happ.
+        apply proj1 in Happ.
+        specialize (Happ (conj Htrs Htr)).
+        assert (Hptr : protocol_trace_prop X (Finite is (trs ++ tr))) by (split; assumption).
+        apply Hincl in Hptr. destruct Hptr as [HtrY _].
+        apply (finite_protocol_trace_from_app_iff Y is trs tr) in HtrY.
+        destruct HtrY as [_ HtrY].
+        subst. assumption.
+    Qed.
+
   (* end hide *)
   End VLSM_equality.
 

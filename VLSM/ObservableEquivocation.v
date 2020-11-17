@@ -846,7 +846,8 @@ the [happens_before_fn].
 *)
 Lemma no_equivocation_constraint_implies_no_equivocations
   (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (Hno_equiv : constraint_subsumption IM constraint (no_equivocations IM i0 constraint Hbs))
+  (Xhbs : has_been_sent_capability (composite_vlsm IM i0 constraint) := composite_has_been_sent_capability IM i0 constraint finite_index Hbs)
+  (Hno_equiv : constraint_subsumption IM constraint (no_equivocations IM i0 constraint finite_index Hbs))
   (s : vstate X)
   (Hs : protocol_state_prop X s)
   (v : validator)
@@ -863,51 +864,22 @@ Proof.
   inversion Htr.
   subst. simpl in Hinput. subst.
   destruct H3 as [[Hps [Hpm [Hv Hconstr]]] Ht].
-  apply Hno_equiv in Hconstr. simpl in Hconstr.
-  unfold equivocation in Hconstr.
-  assert
-    (Hconstr' :
-      exists i : index, has_been_sent (IM i) (last (map destination pre) is i) m).
-  { rewrite (forall_finite (proj2 finite_index)) in Hconstr.
-    unfold has_not_been_sent in Hconstr.
-    apply neg_Forall_Exists_neg in Hconstr.
-    rewrite <- exists_finite in Hconstr;[|solve[apply finite_index]].
-    destruct Hconstr as [i Hconstr].
-    exists i. apply dec_stable;assumption.
-    intro x;apply Decision_not;typeclasses eauto.
+  apply Hno_equiv in Hconstr.
+  assert (Hpps : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (last (map destination pre) is)).
+  { destruct Hps as [_om Hps].
+    exists _om.
+    apply (pre_loaded_with_all_messages_protocol_prop X).
+    assumption.
   }
-  destruct Hconstr' as [i Hconstr'].
-  elim contra.
-  apply (protocol_state_projection IM i0 constraint i) in Hps.
-  destruct Hps as [_oms Hps].
-  apply proj_pre_loaded_with_all_messages_protocol_prop in Hps.
-  apply proper_sent in Hconstr'; try (exists _oms; assumption).
-  unfold selected_message_exists_in_all_traces in Hconstr'.
-  simpl in Hinit. specialize (Hinit i).
-  pose (composite_vlsm_constrained_projection IM i0 constraint i) as Xi.
-  assert (protocol_state_prop Xi (is i)) by (apply initial_is_protocol; assumption).
-  specialize (finite_trace_projection_last_state IM i0 constraint i _ _ Hpre) as Hlast.
-  apply (finite_ptrace_projection IM i0 constraint i) in Hpre; try assumption.
-  pose (Finite (is i) (finite_trace_projection_list IM i0 constraint i pre)) as tri.
-  assert (Htri : protocol_trace_prop Xi tri) by (split; assumption).
-  apply (proj_pre_loaded_with_all_messages_incl IM i0 constraint i) in Htri.
-  simpl in Htri.
-  spec Hconstr' (is i) (finite_trace_projection_list IM i0 constraint i pre) Htri Hlast.
-  apply Exists_exists in Hconstr'.
-  destruct Hconstr' as [itemi [Hitemi Houtput]].
-  specialize (finite_trace_projection_list_alt_iff IM i0 constraint i pre) as Halt.
-  simpl in Halt.
-  specialize (Halt (@filter_Forall _ _ (dec_from_projection IM i0 constraint i) pre)).
-  rewrite <- Halt in Hitemi.
-  apply in_map_iff in Hitemi.
-  destruct Hitemi as [[item Hpr] [Heq Hitem]].
-  simpl in Heq.
-  apply in_map_iff. exists item. subst itemi. simpl in Houtput.
-  split; try assumption.
-  apply in_list_annotate_forget in Hitem.
-  simpl in Hitem.
-  apply filter_In in Hitem.
-  destruct Hitem. assumption.
+  apply (@proper_sent _ _ Xhbs _ Hpps) in Hconstr.
+  spec Hconstr is pre.
+  assert (Hincl : VLSM_incl X (pre_loaded_with_all_messages_vlsm X))
+    by apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
+  apply (VLSM_incl_finite_trace _ (machine (pre_loaded_with_all_messages_vlsm X))) in Hpre
+  ; [|assumption].
+  specialize (Hconstr (conj Hpre Hinit) eq_refl).
+  elim contra. apply in_map_iff. apply Exists_exists in Hconstr.
+  destruct Hconstr as [item [Hitem Hout]]. exists item. split; assumption.
 Qed.
 
 (**
@@ -918,7 +890,7 @@ in a protocol state are comparable w.r.t. the [happens_before_fn].
 Lemma no_equivocation_constraint_implies_comparable_events
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   (Hno_equiv :
-    constraint_subsumption IM constraint (no_equivocations IM i0 constraint Hbs)
+    constraint_subsumption IM constraint (no_equivocations IM i0 constraint finite_index Hbs)
   )
   (s : vstate X)
   (Hs : protocol_state_prop X s)
