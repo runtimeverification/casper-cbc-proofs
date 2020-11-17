@@ -575,7 +575,6 @@ Definition get_history (s : state) (who : index) : list state :=
                           rec_history child who (depth child)
    end.
 
-
   Definition state_eqb (s1 s2 : state) : bool :=
     match decide_eq s1 s2 with
     | left _ => true
@@ -624,6 +623,6 @@ Definition get_history (s : state) (who : index) : list state :=
       negb (send_oracle s m).
 
     Definition not_receive_oracle (s : state) (m : message) : bool :=
-      negb (receive_oracle s m).
+      negb (receive_oracle s m). 
    
 End ListNode. 

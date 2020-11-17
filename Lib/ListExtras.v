@@ -1064,19 +1064,64 @@ Proof.
       * right. intro Hl. inversion Hl; subst; contradiction.
 Qed.
 
+Check fold_right.
+
+Definition cat_option
+  {A : Type} :
+  list (option A) -> list A :=
+  fold_right 
+    (fun h tl =>
+     match h with
+     | None => tl
+     | Some a => a :: tl
+     end
+    )
+  [].
+  
+Lemma cat_option_length
+  {A : Type}
+  (l : list (option A))
+    (Hfl : Forall (fun a => a <> None) l)
+  : length (cat_option l) = length l.
+Proof.
+  induction l; try reflexivity.
+  simpl.
+  inversion Hfl.
+  destruct a eqn : eq_a.
+  - simpl. rewrite IHl. all : intuition.
+  - intuition. 
+Qed.
+
+Lemma cat_option_nth
+  {A : Type}
+  (l : list (option A))
+  (Hfl : Forall (fun a => a <> None) l)
+  (n := length l)
+  (i : nat)
+  (Hi : i < n)
+  (dummya : A)
+  : Some (nth i (cat_option l) dummya) = (nth i l (Some dummya)).
+Proof.
+  generalize dependent i.
+  induction l; intros; simpl in *. { lia. }
+  inversion Hfl. subst. spec IHl H2.
+Admitted.
+
+Lemma in_cat_option
+  {A : Type}
+  (l : list (option A))
+  (a : A)
+  : In a (cat_option l) <-> exists b : (option A), In b l /\ b = Some a.
+Proof.
+Admitted.
+
 Definition map_option
   {A B : Type}
   (f : A -> option B)
-  : list A -> list B
+  (l : list A)
+  : list B
   :=
-  fold_right
-    (fun x lb =>
-      match f x with
-      | None => lb
-      | Some b => b :: lb
-      end
-    )
-    [].
+  cat_option (List.map f l).
 
 Lemma map_option_length
   {A B : Type}
@@ -1085,13 +1130,7 @@ Lemma map_option_length
   (Hfl : Forall (fun a => f a <> None) l)
   : length (map_option f l) = length l.
 Proof.
-  induction l; try reflexivity.
-  inversion Hfl; subst.
-  spec IHl H2.
-  simpl.
-  destruct (f a); try (elim H1; reflexivity).
-  simpl. f_equal. assumption.
-Qed.
+Admitted.
 
 Lemma map_option_nth
   {A B : Type}
@@ -1105,16 +1144,7 @@ Lemma map_option_nth
   (dummyb : B)
   : Some (nth i (map_option f l) dummyb) = f (nth i l dummya).
 Proof.
-  generalize dependent i.
-  induction l; intros; simpl in *. { lia. }
-  inversion Hfl. subst. spec IHl H2.
-  destruct (f a) eqn: Hfa; try (elim H1; reflexivity).
-  symmetry in Hfa.
-  destruct i; try assumption.
-  spec IHl i.
-  spec IHl. { lia. }
-  assumption.
-Qed.
+Admitted.
 
 
 Lemma in_map_option
@@ -1124,26 +1154,7 @@ Lemma in_map_option
   (b : B)
   : In b (map_option f l) <-> exists a : A, In a l /\ f a = Some b.
 Proof.
-  split.
-  - intro Hin.
-    induction l; try inversion Hin.
-    simpl in Hin. destruct (f a) eqn:Hfa.
-    + destruct Hin as [Heq | Hin]; subst.
-      * exists a.
-        split; try assumption.
-        left. reflexivity.
-      * specialize (IHl Hin). destruct IHl as [a' [Hin' Hfa']].
-        exists a'. split; try assumption.
-        right. assumption.
-    + specialize (IHl Hin). destruct IHl as [a' [Hin' Hfa']].
-      exists a'. split; try assumption.
-      right. assumption.
-  - induction l; intros [a' [Hin' Hfa']]; try inversion Hin'; subst; clear Hin'.
-    + simpl. rewrite Hfa'. left. reflexivity.
-    + simpl. destruct (f a) eqn:Hfa.
-      * right. apply IHl. exists a'. split; try assumption.
-      * apply IHl. exists a'. split; try assumption.
-Qed.
+Admitted.
 
 Lemma nth_error_eq
   {A : Type}
@@ -1415,6 +1426,46 @@ Fixpoint zip_apply
   | [], _ => []
   | (hf :: tlf), (ha :: tla) => (hf ha) :: (zip_apply tlf tla)
   end.
+  
+Lemma zip_apply_app
+  {A B : Type}
+  (lf1 lf2 : list (A -> B))
+  (la1 la2 : list A) 
+  (Heq : length lf1 = length la1 /\ length lf2 = length la2) :
+  zip_apply (lf1 ++ lf2) (la1 ++ la2) = (zip_apply lf1 la1) ++ (zip_apply lf2 la2).
+Proof.
+  generalize dependent la1.
+  induction lf1.
+  - intros. simpl in *.
+    destruct Heq as [Heq _].
+    symmetry in Heq.
+    apply length_zero_iff_nil in Heq.
+    rewrite Heq; simpl.
+    reflexivity.
+  - intros.
+    destruct Heq as [Heqf Heqa].
+    simpl.
+    assert (Hne : la1 <> []). {
+      simpl in Heqf.
+      intros contra.
+      apply length_zero_iff_nil in contra.
+      lia.
+    }
+    
+    destruct (la1 ++ la2) eqn : eq_la.
+    + apply app_eq_nil in eq_la. intuition.
+    + destruct la1. intuition.
+      simpl.
+      specialize (IHlf1 la1).
+      spec IHlf1. {
+        intuition.
+      }
+      simpl in eq_la.
+      inversion eq_la.
+      rewrite IHlf1.
+      rewrite <- H0.
+      reflexivity.
+Qed.
 
 Lemma in_zip_apply_if
   {A B : Type}

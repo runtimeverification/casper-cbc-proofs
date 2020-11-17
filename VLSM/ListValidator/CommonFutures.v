@@ -57,7 +57,7 @@ Context
   
   Definition GH (s : vstate X) : set index := 
     List.filter (fun i : index => negb (
-    bool_decide (@equivocation_evidence (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject ce s i))) index_listing.
+    @bool_decide _ (@equivocation_evidence_dec (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject ce s i))) index_listing.
   
   Definition GE (s : vstate X) : set index :=
     set_diff idec index_listing (GH s).
@@ -65,12 +65,14 @@ Context
   Definition ce' (s : vstate X) := @composed_witness_observation_based_equivocation_evidence
     message index lv_event
     decide_eq 
-    comparable_lv_events
+    lv_event_lt
+    lv_event_lt_dec
     get_event_subject
     index IM_index Hevidence (GH s).
  
   Definition LH (s : vstate X) : set index :=
-    List.filter (fun i : index => negb (@equivocation_evidence (vstate X) index lv_event _ comparable_lv_events get_event_subject (ce' s) s i)) index_listing.
+    List.filter (fun i : index => negb (
+    @bool_decide _ (@equivocation_evidence_dec (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject (ce' s) s i))) index_listing.
   
   Definition LE (s : vstate X) : set index :=
     set_diff idec index_listing (LH s).
@@ -89,46 +91,15 @@ Context
     (s : vstate X) :
     incl (GH s) (LH s).
   Proof.
-    unfold incl; intros.
+    unfold incl.
+    intros.
     unfold GH in H.
     unfold LH.
     apply filter_In in H.
-    apply filter_in.
-    apply ((proj2 Hfinite) a).
     destruct H as [_ H].
-    unfold equivocation_evidence in *.
-    unfold observable_events in *.
-    unfold ce'; unfold ce in H.
-    simpl in *.
-    rewrite negb_true_iff in *.
-    rewrite existsb_forall in *.
-    intros.
-    specialize (H x).
-    
-    spec H save. {
-      unfold composed_witness_observable_events in *.
-      rewrite set_union_in_iterated.
-      rewrite set_union_in_iterated in H0.
-      rewrite Exists_exists in *.
-      destruct H0 as [e [Hine Hinx]].
-      exists e.
-      split.
-      apply in_map_iff in Hine.
-      apply in_map_iff.
-      destruct Hine as [j [Hobj Hinj]].
-      exists j; intuition.
-      apply ((proj2 Hfinite) j).
-      assumption.
-    }
-    
-    rewrite existsb_forall in *.
-    intros.
-    specialize (H x0).
-    apply H.
-    unfold composed_witness_observable_events in *.
-    unfold observable_events. simpl.
-    eapply set_union_iterated_incl with (ss' :=  (map (fun i : index => lv_observations (s i) a) index_listing)) in H2.
-    unfold lv_observations in *. simpl in *.
+    rewrite negb_true_iff in H.
+    rewrite bool_decide_eq_false in H.
+    apply filter_In.
   Admitted.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
@@ -709,13 +680,14 @@ Context
             unfold has_been_sent_lv.
             unfold send_oracle; simpl.
             rewrite decide_True.
-            apply existsb_exists.
+            apply Is_true_eq_left. 
+            rewrite existsb_exists.
             exists sa.
             split.
             rewrite <- e in Hinsa.
             rewrite <- e.
             assumption.
-            unfold state_eqb. rewrite decide_True. all : auto.
+            unfold state_eqb. rewrite eq_dec_if_true. all : auto.
           + specialize (received_component_protocol_composed IM_index i0 (free_constraint IM_index) has_been_received_capabilities (fun m => Some (fst m)) s') as Hope.
             spec Hope. assumption.
             specialize (Hope inter (from, sa)).
@@ -725,11 +697,12 @@ Context
             unfold has_been_received_lv.
             unfold receive_oracle; simpl.
             rewrite decide_False.
+            apply Is_true_eq_left.
             apply existsb_exists.
             exists sa.
             split.
             assumption.
-            unfold state_eqb. rewrite decide_True. all : auto.
+            unfold state_eqb. rewrite eq_dec_if_true. all : auto.
         - simpl in *.
           inversion Hh.
           unfold vvalid.
@@ -1309,6 +1282,80 @@ Context
            rewrite eq_second; intuition.
     Qed.
     
+    Definition is_receive_action
+      (a : vaction X) : Prop := 
+      let labels_a := List.map label_a a in
+      let label_types := List.map (fun (l : vlabel X) => let (i, li) := l in li) labels_a in
+      forall (l : label_list), In l label_types -> l = receive.
+    
+    Definition is_receive_action_app
+      (a b : vaction X) :
+      is_receive_action (a ++ b) <-> is_receive_action a /\ is_receive_action b.
+    Proof.
+    Admitted.
+    
+    Definition get_message_providers_from_action
+      (a : vaction X) : list index :=
+      List.map fst (messages_a X a).
+    
+    Lemma receives_neq
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (a : vaction X) 
+      (Hpra : finite_protocol_action_from X s a)
+      (i j : index)
+      (providers := get_message_providers_from_action a)
+      (Hreceive : is_receive_action a)
+      (Hj : ~ In j providers) 
+      (res := snd (apply_action X s a)) :
+      project (res i) j = project (s i) j.
+    Proof.
+      induction a using rev_ind.
+      - intuition.
+      - apply finite_protocol_action_from_app_iff in Hpra.
+      
+        destruct Hpra as [Hpra_long Hpra_short].
+        specialize (IHa Hpra_long); simpl in *.
+        apply is_receive_action_app in Hreceive.
+        
+        destruct Hreceive as [Hreceive_long Hreceive_short].
+        specialize (IHa Hreceive_long); simpl.
+        
+        (*
+        unfold providers in Hj.
+        unfold get_message_providers_from_action in Hj.
+        unfold messages_a in Hj.
+        rewrite map_app in Hj. *)
+        spec IHa. {
+          admit.
+        }
+        rewrite <- IHa.
+        unfold res.
+        rewrite apply_action_app.
+        destruct (apply_action X s a) as [tr_long res_long].
+        simpl in *.
+        unfold apply_action.
+        unfold apply_action_folder.
+        destruct x. simpl.
+        destruct (vtransition X label_a (res_long, input_a)) eqn : eq_trans.
+        simpl.
+        
+        unfold vtransition in eq_trans.
+        unfold transition in eq_trans.
+        simpl in eq_trans.
+        unfold vtransition in eq_trans.
+        unfold transition in eq_trans.
+        simpl in eq_trans.
+        destruct label_a as [idx li].
+        destruct li eqn : eq_li.
+        + admit.
+        + destruct input_a eqn : eq_input.
+          inversion eq_trans.
+          rewrite state_update_neq.
+          reflexivity.
+          admit.
+    Qed.
+      
     Definition others (i : index) := 
       set_remove idec i index_listing.
     
@@ -1318,17 +1365,73 @@ Context
       let lis := (List.map others lfrom) in
       let receive_fors := zip_apply (List.map (get_receives_for s) lis) lfrom in
       List.concat receive_fors.
-      
+    
     Lemma get_receives_all_protocol
       (s : vstate X)
       (lfrom : set index)
       (Hnodup : NoDup lfrom)
       (Hprs : protocol_state_prop X s) :
-      finite_protocol_action_from X s (get_receives_all s lfrom).
+      let res := snd (apply_action X s (get_receives_all s lfrom)) in 
+      finite_protocol_action_from X s (get_receives_all s lfrom) /\
+      forall (f i : index), In f lfrom -> project (res i) f = project (get_matching_state s i f) f.
     Proof.
-      induction lfrom; unfold get_receives_all.
-      - simpl. apply finite_protocol_action_empty. assumption.
+      induction lfrom using rev_ind; unfold get_receives_all.
+      - split; simpl. 
+        + apply finite_protocol_action_empty. assumption.
+        + intuition.
       - simpl.
+        
+        apply NoDup_rev in Hnodup.
+        rewrite rev_unit in Hnodup.
+        apply NoDup_cons_iff in Hnodup.
+        destruct Hnodup as [notX Hnodup].
+        apply NoDup_rev in Hnodup.
+        rewrite rev_involutive in Hnodup.
+        
+        specialize (IHlfrom Hnodup).
+        simpl in IHlfrom.
+        
+        destruct IHlfrom as [IHprotocol IHproject].
+        unfold finite_protocol_action_from.
+        rewrite map_app.
+        rewrite map_app.
+        rewrite zip_apply_app; simpl.
+        
+        2 : {
+          repeat rewrite map_length.
+          intuition.
+        }
+        
+        rewrite concat_app; simpl.
+        rewrite apply_action_app; simpl.
+        
+        destruct (@apply_action (@message index index_listing) X s
+            (@concat (@vaction_item (@message index index_listing) X)
+               (@zip_apply index (@vaction (@message index index_listing) X)
+                  (@map (set index) (forall _ : index, @vaction (@message index index_listing) X)
+                     (get_receives_for s) (@map index (set index) others lfrom)) lfrom))) as [tr_long res_long] eqn : eq_long.
+        
+        destruct (@apply_action (@message index index_listing) X res_long
+            (@app (@vaction_item (@message index index_listing) X) (get_receives_for s (others x) x)
+               (@nil (@vaction_item (@message index index_listing) X)))) as [tr_short res_short] eqn : eq_short.
+        
+        simpl.
+        
+        assert (Hx_after_long : forall (i : index), project (res_long i) x = project (s i) x). {
+          admit.
+        }
+        
+        split.
+        + apply finite_protocol_trace_from_app_iff.
+          split.
+          * unfold finite_protocol_action_from in IHprotocol.
+            replace tr_long with (fst (apply_action X s (get_receives_all s lfrom))).
+            assumption.
+            unfold get_receives_all.
+            admit.
+          * admit.
+        + 
+        (*
         specialize (action_independence X (get_receives_for s (others a) a) (
         concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom))) as Hind.
         
@@ -1351,11 +1454,15 @@ Context
         }
         
         spec Hind. {
-          unfold ensures.
-          intros.
+          unfold ensures; intros.
           rewrite HeqPb in H0.
           admit.
         }
+        
+        spec Hind. {
+          unfold preserves; intros.
+          rewrite HeqPb.
+        } *)
     Admitted.
       
 End Composition.

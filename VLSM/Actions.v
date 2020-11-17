@@ -330,5 +330,10 @@ Section apply_actions.
       assumption.
       assumption.
    Admitted.
+   
+   Definition messages_a 
+    (a : vaction X) : 
+    list message := 
+    ListExtras.cat_option (List.map input_a a).
     
 End apply_actions.
