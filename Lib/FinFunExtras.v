@@ -2,6 +2,37 @@ Require Import List FinFun.
 Import ListNotations.
 From CasperCBC Require Import Preamble ListExtras.
 
+Lemma map_option_listing
+      {A B : Type} (f: A -> option B) (g: B -> A)
+      (f_proj_inj: forall a b, f a = Some b -> a = g b)
+      (f_surj: forall b, f (g b) = Some b)
+      (A_listing: list A) (A_finite : Listing A_listing) : Listing (map_option f A_listing).
+Proof.
+  destruct A_finite as [Hnodup Hfull].
+  split.
+  - clear Hfull.
+    induction A_listing as [|a l IHl].
+    + constructor.
+    + inversion_clear Hnodup as [|? ? H1 H2].
+      specialize (IHl H2); clear H2.
+      simpl.
+      destruct (f a) eqn:Hfa;[|assumption].
+      apply f_proj_inj in Hfa. subst a.
+      constructor;[|assumption].
+      contradict H1.
+      apply in_map_option in H1.
+      destruct H1 as [a [Ha Hfa]].
+      apply f_proj_inj in Hfa.
+      subst a.
+      assumption.
+  - intro b.
+    specialize (Hfull (g b)).
+    apply in_map_option.
+    exists (g b).
+    split;[assumption|].
+    apply f_surj.
+Qed.
+
 Section sum_listing.
 (** 'Listing' for the sum type implies 'Listing' for each projection *)
 
@@ -24,48 +55,20 @@ Lemma left_finite
   (sum_finite : Listing sum_listing)
   : Listing (left_listing sum_finite).
 Proof.
-  destruct sum_finite as [Hnodup Hfull].
-  unfold left_listing.
-  split.
-  - clear Hfull. unfold list_sum_project_left.
-    induction sum_listing.
-    + constructor.
-    + inversion Hnodup. subst. specialize (IHl H2).
-      destruct a; try assumption.
-      simpl. constructor; try assumption.
-      intro contra. elim H1.
-      apply in_map_option in contra.
-      destruct contra as [a [Ha Hl0]].
-      unfold sum_project_left in Hl0.
-      destruct a; congruence.
-  - intro a. specialize (Hfull (inl a)).
-    apply in_map_option. exists (inl a).
-    split; try assumption.
-    reflexivity.
+  revert sum_finite.
+  apply map_option_listing with (g:=inl).
+  destruct a;simpl;congruence.
+  reflexivity.
 Qed.
 
 Lemma right_finite
   (sum_finite : Listing sum_listing)
   : Listing (right_listing sum_finite).
 Proof.
-  destruct sum_finite as [Hnodup Hfull]. unfold right_listing.
-  split.
-  - clear Hfull.
-    unfold right_listing. unfold list_sum_project_right.
-    induction sum_listing.
-    + constructor.
-    + inversion Hnodup. subst. specialize (IHl H2).
-      destruct a; try assumption.
-      simpl. constructor; try assumption.
-      intro contra. elim H1.
-      apply in_map_option in contra.
-      destruct contra as [a [Ha Hl0]].
-      unfold sum_project_right in Hl0.
-      destruct a; congruence.
-  - intro a. specialize (Hfull (inr a)).
-    apply in_map_option. exists (inr a).
-    split; try assumption.
-    reflexivity.
+  revert sum_finite.
+  apply map_option_listing with (g:=inr).
+  destruct a;simpl;congruence.
+  reflexivity.
 Qed.
 
 End sum_listing.
