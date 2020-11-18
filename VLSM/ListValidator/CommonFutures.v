@@ -1321,14 +1321,20 @@ Context
         destruct Hreceive as [Hreceive_long Hreceive_short].
         specialize (IHa Hreceive_long); simpl.
         
-        (*
-        unfold providers in Hj.
-        unfold get_message_providers_from_action in Hj.
-        unfold messages_a in Hj.
-        rewrite map_app in Hj. *)
         spec IHa. {
-          admit.
+          clear -Hj.
+          intros contra.
+          contradict Hj.
+          unfold providers.
+          unfold get_message_providers_from_action in *.
+          unfold messages_a in *.
+          rewrite map_app.
+          rewrite cat_option_app.
+          rewrite map_app.
+          apply in_app_iff.
+          left. intuition.
         }
+        
         rewrite <- IHa.
         unfold res.
         rewrite apply_action_app.
@@ -1340,20 +1346,95 @@ Context
         destruct (vtransition X label_a (res_long, input_a)) eqn : eq_trans.
         simpl.
         
+        unfold finite_protocol_action_from in Hpra_short.
+        unfold apply_action in Hpra_short.
+        unfold apply_action_folder in Hpra_short.
+        simpl in Hpra_short.
+        rewrite eq_trans in Hpra_short.
+        simpl in Hpra_short.
+        inversion Hpra_short.
+        
+        unfold protocol_transition in H6.
+        destruct H6 as [Hprtr Htrans].
+        
         unfold vtransition in eq_trans.
         unfold transition in eq_trans.
         simpl in eq_trans.
         unfold vtransition in eq_trans.
         unfold transition in eq_trans.
         simpl in eq_trans.
+        remember label_a as label_a'.
         destruct label_a as [idx li].
+        
         destruct li eqn : eq_li.
-        + admit.
+        + unfold is_receive_action in Hreceive_short.
+          specialize (Hreceive_short li).
+          spec Hreceive_short. {
+            apply in_map_iff.
+            exists label_a'. simpl. intuition.
+            rewrite Heqlabel_a'.
+            intuition.
+          }
+          rewrite eq_li in Hreceive_short.
+          discriminate Hreceive_short.
         + destruct input_a eqn : eq_input.
-          inversion eq_trans.
-          rewrite state_update_neq.
-          reflexivity.
-          admit.
+          * rewrite Heqlabel_a' in eq_trans.
+            inversion eq_trans.
+            destruct (decide (i = idx)).
+            -- rewrite e. rewrite state_update_eq.
+              rewrite (@project_different index index_listing).
+              reflexivity.
+              intuition.
+              intros contra. {
+                clear -Hj contra.
+                unfold providers in Hj.
+                unfold get_message_providers_from_action in Hj.
+                rewrite contra in Hj.
+                contradict Hj.
+                apply in_map_iff.
+                exists m. intuition.
+                unfold messages_a.
+                rewrite map_app.
+                rewrite cat_option_app.
+                rewrite in_app_iff.
+                right; simpl; intuition.
+              }
+              clear -Hprtr.
+              apply protocol_state_component_no_bottom.
+              unfold protocol_valid in Hprtr.
+              intuition.
+          -- rewrite state_update_neq.
+             reflexivity.
+             assumption.
+         * unfold protocol_valid in Hprtr.
+           unfold valid in Hprtr.
+           rewrite Heqlabel_a' in Hprtr.
+           simpl in Hprtr.
+           unfold constrained_composite_valid in Hprtr.
+           unfold free_constraint in Hprtr.
+           unfold free_composite_valid in Hprtr.
+           unfold vvalid in Hprtr.
+           unfold valid in Hprtr.
+           simpl in Hprtr.
+           intuition.
+    Qed.
+    
+    Lemma relevant_components_lv
+      (s s' : vstate X)
+      (Hprs' : protocol_state_prop X s')
+      (a : vaction X)
+      (Hrec : is_receive_action a)
+      (Hpr : finite_protocol_action_from X s a)
+      (i : index)
+      (Hi : In i (get_message_providers_from_action a))
+      (Hsame : (s i) = (s' i)) :
+      let res' := snd (apply_action X s' a) in
+      let res := snd (apply_action X s a) in 
+      finite_protocol_action_from X s' a /\ 
+      (res' i) = (res i).
+    Proof.
+      induction a using rev_ind.
+      - simpl.
     Qed.
       
     Definition others (i : index) := 
@@ -1418,6 +1499,14 @@ Context
         simpl.
         
         assert (Hx_after_long : forall (i : index), project (res_long i) x = project (s i) x). {
+          intros.
+          replace res_long with 
+            (snd (apply_action X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom)))).
+          apply receives_neq.
+          assumption.
+          assumption.
+          admit.
+          admit.
           admit.
         }
         
@@ -1430,7 +1519,18 @@ Context
             unfold get_receives_all.
             admit.
           * admit.
-        + 
+        + intros.
+          destruct (decide (f = x)).
+          * admit.
+          * apply in_app_iff in H.
+            simpl in H.
+            destruct H.
+            specialize (IHproject f i H).
+            rewrite <- IHproject.
+            unfold get_receives_all.
+            
+            
+             
         (*
         specialize (action_independence X (get_receives_for s (others a) a) (
         concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom))) as Hind.

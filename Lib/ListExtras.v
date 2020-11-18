@@ -1092,6 +1092,19 @@ Proof.
   - intuition. 
 Qed.
 
+Lemma cat_option_app
+  {A : Type}
+  (l1 l2 : list (option A)) :
+  cat_option (l1 ++ l2) = cat_option l1 ++ cat_option l2.
+Proof.
+  induction l1.
+  - simpl in *. intuition.
+  - destruct a eqn : eq_a;
+      simpl in *;
+      rewrite IHl1;
+      reflexivity.
+Qed.
+
 Lemma cat_option_nth
   {A : Type}
   (l : list (option A))
