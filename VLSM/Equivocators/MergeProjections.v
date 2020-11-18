@@ -71,10 +71,10 @@ Definition equivocator_projection_update
   (ni_trace : option (vstate X * list (vtransition_item X)))
   (nj : Fin.t (S (projT1 (last (map destination btr) is))))
   : option (vstate X * list (vtransition_item X))
-  := 
+  :=
   if Fin.eq_dec ni nj then ni_trace else projector nj.
 
-(** The update operation specialized to 
+(** The update operation specialized to
 [preloaded_protocol_equivocator_vlsm_trace_oproject]
 *)
 Definition preloaded_protocol_equivocator_vlsm_trace_oproject_update
@@ -100,7 +100,7 @@ Definition projection_traces
   :=
   map_option projector (fin_t_listing (S n)).
 
-(** [projection_traces] specialized to 
+(** [projection_traces] specialized to
 [preloaded_protocol_equivocator_vlsm_trace_oproject_update]
 (swapping one projection with the provided one)
 *)
@@ -158,7 +158,7 @@ Context
   (traces : list (vstate X * list (vtransition_item X)))
   (Hn : length traces = S n)
   (Htraces : Forall
-    (fun trace => 
+    (fun trace =>
       finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) (fst trace) (snd trace)
     )
     traces)

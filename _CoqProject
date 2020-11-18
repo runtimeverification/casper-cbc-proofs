@@ -13,7 +13,7 @@ VLSM/Equivocators/Common.v
 VLSM/Equivocators/Projections.v
 VLSM/Equivocators/MessageProperties.v
 VLSM/Equivocators/MergeProjections.v
-VLSM/Equivocators/Composition.v
+VLSM/Equivocators/Composition/Common.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
 VLSM/ObservableEquivocation.v
