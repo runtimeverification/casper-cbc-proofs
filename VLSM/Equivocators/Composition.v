@@ -1,12 +1,12 @@
 Require Import
-  List Coq.Vectors.Fin
+  List Coq.Vectors.Fin FinFun
   Arith.Compare_dec Lia
   Program
   .
 Import ListNotations.
 From CasperCBC
   Require Import
-    Preamble ListExtras FinExtras
+    Preamble ListExtras FinExtras FinFunExtras
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
@@ -79,12 +79,18 @@ Proof.
   - apply Hbs.
 Qed.
 
+
+Context
+  (index_listing : list index)
+  (finite_index : Listing index_listing)
+  .
+
 Definition equivocators_no_equivocations_constraint
   (l : composite_label equivocator_IM)
   (som : composite_state equivocator_IM * option message)
   : Prop
   :=
-  no_equivocations equivocator_IM i0 (free_constraint equivocator_IM) equivocator_Hbs l som.
+  no_equivocations equivocator_IM i0 (free_constraint equivocator_IM) finite_index equivocator_Hbs l som.
 
 Definition equivocators_no_equivocations_vlsm
   : VLSM message
