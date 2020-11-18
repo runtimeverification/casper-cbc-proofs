@@ -180,14 +180,10 @@ Lemma finite_trace_projection_list_app
 Proof.
   induction tr1;[reflexivity|].
   simpl.
-  destruct
-    (@decide
-    (@eq index j
-       (@projT1 index (fun n : index => @vlabel message (IM n))
-          (@l message (@composite_type message index IM) a)))
-    (@decide_rel index index (@eq index) IndEqDec j
-       (@projT1 index (fun n : index => @vlabel message (IM n))
-          (@l message (@composite_type message index IM) a)))); [|assumption].
+  match goal with
+  |- context [decide ?d] => destruct (decide d)
+  end
+  ; [|assumption].
   simpl. rewrite IHtr1. reflexivity.
 Qed.
 
