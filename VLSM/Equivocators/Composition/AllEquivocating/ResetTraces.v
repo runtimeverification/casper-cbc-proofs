@@ -19,8 +19,8 @@ From CasperCBC
 Section all_equivocating.
 
 Context {message : Type}
-  {equiv_index nequiv_index : Type}
-  (index := sum equiv_index nequiv_index)
+  {equiv_index : Type}
+  (index := equiv_index)
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
@@ -35,26 +35,13 @@ Context {message : Type}
   (equivocators_choice_update := equivocators_choice_update IM)
   (proper_equivocators_choice := proper_equivocators_choice IM i0)
   (equivocators_trace_project := equivocators_trace_project IM Hbs i0)
-  (all_indices_equivocating
-    : forall (i : index), match i with | inl _ => True | inr _ => False end
-  )
-  (equiv_listing := left_listing finite_index)
-  (finite_equiv := left_finite finite_index)
   .
 
-Local Tactic Notation "unfold_transition"  hyp(H) :=
-  ( unfold transition in H; unfold equivocator_vlsm in H
-  ; unfold Common.equivocator_vlsm in H
-  ; unfold mk_vlsm in H; unfold machine in H
-  ; unfold projT2 in H; unfold equivocator_vlsm_machine in H
-  ; unfold equivocator_transition in H).
-
-Definition equiv_i0 : equiv_index
-  :=
-  match i0 with
-  | inl eqv => eqv
-  | inr n => False_rect _ (all_indices_equivocating (inr n))
-  end.
+Local Tactic Notation "unfold_transition"  hyp(Ht) :=
+  ( unfold transition in Ht; unfold Common.equivocator_IM in Ht;
+  unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
+  unfold machine in Ht; unfold projT2 in Ht;
+  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht). 
 
 Definition update_euivocators_transition_item_descriptor
   (s : vstate equivocators_no_equivocations_vlsm)
@@ -63,27 +50,19 @@ Definition update_euivocators_transition_item_descriptor
   :=
   match item with
   | {| l := l; input := input; destination := destination; output := output |} =>
-    let (i, l) := l in
-    match i as i'
-      return
-        (vlabel (Common.equivocator_IM IM i') ->
-          vaction_item equivocators_no_equivocations_vlsm) with
-    | inl e =>
-      fun l =>
-        let (l, d) := l in
-        match d with
-        | NewMachine _ sn =>
-          @Build_action_item message (type equivocators_no_equivocations_vlsm)
-            (@existT index (fun n : index => vlabel (equivocator_IM n)) (inl e) (l, d)) input
-        | Existing _ i fi =>
-          @Build_action_item message (type equivocators_no_equivocations_vlsm)
-            (@existT index (fun n : index => vlabel (equivocator_IM n)) (inl e)
-              (l, Existing _ (i + S (projT1 (s (inl e)))) fi)
-            )
-            input
-        end
-    | inr n => False_rect _ (all_indices_equivocating (inr n))
-    end l
+    let (e, l) := l in
+    let (l, d) := l in
+    match d with
+    | NewMachine _ sn =>
+      @Build_action_item message (type equivocators_no_equivocations_vlsm)
+        (@existT index (fun n : index => vlabel (equivocator_IM n)) (e) (l, d)) input
+    | Existing _ i fi =>
+      @Build_action_item message (type equivocators_no_equivocations_vlsm)
+        (@existT index (fun n : index => vlabel (equivocator_IM n)) (e)
+          (l, Existing _ (i + S (projT1 (s (e)))) fi)
+        )
+        input
+    end
   end.
 
 Definition initial_new_machine_transition_item
@@ -91,10 +70,10 @@ Definition initial_new_machine_transition_item
   (eqv : equiv_index)
   : vaction_item equivocators_no_equivocations_vlsm
   :=
-  let seqv := is (inl eqv) in
+  let seqv := is (eqv) in
   let new_l :=
-    (@existT index (fun n : index => vlabel (equivocator_IM n)) (inl eqv)
-      (vl0 (IM (inl eqv)), NewMachine _ (projT2 seqv (of_nat_lt (Hzero _ seqv))))
+    (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
+      (vl0 (IM (eqv)), NewMachine _ (projT2 seqv (of_nat_lt (Hzero _ seqv))))
     )
     in
   @Build_action_item message (type equivocators_no_equivocations_vlsm) new_l None.
@@ -103,8 +82,8 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
   (s : vstate equivocators_no_equivocations_vlsm)
   (a : vaction equivocators_no_equivocations_vlsm)
   (eqv : equiv_index)
-  (sn : vstate (IM (inl eqv)))
-  (Hsn : vinitial_state_prop (IM (inl eqv)) sn)
+  (sn : vstate (IM (eqv)))
+  (Hsn : vinitial_state_prop (IM (eqv)) sn)
   (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
   (Hconstraint_subsumption :
     constraint_subsumption equivocator_IM
@@ -112,18 +91,19 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
       constraint
   )
   : vvalid (equivocators_constrained_vlsm IM i0 constraint)
-      (@existT index (fun n : index => vlabel (equivocator_IM n)) (inl eqv)
-        (vl0 (IM (inl eqv)), NewMachine _ sn))
+      (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
+        (vl0 (IM (eqv)), NewMachine _ sn))
       (snd (apply_action equivocators_no_equivocations_vlsm s a), None).
 Proof.
-  split; try exact I. split; try assumption; try reflexivity.
-  apply Hconstraint_subsumption. exact I.
+  split.
+  - split; [assumption|reflexivity].
+  - apply Hconstraint_subsumption. exact I.
 Qed.
 
 Definition spawn_initial_state
   (is : vstate equivocators_no_equivocations_vlsm)
   : vaction equivocators_no_equivocations_vlsm
-  := map (initial_new_machine_transition_item is) equiv_listing.
+  := map (initial_new_machine_transition_item is) index_listing.
 
 Definition equivocate_trace_from
   (reset_state : vstate equivocators_no_equivocations_vlsm)
@@ -180,10 +160,10 @@ Lemma apply_action_reset_state_initial_state
       (spawn_initial_state is)
   )
   (eqv : equiv_index)
-  : snd tr_reset_is (inl eqv)
-  = equivocator_state_extend (IM (inl eqv))
-    (reset_state (inl eqv))
-    (projT2 (is (inl eqv)) (of_nat_lt (Hzero (IM (inl eqv)) (is (inl eqv))))).
+  : snd tr_reset_is (eqv)
+  = equivocator_state_extend (IM (eqv))
+    (reset_state (eqv))
+    (projT2 (is (eqv)) (of_nat_lt (Hzero (IM (eqv)) (is (eqv))))).
 Proof.
   unfold spawn_initial_state in tr_reset_is.
   assert
@@ -195,8 +175,8 @@ Proof.
         snd
           (apply_action equivocators_no_equivocations_vlsm s
             (map (initial_new_machine_transition_item is) l))
-          (inl eqv)
-        = s (inl eqv)
+          (eqv)
+        = s (eqv)
     ).
   { induction l; intros; try reflexivity.
     spec IHl.
@@ -228,10 +208,10 @@ Proof.
         snd
           (apply_action equivocators_no_equivocations_vlsm reset_state
             (map (initial_new_machine_transition_item is) l))
-          (inl eqv)
-        = equivocator_state_extend (IM (inl eqv))
-          (reset_state (inl eqv))
-          (projT2 (is (inl eqv)) (of_nat_lt (Hzero (IM (inl eqv)) (is (inl eqv)))))
+          (eqv)
+        = equivocator_state_extend (IM (eqv))
+          (reset_state (eqv))
+          (projT2 (is (eqv)) (of_nat_lt (Hzero (IM (eqv)) (is (eqv)))))
     ).
   { intros. apply in_split in Heqv as Heqv.
     destruct Heqv as [pref [suf Heqv]].
@@ -268,7 +248,7 @@ Proof.
     simpl in Happly_eqv. inversion Happly_eqv.
     rewrite state_update_eq. congruence.
   }
-  apply Heq_state_in. apply (proj1 finite_equiv). apply (proj2 finite_equiv).
+  apply Heq_state_in. apply (proj1 finite_index). apply (proj2 finite_index).
 Qed.
 
 Lemma equivocate_trace_from_state_correspondence'
@@ -286,29 +266,29 @@ Lemma equivocate_trace_from_state_correspondence'
       ++ map (update_euivocators_transition_item_descriptor reset_state) epref)
   )
   (eqv : equiv_index)
-  : S (projT1 (snd tr_is_epref (inl eqv))) + S (projT1 (reset_state (inl eqv))) = S (projT1 (snd tr_reset_is_epref (inl eqv)))
+  : S (projT1 (snd tr_is_epref (eqv))) + S (projT1 (reset_state (eqv))) = S (projT1 (snd tr_reset_is_epref (eqv)))
   /\ (epref <> [] -> option_map output (last_error (fst tr_is_epref)) = option_map output (last_error (fst tr_reset_is_epref)))
   /\ (forall
     (id : nat)
-    (Hid: id < S (projT1 (snd tr_is_epref (inl eqv)))),
+    (Hid: id < S (projT1 (snd tr_is_epref (eqv)))),
     exists
-    (Hi : id + S (projT1 (reset_state (inl eqv))) < S (projT1 (snd tr_reset_is_epref (inl eqv)))),
-    projT2 (snd tr_is_epref (inl eqv)) (of_nat_lt Hid) =
-    projT2 (snd tr_reset_is_epref (inl eqv)) (of_nat_lt Hi))
+    (Hi : id + S (projT1 (reset_state (eqv))) < S (projT1 (snd tr_reset_is_epref (eqv)))),
+    projT2 (snd tr_is_epref (eqv)) (of_nat_lt Hid) =
+    projT2 (snd tr_reset_is_epref (eqv)) (of_nat_lt Hi))
   /\ forall
     (id : nat)
-    (Hid: id < S (projT1 (reset_state (inl eqv)))),
+    (Hid: id < S (projT1 (reset_state (eqv)))),
     exists
-    (Hi : id < S (projT1 (snd tr_reset_is_epref (inl eqv)))),
-    projT2 (snd tr_reset_is_epref (inl eqv)) (of_nat_lt Hi) =
-    projT2 (reset_state (inl eqv)) (of_nat_lt Hid) .
+    (Hi : id < S (projT1 (snd tr_reset_is_epref (eqv)))),
+    projT2 (snd tr_reset_is_epref (eqv)) (of_nat_lt Hi) =
+    projT2 (reset_state (eqv)) (of_nat_lt Hid) .
 Proof.
   generalize dependent eqv.
   induction epref using rev_ind; intros.
   - simpl in *. clear tr_is_epref. unfold tr_reset_is_epref. clear tr_reset_is_epref.
     rewrite app_nil_r.
     rewrite apply_action_reset_state_initial_state.
-    destruct (reset_state (inl eqv)) as (neqv, seqv).
+    destruct (reset_state (eqv)) as (neqv, seqv).
     unfold equivocator_state_extend. simpl.
     specialize (equivocators_initial_state_size IM Hbs i0 _ _ is His eqv) as His_size.
     split; [rewrite His_size; reflexivity|].
@@ -368,29 +348,28 @@ Proof.
     unfold apply_action in Heqtr_is_epref'. simpl in Heqtr_is_epref'.
     unfold apply_action in Heqtr_reset_is_epref'. simpl in Heqtr_reset_is_epref'.
     destruct x. simpl in Heqtr_reset_is_epref'. simpl in Heqtr_is_epref'.
-    destruct l as (i, l).
-    destruct i as [eqv' | neqv]; try contradict (all_indices_equivocating (inr neqv)).
+    destruct l as (eqv', l).
     destruct l as (l, d).
     destruct d as [sd | id' fd'].
     + simpl in Heqtr_reset_is_epref'. simpl in Heqtr_is_epref'.
       subst. simpl in *.
-      destruct (decide (inl eqv = inl eqv')).
-      * inversion e. subst eqv'.
+      destruct (decide (eqv = eqv')).
+      * subst eqv'.
         spec IHepref eqv.
         remember (state_update (Common.equivocator_IM IM) epref_final
-        (inl eqv)
-        (equivocator_state_extend (IM (inl eqv))
-           (epref_final (inl eqv)) sd) (inl eqv)) as stat.
+        (eqv)
+        (equivocator_state_extend (IM (eqv))
+           (epref_final (eqv)) sd) (eqv)) as stat.
         rewrite state_update_eq in Heqstat.
         rewrite state_update_eq.
         unfold equivocator_state_extend in Heqstat.
-        destruct (epref_final (inl eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
+        destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
         simpl in IHepref. subst stat. simpl.
         unfold equivocator_state_extend.
-        destruct (reset_is_epref_final (inl eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
+        destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
         unfold projT1. unfold projT2.
         simpl in IHepref.
-        destruct (reset_state (inl eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
+        destruct (reset_state (eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
         simpl in IHepref.
         destruct IHepref as [Hsize Hstate].
         split; [congruence|].
@@ -424,19 +403,19 @@ Proof.
           rewrite <- Hstate. f_equal. apply of_nat_ext.
       * remember
           (state_update (Common.equivocator_IM IM) reset_is_epref_final
-          (inl eqv')
-          (equivocator_state_extend (IM (inl eqv'))
-             (reset_is_epref_final (inl eqv')) sd) (inl eqv))
+          (eqv')
+          (equivocator_state_extend (IM (eqv'))
+             (reset_is_epref_final (eqv')) sd) (eqv))
           as stat.
         spec IHepref eqv.
         rewrite state_update_neq in Heqstat; try assumption.
         rewrite state_update_neq; try assumption.
-        destruct (epref_final (inl eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
+        destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
         simpl in IHepref. subst stat. simpl.
-        destruct (reset_is_epref_final (inl eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
+        destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
         unfold projT1. unfold projT2.
         simpl in IHepref.
-        destruct (reset_state (inl eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
+        destruct (reset_state (eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
         simpl in IHepref.
         destruct IHepref as [Hsize [_ Hstate]].
         split; [congruence|].
@@ -444,32 +423,41 @@ Proof.
         intros. repeat rewrite last_error_is_last. reflexivity.
     + unfold vtransition in Heqtr_reset_is_epref'. simpl in Heqtr_reset_is_epref'.
       unfold vtransition in Heqtr_reset_is_epref'.
-      unfold_transition Heqtr_reset_is_epref'.
-      unfold snd in Heqtr_reset_is_epref'.
-      unfold vtransition in Heqtr_is_epref'. simpl in Heqtr_is_epref'.
+      match type of Heqtr_reset_is_epref' with
+      | _ = let (_, _) := let (_, _) := let (_, _) := let (_, _) := ?t 
+            in _ in _ in _ in _ => remember t as t_reset_is_epref'
+      end.
+      unfold_transition Heqt_reset_is_epref'.
+      unfold snd in Heqt_reset_is_epref'.
       unfold vtransition in Heqtr_is_epref'.
-      unfold_transition Heqtr_is_epref'.
-      unfold snd in Heqtr_is_epref'.
+      simpl in Heqtr_is_epref'.
+      match type of Heqtr_is_epref' with
+      | _ = let (_, _) := let (_, _) := let (_, _) := let (_, _) := ?t 
+            in _ in _ in _  in _ => remember t as t_is_epref'
+      end.
+      unfold vtransition in Heqt_is_epref'.
+      unfold_transition Heqt_is_epref'.
+      unfold snd in Heqt_is_epref'.
       simpl in IHepref.
       specialize (IHepref eqv') as IHepref'.
       specialize (IHepref eqv).
-      destruct (epref_final (inl eqv')) as (nepref_eqv', sepref_eqv') eqn:Hepref_final_eqv'.
-      destruct (reset_is_epref_final (inl eqv')) as (nreset_is_epref_eqv', sreset_is_epref_eqv') eqn:Hreset_is_epref_eqv'.
-      destruct (reset_state (inl eqv')) as (nreset_state_eqv', sreset_state_eqv') eqn:Hreset_state_eqv'.
-      unfold projT1 in Heqtr_is_epref'. unfold projT2 in Heqtr_is_epref'.
-      unfold projT1 in Heqtr_reset_is_epref'. unfold projT2 in Heqtr_reset_is_epref'.
+      destruct (epref_final (eqv')) as (nepref_eqv', sepref_eqv') eqn:Hepref_final_eqv'.
+      destruct (reset_is_epref_final (eqv')) as (nreset_is_epref_eqv', sreset_is_epref_eqv') eqn:Hreset_is_epref_eqv'.
+      destruct (reset_state (eqv')) as (nreset_state_eqv', sreset_state_eqv') eqn:Hreset_state_eqv'.
+      unfold projT1 in Heqt_is_epref'. unfold projT2 in Heqt_is_epref'.
+      unfold projT1 in Heqt_reset_is_epref'. unfold projT2 in Heqt_reset_is_epref'.
+      unfold projT1 in Heqtr_reset_is_epref'.
       simpl in IHepref'.
       destruct IHepref' as [Hsize' Hstate'].
       destruct (le_lt_dec (S nepref_eqv') id').
-      * assert (Hnl1 : ~ id' + S nreset_state_eqv' < S nreset_is_epref_eqv') by lia.
-        destruct (le_lt_dec (S nreset_is_epref_eqv') (id' + S nreset_state_eqv'))
-        ; try (elim Hnl1; assumption); clear Hnl1.
+      * destruct (le_lt_dec (S nreset_is_epref_eqv') (id' + S nreset_state_eqv'))
+        ; [|lia].
         subst. simpl.
-        destruct (decide (inl eqv = inl eqv')).
-        -- inversion e. subst eqv'.
+        destruct (decide (eqv = eqv')).
+        -- subst eqv'.
           rewrite <- Hepref_final_eqv'.
           remember (state_update (Common.equivocator_IM IM) epref_final
-          (inl eqv) (epref_final (inl eqv)) (inl eqv)) as stat.
+          (eqv) (epref_final (eqv)) (eqv)) as stat.
           rewrite state_update_eq in Heqstat.
           rewrite state_update_eq.
           subst.
@@ -484,41 +472,41 @@ Proof.
         -- rewrite <- Hepref_final_eqv'.
           remember
             (state_update (Common.equivocator_IM IM) epref_final
-            (inl eqv') (epref_final (inl eqv')) (inl eqv))
+            (eqv') (epref_final (eqv')) (eqv))
             as stat.
           rewrite state_update_neq in Heqstat; try assumption.
           rewrite state_update_neq; try assumption.
-          destruct (epref_final (inl eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
+          destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
           simpl in IHepref. subst stat. simpl.
-          destruct (reset_is_epref_final (inl eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
-          destruct (reset_state (inl eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
+          destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
+          destruct (reset_state (eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
           unfold projT1. unfold projT2.
           simpl in IHepref. destruct IHepref as [Hsize [_ Heq]].
           split; [assumption|]. split; [|assumption].
           intros. repeat rewrite last_error_is_last. reflexivity.
-      * destruct (le_lt_dec (S nreset_is_epref_eqv') (id' + S nreset_state_eqv')). { lia. }
+      * destruct (le_lt_dec (S nreset_is_epref_eqv') (id' + S nreset_state_eqv')); [lia|].
         destruct
-          (vtransition (IM (inl eqv'))
-          (fst (l, Existing (IM (inl eqv')) id' fd'))
+          (vtransition (IM (eqv'))
+          (fst (l, Existing (IM (eqv')) id' fd'))
           (sepref_eqv' (Fin2Restrict.n2f l0), input))
           as (seqv', omeqv') eqn:Hteqv'.
         destruct
-          (vtransition (IM (inl eqv'))
+          (vtransition (IM (eqv'))
           (fst
              (l,
-             Existing (IM (inl eqv'))
+             Existing (IM (eqv'))
                (id' + S nreset_state_eqv') fd'))
           (sreset_is_epref_eqv'
              (Fin2Restrict.n2f l1), input))
           as (seqv'', omeqv'') eqn:Hteqv''.
         destruct fd' eqn:Hfd'.
         -- subst. simpl.
-          destruct (decide (inl eqv = inl eqv')).
-          ++ inversion e. subst eqv'.
+          destruct (decide (eqv = eqv')).
+          ++ subst eqv'.
             remember
               (state_update (Common.equivocator_IM IM) epref_final
-              (inl eqv)
-              (existT (fun n : nat => t (S n) -> vstate (IM (inl eqv)))
+              (eqv)
+              (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
                  (S nepref_eqv')
                  (fun j : t (S (S nepref_eqv')) =>
                   let (nj, Hnj) := to_nat j in
@@ -529,7 +517,7 @@ Proof.
                         (Fin2Restrict.n2f
                            (Common.equivocator_state_extend_obligation_1
                               nepref_eqv' nj Hnj H))
-                  end)) (inl eqv))
+                  end)) (eqv))
               as stat.
             rewrite state_update_eq in Heqstat.
             rewrite state_update_eq.
@@ -570,8 +558,8 @@ Proof.
               destruct Hstate_pre as [Hi'' Hstate_pre].
               rewrite <- Hstate_pre. f_equal. apply of_nat_ext.
           ++ remember
-              (state_update (Common.equivocator_IM IM) epref_final (inl eqv')
-              (existT (fun n0 : nat => t (S n0) -> vstate (IM (inl eqv'))) (S nepref_eqv')
+              (state_update (Common.equivocator_IM IM) epref_final (eqv')
+              (existT (fun n0 : nat => t (S n0) -> vstate (IM (eqv'))) (S nepref_eqv')
                  (fun j : t (S (S nepref_eqv')) =>
                   let (nj, Hnj) := to_nat j in
                   match nat_eq_dec nj (S nepref_eqv') with
@@ -580,14 +568,14 @@ Proof.
                       sepref_eqv'
                         (Fin2Restrict.n2f
                            (Common.equivocator_state_extend_obligation_1 nepref_eqv' nj Hnj H))
-                  end)) (inl eqv))
+                  end)) (eqv))
               as stat.
             rewrite state_update_neq in Heqstat; try assumption.
             rewrite state_update_neq; try assumption.
-            destruct (epref_final (inl eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
+            destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
             simpl in IHepref. subst stat. simpl.
-            destruct (reset_is_epref_final (inl eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
-            destruct (reset_state (inl eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
+            destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
+            destruct (reset_state (eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
             unfold projT1. unfold projT2.
             simpl in IHepref. destruct IHepref as [Hsize [_ Heq]].
             destruct Hstate' as [_ [Hstate' Hstate_pre]].
@@ -602,15 +590,15 @@ Proof.
             split; [|assumption].
             intros. repeat rewrite last_error_is_last. reflexivity.
         -- subst. simpl.
-          destruct (decide (inl eqv = inl eqv')).
+          destruct (decide (eqv = eqv')).
           ++ inversion e. subst eqv'.
             remember
               (state_update (Common.equivocator_IM IM) epref_final
-              (inl eqv)
-              (equivocator_state_update (IM (inl eqv))
-                 (existT (fun n : nat => t (S n) -> vstate (IM (inl eqv)))
+              (eqv)
+              (equivocator_state_update (IM (eqv))
+                 (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
                     nepref_eqv' sepref_eqv') (Fin2Restrict.n2f l0) seqv')
-              (inl eqv))
+              (eqv))
               as stat.
             rewrite state_update_eq in Heqstat.
             rewrite state_update_eq.
@@ -643,8 +631,7 @@ Proof.
                 ; try (elim n; apply of_nat_ext).
                 replace (of_nat_lt l0) with (of_nat_lt Hid) in *.
                 clear l0 e0.
-                replace (of_nat_lt Hi') with (of_nat_lt Hi) in *.
-                clear Hi' e1.
+                replace (of_nat_lt Hi') with (of_nat_lt Hi) in * by apply of_nat_ext.
                 reflexivity.
               --- assert (Hneq : of_nat_lt l0 <> of_nat_lt Hid).
                 { intro contra. elim n. apply (f_equal to_nat) in contra.
@@ -652,7 +639,7 @@ Proof.
                   inversion contra. reflexivity.
                 }
                 destruct (eq_dec (of_nat_lt l0) (of_nat_lt Hid))
-                ; try (elim Hneq; assumption).
+                ; [congruence|].
                 clear Hneq.
                 assert (Hneq : of_nat_lt Hi' <> of_nat_lt Hi).
                 { intro contra. elim n. apply (f_equal to_nat) in contra.
@@ -660,7 +647,7 @@ Proof.
                   inversion contra. lia.
                 }
                 destruct (eq_dec (of_nat_lt Hi') (of_nat_lt Hi))
-                ; try (elim Hneq; assumption).
+                ; [congruence|].
                 clear Hneq.
                 clear Hi' Hteqv' Hstate'' n1.
                 spec Hstate' id Hid.
@@ -672,22 +659,22 @@ Proof.
               destruct Hstate_pre as [Hi'' Hstate_pre].
               replace (of_nat_lt Hi'') with (of_nat_lt Hi) in Hstate_pre by apply of_nat_ext.
               destruct (eq_dec (Fin2Restrict.n2f Hi') (Fin2Restrict.n2f Hi)); [|assumption].
-              apply (f_equal to_nat) in e0.
-              repeat rewrite to_nat_of_nat in e0. inversion e0. lia.
+              apply (f_equal to_nat) in e.
+              repeat rewrite to_nat_of_nat in e. inversion e. lia.
           ++ remember
               (state_update (Common.equivocator_IM IM) epref_final
-              (inl eqv')
-              (equivocator_state_update (IM (inl eqv'))
-                 (existT (fun n0 : nat => t (S n0) -> vstate (IM (inl eqv')))
+              (eqv')
+              (equivocator_state_update (IM (eqv'))
+                 (existT (fun n0 : nat => t (S n0) -> vstate (IM (eqv')))
                     nepref_eqv' sepref_eqv') (Fin2Restrict.n2f l0) seqv')
-              (inl eqv))
+              (eqv))
               as stat.
             rewrite state_update_neq in Heqstat; try assumption.
             rewrite state_update_neq; try assumption.
-            destruct (epref_final (inl eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
+            destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
             simpl in IHepref. subst stat. simpl.
-            destruct (reset_is_epref_final (inl eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
-            destruct (reset_state (inl eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
+            destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
+            destruct (reset_state (eqv)) as (nreset_state_eqv, sreset_state_eqv) eqn:Hreset_state_eqv.
             unfold projT1. unfold projT2.
             unfold fst in Hteqv'. unfold fst in Hteqv''.
             destruct Hstate' as [_ [Hstate' Hstate_pre]].
@@ -715,26 +702,24 @@ Lemma equivocate_trace_from_state_correspondence
   : (tr <> [] -> option_map output (last_error tr) = option_map output (last_error tr_reset_is_tr))
   /\ forall
     (eqv : equiv_index),
-  S (projT1 (last_is_tr (inl eqv))) + S (projT1 (reset_state (inl eqv))) = S (projT1 (last_reset_is_tr (inl eqv)))
+  S (projT1 (last_is_tr (eqv))) + S (projT1 (reset_state (eqv))) = S (projT1 (last_reset_is_tr (eqv)))
   /\ (forall
     (id : nat)
-    (Hid: id < S (projT1 (last_is_tr (inl eqv)))),
+    (Hid: id < S (projT1 (last_is_tr (eqv)))),
     exists
-    (Hi : id + S (projT1 (reset_state (inl eqv))) < S (projT1 (last_reset_is_tr (inl eqv)))),
-    projT2 (last_is_tr (inl eqv)) (of_nat_lt Hid) =
-    projT2 (last_reset_is_tr (inl eqv)) (of_nat_lt Hi))
+    (Hi : id + S (projT1 (reset_state (eqv))) < S (projT1 (last_reset_is_tr (eqv)))),
+    projT2 (last_is_tr (eqv)) (of_nat_lt Hid) =
+    projT2 (last_reset_is_tr (eqv)) (of_nat_lt Hi))
   /\ forall
     (id : nat)
-    (Hid: id < S (projT1 (reset_state (inl eqv)))),
+    (Hid: id < S (projT1 (reset_state (eqv)))),
     exists
-    (Hi : id < S (projT1 (last_reset_is_tr (inl eqv)))),
-    projT2 (last_reset_is_tr (inl eqv)) (of_nat_lt Hi) =
-    projT2 (reset_state (inl eqv)) (of_nat_lt Hid) .
+    (Hi : id < S (projT1 (last_reset_is_tr (eqv)))),
+    projT2 (last_reset_is_tr (eqv)) (of_nat_lt Hi) =
+    projT2 (reset_state (eqv)) (of_nat_lt Hid) .
 Proof.
   split.
-  - set (i1 := i0).
-    destruct i1 as [eqv0|neqv0]
-    ; [|contradict (all_indices_equivocating (inr neqv0))].
+  - set (eqv0 := i0).
     destruct
       (equivocate_trace_from_state_correspondence'
         reset_state _ His tr eqv0
@@ -772,15 +757,15 @@ Proof.
       as [Hsize _]. unfold last_reset_is_tr. unfold tr_reset_is_tr.
     lia.
   - apply functional_extensionality_dep_good.
-    intros [eqv|neqv]; [|contradict (all_indices_equivocating (inr neqv))].
+    intros eqv.
     unfold equivocators_state_project. unfold Common.equivocators_state_project.
     spec Heqv_choice eqv.
     spec Heqv_choice' eqv.
     unfold proper_descriptor in *.
     destruct (eqv_choice eqv); [reflexivity|].
-    destruct (last_reset_is_tr (inl eqv)) as (last_reset_is_tr_size, last_reset_is_tr_s)
+    destruct (last_reset_is_tr (eqv)) as (last_reset_is_tr_size, last_reset_is_tr_s)
       eqn:Hlast_reset_is_tr_eqv.
-    destruct (reset_state (inl eqv)) as (reset_state_size, reset_state_s)
+    destruct (reset_state (eqv)) as (reset_state_size, reset_state_s)
       eqn:Hreset_state_eqv.
     simpl in Heqv_choice, Heqv_choice'.
     destruct (le_lt_dec (S last_reset_is_tr_size) n); [lia|].
@@ -819,16 +804,16 @@ Lemma equivocate_trace_from_protocol
       (id : nat)
       (fd : bool)
       (eqv : equiv_index)
-      (l0 : vlabel (IM (inl eqv)))
+      (l0 : vlabel (IM (eqv)))
       (Hleitem : l eitem = existT
-                       (fun n : equiv_index + nequiv_index =>
+                       (fun n : index =>
                         vlabel (Common.equivocator_IM IM n))
-                       (inl eqv) (l0, Existing (IM (inl eqv)) id fd)),
+                       (eqv) (l0, Existing (IM (eqv)) id fd)),
       constraint
         (existT (fun n : index => vlabel (equivocator_IM n))
-           (inl eqv)
+           (eqv)
            (l0,
-           Existing (IM (inl eqv)) (id + S (projT1 (reset_state (inl eqv)))) fd))
+           Existing (IM (eqv)) (id + S (projT1 (reset_state (eqv)))) fd))
         (last
            (map Common.destination
               (fst
@@ -872,7 +857,6 @@ Proof.
         subst l. reflexivity.
       }
       simpl in Hinputs. subst a.
-      destruct x; try contradict (all_indices_equivocating (inr n)).
       assert (Hinputs' : option_protocol_message_prop (equivocators_constrained_vlsm IM i0 constraint) input).
       { destruct Hinputs as [_s Hinputs]. exists _s.
         apply (constraint_subsumption_protocol_prop equivocator_IM i0 _ _ Hconstraint_subsumption).
@@ -895,7 +879,7 @@ Proof.
       apply in_map_iff in Hai. destruct Hai as [eqv [Hai _]].
       subst ai.
       apply equivocators_no_equivocations_vlsm_newmachine_always_valid; try assumption.
-      destruct Htr as [Htr His]. specialize (His (inl eqv)).
+      destruct Htr as [Htr His]. specialize (His (eqv)).
       destruct His as [Hzero His]. assumption.
     + rewrite Hprefa in Heqa.
       rewrite <- app_assoc in Heqa.
@@ -910,7 +894,7 @@ Proof.
         apply in_map_iff in Hai. destruct Hai as [eqv [Hai _]].
         subst ai.
         apply equivocators_no_equivocations_vlsm_newmachine_always_valid; try assumption.
-        destruct Htr as [Htr His]. specialize (His (inl eqv)).
+        destruct Htr as [Htr His]. specialize (His (eqv)).
         destruct His as [Hzero His]. assumption.
       * apply exists_last in Hsuf. destruct Hsuf as (pref, (ai', Hpref)).
         subst suf. rewrite app_assoc in Hprefa.
@@ -934,8 +918,7 @@ Proof.
         spec Hvalids.
         { subst tr. unfold trace_to_action. repeat rewrite map_app. reflexivity. }
         destruct ea. simpl in *.
-        destruct l as (i, l).
-        destruct i as [eqv | neqv]; try contradict (all_indices_equivocating (inr neqv)).
+        destruct l as (eqv, l).
         destruct l as (l,d).
         destruct Hvalids as [Hvalids Hnoequiv].
         unfold vvalid in Hvalids. simpl in Hvalids.
@@ -969,7 +952,7 @@ Proof.
                     (spawn_initial_state is ++
                      map
                        (update_euivocators_transition_item_descriptor
-                          reset_state) epref)) (inl eqv))
+                          reset_state) epref)) (eqv))
               (Fin2Restrict.n2f Hi))
             end
             ; [rewrite <- Hstate; assumption|].
