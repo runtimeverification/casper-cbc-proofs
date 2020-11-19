@@ -314,28 +314,14 @@ Proof.
   intro i.
   unfold equivocators_state_project.
   unfold state_update.
-  destruct i as [ieqv|ineqv].
-  - destruct
-      (@decide
-      (@eq index (@inl equiv_index nequiv_index ieqv)
-         (@inr equiv_index nequiv_index neqv))
-      (@decide_rel index index (@eq index) IndEqDec
-         (@inl equiv_index nequiv_index ieqv)
-         (@inr equiv_index nequiv_index neqv)))
-    ; try discriminate.
-    reflexivity.
-  - destruct
-      (@decide
-      (@eq index (@inr equiv_index nequiv_index ineqv)
-         (@inr equiv_index nequiv_index neqv))
-      (@decide_rel index index (@eq index) IndEqDec
-         (@inr equiv_index nequiv_index ineqv)
-         (@inr equiv_index nequiv_index neqv)))
-    ; try reflexivity.
-    inversion e. subst.
-    unfold eq_rect_r.
-    elim_eq_rect.
-    reflexivity.
+  destruct i as [ieqv|ineqv]
+  ; match goal with
+    |- context [decide ?d] => destruct (decide d)
+    end; [discriminate e|reflexivity|..|reflexivity].
+  inversion e. subst.
+  unfold eq_rect_r.
+  elim_eq_rect.
+  reflexivity.
 Qed.
 
 Lemma equivocators_state_project_state_update_eqv
@@ -358,28 +344,14 @@ Proof.
   intro i.
   unfold equivocators_state_project.
   unfold state_update.
-  destruct i as [ieqv|ineqv].
-  - destruct
-      (@decide
-      (@eq index (@inl equiv_index nequiv_index ieqv)
-         (@inl equiv_index nequiv_index eqv))
-      (@decide_rel index index (@eq index) IndEqDec
-         (@inl equiv_index nequiv_index ieqv)
-         (@inl equiv_index nequiv_index eqv)))
-    ; try reflexivity.
-    inversion e. subst. unfold eq_rect_r.
-    elim_eq_rect. unfold eq_rect.
-    destruct seqv as (n, bs).
-    reflexivity.
-  - destruct
-      (@decide
-      (@eq index (@inr equiv_index nequiv_index ineqv)
-         (@inl equiv_index nequiv_index eqv))
-      (@decide_rel index index (@eq index) IndEqDec
-         (@inr equiv_index nequiv_index ineqv)
-         (@inl equiv_index nequiv_index eqv)))
-    ; try discriminate.
-    reflexivity.
+  destruct i as [ieqv|ineqv]
+  ; match goal with
+    |- context [decide ?d] => destruct (decide d)
+    end; [|reflexivity|discriminate e|reflexivity].
+  inversion e. subst. unfold eq_rect_r.
+  elim_eq_rect. unfold eq_rect.
+  destruct seqv as (n, bs).
+  reflexivity.
 Qed.
 
 Lemma equivocators_initial_state_project

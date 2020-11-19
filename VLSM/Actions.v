@@ -46,7 +46,6 @@ Section apply_actions.
   Lemma apply_action_folder_additive
     (start : vstate X)
     (aitems : vaction X)
-    (final: vstate X)
     (seed_items : list (vtransition_item X))
     : let (final, items) := fold_right apply_action_folder (start, []) aitems in
       fold_right apply_action_folder (start, seed_items) aitems = (final, items ++ seed_items).
@@ -106,7 +105,7 @@ Section apply_actions.
       (fold_right apply_action_folder (@pair (vstate X) _ afinal []) (rev a'))
       as (final, items) eqn:Ha'.
     clear - Ha'.
-    specialize (apply_action_folder_additive afinal (rev a') final aitems) as Hadd.
+    specialize (apply_action_folder_additive afinal (rev a') aitems) as Hadd.
     rewrite Ha' in Hadd.
     rewrite Hadd. rewrite rev_app_distr. reflexivity.
   Qed.

@@ -225,14 +225,5 @@ Definition lift_traces_to_equivocator
         ))
   end.
 
-Lemma lift_traces_to_equivocator_protocol_trace
-  : exists
-    (is : vstate equivocator_vlsm)
-    (tr : list (vtransition_item equivocator_vlsm))
-    (Hproject :  lift_traces_to_equivocator = Some (is, tr)),
-    finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr.
-Proof.
-Admitted.
-
 End trace_mixer.
 
