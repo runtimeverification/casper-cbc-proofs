@@ -1294,6 +1294,64 @@ Context
     Proof.
     Admitted.
     
+    Lemma get_matching_action_is_receive_action
+      (s : vstate X)
+      (from to : index) :
+      is_receive_action (get_matching_action s from to).
+    Proof.
+      unfold is_receive_action; intros.
+      apply in_map_iff in H.
+      destruct H as [x [Hlabel Hinx]].
+      destruct x as [i x].
+      apply in_map_iff in Hinx.
+      destruct Hinx as [x0 [Hlabel_a Hinx0]].
+      destruct x0 as [lable_x0 input_x0] eqn : eq_x0.
+      
+      unfold get_matching_action in Hinx0.
+      destruct (sync s (get_matching_state s to from) to from) eqn : eq_sync.
+      - unfold sync in eq_sync.
+        destruct (complete_suffix (get_history (get_matching_state s to from) from) (get_history (s to) from)) eqn : eq_c.
+        + inversion eq_sync.
+          unfold sync_action in H0.
+          unfold lift_to_composite_action_item in H0.
+          unfold lift_to_receive_item in H0.
+          rewrite <- H0 in Hinx0.
+          apply in_map_iff in Hinx0.
+          destruct Hinx0 as [x2 [Heq1 Heq2]].
+          destruct x2 eqn : eq_x2.
+          inversion Heq1.
+          apply in_map_iff in Heq2.
+          destruct Heq2 as [x3 [Hx3 Hx3']].
+          inversion Hx3.
+          symmetry in H3.
+          rewrite H3 in *.
+          
+    Qed.
+    
+    Lemma receive_for_is_receive_action 
+      (s : vstate X)
+      (from : index)
+      (li : list index) :
+      is_receive_action (get_receives_for s li from).
+    Proof.
+      unfold is_receive_action.
+      unfold get_receives_for.
+      intros.
+      rewrite in_map_iff in H.
+      destruct H as [x [Hlabel Hinx]].
+      rewrite in_map_iff in Hinx.
+      destruct Hinx as [x0 [Heqlabel Hinx0]].
+      destruct x0.
+      destruct x.
+      apply in_concat in Hinx0.
+      destruct Hinx0 as [x1 [Hinx1 Hinx1']].
+      rewrite in_map_iff in Hinx1.
+      destruct Hinx1 as [x2 [Heqmatch Hinx2]].
+      
+      unfold get_matching_action in Heqmatch.
+          
+    Qed.
+    
     Definition get_message_providers_from_action
       (a : vaction X) : list index :=
       List.map fst (messages_a X a).
@@ -1425,20 +1483,180 @@ Context
       (a : vaction X)
       (Hrec : is_receive_action a)
       (Hpr : finite_protocol_action_from X s a)
-      (i : index)
-      (Hi : In i (get_message_providers_from_action a))
-      (Hsame : (s i) = (s' i)) :
+      (li : list index)
+      (Hli : incl (get_message_providers_from_action a) li)
+      (Hsame : forall (i : index), In i li -> (s i) = (s' i)) :
       let res' := snd (apply_action X s' a) in
       let res := snd (apply_action X s a) in 
       finite_protocol_action_from X s' a /\ 
-      (res' i) = (res i).
+      forall (i : index), In i li -> (res' i) = (res i).
     Proof.
       induction a using rev_ind.
+      - simpl. 
+        split. apply finite_protocol_action_empty.
+        assumption.
+        intros.
+        specialize (Hsame i H).
+        intuition.
       - simpl.
-    Qed.
+        unfold finite_protocol_action_from.
+        
+        apply is_receive_action_app in Hrec.
+        destruct Hrec as [Hrec_long Hrec_short].
+        apply finite_protocol_action_from_app_iff in Hpr.
+        destruct Hpr as [Hpr_long Hpr_short].
+        
+        rewrite apply_action_app.
+        destruct (apply_action X s' a) as (tr_long', res_long') eqn : eq_long'.
+        destruct (apply_action X res_long' [x]) as (tr_short', res_short') eqn : eq_short'.
+        simpl.
+        
+        spec IHa. {
+          assumption.
+        }
+        
+        spec IHa. {
+          assumption.
+        }
+        
+        spec IHa. {
+          clear -Hli.
+          unfold get_message_providers_from_action in *.
+          unfold messages_a in *.
+          unfold incl in *.
+          rewrite map_app in Hli.
+          rewrite cat_option_app in Hli.
+          rewrite map_app in Hli.
+          intros.
+          specialize (Hli a0).
+          apply Hli.
+          apply in_app_iff; left; intuition.
+        }
+        
+        simpl in IHa.
+        destruct IHa as [Iha_pr Iha_proj].
+        
+        rewrite apply_action_app.
+        destruct (apply_action X s a) as (tr_long, res_long) eqn : eq_long.
+        destruct (apply_action X res_long [x]) as (tr_short, res_short) eqn : eq_short.
+        simpl in *.
+          
+        replace res_short' with (snd (apply_action X res_long' [x])).
+        2 : (rewrite eq_short'; intuition).
+        replace res_short with (snd (apply_action X res_long [x])).
+        2 : (rewrite eq_short; intuition).
+        unfold apply_action.
+        unfold apply_action_folder.
+        destruct x as [label_x input_x].
+        simpl.
+          
+        destruct (vtransition X label_x (res_long', input_x)) eqn : trans'.
+        destruct (vtransition X label_x (res_long, input_x)) eqn : trans.
+        simpl.
+        
+        unfold finite_protocol_action_from in Hpr_short.
+        unfold apply_action in Hpr_short.
+        unfold apply_action_folder in Hpr_short.
+        simpl in Hpr_short.
+        rewrite trans in Hpr_short.
+          
+        inversion Hpr_short.
+        remember H6 as Hprotocol_trans.
+        unfold protocol_transition in H6.
+        destruct H6 as [Hprotocol_valid Htrans].
+        
+        split.
+        + apply finite_protocol_trace_from_app_iff.
+          split.
+          * unfold finite_protocol_action_from in Iha_pr.
+            replace tr_long' with (fst (apply_action X s' a)).
+            2 : (rewrite eq_long'; intuition).
+            assumption.
+          * replace tr_short' with
+            (fst (apply_action X res_long' [{| label_a := label_x; input_a := input_x |}])).
+            simpl.
+            unfold apply_action.
+            unfold apply_action_folder; simpl.
+            rewrite trans'; simpl in *.
+            apply finite_ptrace_extend.
+            admit.
+            unfold protocol_transition.
+
+            clear H H0 H1 H2 H3 H4 H5.
+            admit.
+            admit.
+            (* 
+            clear -Hpr_short.
+            unfold finite_protocol_action_from in Hpr_short.
+            unfold apply_action at 2 in Hpr_short.
+            unfold apply_action_folder in Hpr_short.
+            destruct *)
+            
+        + intros.
+          specialize (Iha_proj i H6).
+          
+          unfold vtransition in trans, trans'.
+          unfold transition in trans, trans'.
+          simpl in *.
+          unfold vtransition in trans, trans'.
+          destruct label_x as [j label_x].
+          simpl in trans, trans'.
+          
+          destruct label_x eqn : eq_label.
+          * clear -Hrec_short eq_label.
+            unfold is_receive_action in Hrec_short.
+            simpl in Hrec_short.
+            specialize (Hrec_short label_x).
+            spec Hrec_short. {
+              intuition.
+            }
+            rewrite eq_label in Hrec_short.
+            discriminate Hrec_short.
+         * destruct input_x eqn : eq_input.
+           -- clear H2 H0 H1 H4 H5 H6.
+              inversion trans.
+              inversion trans'.
+              destruct (decide (i = j)).
+              ++ rewrite e.
+                 rewrite state_update_eq.
+                 rewrite state_update_eq.
+                 rewrite e in Iha_proj.
+                 rewrite Iha_proj.
+                 reflexivity.
+              ++ rewrite state_update_neq.
+                 rewrite state_update_neq.
+                 all : intuition.
+           -- unfold protocol_valid in Hprotocol_valid.
+              unfold constrained_composite_valid in Hprotocol_valid.
+              unfold free_composite_valid in Hprotocol_valid.
+              unfold vvalid in Hprotocol_valid.
+              unfold valid in Hprotocol_valid.
+              simpl in Hprotocol_valid.
+              intuition.
+    Admitted.
       
     Definition others (i : index) := 
       set_remove idec i index_listing.
+      
+    Lemma NoDup_others
+      (i : index) :
+      NoDup (others i).
+    Proof.
+      unfold others.
+      apply set_remove_nodup.
+      apply (proj1 Hfinite).
+    Qed.
+    
+    Lemma others_correct
+      (i : index) :
+      ~ In i (others i).
+    Proof.
+      unfold others.
+      intros contra.
+      assert (NoDup index_listing) by (apply (proj1 Hfinite)).
+      apply set_remove_2 in contra.
+      all : intuition.
+    Qed.
     
     Definition get_receives_all
       (s : vstate X)
@@ -1473,7 +1691,6 @@ Context
         simpl in IHlfrom.
         
         destruct IHlfrom as [IHprotocol IHproject].
-        unfold finite_protocol_action_from.
         rewrite map_app.
         rewrite map_app.
         rewrite zip_apply_app; simpl.
@@ -1511,14 +1728,33 @@ Context
         }
         
         split.
-        + apply finite_protocol_trace_from_app_iff.
+        + apply finite_protocol_action_from_app_iff.
           split.
           * unfold finite_protocol_action_from in IHprotocol.
             replace tr_long with (fst (apply_action X s (get_receives_all s lfrom))).
             assumption.
             unfold get_receives_all.
-            admit.
-          * admit.
+            replace (apply_action X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom))) with
+            (tr_long, res_long). 
+            intuition.
+          * rewrite app_nil_r.
+            assert (Hsource: finite_protocol_action_from X s (get_receives_for s (others x) x)). {
+              apply get_receives_for_correct.
+              assumption.
+              apply NoDup_others.
+              apply others_correct.
+            }
+            specialize (relevant_components_lv s (res_long)) as Hrel.
+            spec Hrel. {
+              admit.
+            }
+            specialize (Hrel (get_receives_for s (others x) x)).
+            spec Hrel. {
+              admit.
+            }
+            
+            specialize (Hrel Hsource).
+            
         + intros.
           destruct (decide (f = x)).
           * admit.
