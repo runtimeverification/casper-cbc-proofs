@@ -13,7 +13,7 @@ From CasperCBC
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
     VLSM.Equivocators.Composition.Projections
-    VLSM.Equivocators.Composition.AllEquivocating.ResetTraces
+    VLSM.Equivocators.Composition.SimulatingFree.ResetTraces
     VLSM.Actions
     .
 
