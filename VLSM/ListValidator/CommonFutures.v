@@ -168,13 +168,13 @@ Context
      discriminate eq_fv.
   Qed.
   
-  Definition feasible_update_single (s : (@state index index_listing)) (who : index) : transition_item :=
+  Definition feasible_update_single (s : (@state index index_listing)) (who : index) : action_item :=
     let cv := feasible_update_value s who in
     let res := @list_transition index who _ _ (update cv) (s, None) in
-    @Build_transition_item _ (type (IM_index who)) (update cv) None (fst res) (snd res).
+    @Build_action_item _ (type (IM_index who)) (update cv) None.
   
-  Definition feasible_update_composite (s : vstate X) (who : index) : (@transition_item _ (type X)) :=
-    lift_to_composite_transition_item' IM_index s who (feasible_update_single (s who) who).
+  Definition feasible_update_composite (s : vstate X) (who : index) : vaction_item X :=
+    lift_to_composite_action_item IM_index who (feasible_update_single (s who) who).
   
   Lemma feasible_update_protocol 
     (s : vstate X)
@@ -182,7 +182,7 @@ Context
     (who : index) 
     (Hne : not_all_equivocating (s who) who)
     (item := feasible_update_composite s who) :
-    protocol_transition X (l item) (s, input item) (destination item, output item).
+    protocol_valid X (label_a item) (s, input_a item).
   Proof.
     unfold protocol_transition.
     repeat split.
@@ -192,25 +192,25 @@ Context
     apply feasible_update_value_correct with (s := s who) (who := who).
     assumption.
   Qed.
+  
   (* pair (stare, transition_item) *)
   
-  Fixpoint chain_updates (li : list index) (s : vstate X) : (list (@transition_item _ (type X))) :=
-    match li with
-    | [] => []
-    | (h :: tl) => let new_transition := feasible_update_composite s h in
-                   let new_s := destination new_transition in
-                   let res_tl := chain_updates tl new_s in
-                   new_transition :: res_tl
-    end.
+  Definition chain_updates (li : list index) (s : vstate X) : vaction X :=
+    List.map (feasible_update_composite s) li.
   
-  Definition phase_one_transitions (s : vstate X) : list transition_item :=
+  Definition phase_one_action (s : vstate X) : vaction X :=
     chain_updates index_listing s.
-    
-  Definition resulting_state (s : vstate X) (l : list transition_item) :=
-    last (List.map destination l) s.
  
-  Definition phase_one (s : vstate X) :=
-    resulting_state s (phase_one_transitions s).
+  Definition phase_one (s : vstate X) : list (vtransition_item X) * vstate X :=
+    apply_action X s (phase_one_action s).
+  
+  Definition phase_one_res 
+    (s : vstate X) :=
+    snd (phase_one s).
+ 
+  Definition phase_one_transitions
+    (s : vstate X) :=
+    fst (phase_one s).
   
   Lemma chain_updates_protocol 
     (s : vstate X)
@@ -218,7 +218,7 @@ Context
     (li : list index)
     (Hnodup : NoDup li)
     (Hnf : no_component_fully_equivocating s li) :
-    finite_protocol_trace_from _ s (chain_updates li s).
+    finite_protocol_action_from _ s (chain_updates li s).
   Proof.
     unfold no_component_fully_equivocating in Hnf.
     generalize dependent s.
@@ -229,75 +229,67 @@ Context
       assumption.
     - intros.
       remember (feasible_update_composite s a) as item.
-      assert (protocol_transition X (l item) (s, input item) (destination item, output item)). {
-        unfold protocol_transition.
-        unfold protocol_valid.
-        repeat split.
-        assumption.
-        rewrite Heqitem.
-        simpl.
-        apply option_protocol_message_None.
-        unfold free_composite_valid.
-        unfold vvalid.
-        unfold valid.
-        simpl.
-        rewrite Heqitem.
-        simpl.
-        split.
-        apply feasible_update_value_correct with (s := s a) (who := a).
-        specialize (Hnf a).
-        spec Hnf; intuition; assumption.
-        reflexivity.
-        rewrite Heqitem.
-        simpl.
-        reflexivity.
+      specialize (Hnf a).
+      spec Hnf. {
+        intuition.
       }
-      apply finite_ptrace_extend.
+      assert (protocol_valid X (label_a item) (s, input_a item)). {
+        rewrite Heqitem.
+        apply feasible_update_protocol.
+        all : intuition.
+      } 
+      unfold chain_updates.
+      replace (a :: li) with ([a] ++ li).
+      rewrite map_app.
+      
+      remember (snd (apply_action X s (map (feasible_update_composite s) [a]))) as s'.
+      
+      apply finite_protocol_action_from_app_iff.
+      split.
+      + unfold feasible_update_composite; simpl.
+        apply finite_protocol_action_from_one.
+        apply feasible_update_protocol.
+        all : intuition.
       + apply NoDup_cons_iff in Hnodup.
         destruct Hnodup as [Hnoa Hnoli].
-        specialize (IHli Hnoli (destination item)).
-        rewrite <- Heqitem.
-        spec IHli.
-        apply protocol_transition_destination with (l := (l item)) (s0 := s) (om := input item) (om' := output item).
-        assumption.
-        unfold chain_updates in IHli.
-        rewrite Heqitem in IHli.
-        unfold feasible_update_composite in IHli.
-        simpl in IHli.
-        simpl.
+        specialize (IHli Hnoli s').
         spec IHli. {
-          intros.
-          destruct (decide (i = a)).
-          - rewrite e.
-            congruence.
-          - unfold lift_to_composite_state'.
-            rewrite state_update_neq.
-            specialize (Hnf i).
-            spec Hnf. intuition. assumption.
-            assumption.
+          admit.
         }
-        rewrite Heqitem.
-        assumption.
-      + rewrite Heqitem in H.
-        assumption.
+        spec IHli. {
+          admit. 
+        }
+        admit.
+  Admitted.
+  
+  Lemma phase_one_protocol
+    (s : vstate X)
+    (Hprs : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s index_listing) :
+    finite_protocol_action_from X s (phase_one_action s).
+  Proof.
+    unfold phase_one_action.
+    apply chain_updates_protocol.
+    assumption.
+    apply (proj1 Hfinite).
+    assumption.
   Qed.
   
   Lemma phase_one_future 
     (s : vstate X)
     (Hnf : no_component_fully_equivocating s index_listing)
     (Hspr : protocol_state_prop _ s) :
-    in_futures _ s (phase_one s).
+    in_futures _ s (phase_one_res s).
   Proof.
     unfold in_futures.
     exists (phase_one_transitions s).
     split.
-    - unfold phase_one_transitions.
-      apply chain_updates_protocol.
-      assumption.
-      apply (proj1 Hfinite).
-      assumption.
-    - unfold phase_one_transitions.
-      reflexivity.
+    apply phase_one_protocol.
+    assumption.
+    assumption.
+    unfold phase_one_transitions.
+    unfold phase_one_res.
+    apply apply_action_last.
   Qed.
   
   Lemma chain_updates_projections_out 
@@ -305,15 +297,15 @@ Context
     (li : list index)
     (i : index)
     (Hi : ~In i li)
-    (s' := resulting_state s (chain_updates li s)) :
+    (s' := snd (apply_action X s (chain_updates li s))) :
     (s' i) = (s i).
   Proof.
+  Admitted.
+  (*
     generalize dependent s.
     induction li.
     - intros. 
-      unfold resulting_state in *.
-      simpl in *.
-      unfold s'.
+      unfold s'; simpl.
       reflexivity.
     - intros.
       spec IHli.
@@ -356,6 +348,7 @@ Context
       rewrite H in IHli.
       assumption.
   Qed.
+  *)
   
   Lemma chain_updates_projections_in 
     (s : vstate X)
@@ -365,9 +358,11 @@ Context
     (Hnodup: NoDup li)
     (i : index)
     (Hi : In i li)
-    (s' := resulting_state s (chain_updates li s)) :
+    (s' := snd (apply_action X s (chain_updates li s))) :
     project (s' i) i = (s i).
   Proof.
+  Admitted.
+  (*
     generalize dependent s.
     induction li.
     - simpl in *.
@@ -472,14 +467,14 @@ Context
               assumption.
         }
         assumption.
-  Qed.
+  Qed. *)
   
   Lemma phase_one_projections 
     (s : vstate X)
     (Hprss : protocol_state_prop _ s)
     (Hnf : no_component_fully_equivocating s index_listing)
     (i : index)
-    (s' := phase_one s) :
+    (s' := phase_one_res s) :
     project (s' i) i = (s i).
   Proof.
     apply chain_updates_projections_in.
@@ -494,7 +489,7 @@ Context
     (Hprs : protocol_state_prop _ s)
     (Hnf : no_component_fully_equivocating s index_listing)
     (li : list index)
-    (s' := phase_one s) :
+    (s' := phase_one_res s) :
     set_eq 
     (unite_observations (component_list s li))
     (unite_observations (zip_apply (List.map project (component_list s' li)) li)).
@@ -1955,7 +1950,7 @@ Context
     Admitted.
     
     Definition phase_two (s : vstate X) := snd (apply_action X s (get_receives_all s index_listing)).
-    Definition common_future (s : vstate X) := phase_two (phase_one s).
+    Definition common_future (s : vstate X) := phase_two (phase_one_res s).
     
     Lemma common_future_in_futures
       (s : vstate X)
@@ -1963,8 +1958,36 @@ Context
       (Hnf : no_component_fully_equivocating s index_listing) :
       in_futures X s (common_future s).
     Proof.
+      specialize (@in_futures_trans message X s (phase_one_res s) (common_future s)) as Htrans.
+      apply Htrans.
+      apply phase_one_future.
+      assumption.
+      assumption.
+      unfold common_future.
+      unfold phase_two.
       unfold in_futures.
-    Admitted.
+      remember (phase_one_res s) as s'.
+      exists (fst (apply_action X (phase_one_res s) (get_receives_all s' index_listing))).
+      split.
+      - specialize (get_receives_all_protocol s' index_listing (proj1 Hfinite)) as Hrec.
+        spec Hrec. {
+          rewrite Heqs'.
+          unfold phase_one_res.
+          unfold phase_one.
+          apply apply_action_last_protocol.
+          assumption.
+          apply phase_one_protocol.
+          assumption.
+          assumption.
+        }
+        simpl in Hrec.
+        destruct Hrec as [Hrec _].
+        unfold finite_protocol_action_from in Hrec.
+        rewrite Heqs' in *.
+        assumption.
+      - rewrite Heqs'.
+        apply apply_action_last.
+    Qed.
     
     Lemma common_future_no_extra_equivocation
       (s : vstate X)

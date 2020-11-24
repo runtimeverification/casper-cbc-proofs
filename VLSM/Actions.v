@@ -290,6 +290,33 @@ Section apply_actions.
         apply protocol_generated with _oma _s; assumption.
   Qed.
   
+  Lemma finite_protocol_action_from_one
+    (s : vstate X)
+    (a : action_item) :
+    finite_protocol_action_from s [a] <-> protocol_valid X (label_a a) (s, input_a a).
+  Proof.
+    split; 
+    intros; 
+    destruct a; 
+    unfold apply_action in *; simpl in *;
+    unfold finite_protocol_action_from in *; 
+    unfold apply_action in *; simpl in *;
+    destruct (vtransition X label_a0 (s, input_a0)) as [dest output] eqn : eq_trans; simpl in *.
+    - inversion H.
+      unfold protocol_transition in H7.
+      unfold protocol_valid in H7.
+      intuition.
+    -  assert (protocol_transition X label_a0 (s, input_a0) (dest, output)). {
+        unfold protocol_transition.
+        unfold protocol_valid.
+        intuition.
+      }
+      apply finite_ptrace_extend.
+      apply finite_ptrace_empty.
+      apply protocol_transition_destination in H0; intuition.
+      assumption.
+  Qed.
+  
   Definition preserves
     (a : vaction X)
     (P : vstate X -> Prop) :
