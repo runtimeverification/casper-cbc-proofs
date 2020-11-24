@@ -502,6 +502,36 @@ Proof.
       * exists Hi'. exists false. exists None. reflexivity.
 Qed.
 
+Lemma equivocator_protocol_transition_item_project_inv5_new_machine
+  (l : vlabel equivocator_vlsm)
+  (s s' : vstate equivocator_vlsm)
+  (iom oom : option message)
+  (Hv: vvalid equivocator_vlsm l (s', iom))
+  (Ht: vtransition equivocator_vlsm l (s', iom) = (s, oom))
+  (item := {| l := l; input := iom; destination := s; output := oom |})
+  (fi : bool)
+  (sn : state)
+  (Hnew : snd l = NewMachine _ sn)
+  : exists
+    (i : nat)
+    (Hi : i < S (projT1 s)),
+    equivocator_vlsm_transition_item_project item (Existing _ i fi) = Some (None, snd l).
+Proof.
+  unfold equivocator_vlsm_transition_item_project.
+  destruct s as (ns, bs).
+  destruct s' as (ns', bs').
+  unfold vtransition in Ht. unfold_transition Ht.
+  unfold vvalid in Hv. simpl in Hv.
+  destruct l as (lx, d). unfold snd in Ht. simpl in Hv.
+  simpl in Hnew. subst d.
+  inversion Ht. subst; clear Ht.
+  simpl_existT.
+  exists (S ns').  split; [simpl; lia|].
+  unfold snd. unfold item.
+  destruct (le_lt_dec (S (S ns')) (S ns')); [lia|].
+  rewrite eq_dec_if_true; reflexivity.
+Qed.
+    
 Lemma equivocator_protocol_transition_item_project_inv5
   (l : vlabel equivocator_vlsm)
   (s s' : vstate equivocator_vlsm)
@@ -510,17 +540,14 @@ Lemma equivocator_protocol_transition_item_project_inv5
   (Ht: vtransition equivocator_vlsm l (s', iom) = (s, oom))
   (item := {| l := l; input := iom; destination := s; output := oom |})
   (fi : bool)
+  (i : nat)
+  (is_equiv : bool)
+  (Hsndl : snd l = Existing _ i is_equiv)
   : exists
     (i : nat)
-    (Hi : i < S (projT1 s)),
-    match (snd l) with
-    | NewMachine _ sn =>
-      equivocator_vlsm_transition_item_project item (Existing _ i fi) = Some (None, snd l)
-    | _ =>
-      exists
-      (itemx : vtransition_item X),
-      equivocator_vlsm_transition_item_project item (Existing _ i fi) = Some (Some itemx, snd l)
-    end.
+    (Hi : i < S (projT1 s))
+    (itemx : vtransition_item X),
+    equivocator_vlsm_transition_item_project item (Existing _ i fi) = Some (Some itemx, snd l).
 Proof.
   unfold equivocator_vlsm_transition_item_project.
   destruct s as (ns, bs).
@@ -528,28 +555,22 @@ Proof.
   unfold vtransition in Ht. unfold_transition Ht.
   unfold vvalid in Hv. simpl in Hv.
   destruct l as (lx, d). unfold snd in Ht. simpl in Hv.
-  destruct d as [sn | i is_equiv].
-  - inversion Ht. subst; clear Ht.
-    simpl_existT.
-    exists (S ns').  split. { simpl; lia. }
-    unfold snd. unfold item.
-    destruct (le_lt_dec (S (S ns')) (S ns')). { lia. }
-    rewrite eq_dec_if_true; reflexivity.
-  - unfold snd. unfold item. destruct Hv as [Hi Hv].
-    unfold projT1 in Ht.
-    destruct (le_lt_dec (S ns') i). { lia. }
-    replace (of_nat_lt l) with (of_nat_lt Hi) in *; try apply of_nat_ext. clear l.
-    simpl in Ht.
-    destruct (vtransition X lx (bs' (of_nat_lt Hi), iom)) as (sn', om').
-    destruct is_equiv as [|]; inversion Ht; subst; clear Ht; apply inj_pairT2 in H1; subst.
-    + exists (S ns'). split. { simpl; lia. }
-      destruct (le_lt_dec (S (S ns')) (S ns')). { lia. }
-      rewrite eq_dec_if_true; try reflexivity.
-      eexists _; reflexivity.
-    + exists i. exists Hi.
-      destruct (le_lt_dec (S ns) i). { lia. }
-      rewrite eq_dec_if_true; try reflexivity.
-      eexists _; reflexivity.
+  simpl in Hsndl. subst d.
+  unfold snd. unfold item. destruct Hv as [Hi Hv].
+  unfold projT1 in Ht.
+  destruct (le_lt_dec (S ns') i); [lia|].
+  replace (of_nat_lt l) with (of_nat_lt Hi) in * by apply of_nat_ext. clear l.
+  simpl in Ht.
+  destruct (vtransition X lx (bs' (of_nat_lt Hi), iom)) as (sn', om').
+  destruct is_equiv as [|]; inversion Ht; subst; clear Ht; apply inj_pairT2 in H1; subst.
+  + exists (S ns'). split; [simpl; lia|].
+    destruct (le_lt_dec (S (S ns')) (S ns')); [lia|].
+    rewrite eq_dec_if_true by  reflexivity.
+    eexists _. reflexivity.
+  + exists i. exists Hi.
+    destruct (le_lt_dec (S ns) i); [lia|].
+    rewrite eq_dec_if_true by reflexivity.
+    eexists _. reflexivity.
 Qed.
 
 (**

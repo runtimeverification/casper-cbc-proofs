@@ -117,7 +117,6 @@ Proof.
   destruct bs. reflexivity.
 Qed.
 
-
 Lemma equivocator_state_update_eq
   (bs : equivocator_state)
   (n := projT1 bs)
@@ -136,7 +135,7 @@ Lemma equivocator_state_update_neq
   (Hij : i <> j)
   : projT2 (equivocator_state_update bs i si) j = projT2 bs j.
 Proof.
-  simpl. rewrite eq_dec_if_false; try reflexivity. assumption.
+  simpl. rewrite eq_dec_if_false by assumption. reflexivity.
 Qed.
 
 (**
@@ -156,17 +155,6 @@ Program Definition equivocator_state_extend
 Next Obligation.
   lia.
 Defined.
-
-(** Extension preseves original state.*)
-Lemma equivocator_state_extend_original_state
-  (bs : equivocator_state)
-  (s : vstate X)
-  : projT2 (equivocator_state_extend bs s) F1 = projT2 bs F1.
-Proof.
-  unfold equivocator_state_extend.
-  destruct bs as (n, bs). simpl.
-  reflexivity.
-Qed.
 
 (** The original state index is present in any equivocator state*)
 Lemma Hzero (s : equivocator_state) : 0 < S (projT1 s).
@@ -241,7 +229,7 @@ Definition equivocator_valid
   let s := projT2 bs in
   let l := fst bl in
   match snd bl with
-  | NewMachine sn  => (* state is initial and it's valid to transition from it *)
+  | NewMachine sn  => (* state is initial *)
     vinitial_state_prop X sn /\ om = None
   | Existing i is_equiv => (* the index is good, and transition valid for it *)
     exists (Hi : i < S n), vvalid X l (s (of_nat_lt Hi), om)
@@ -321,8 +309,7 @@ Lemma equivocator_state_project_protocol
   let (n, bs) := bs in
   forall (i : Fin.t (S n)), protocol_state_prop X (bs i).
 Proof.
-  generalize_eqs_vars Hbs.
-  induction Hbs; simplify_dep_elim; split.
+  dependent induction Hbs; split.
   - exists (proj1_sig (vs0 X)). apply protocol_initial_state.
   - destruct is as [is His]. unfold s; clear s. simpl.
     destruct His as [Hzero His].
@@ -344,7 +331,7 @@ Proof.
       simpl in x. inversion x. subst. destruct IHHbs2; try assumption.
     + unfold_transition x.
       unfold snd in x. destruct Hv as [Hi Hv].
-      destruct (le_lt_dec (S (projT1 s)) i). { lia. }
+      destruct (le_lt_dec (S (projT1 s)) i); [lia|].
       replace (of_nat_lt l0) with (of_nat_lt Hi) in *; try apply of_nat_ext.
       clear l0.
       destruct s as (n, bs').
@@ -355,14 +342,11 @@ Proof.
       clear Hbs2 _s.
       destruct Hom as [_s Hom].
       specialize (Hgen l (bs' (of_nat_lt Hi)) _om' Hbs't _s om0 Hom Hv).
-      replace
-        (@transition message (@type message X) (@sign message X)
-              (@machine message X) l
-              (@pair (@state message (@type message X))
-                 (option message) (bs' (of_nat_lt Hi)) om0))
-        with (vtransition X l (bs' (of_nat_lt Hi), om0))
-        in Hgen
-        by reflexivity.
+      match type of Hgen with
+      | protocol_prop _ ?t => 
+        replace t  with (vtransition X l (bs' (of_nat_lt Hi), om0))
+          in Hgen by reflexivity
+      end.
       simpl in *.
       destruct (vtransition X l (bs' (of_nat_lt Hi), om0)) as (si', om') eqn:Ht.
       exists si'.
@@ -395,21 +379,18 @@ Proof.
       destruct (IHHbs1 (of_nat_lt Hi)) as [_om0 Hbs0t].
       destruct IHHbs2 as [(_som, Hom) _].
       specialize (Hgen l (bs0 (of_nat_lt Hi))  _om0 Hbs0t _som om0 Hom Hv).
-      replace
-        (@transition message (@type message X) (@sign message X)
-              (@machine message X) l
-              (@pair (@state message (@type message X))
-                 (option message) (bs0 (of_nat_lt Hi)) om0))
-        with (vtransition X l (bs0 (of_nat_lt Hi), om0))
-        in Hgen
-        by reflexivity.
+      match type of Hgen with
+      | protocol_prop _ ?t => 
+        replace t  with (vtransition X l (bs0 (of_nat_lt Hi), om0))
+          in Hgen by reflexivity
+      end.
       destruct (vtransition X l (bs0 (of_nat_lt Hi), om0)) as (si', om') eqn:Ht.
       destruct is_equiv as [|]; inversion x; clear x
       ; subst n om'; apply inj_pairT2 in H1; subst.
       * destruct (to_nat j) as (nj, Hnj).
-        try destruct (nat_eq_dec  nj (S n0)); try (exists om; assumption).
+        destruct (nat_eq_dec  nj (S n0)); [exists om; assumption|].
         apply IHHbs1.
-      * destruct (Fin.eq_dec (of_nat_lt Hi) j); try apply IHHbs1.
+      * destruct (Fin.eq_dec (of_nat_lt Hi) j); [|apply IHHbs1].
         exists om. assumption.
 Qed.
 
