@@ -121,21 +121,6 @@ Context
     intros.
     apply ((proj2 Hfinite) a).
   Qed.
-  
-  Lemma GH_incl_LH 
-    (s : vstate X) :
-    incl (GH s) (LH s).
-  Proof.
-    unfold incl.
-    intros.
-    unfold GH in H.
-    unfold LH.
-    apply filter_In in H.
-    destruct H as [_ H].
-    rewrite negb_true_iff in H.
-    rewrite bool_decide_eq_false in H.
-    apply filter_In.
-  Admitted.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
@@ -1978,6 +1963,7 @@ Context
       (Hnf : no_component_fully_equivocating s index_listing) :
       in_futures X s (common_future s).
     Proof.
+      unfold in_futures.
     Admitted.
     
     Lemma common_future_no_extra_equivocation
@@ -1986,5 +1972,7 @@ Context
       (Hnf : no_component_fully_equivocating s index_listing) :
       incl (GE (common_future s)) (GE s).
     Proof.
+      unfold incl.
+      intros.
     Admitted.
 End Composition.
