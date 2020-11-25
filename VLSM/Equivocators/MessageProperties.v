@@ -99,10 +99,10 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_item_new_machine
   (Hitem : In bitem btr)
   (sn : state)
   (Hnew : snd (l bitem) = NewMachine _ sn)
-  : exists
-      (d : MachineDescriptor)
-      (Hitem : equivocator_vlsm_transition_item_project _ bitem d = Some (None, snd (l bitem))),
-      input bitem = None /\ output bitem = None.
+  : input bitem = None /\ output bitem = None /\
+    exists
+      (d : MachineDescriptor),
+      equivocator_vlsm_transition_item_project _ bitem d = Some (None, snd (l bitem)).
 Proof.
   apply in_split in Hitem.
   destruct Hitem as [bprefix [bsuffix Heq]].
@@ -115,6 +115,7 @@ Proof.
   end.
   inversion Hbsuffix. subst s' tl.
   destruct H3 as [[_ [_ Hv]] Ht].
+  simpl.
   specialize
     (equivocator_protocol_transition_item_project_inv5_new_machine
       _ l s lst iom oom Hv Ht)
@@ -128,10 +129,12 @@ Proof.
   rewrite H in *.
   subst dl.
   specialize (Hpitem false _ eq_refl). destruct Hpitem as [i [Hi Hpitem]].
-  eexists _. exists Hpitem.
   simpl in Ht. unfold vtransition in Ht. simpl in Ht.
   inversion Ht. destruct Hv as [Hsndl Hiom].
-  subst. split; reflexivity.
+  subst.
+  split; [reflexivity|].
+  split; [reflexivity|].
+  eexists _. exact Hpitem.
 Qed.
 
 (**
@@ -244,7 +247,7 @@ Proof.
     (preloaded_equivocator_vlsm_trace_project_protocol_item_new_machine
        _ _ Htr _ Hin _ Hsndl)
     as Hitem.
-    destruct Hitem as [_ [_ [_ Hcontra]]]. congruence.
+    destruct Hitem as [_ [Hcontra _]]. congruence.
   - specialize
     (preloaded_equivocator_vlsm_trace_project_protocol_item
        _ _ Htr _ Hin _ _ Hsndl)

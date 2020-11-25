@@ -315,7 +315,7 @@ Proof.
     destruct His as [Hzero His].
     destruct is as (n, is). simpl in Hzero. subst n. simpl in His.
     intro i. dependent destruction i; try inversion i.
-    exists None. replace (is F1) with (proj1_sig (exist _ _ His)) by reflexivity.
+    exists None. change (is F1) with (proj1_sig (exist _ _ His)).
     apply protocol_initial_state.
   - unfold om0; clear om0.
     exists (proj1_sig (vs0 X)). apply (protocol_initial_message X).
@@ -344,8 +344,8 @@ Proof.
       specialize (Hgen l (bs' (of_nat_lt Hi)) _om' Hbs't _s om0 Hom Hv).
       match type of Hgen with
       | protocol_prop _ ?t => 
-        replace t  with (vtransition X l (bs' (of_nat_lt Hi), om0))
-          in Hgen by reflexivity
+        change t  with (vtransition X l (bs' (of_nat_lt Hi), om0))
+          in Hgen
       end.
       simpl in *.
       destruct (vtransition X l (bs' (of_nat_lt Hi), om0)) as (si', om') eqn:Ht.
@@ -368,7 +368,7 @@ Proof.
       simpl_existT. subst.
       destruct (to_nat j) as (nj, Hnj).
       try destruct (nat_eq_dec nj (S n0)).
-      * exists None. replace sn with (proj1_sig (exist _ sn Hsn)) by reflexivity.
+      * exists None. change sn with (proj1_sig (exist _ sn Hsn)).
         constructor.
       * apply IHHbs1.
     + destruct Hv as [Hi Hv].
@@ -381,8 +381,8 @@ Proof.
       specialize (Hgen l (bs0 (of_nat_lt Hi))  _om0 Hbs0t _som om0 Hom Hv).
       match type of Hgen with
       | protocol_prop _ ?t => 
-        replace t  with (vtransition X l (bs0 (of_nat_lt Hi), om0))
-          in Hgen by reflexivity
+        change t  with (vtransition X l (bs0 (of_nat_lt Hi), om0))
+          in Hgen
       end.
       destruct (vtransition X l (bs0 (of_nat_lt Hi), om0)) as (si', om') eqn:Ht.
       destruct is_equiv as [|]; inversion x; clear x
@@ -439,7 +439,7 @@ Proof.
   - destruct Hs as [Hzero His].
     destruct s. simpl in *. subst x. exists None.
     dependent destruction i; try inversion i.
-    replace (v F1) with (proj1_sig (exist _ _ His)) by reflexivity.
+    change (v F1) with (proj1_sig (exist _ _ His)).
      apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X)).
   - destruct Ht as [[Hps [_ Hv]] Ht].
     simpl in Ht. unfold vtransition in Ht. unfold_transition Ht.
@@ -453,7 +453,7 @@ Proof.
       simpl in *. destruct (to_nat i) as (ni, Hni).
       destruct (nat_eq_dec ni (S ns)); try apply Hs.
       subst. exists None.
-      replace sn with (proj1_sig (exist _ sn Hsn)) by reflexivity.
+      change sn with (proj1_sig (exist _ sn Hsn)).
       constructor.
     + destruct Hv as [Hj Hv].
       destruct (le_lt_dec (S (projT1 s)) j). { lia. }
@@ -462,9 +462,9 @@ Proof.
       specialize (protocol_generated (pre_loaded_with_all_messages_vlsm X) l (projT2 s (of_nat_lt Hj)) _omj Hsj)
         as Hgen.
       spec Hgen (proj1_sig (vs0 X)) om (pre_loaded_with_all_messages_message_protocol_prop X om) Hv.
-      replace (transition l (projT2 s (of_nat_lt Hj), om))
+      change (transition l (projT2 s (of_nat_lt Hj), om))
         with (vtransition X l (projT2 s (of_nat_lt Hj), om))
-        in Hgen by reflexivity.
+        in Hgen.
       simpl in *.
       destruct (vtransition X l (projT2 s (of_nat_lt Hj), om)) as (sj', omj').
       destruct is_equiv as [|]; inversion Ht; subst; clear Ht; simpl in *.
