@@ -212,55 +212,196 @@ Context
     (s : vstate X) :=
     fst (phase_one s).
   
+  Lemma chain_updates_projections_out 
+    (s : vstate X)
+    (li : list index)
+    (i : index)
+    (Hi : ~In i li)
+    (s' := snd (apply_action X s (chain_updates li s))) :
+    (s' i) = (s i).
+  Proof.
+    apply irrelevant_components.
+    intros contra.
+    apply in_map_iff in contra.
+    destruct contra as [x [Heqproj contra]].
+    apply in_map_iff in contra.
+    destruct contra as [a [Heqlabel contra]].
+    unfold chain_updates in contra.
+    apply in_map_iff in contra.
+    destruct contra as [j [Hfease Hj]].
+    rewrite <- Heqlabel in Heqproj.
+    rewrite <- Hfease in Heqproj.
+    unfold feasible_update_composite in Heqproj.
+    simpl in Heqproj.
+    rewrite Heqproj in Hj.
+    intuition.
+  Qed.
+  
   Lemma chain_updates_protocol 
     (s : vstate X)
     (Hspr : protocol_state_prop _ s)
     (li : list index)
     (Hnodup : NoDup li)
     (Hnf : no_component_fully_equivocating s li) :
-    finite_protocol_action_from _ s (chain_updates li s).
+    let res := snd (apply_action X s (chain_updates li s)) in
+    finite_protocol_action_from _ s (chain_updates li s) /\
+    forall (i : index), In i li -> project (res i) i = s i.
   Proof.
     unfold no_component_fully_equivocating in Hnf.
     generalize dependent s.
-    induction li.
+    induction li as [|i li].
     - intros.
       simpl.
-      apply finite_ptrace_empty.
-      assumption.
+      split.
+      + apply finite_ptrace_empty.
+        assumption.
+      + intuition.
     - intros.
-      remember (feasible_update_composite s a) as item.
-      specialize (Hnf a).
-      spec Hnf. {
+      remember (feasible_update_composite s i) as a.
+      specialize (Hnf i) as Hnfi.
+      spec Hnfi. {
         intuition.
       }
-      assert (protocol_valid X (label_a item) (s, input_a item)). {
-        rewrite Heqitem.
-        apply feasible_update_protocol.
-        all : intuition.
-      } 
+      remember (vtransition X (label_a a) (s, input_a a)) as res_a.
+      
+      assert (protocol_transition X (label_a a) (s, input_a a) res_a). {
+        rewrite Heqa.
+        unfold protocol_transition.
+        split.
+        - apply feasible_update_protocol.
+          all : assumption.
+        - rewrite Heqres_a.
+          unfold vtransition.
+          rewrite Heqa.
+          reflexivity.
+      }
+       
       unfold chain_updates.
-      replace (a :: li) with ([a] ++ li).
+      replace (i :: li) with ([i] ++ li) by intuition.
       rewrite map_app.
       
-      remember (snd (apply_action X s (map (feasible_update_composite s) [a]))) as s'.
+      remember (snd (apply_action X s (map (feasible_update_composite s) [i]))) as s'.
       
-      apply finite_protocol_action_from_app_iff.
-      split.
-      + unfold feasible_update_composite; simpl.
+      apply NoDup_cons_iff in Hnodup.
+      destruct Hnodup as [Hnoa Hnoli].
+      specialize (IHli Hnoli s').
+      
+      spec IHli. {
+        rewrite Heqs'.
+        apply apply_action_last_protocol.
+        assumption.
+        simpl.
         apply finite_protocol_action_from_one.
-        apply feasible_update_protocol.
-        all : intuition.
-      + apply NoDup_cons_iff in Hnodup.
-        destruct Hnodup as [Hnoa Hnoli].
-        specialize (IHli Hnoli s').
-        spec IHli. {
-          admit.
+        unfold protocol_transition in H.
+        rewrite <- Heqa.
+        intuition.
+      }
+      
+      assert (Hindif : forall (i : index), In i li -> s' i = s i). {
+        intros.
+        rewrite Heqs'.
+        apply irrelevant_components_one.
+        simpl.
+        intros contra.
+        rewrite contra in H0.
+        intuition.
+      }
+        
+      spec IHli. {
+        intros.
+        destruct (decide (i1 = i)).
+        - rewrite e in H0; intuition.
+        - specialize (Hindif i1 H0).
+          rewrite Hindif.
+          apply Hnf.
+          simpl.
+          right; intuition.
+      }
+      
+      assert (Hchain : (map (feasible_update_composite s) li) = (map (feasible_update_composite s') li)). {
+        apply map_ext_in; intros j Hjli.
+        unfold feasible_update_composite.
+        replace (s' j) with (s j). 
+        reflexivity.
+        symmetry.
+        apply Hindif.
+        intuition.
+      }
+      
+      simpl in IHli.
+      
+      split.
+      + apply finite_protocol_action_from_app_iff.
+        split.
+        * unfold feasible_update_composite; simpl.
+          apply finite_protocol_action_from_one.
+          apply feasible_update_protocol.
+          all : intuition.
+        * rewrite Heqs' in IHli at 1.
+          unfold chain_updates in IHli.
+          rewrite Hchain; intuition.
+      + intros j Hjli.
+        unfold res; simpl.
+        replace (feasible_update_composite s i :: chain_updates li s) with 
+                ([feasible_update_composite s i] ++ chain_updates li s) by intuition.
+        rewrite apply_action_app.
+        destruct (apply_action X s [feasible_update_composite s i]) as (tr_short, res_short) eqn : eq_short.
+        assert (res_short = snd (apply_action X s [feasible_update_composite s i])) by (rewrite eq_short; intuition).
+        destruct (apply_action X res_short (chain_updates li s)) as (tr_long, res_long) eqn : eq_long.
+        assert (res_long = snd (apply_action X res_short (chain_updates li s))) by (rewrite eq_long; intuition).
+
+        assert (s' = res_short). {
+          rewrite Heqs'.
+          rewrite H0.
+          simpl.
+          reflexivity.
         }
-        spec IHli. {
-          admit. 
+        
+        assert (Hsame : res_long i = res_short i). {
+          rewrite H1.
+          unfold chain_updates.
+          rewrite Hchain.
+          rewrite H2.
+          apply chain_updates_projections_out.
+          assumption.
         }
-        admit.
-  Admitted.
+        
+        destruct (decide (j = i)).
+        * simpl.
+          rewrite e.
+          rewrite Hsame.
+          rewrite H0.
+          unfold apply_action.
+          unfold apply_action_folder; simpl. 
+          rewrite state_update_eq.
+          rewrite <- update_consensus_clean with (value := (feasible_update_value (s i) i)).
+          rewrite (@project_same index index_listing).
+          reflexivity.
+          apply Hfinite.
+          apply protocol_state_component_no_bottom.
+          assumption.
+        * destruct IHli as [_ IHli].
+          specialize (IHli j).
+          spec IHli save. {
+            apply in_app_iff in Hjli.
+            destruct Hjli.
+            simpl in H0.
+            simpl in H3.
+            intuition.
+            assumption.
+          }
+          specialize (Hindif j H3).
+          rewrite <- Hindif.
+          rewrite <- IHli.
+          simpl.
+          f_equal.
+          unfold chain_updates.
+          rewrite <- Hchain.
+          rewrite H2.
+          rewrite H1.
+          unfold chain_updates.
+          reflexivity.
+  Qed.
   
   Lemma phase_one_protocol
     (s : vstate X)
@@ -291,183 +432,6 @@ Context
     unfold phase_one_res.
     apply apply_action_last.
   Qed.
-  
-  Lemma chain_updates_projections_out 
-    (s : vstate X)
-    (li : list index)
-    (i : index)
-    (Hi : ~In i li)
-    (s' := snd (apply_action X s (chain_updates li s))) :
-    (s' i) = (s i).
-  Proof.
-  Admitted.
-  (*
-    generalize dependent s.
-    induction li.
-    - intros. 
-      unfold s'; simpl.
-      reflexivity.
-    - intros.
-      spec IHli.
-      apply not_in_cons in Hi.
-      intuition.
-      simpl in IHli.
-      unfold chain_updates in s'.
-      unfold resulting_state in s'.
-      remember ((fix chain_updates (li : list index) (s : vstate X) {struct li} :
-                    list transition_item :=
-                  match li with
-                  | [] => []
-                  | h :: tl =>
-                      feasible_update_composite s h
-                      :: chain_updates tl (destination (feasible_update_composite s h))
-                  end) li (destination (feasible_update_composite s a))) as y.
-      remember (feasible_update_composite s a) as x.
-      unfold s'.
-      rewrite map_cons.
-      rewrite unroll_last.
-      unfold resulting_state in IHli.
-      unfold chain_updates in IHli.
-      rewrite Heqy.
-      
-      assert ((destination x) i = (s i)). {
-        rewrite Heqx.
-        apply not_in_cons in Hi.
-        destruct Hi as [Hi1 Hi2].
-        unfold feasible_update_composite.
-        unfold lift_to_composite_transition_item'.
-        unfold feasible_update_single.
-        simpl.
-        unfold lift_to_composite_state'.
-        rewrite state_update_neq.
-        reflexivity.
-        assumption.
-      }
-      simpl.
-      specialize (IHli (destination x)).
-      rewrite H in IHli.
-      assumption.
-  Qed.
-  *)
-  
-  Lemma chain_updates_projections_in 
-    (s : vstate X)
-    (Hprs : protocol_state_prop _ s)
-    (li : list index)
-    (Hnf : no_component_fully_equivocating s li)
-    (Hnodup: NoDup li)
-    (i : index)
-    (Hi : In i li)
-    (s' := snd (apply_action X s (chain_updates li s))) :
-    project (s' i) i = (s i).
-  Proof.
-  Admitted.
-  (*
-    generalize dependent s.
-    induction li.
-    - simpl in *.
-      intuition.
-    - simpl in IHli.
-      destruct (decide (i = a)).
-      + intros. 
-        unfold s'.
-        unfold resulting_state.
-        unfold chain_updates.
-        rewrite map_cons.
-        rewrite unroll_last.
-        remember (feasible_update_composite s a) as x.
-        assert (project ((destination x) i) i = s i). {
-          rewrite Heqx.
-          unfold feasible_update_composite.
-          unfold lift_to_composite_transition_item'.
-          simpl.
-          unfold lift_to_composite_state'.
-          remember (update_consensus (update_state (s a) (s a) a) (feasible_update_value (s a) a)) as su.
-          rewrite e.
-          rewrite state_update_eq.
-          rewrite Heqsu.
-          rewrite <- update_consensus_clean with (value := (feasible_update_value (s a) a)).
-          rewrite (@project_same index index_listing Hfinite).
-          reflexivity.
-          apply protocol_state_component_no_bottom.
-          assumption.
-        }
-        assert (~In i li /\ NoDup li). {
-          rewrite e.
-          apply NoDup_cons_iff in Hnodup.
-          intuition.
-        }
-        destruct H0 as [H0 H0'].
-        specialize (chain_updates_projections_out (destination x) li i H0) as Hno_i.
-        simpl in Hno_i.
-        unfold resulting_state in Hno_i.
-        unfold chain_updates in Hno_i.
-        replace (last
-     (map destination
-        ((fix chain_updates (li0 : list index) (s0 : vstate X) {struct li0} :
-              list transition_item :=
-            match li0 with
-            | [] => []
-            | h :: tl =>
-                feasible_update_composite s0 h
-                :: chain_updates tl (destination (feasible_update_composite s0 h))
-            end) li (destination x))) (destination x) i) with (destination x i).
-         assumption.
-      + intros.
-        spec IHli.
-        apply NoDup_cons_iff in Hnodup.
-        intuition.
-        simpl in Hi.
-        destruct Hi.
-        elim n. symmetry. assumption.
-        unfold s'.
-        unfold resulting_state.
-        unfold chain_updates.
-        remember (feasible_update_composite s a) as x.
-        specialize (IHli H (destination x)).
-        assert ((destination x i) = s i). {
-          rewrite Heqx.
-          simpl.
-          unfold lift_to_composite_state'.
-          rewrite state_update_neq.
-          reflexivity.
-          assumption.
-        }
-        rewrite map_cons.
-        rewrite unroll_last.
-        unfold resulting_state in IHli.
-        unfold chain_updates in IHli.
-        rewrite H0 in IHli.
-        spec IHli.
-        assert (protocol_transition X (l x) (s, input x) (destination x, output x)). {
-          rewrite Heqx.
-          apply feasible_update_protocol.
-          assumption.
-          specialize (Hnf a).
-          spec Hnf; intuition.
-        }
-        apply protocol_transition_destination with (l := (l x)) (s0 := s) (om := input x) (om' := output x).
-        assumption.
-        spec IHli. {
-          unfold no_component_fully_equivocating.
-          intros.
-          apply NoDup_cons_iff in Hnodup.
-          destruct Hnodup as [Hnoa Hnoli].
-          destruct (decide (i1 = a)).
-            - congruence.
-            - rewrite Heqx.
-              unfold feasible_update_composite.
-              unfold lift_to_composite_transition_item'.
-              unfold lift_to_composite_state'; simpl.
-              rewrite state_update_neq.
-              unfold no_component_fully_equivocating in Hnf.
-              specialize (Hnf i1). 
-              spec Hnf. intuition.
-              assumption.
-              assumption.
-        }
-        assumption.
-  Qed. *)
   
   Lemma phase_one_projections 
     (s : vstate X)
@@ -1361,7 +1325,6 @@ Context
       destruct Hinx1 as [x2 [Heqmatch Hinx2]].
       
       unfold get_matching_action in Heqmatch.
-          
     Admitted.
     
     Lemma receives_neq
@@ -1995,7 +1958,6 @@ Context
       (Hnf : no_component_fully_equivocating s index_listing) :
       incl (GE (common_future s)) (GE s).
     Proof.
-      unfold incl.
       intros.
     Admitted.
 End Composition.
