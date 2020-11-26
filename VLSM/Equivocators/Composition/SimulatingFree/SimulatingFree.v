@@ -512,7 +512,7 @@ Proof.
     specialize (Hstate_state Heqv_state_choice_i) as Hstate_state_i.
     destruct Hstate_state_i as [Heqv_merged_choice_i Hstate_state_i].
     rewrite Heqemsg_tr in Heqess.
-    replace ess with es in Happ_extend by reflexivity.
+    change ess with es in Happ_extend.
     subst ess. unfold es in Hesom'.
     
     match type of Hesom' with

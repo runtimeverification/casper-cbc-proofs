@@ -178,10 +178,10 @@ Proof.
           (eqv)
         = s (eqv)
     ).
-  { induction l; intros; try reflexivity.
+  { induction l; intros; [reflexivity|].
     spec IHl.
     { intro contra. elim Heqv. right. assumption. }
-    replace (a :: l) with ([a] ++ l) by reflexivity.
+    change (a :: l) with ([a] ++ l).
     rewrite map_app. rewrite apply_action_app.
     destruct
       (apply_action equivocators_no_equivocations_vlsm s
@@ -196,7 +196,7 @@ Proof.
     simpl in *. rewrite IHl.
     unfold apply_action in Happlya. simpl in Happlya.
     inversion Happlya.
-    rewrite state_update_neq; try reflexivity.
+    rewrite state_update_neq; [reflexivity|].
     intro contra. elim Heqv. left. congruence.
   }
   assert
@@ -218,7 +218,7 @@ Proof.
     subst. apply NoDup_remove in Hnodup.
     destruct Hnodup as [Hnodup Heqv].
     rewrite map_app. rewrite apply_action_app.
-    replace (eqv :: suf) with ([eqv] ++ suf) by reflexivity.
+    change (eqv :: suf) with ([eqv] ++ suf).
     rewrite map_app.
     specialize (Heq_state_not_in pref) as Hpref.
     spec Hpref.
@@ -299,7 +299,7 @@ Proof.
       subst id. unfold plus.
       assert (Hi : S neqv < S (S neqv)) by lia.
       exists Hi. rewrite to_nat_of_nat.
-      destruct (nat_eq_dec (S neqv) (S neqv)); try congruence.
+      destruct (nat_eq_dec (S neqv) (S neqv)); [|congruence].
       reflexivity.
     + intros. assert (Hi : id < S (S neqv)) by lia.
       exists Hi. rewrite to_nat_of_nat.
@@ -408,8 +408,8 @@ Proof.
              (reset_is_epref_final (eqv')) sd) (eqv))
           as stat.
         spec IHepref eqv.
-        rewrite state_update_neq in Heqstat; try assumption.
-        rewrite state_update_neq; try assumption.
+        rewrite state_update_neq in Heqstat by assumption.
+        rewrite state_update_neq by assumption.
         destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
         simpl in IHepref. subst stat. simpl.
         destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
@@ -474,8 +474,8 @@ Proof.
             (state_update (Common.equivocator_IM IM) epref_final
             (eqv') (epref_final (eqv')) (eqv))
             as stat.
-          rewrite state_update_neq in Heqstat; try assumption.
-          rewrite state_update_neq; try assumption.
+          rewrite state_update_neq in Heqstat by assumption.
+          rewrite state_update_neq by assumption.
           destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
           simpl in IHepref. subst stat. simpl.
           destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
@@ -570,8 +570,8 @@ Proof.
                            (Common.equivocator_state_extend_obligation_1 nepref_eqv' nj Hnj H))
                   end)) (eqv))
               as stat.
-            rewrite state_update_neq in Heqstat; try assumption.
-            rewrite state_update_neq; try assumption.
+            rewrite state_update_neq in Heqstat by assumption.
+            rewrite state_update_neq by assumption.
             destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
             simpl in IHepref. subst stat. simpl.
             destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
@@ -626,9 +626,9 @@ Proof.
               destruct (nat_eq_dec id id').
               --- subst id'.
                 destruct (eq_dec (Fin2Restrict.n2f l0) (Fin2Restrict.n2f Hid))
-                ; try (elim n; apply of_nat_ext).
+                ; [|elim n; apply of_nat_ext].
                 destruct (eq_dec (Fin2Restrict.n2f Hi') (Fin2Restrict.n2f Hi))
-                ; try (elim n; apply of_nat_ext).
+                ; [|elim n; apply of_nat_ext].
                 replace (of_nat_lt l0) with (of_nat_lt Hid) in *.
                 clear l0 e0.
                 replace (of_nat_lt Hi') with (of_nat_lt Hi) in * by apply of_nat_ext.
@@ -669,8 +669,8 @@ Proof.
                     nepref_eqv' sepref_eqv') (Fin2Restrict.n2f l0) seqv')
               (eqv))
               as stat.
-            rewrite state_update_neq in Heqstat; try assumption.
-            rewrite state_update_neq; try assumption.
+            rewrite state_update_neq in Heqstat by assumption.
+            rewrite state_update_neq by assumption.
             destruct (epref_final (eqv)) as (nepref_eqv, sepref_eqv) eqn:Hepref_final_eqv.
             simpl in IHepref. subst stat. simpl.
             destruct (reset_is_epref_final (eqv)) as (nreset_is_epref_eqv, sreset_is_epref_eqv).
@@ -833,7 +833,7 @@ Proof.
     assumption.
   }
   apply (finite_protocol_action_iff  (equivocators_constrained_vlsm IM i0 constraint)).
-  split; try assumption.
+  split; [assumption|].
   specialize
     (finite_protocol_trace_from_to_action equivocators_no_equivocations_vlsm _ _ (proj1 Htr))
     as Htr'.
@@ -853,7 +853,7 @@ Proof.
       destruct item. destruct l eqn:Hl.
       specialize (Hinputs {| label_a := l; input_a := input|}).
       spec Hinputs.
-      { apply in_map_iff. eexists _. split; try apply Hitem.
+      { apply in_map_iff. eexists _. split; [|apply Hitem].
         subst l. reflexivity.
       }
       simpl in Hinputs. subst a.
@@ -878,14 +878,14 @@ Proof.
       }
       apply in_map_iff in Hai. destruct Hai as [eqv [Hai _]].
       subst ai.
-      apply equivocators_no_equivocations_vlsm_newmachine_always_valid; try assumption.
+      apply equivocators_no_equivocations_vlsm_newmachine_always_valid; [|assumption].
       destruct Htr as [Htr His]. specialize (His (eqv)).
       destruct His as [Hzero His]. assumption.
     + rewrite Hprefa in Heqa.
       rewrite <- app_assoc in Heqa.
       apply app_inv_head in Heqa.
       assert (Hsuf: suf = [] \/ suf <> [])
-        by (destruct suf; try (left; congruence); right; congruence).
+        by (destruct suf; [left; congruence | right; congruence]).
       destruct Hsuf as [Hsuf|Hsuf].
       * subst.
         assert (Hai: In ai (spawn_initial_state is)).
@@ -893,7 +893,7 @@ Proof.
         }
         apply in_map_iff in Hai. destruct Hai as [eqv [Hai _]].
         subst ai.
-        apply equivocators_no_equivocations_vlsm_newmachine_always_valid; try assumption.
+        apply equivocators_no_equivocations_vlsm_newmachine_always_valid; [|assumption].
         destruct Htr as [Htr His]. specialize (His (eqv)).
         destruct His as [Hzero His]. assumption.
       * apply exists_last in Hsuf. destruct Hsuf as (pref, (ai', Hpref)).
@@ -927,7 +927,7 @@ Proof.
         simpl in Hnoequiv.
         destruct d as [sd | id fd].
         -- subst ai. simpl. destruct Hvalids as [Hsd Hinput]. subst input.
-          repeat split; try reflexivity; try assumption.
+          repeat split; [assumption|].
           apply Hconstraint_subsumption.
           assumption.
         -- subst. simpl. destruct Hvalids as [Hid Hvalids].
@@ -971,7 +971,9 @@ Lemma equivocate_trace_from_protocol_free
   : finite_protocol_trace_from (free_composite_vlsm equivocator_IM i0)
       reset_state (equivocate_trace_from reset_state is tr).
 Proof.
-  apply equivocate_trace_from_protocol; try assumption.
+  apply equivocate_trace_from_protocol.
+  - assumption.
+  - assumption.
   - intro; intros. exact I.
   - intros. exact I.
 Qed.
@@ -995,7 +997,7 @@ Proof.
   specialize (equivocate_trace_from_protocol_free _ Hreset_state _ _ (conj Hepref His))
     as Hepref_free.
   specialize (finite_ptrace_last_pstate _ _ _ Hepref_free) as Hlast_free.
-  destruct (input eitem) as [m|] eqn:Hinput; try exact I.
+  destruct (input eitem) as [m|] eqn:Hinput; [|exact I].
   apply specialized_proper_sent; [assumption|].
   apply finite_ptrace_first_valid_transition in Hesuf as Hitem.
   destruct Hitem as [[Hs [Hinp [_ Heqv] ]] _].
@@ -1026,7 +1028,7 @@ Proof.
   destruct Heqv as [mitem [Hmitem Houtput]].
   apply in_split in Hmitem.
   destruct Hmitem as [pref [suf Heqepref]].
-  replace (mitem :: suf) with ([mitem] ++ suf) in Heqepref by reflexivity.
+  change (mitem :: suf) with ([mitem] ++ suf) in Heqepref.
   subst epref.
   rewrite app_assoc.
   rewrite equivocate_trace_from_app.
@@ -1040,7 +1042,7 @@ Proof.
   apply (finite_protocol_trace_from_app_iff equivocators_no_equivocations_vlsm) in Hepref.
   apply proj1 in Hepref.
   rewrite trace_to_action_to_trace in Houtput'; [|assumption].
-  replace
+  change
     (fst (apply_action equivocators_no_equivocations_vlsm
     reset_state
     (spawn_initial_state is ++
@@ -1048,7 +1050,7 @@ Proof.
        (update_euivocators_transition_item_descriptor
           reset_state) (pref ++ [mitem]))))
     with (equivocate_trace_from reset_state is (pref ++ [mitem]))
-    in Houtput' by reflexivity.
+    in Houtput'.
   rewrite equivocate_trace_from_app.
   rewrite equivocate_trace_from_app in Houtput'.
   apply Exists_app. right. simpl.

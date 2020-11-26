@@ -191,7 +191,7 @@ Proof.
   unfold vinitial_state_prop in *. simpl in *.
   unfold composite_initial_state_prop in *.
   intro i. spec Hs i.
-  split; try assumption. reflexivity.
+  split; [reflexivity|assumption].
 Qed.
 
 (**
@@ -221,7 +221,7 @@ Lemma equivocators_choice_update_neq
   (Hneq : j <> i)
   : equivocators_choice_update s i si j = s j.
 Proof.
-  unfold equivocators_choice_update. destruct (decide (j = i)); try contradiction. reflexivity.
+  unfold equivocators_choice_update. destruct (decide (j = i)); congruence.
 Qed.
 
 Lemma equivocators_choice_update_eq
@@ -259,7 +259,7 @@ Proof.
   intro j.
   destruct (decide (j = i)).
   - subst. rewrite equivocators_choice_update_eq. symmetry. apply equivocators_choice_update_eq.
-  - repeat rewrite equivocators_choice_update_neq; try assumption.
+  - repeat rewrite equivocators_choice_update_neq by assumption.
     reflexivity.
 Qed.
 
@@ -303,7 +303,7 @@ Proof.
   unfold equivocator_IM in Hes.
   unfold equivocators_state_project.
   specialize (Heqv eqv).
-  destruct (eqv_choice eqv) as [sn | i fi]; try assumption.
+  destruct (eqv_choice eqv) as [sn | i fi]; [assumption|].
   destruct Hes as [Hzero Hes].
   destruct (es eqv) as (n, bs). simpl in Heqv.
   destruct (le_lt_dec (S n) i); [lia|].
@@ -348,7 +348,7 @@ Proof.
       intros.
       specialize (equivocators_initial_state_project _ His eqv_choice Heqv) as HisX.
       remember (equivocators_state_project eqv_choice is) as isX.
-      replace isX with (proj1_sig (exist _ _ HisX)); try reflexivity.
+      change isX with (proj1_sig (exist _ _ HisX)).
       exists None.
       apply protocol_initial_state.
   - split.
@@ -360,7 +360,7 @@ Proof.
       intros.
       specialize (equivocators_initial_state_project _ His eqv_choice Heqv) as HisX.
       remember (equivocators_state_project eqv_choice is) as isX.
-      replace isX with (proj1_sig (exist _ _ HisX)); try reflexivity.
+      change isX with (proj1_sig (exist _ _ HisX)).
       exists None.
       apply protocol_initial_state.
   - specialize (IHHes1 s _om JMeq_refl). apply proj2 in IHHes1.
@@ -381,7 +381,7 @@ Proof.
     -- destruct Hv as [Hsn Hv].
       subst om0.
       inversion Ht. subst. clear Ht.
-      split; try assumption.
+      split; [assumption|].
       intros eqv_choice Heqv.
       destruct (s eqv) as (n, bs) eqn:Hsieqv.
       destruct (eqv_choice eqv) as [sieqv | iieqv fieqv] eqn:Hieqv.
@@ -389,7 +389,7 @@ Proof.
         { intro eqv'. specialize (Heqv eqv').
           simpl in *.
           destruct (decide (eqv' = eqv))
-          ; try (rewrite state_update_neq in Heqv; assumption).
+          ; [|rewrite state_update_neq in Heqv; assumption].
           inversion e. subst. rewrite state_update_eq in Heqv.
           rewrite Hieqv in *. simpl in Heqv. assumption.
         }
@@ -401,10 +401,10 @@ Proof.
                 (existT (fun n0 : nat => t (S n0) -> vstate (IM eqv)) n bs)
                 sn)))
           with (equivocators_state_project eqv_choice s)
-          ; try assumption.
+          ; [assumption|].
         apply functional_extensionality_dep.
         intros eqv'. unfold equivocators_state_project.
-        destruct (eqv_choice eqv') eqn:Heqv'; try reflexivity.
+        destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
         destruct (decide (eqv' = eqv)).
         --- subst.
           rewrite state_update_eq.
@@ -418,7 +418,7 @@ Proof.
           rewrite to_nat_of_nat.
           destruct (nat_eq_dec n0 (S n)); [lia|].
           f_equal. apply of_nat_ext.
-        --- rewrite state_update_neq; try assumption. reflexivity.
+        --- rewrite state_update_neq by assumption. reflexivity.
       ++ specialize (Heqv eqv) as Heqvi. unfold proper_descriptor in Heqvi.
         rewrite Hieqv in Heqvi. rewrite state_update_eq in Heqvi.
         simpl in Heqvi.
@@ -433,7 +433,7 @@ Proof.
               unfold eqv_choice'.
               rewrite equivocators_choice_update_eq.
               assumption.
-            - rewrite state_update_neq in Heqv; try assumption.
+            - rewrite state_update_neq in Heqv by assumption.
               unfold eqv_choice'.
               rewrite equivocators_choice_update_neq by assumption.
               assumption.
@@ -482,7 +482,7 @@ Proof.
           ; [assumption|].
           apply functional_extensionality_dep.
           intros eqv'. unfold equivocators_state_project.
-          destruct (eqv_choice eqv') eqn:Heqv'; try reflexivity.
+          destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
           destruct (decide (eqv' = eqv))
           ; [|rewrite state_update_neq; [reflexivity|assumption]].
           subst.
@@ -513,14 +513,14 @@ Proof.
         { intro eqv'. unfold eqv_choice'.
           destruct (decide (eqv' = eqv)).
           + subst. rewrite equivocators_choice_update_eq. assumption.
-          + rewrite equivocators_choice_update_neq; try assumption.
+          + rewrite equivocators_choice_update_neq by assumption.
             simpl. destruct (vs0 (IM (eqv'))). assumption.
         }
         destruct Hs_om' as [_oms Hs_om'].
         destruct IHHes2 as [_som0 Hom0].
         specialize (Hgen_om' _ _ Hs_om' _ _ Hom0).
         spec Hgen_om'.
-        { split; try exact I.
+        { split; [|exact I].
           unfold free_composite_valid.
           unfold equivocators_state_project.
           unfold eqv_choice'.
@@ -564,10 +564,10 @@ Proof.
                (equivocator_state_extend (IM eqv)
                   (existT (fun n : nat => t (S n) -> vstate (IM eqv)) nieqv bsieqv) sieqv')))
             with (equivocators_state_project eqv_choice s)
-            ; try assumption.
+            ; [assumption|].
           apply functional_extensionality_dep.
           intros eqv'. unfold equivocators_state_project.
-          destruct (eqv_choice eqv') eqn:Heqv'; try reflexivity.
+          destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
           destruct (decide (eqv' = eqv))
           ; [|rewrite state_update_neq; [reflexivity|assumption]].
           inversion e. subst.
@@ -605,7 +605,7 @@ Proof.
             destruct IHHes1 as [_oms' Hs].
             specialize (Hgen _ _ Hs _ _ Hom0).
             spec Hgen.
-            { split; try exact I.
+            { split; [|exact I].
               unfold free_composite_valid. unfold vvalid. simpl in Hv.
               replace (equivocators_state_project eqv_choice'' s eqv) with (bsieqv (of_nat_lt Hi)); try assumption.
               unfold eqv_choice''.
@@ -640,7 +640,7 @@ Proof.
               (equivocators_state_project
                  (equivocators_choice_update eqv_choice eqv (Existing (IM eqv) i false)) s)
               eqv sieqv')
-              ; try assumption.
+              ; [assumption|].
             apply functional_extensionality_dep.
             intro i'.
             rewrite equivocators_state_project_state_update_eqv.
@@ -758,7 +758,7 @@ Proof.
           destruct (decide (eqv' = eqv)).
           +++ subst.
             rewrite Hieqv in Heqv'. discriminate Heqv'.
-          +++ rewrite state_update_neq; try assumption. reflexivity.
+          +++ rewrite state_update_neq by assumption. reflexivity.
         ** specialize (Heqv eqv) as Heqvi. unfold proper_descriptor in Heqvi.
           rewrite Hieqv in Heqvi. rewrite state_update_eq in Heqvi.
           simpl in Heqvi.
@@ -784,7 +784,8 @@ Proof.
             spec Hgen.
             { split; [|exact I].
               unfold free_composite_valid. unfold vvalid. simpl in Hv.
-              replace (equivocators_state_project eqv_choice'' s eqv) with (bsieqv (of_nat_lt Hi)); try assumption.
+              replace (equivocators_state_project eqv_choice'' s eqv) with (bsieqv (of_nat_lt Hi))
+              ; [assumption|].
               unfold eqv_choice''.
               unfold equivocators_state_project.
               rewrite equivocators_choice_update_eq.
@@ -854,7 +855,7 @@ Proof.
             ; [assumption|].
             apply functional_extensionality_dep.
             intros eqv'. unfold equivocators_state_project.
-            +++ destruct (eqv_choice eqv') eqn:Heqv'; try reflexivity.
+            +++ destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
               destruct (decide (eqv' = eqv))
               ; [|rewrite state_update_neq; [reflexivity| assumption]].
               subst.

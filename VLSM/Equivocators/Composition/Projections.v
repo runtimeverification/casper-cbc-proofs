@@ -242,7 +242,8 @@ Proof.
         destruct (decide (eqv' = eqv)).
         ++ subst. unfold equivocators_choice_update. rewrite equivocators_choice_update_eq.
           spec Hproper' eqv. rewrite Heqv in Hproper'. assumption.
-        ++ unfold equivocators_choice_update. rewrite equivocators_choice_update_neq; try assumption.
+        ++ unfold equivocators_choice_update.
+          rewrite equivocators_choice_update_neq by assumption.
           spec Hproper' eqv'.
           rewrite state_update_neq in Hproper'; [assumption|]. congruence.
       -- replace
@@ -261,12 +262,11 @@ Proof.
           unfold Common.equivocators_state_project.
           unfold equivocators_choice_update.
           rewrite equivocators_choice_update_eq. reflexivity.
-        ++ rewrite state_update_neq; try assumption.
+        ++ rewrite state_update_neq by assumption.
           unfold equivocators_state_project.
           unfold Common.equivocators_state_project.
           unfold equivocators_choice_update.
-          rewrite equivocators_choice_update_neq; try reflexivity.
-          congruence.
+          rewrite equivocators_choice_update_neq; congruence.
     * rewrite state_update_eq.
       destruct li as (li, di).
       destruct si' as (nsi', bsi').
@@ -339,7 +339,7 @@ Proof.
           intro eqv'. spec Hproper' eqv'.  unfold equivocators_choice_update.
           destruct (decide (eqv' = eqv)).
           - subst. rewrite equivocators_choice_update_eq. assumption.
-          - rewrite equivocators_choice_update_neq; try assumption.
+          - rewrite equivocators_choice_update_neq by assumption.
             rewrite state_update_neq in Hproper'; congruence.
           }
           exists Hproper''.
@@ -426,7 +426,7 @@ Proof.
           destruct (decide (eqv' = eqv)).
           - subst. rewrite equivocators_choice_update_eq.
             simpl. rewrite His_eqv. simpl. lia.
-          - rewrite equivocators_choice_update_neq; try assumption.
+          - rewrite equivocators_choice_update_neq by assumption.
             rewrite state_update_neq in Hproper'; congruence.
           }
           exists Hproper''.
@@ -619,7 +619,7 @@ Proof.
               rewrite Heqv in Hproper'.
               simpl in *.
               rewrite Hiseqv. simpl. lia.
-            - rewrite state_update_neq in Hproper'; try congruence.
+            - rewrite state_update_neq in Hproper' by congruence.
               rewrite equivocators_choice_update_neq; assumption.
           }
           exists Hproper''.
@@ -633,7 +633,7 @@ Proof.
                (eqv)
                (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
                   (S neqv) bsi')))
-          ; try assumption.
+          ; [assumption|].
           unfold equivocators_state_project.
           rewrite equivocators_state_project_state_update_eqv.
           rewrite Heqv. unfold projT1. unfold projT2.
@@ -654,7 +654,7 @@ Proof.
             rewrite Hiseqv.
             destruct (le_lt_dec (S neqv) ieqv); [lia|].
             f_equal. apply of_nat_ext.
-          --- rewrite state_update_neq; try assumption.
+          --- rewrite state_update_neq by assumption.
             unfold  Common.equivocators_state_project.
             unfold equivocators_choice_update.
             rewrite equivocators_choice_update_neq; congruence.
@@ -665,7 +665,7 @@ Proof.
           clear l.
           replace (of_nat_lt Hproper_eqv) with (of_nat_lt Hidi) in * by apply of_nat_ext.
           clear Hproper_eqv.
-          rewrite eq_dec_if_true in *; try reflexivity.
+          rewrite eq_dec_if_true in * by reflexivity.
           eexists _. eexists _. exists eq_refl.
           rewrite map_cons. unfold destination at 5.
           assert
@@ -712,9 +712,8 @@ Proof.
               rewrite equivocators_choice_update_neq; assumption.
           }
           exists Hproper''.
-          constructor; try assumption.
-          repeat split; try assumption.
-          +++ apply His. assumption.
+          constructor; [assumption|].
+          repeat split; [apply His; assumption| assumption| |].
           +++ remember equivocators_state_project as esp. simpl.
             simpl in Hv. subst esp. unfold equivocators_state_project.
             unfold Common.equivocators_state_project.
@@ -751,7 +750,7 @@ Proof.
             *** subst. repeat rewrite state_update_eq. reflexivity.
             *** repeat rewrite state_update_neq by  assumption.
               unfold  Common.equivocators_state_project.
-              destruct (decide (eqvi = eqv)); try congruence.
+              destruct (decide (eqvi = eqv)); [congruence|].
               rewrite equivocators_choice_update_neq; congruence.
         --- eexists _. eexists _. exists eq_refl.
           assert

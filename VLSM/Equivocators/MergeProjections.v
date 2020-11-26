@@ -130,15 +130,15 @@ Lemma projection_traces_replace_one_length
 Proof.
   unfold projection_traces_replace_one.
   unfold projection_traces.
-  rewrite map_option_length; try apply fin_t_listing_length.
+  rewrite map_option_length; [apply fin_t_listing_length|].
   apply Forall_forall.
   intros nj Hnj.
   unfold preloaded_protocol_equivocator_vlsm_trace_oproject_update.
   unfold equivocator_projection_update.
   destruct (Fin.eq_dec ni nj).
-  - rewrite eq_dec_if_true; try assumption.
+  - rewrite eq_dec_if_true by assumption.
     intro contra. discriminate contra.
-  - rewrite eq_dec_if_false; try assumption.
+  - rewrite eq_dec_if_false by assumption.
     unfold preloaded_protocol_equivocator_vlsm_trace_oproject.
     destruct (to_nat nj) as [j Hj] eqn:Heqnj.
     destruct
