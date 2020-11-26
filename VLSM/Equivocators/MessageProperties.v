@@ -151,14 +151,13 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
   (idl : nat)
   (fdl : bool)
   (Hlbitem : snd (l bitem) = Existing _ idl fdl)
-  : exists
-      (d : MachineDescriptor)
-      (item : vtransition_item X)
-      (Hitem : equivocator_vlsm_transition_item_project _ bitem d = Some (Some item, snd (l bitem)))
-      (tr : list (vtransition_item X))
-      (dfinal dfirst : MachineDescriptor)
-      (Htr : equivocator_vlsm_trace_project _ btr dfinal = Some (tr, dfirst)),
-      In item tr.
+  : exists (item : vtransition_item X),
+      (exists (d : MachineDescriptor),
+        equivocator_vlsm_transition_item_project _ bitem d = Some (Some item, snd (l bitem)))
+      /\ exists (tr : list (vtransition_item X)),
+        In item tr /\
+        exists (dfinal dfirst : MachineDescriptor),
+          equivocator_vlsm_trace_project _ btr dfinal = Some (tr, dfirst).
 Proof.
   apply in_split in Hitem.
   destruct Hitem as [bprefix [bsuffix Heq]].
@@ -191,7 +190,7 @@ Proof.
     (equivocator_vlsm_transition_item_project_some_inj _ Hitemx _Hitemx)
     as [H_i [H_itemx _]].
   subst _i _itemx. clear Hitemx. clear _Hi.
-  exists (Existing _ i fsuffix). exists itemx. exists _Hitemx.
+  exists itemx. split; [eexists _; apply _Hitemx|].
   remember (Existing _ i fsuffix) as dsuffix.
   assert (Hitem : equivocator_vlsm_trace_project _ [bitem] dsuffix = equivocator_vlsm_trace_project _ [bitem] dsuffix)
     by reflexivity.
@@ -219,8 +218,9 @@ Proof.
   subst lbitem.
   simpl in Htr.
   exists (prefix ++ itemx :: suffix).
-  exists dfinal. exists dfirst. exists Htr.
-  apply in_app_iff. right. left. reflexivity.
+  split.
+  - apply in_app_iff. right. left. reflexivity.
+  - eexists _. eexists _. apply Htr.
 Qed.
 
 (**
@@ -252,7 +252,7 @@ Proof.
     (preloaded_equivocator_vlsm_trace_project_protocol_item
        _ _ Htr _ Hin _ _ Hsndl)
     as Hitem.
-  destruct Hitem as [d [itemx [Hitemx [trx [ifinal [ifirst [Htrx Hinx]]]]]]].
+  destruct Hitem as [itemx [[d Hitemx] [trx [Hinx [ifinal [ifirst Htrx]]]]]].
   exists ifinal. exists ifirst. exists trx. exists Htrx.
   apply Exists_exists. exists itemx. split; [assumption|].
   apply equivocator_transition_item_project_inv_messages in Hitemx.
