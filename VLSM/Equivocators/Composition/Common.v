@@ -16,7 +16,7 @@ From CasperCBC
 (** ** Equivocator composition
 
 Given a composition <<X>> of VLSMs, we can model equivocator behavior by
-creating a equivocator composition_ which replaces each component of <<X>>
+creating an _equivocator composition_ which replaces each component of <<X>>
 with its equivocator version and strengthens the composition constraint to
 allow no (additional) equivocations, that is, all messages being received
 must have been previously sent by one of the (equivocator) VLSMs in the
