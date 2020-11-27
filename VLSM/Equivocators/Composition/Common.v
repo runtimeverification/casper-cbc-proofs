@@ -757,7 +757,7 @@ Proof.
           destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
           destruct (decide (eqv' = eqv)).
           +++ subst.
-            rewrite Hieqv in Heqv'. discriminate Heqv'.
+            rewrite Hieqv in Heqv'. congruence.
           +++ rewrite state_update_neq by assumption. reflexivity.
         ** specialize (Heqv eqv) as Heqvi. unfold proper_descriptor in Heqvi.
           rewrite Hieqv in Heqvi. rewrite state_update_eq in Heqvi.

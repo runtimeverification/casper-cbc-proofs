@@ -137,7 +137,7 @@ Proof.
   unfold equivocator_projection_update.
   destruct (Fin.eq_dec ni nj).
   - rewrite eq_dec_if_true by assumption.
-    intro contra. discriminate contra.
+    congruence.
   - rewrite eq_dec_if_false by assumption.
     unfold preloaded_protocol_equivocator_vlsm_trace_oproject.
     destruct (to_nat nj) as [j Hj] eqn:Heqnj.
@@ -146,10 +146,10 @@ Proof.
       as [trX [di [Hproject Hdi]]].
     rewrite Hproject.
     destruct di as [sn | i fi].
-    + intro contra. discriminate contra.
+    + congruence.
     + destruct Hdi as [Hi [HlstX [HtrX]]].
-      destruct (le_lt_dec (S (projT1 is)) i). { lia. }
-      intro contra. discriminate contra.
+      destruct (le_lt_dec (S (projT1 is)) i); [lia|].
+      congruence.
 Qed.
 
 Context

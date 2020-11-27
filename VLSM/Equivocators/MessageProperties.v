@@ -46,17 +46,17 @@ Lemma equivocator_transition_item_project_inv_messages
     input item = input itemX /\ output item = output itemX.
 Proof.
   unfold equivocator_vlsm_transition_item_project in Hitem.
-  destruct idescriptor as [s|j fj]; [discriminate Hitem|].
+  destruct idescriptor as [s|j fj]; [congruence|].
   exists j. exists fj. exists eq_refl.
   destruct item.
   destruct destination as (n, bs).
   destruct l as (lx, descriptorx).
-  destruct (le_lt_dec (S n) j); [discriminate Hitem|].
+  destruct (le_lt_dec (S n) j); [congruence|].
   destruct descriptorx as [s | i' [|]] eqn:Hl; simpl.
-  - destruct (nat_eq_dec (S j) (S n)); discriminate Hitem.
-  - destruct (nat_eq_dec (S j) (S n)); [|discriminate Hitem].
+  - destruct (nat_eq_dec (S j) (S n)); congruence.
+  - destruct (nat_eq_dec (S j) (S n)); [|congruence].
     inversion Hitem. subst. repeat split; reflexivity.
-  - destruct (nat_eq_dec i' j); [|discriminate Hitem].
+  - destruct (nat_eq_dec i' j); [|congruence].
     inversion Hitem. subst. repeat split; reflexivity.
 Qed.
 
@@ -78,7 +78,7 @@ Proof.
   - inversion HtrX. subst. inversion Hjbs.
   - simpl in HtrX.
     destruct (equivocator_vlsm_trace_project _ tr j) as [(trX', i')|]
-      eqn:Htr; [|discriminate HtrX].
+      eqn:Htr; [|congruence].
     specialize (IHtr trX').
     destruct (equivocator_vlsm_transition_item_project _ a i') as [[[item'|] i'']|]
       eqn:Hitem'

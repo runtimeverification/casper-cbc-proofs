@@ -102,21 +102,21 @@ Proof.
   destruct item.
   destruct l as (ls, descriptor).
   destruct destination as (ndest, bdest).
-  destruct (le_lt_dec (S ndest) i); [discriminate HitemX|].
-  destruct (le_lt_dec (S ndest) i'); [discriminate HitemX'|].
+  destruct (le_lt_dec (S ndest) i); [congruence|].
+  destruct (le_lt_dec (S ndest) i'); [congruence|].
   destruct descriptor as [sn | j fj].
-  - destruct (nat_eq_dec (S i) (S ndest)); discriminate HitemX.
+  - destruct (nat_eq_dec (S i) (S ndest)); congruence.
   - destruct fj as [|] eqn:Hfj.
-    + destruct (nat_eq_dec (S i) (S ndest)); [|discriminate HitemX].
+    + destruct (nat_eq_dec (S i) (S ndest)); [|congruence].
       inversion HitemX; subst. clear HitemX.
       inversion e. subst i. clear e.
-      destruct (nat_eq_dec (S i') (S ndest)); [|discriminate HitemX'].
+      destruct (nat_eq_dec (S i') (S ndest)); [|congruence].
       inversion HitemX'; subst. clear HitemX'.
       inversion e; subst i'; clear e.
       replace (of_nat_lt l0) with (of_nat_lt l) by apply of_nat_ext.
       repeat split; reflexivity.
-    + destruct (nat_eq_dec j i); [|discriminate HitemX].
-      destruct (nat_eq_dec j i'); [|discriminate HitemX'].
+    + destruct (nat_eq_dec j i); [|congruence].
+      destruct (nat_eq_dec j i'); [|congruence].
       inversion HitemX. inversion HitemX'. subst.
       replace (of_nat_lt l0) with (of_nat_lt l) by apply of_nat_ext.
       repeat split; reflexivity.
@@ -138,14 +138,14 @@ Lemma equivocator_transition_item_project_inv_none
 Proof.
   unfold equivocator_vlsm_transition_item_project in Hitem.
   destruct item.
-  destruct descriptor as [s|i is_equiv]; [discriminate Hitem|].
+  destruct descriptor as [s|i is_equiv]; [congruence|].
   exists i. exists is_equiv. exists eq_refl.
   destruct destination as (n, bs).
   destruct (le_lt_dec (S n) i); [assumption|].
   destruct l as (ls, [is | ix [|]]).
-  - destruct (nat_eq_dec (S i) (S n)); discriminate Hitem.
-  - destruct (nat_eq_dec (S i) (S n)); discriminate Hitem.
-  - destruct (nat_eq_dec ix i); discriminate Hitem.
+  - destruct (nat_eq_dec (S i) (S n)); congruence.
+  - destruct (nat_eq_dec (S i) (S n)); congruence.
+  - destruct (nat_eq_dec ix i); congruence.
 Qed.
 
 Lemma equivocator_transition_item_project_proper
@@ -218,7 +218,7 @@ Proof.
   simpl in Hproject.
   destruct (equivocator_vlsm_trace_project bsuffix dlast) as [(suffix, dmiddle)|]
     eqn:Hsuffix
-  ; [|discriminate Hproject].
+  ; [|congruence].
   exists dmiddle.
   destruct (equivocator_vlsm_transition_item_project bprefix dmiddle) as [[[prefix|] i]|]
     eqn:Hprefix
@@ -260,7 +260,7 @@ Proof.
       simpl in Ha.
       destruct (equivocator_vlsm_transition_item_project a da)
         as [(oitem', i)|]
-      ; [|discriminate Ha].
+      ; [|congruence].
       destruct oitem' as [item'|]; inversion Ha; subst; reflexivity.
     + subst. rewrite app_assoc. reflexivity.
 Qed.
@@ -282,7 +282,7 @@ Proof.
   - simpl in Hprefix.
     destruct (equivocator_vlsm_trace_project bprefix dmiddle) as [(prefix', dstart')|]
       eqn:Hprefix'
-    ; [|discriminate Hprefix].
+    ; [|congruence].
     specialize (IHbprefix prefix' dstart' eq_refl).
     simpl. rewrite IHbprefix.
     destruct (equivocator_vlsm_transition_item_project a dstart')
@@ -322,14 +322,14 @@ Proof.
   unfold_transition Ht.
   simpl in Hv.
   unfold equivocator_vlsm_transition_item_project in Hitem.
-  destruct di as [sn| i fi]; [discriminate Hitem|].
+  destruct di as [sn| i fi]; [congruence|].
   exists i. exists fi. exists eq_refl. unfold item in Hitem.
   destruct l as (lx, descriptor).
   destruct s as (ns, bs).
-  destruct (le_lt_dec (S ns) i); [discriminate Hitem|].
+  destruct (le_lt_dec (S ns) i); [congruence|].
   exists l. unfold snd in Ht. unfold snd in Hv.
   destruct descriptor as [sn| j is_equiv].
-  - destruct (nat_eq_dec (S i) (S ns)); discriminate Hitem.
+  - destruct (nat_eq_dec (S i) (S ns)); congruence.
   - destruct Hv as [Hj Hv].
     destruct (le_lt_dec (S (projT1 s')) j); [lia|].
     replace (of_nat_lt l0) with (of_nat_lt Hj) in * by apply of_nat_ext. clear l0.
@@ -338,7 +338,7 @@ Proof.
       as (si', om') eqn:Htx.
     destruct s' as (n', bs').
     destruct is_equiv as [|].
-    + destruct (nat_eq_dec (S i) (S ns)); [|discriminate Hitem].
+    + destruct (nat_eq_dec (S i) (S ns)); [|congruence].
       inversion Hitem. subst di' item'. clear Hitem.
       exists eq_refl.
       exists j. exists true. exists eq_refl.
@@ -348,7 +348,7 @@ Proof.
       rewrite to_nat_of_nat.
       destruct (nat_eq_dec (S n') (S n')); [assumption|].
       elim n. reflexivity.
-    + destruct (nat_eq_dec j i); [|discriminate Hitem]. subst.
+    + destruct (nat_eq_dec j i); [|congruence]. subst.
       inversion Hitem. subst di' item'. clear Hitem.
       exists eq_refl. exists i. exists false. exists eq_refl.
       exists Hj. split; [assumption|].
@@ -395,7 +395,7 @@ Proof.
   destruct di as [si | i fi]; [inversion Hitem; reflexivity|].
   simpl in Hv. unfold item in Hitem.
   destruct s as (ns, bs).
-  destruct (le_lt_dec (S ns) i); [discriminate Hitem|].
+  destruct (le_lt_dec (S ns) i); [congruence|].
   destruct d as [sd | id fd].
   - destruct (nat_eq_dec (S i) (S ns)); inversion Hitem; subst; clear Hitem.
     + simpl. exists eq_refl. inversion e. exists eq_refl.
@@ -424,7 +424,7 @@ Proof.
          (bs' (@of_nat_lt id (S n') Hj)) iom))
       as (si', om') eqn:Htx.
     destruct fd as [|].
-    + destruct (nat_eq_dec (S i) (S ns)); [discriminate Hitem|].
+    + destruct (nat_eq_dec (S i) (S ns)); [congruence|].
       inversion Hitem. subst di'. clear Hitem.
       simpl. exists l. inversion Ht. subst.
       assert (Hi' : i < S n') by lia.
@@ -434,7 +434,7 @@ Proof.
       destruct (nat_eq_dec i (S n')); [lia|].
       f_equal.
       apply of_nat_ext.
-    + destruct (nat_eq_dec id i); [discriminate Hitem|].
+    + destruct (nat_eq_dec id i); [congruence|].
       inversion Hitem. subst di'. clear Hitem. simpl.
       exists l. inversion Ht. subst. exists l.
       simpl_existT. subst.
@@ -731,7 +731,7 @@ Proof.
         simpl in Hlst. destruct Hlst as [Hlst Htr].
         repeat rewrite map_cons.
         destruct di' as [sn'| i' fi']
-        ; [destruct Hitem as [i' [fi' [Hcontra _]]]; discriminate Hcontra|].
+        ; [destruct Hitem as [i' [fi' [Hcontra _]]]; congruence|].
         destruct Hitem as [_i' [_fi' [Heq [Hi' [Hv' Ht']]]]].
         inversion Heq. subst _i' _fi'.
         exists Hi'.
@@ -837,14 +837,14 @@ Proof.
   destruct (equivocator_vlsm_transition_item_project x dj)
     as [(_x, _dmiddle)|]
     eqn:Hx'
-  ; [|discriminate Hx].
+  ; [|congruence].
   destruct _x as [itemx|]; inversion Hx; subst lx _dmiddle; clear Hx.
   - subst. destruct x. unfold equivocator_vlsm_transition_item_project in Hx'.
     destruct l. destruct destination.
-    destruct (le_lt_dec (S x) j); [discriminate Hx'|].
+    destruct (le_lt_dec (S x) j); [congruence|].
     assumption.
   - subst. unfold equivocator_vlsm_transition_item_project in Hx'. destruct x. destruct l. destruct destination.
-    destruct (le_lt_dec (S x) j); [discriminate Hx'|].
+    destruct (le_lt_dec (S x) j); [congruence|].
     assumption.
 Qed.
 
@@ -917,7 +917,7 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_inv2
     end.
 Proof.
   specialize (equivocator_vlsm_trace_project_inv _ Hntr j fj) as Hj.
-  spec Hj. { rewrite HtrX. intro contra. discriminate contra. }
+  spec Hj. { rewrite HtrX. intro contra. congruence. }
   spec Hj is.
   exists Hj.
   destruct
@@ -962,7 +962,7 @@ Lemma preloaded_equivocator_vlsm_protocol_trace_project_inv2
     end.
 Proof.
   specialize (equivocator_vlsm_trace_project_inv _ Hntr j fj) as Hj.
-  spec Hj. { rewrite HtrX. intro contra. discriminate contra. }
+  spec Hj. { rewrite HtrX. intro contra. congruence. }
   spec Hj is.
   exists Hj.
   destruct

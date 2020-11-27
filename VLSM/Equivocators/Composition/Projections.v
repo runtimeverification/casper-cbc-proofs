@@ -82,7 +82,7 @@ Proof.
         v input (destination e) output)
       (eqv_choice e))
   ; [|reflexivity].
-  destruct p. destruct o; discriminate contra.
+  destruct p. destruct o; congruence.
 Qed.
 
 Definition equivocators_trace_project_folder
@@ -126,7 +126,7 @@ Proof.
       as [(trX', eqv_choice')|] eqn:Hfld; [|discriminate Htr].
     simpl in Htr.
     destruct (equivocators_transition_item_project eqv_choice' a)
-      as [(oitem, eqv_choice'')|] eqn:Ha; [|discriminate Htr].
+      as [(oitem, eqv_choice'')|] eqn:Ha; [|congruence].
     destruct oitem as [item'|]; inversion Htr; subst
     ; specialize (IHtr _ _ _ Hfld)
     ; rewrite IHtr
