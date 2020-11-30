@@ -196,9 +196,7 @@ Context
        apply protocol_prop_no_bottom.
        destruct pr_valid_prop.
        assumption.
-       - destruct m1 eqn : m1_eq.
-         + inversion transition_prop.
-         + inversion transition_prop.
+       - destruct m1 eqn : m1_eq; inversion transition_prop.
     Qed.
 
     Lemma input_gets_recorded :
@@ -3232,18 +3230,23 @@ Context
       get_validators_nodup.
 
    Existing Instance lv_basic_equivocation.
-   (*
+  
   Lemma observations_in_project
       (s : state)
       (target i : index)
+      (Hdif : target <> index_self)
       : incl (lv_observations (project s i) target) (lv_observations s target).
   Proof.
     unfold incl.
     intros.
     unfold lv_observations.
-    unfold get_observations at 1.
+    destruct (decide (target = index_self)).
+    contradict e; assumption.
     destruct s eqn : eq_s.
-    - simpl in *.
+    - unfold lv_observations in H.
+      rewrite decide_False in H.
+      simpl in *.
+      assumption.
       assumption.
     - destruct (depth (Something b is)) eqn : eq_depth.
       + apply depth_zero_bottom in eq_depth.
@@ -3284,6 +3287,7 @@ Context
         lia.
         assumption.
   Qed.
+  (* 
 
     Lemma observations_disregards_cv
       (s : vstate X)

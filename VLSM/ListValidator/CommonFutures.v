@@ -78,7 +78,11 @@ Context
       (Hdif : j <> i) :
       In j (others i).
     Proof.
-    Admitted.
+      unfold others.
+      apply set_remove_3.
+      apply Hfinite.
+      assumption.
+    Qed.
   
   Definition get_message_providers_from_action
    (a : vaction X) : list index :=
@@ -121,6 +125,52 @@ Context
     intros.
     apply ((proj2 Hfinite) a).
   Qed.
+  
+  Definition cobs := @observable_events (composite_state IM_index) index lv_event
+    decide_eq 
+    lv_event_lt
+    lv_event_lt_dec
+    get_event_subject ce.
+  
+  Definition cequiv_evidence
+    := (@equivocation_evidence (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject ce).
+  
+  Lemma GE_direct 
+    (s : vstate X)
+    (i : index) :
+    In i (GE s) <-> (cequiv_evidence s i).
+  Proof.
+    split; intros.
+  Admitted.
+  
+  Lemma GE_existing_update
+    (s : vstate X)
+    (so : state)
+    (i : index)
+    (s' := state_update IM_index s i so)
+    (Hhave : In (Obs Sent i so) (cobs s i) \/
+             In (Obs Received i so) (cobs s i)) :
+    incl (GE s') (GE s).
+  Proof.
+    unfold incl; intros.
+    apply GE_direct in H as Hev.
+    apply GE_direct.
+    unfold cequiv_evidence in *.
+    unfold equivocation_evidence in *.
+    destruct Hev as [e1 [Hine1 Hrem]].
+    destruct Hrem as [e2 [Hine2 Hcomp]].
+    destruct (inb decide_eq e1 (observable_events s a)) eqn : eq_1;
+    destruct (inb decide_eq e2 (observable_events s a)) eqn : eq_2.
+    - rewrite <- in_correct in eq_1, eq_2.
+      exists e1.
+      split. 
+      + assumption.
+      + exists e2. 
+        split. assumption.
+        assumption.
+    - 
+      
+  Admitted.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
@@ -245,7 +295,8 @@ Context
     (Hnf : no_component_fully_equivocating s li) :
     let res := snd (apply_action X s (chain_updates li s)) in
     finite_protocol_action_from _ s (chain_updates li s) /\
-    forall (i : index), In i li -> project (res i) i = s i.
+    (forall (i : index), In i li -> project (res i) i = s i) /\ 
+    incl (GE res) (GE s).
   Proof.
     unfold no_component_fully_equivocating in Hnf.
     generalize dependent s.
@@ -340,7 +391,7 @@ Context
         * rewrite Heqs' in IHli at 1.
           unfold chain_updates in IHli.
           rewrite Hchain; intuition.
-      + intros j Hjli.
+      +
         unfold res; simpl.
         replace (feasible_update_composite s i :: chain_updates li s) with 
                 ([feasible_update_composite s i] ++ chain_updates li s) by intuition.
@@ -366,42 +417,74 @@ Context
           assumption.
         }
         
-        destruct (decide (j = i)).
+        split.
+        intros j Hjli.
+        * destruct (decide (j = i)).
+          -- simpl.
+             rewrite e.
+             rewrite Hsame.
+             rewrite H0.
+             unfold apply_action.
+             unfold apply_action_folder; simpl. 
+             rewrite state_update_eq.
+             rewrite <- update_consensus_clean with (value := (feasible_update_value (s i) i)).
+             rewrite (@project_same index index_listing).
+             reflexivity.
+             apply Hfinite.
+             apply protocol_state_component_no_bottom.
+             assumption.
+          -- destruct IHli as [_ [IHli _]].
+             specialize (IHli j).
+             spec IHli save. {
+               destruct Hjli.
+               simpl in H0.
+               simpl in H3.
+               intuition.
+               assumption.
+             }
+             specialize (Hindif j H3).
+             rewrite <- Hindif.
+             rewrite <- IHli.
+             simpl.
+             f_equal.
+             unfold chain_updates.
+             rewrite <- Hchain.
+             rewrite H2.
+             rewrite H1.
+             unfold chain_updates.
+             reflexivity.
         * simpl.
-          rewrite e.
-          rewrite Hsame.
-          rewrite H0.
-          unfold apply_action.
-          unfold apply_action_folder; simpl. 
-          rewrite state_update_eq.
-          rewrite <- update_consensus_clean with (value := (feasible_update_value (s i) i)).
-          rewrite (@project_same index index_listing).
-          reflexivity.
-          apply Hfinite.
-          apply protocol_state_component_no_bottom.
-          assumption.
-        * destruct IHli as [_ IHli].
-          specialize (IHli j).
-          spec IHli save. {
-            apply in_app_iff in Hjli.
-            destruct Hjli.
-            simpl in H0.
-            simpl in H3.
-            intuition.
-            assumption.
+          assert (Hge_short : incl (GE res_short) (GE s)). {
+            unfold incl; intros.
+            unfold GE in *.
+            apply set_diff_elim2 in H3; simpl in H3.
+            apply set_diff_intro.
+            apply ((proj2 Hfinite) a0).
+            intros contra.
+            unfold GH in *.
+            apply filter_In in contra.
+            destruct contra as [_ contra].
+            apply negb_true_iff in contra.
+            apply bool_decide_eq_false in contra.
+            unfold equivocation_evidence in contra.
+            simpl in *.
+            contradict contra.
+            admit.
           }
-          specialize (Hindif j H3).
-          rewrite <- Hindif.
-          rewrite <- IHli.
-          simpl.
-          f_equal.
-          unfold chain_updates.
-          rewrite <- Hchain.
-          rewrite H2.
-          rewrite H1.
-          unfold chain_updates.
-          reflexivity.
-  Qed.
+          
+          assert (Hge_long : incl (GE res_long) (GE res_short)). {
+            destruct IHli as [_ [_ IHli]].
+            unfold chain_updates in IHli.
+            rewrite <- Hchain in IHli.
+            rewrite H2 in IHli.
+            unfold chain_updates in H1.
+            rewrite H1.
+            apply IHli.
+          }
+          apply incl_tran with (m := (GE res_short)).
+          assumption.
+          assumption.
+  Admitted.
   
   Lemma phase_one_protocol
     (s : vstate X)
