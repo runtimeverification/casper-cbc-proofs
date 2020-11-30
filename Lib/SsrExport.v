@@ -1,4 +1,4 @@
 From Coq Require Export ssreflect.
-Global Set SsrOldRewriteGoalsOrder.
-Global Set Asymmetric Patterns.
-Global Set Bullet Behavior "None".
+Export Set SsrOldRewriteGoalsOrder.
+Export Set Asymmetric Patterns.
+Export Set Bullet Behavior "None".
