@@ -2910,6 +2910,9 @@ Context
              (set_union decide_eq (List.fold_right (set_union decide_eq) [] children_res) [project s target])
              end
       end.
+      
+    Definition get_raw_observations (s : state) (target : index) : set state :=
+      get_observations target (depth s) s.
 
     Definition shallow_observations (s : state) (target : index) :=
       get_observations target 1 s.
@@ -3120,6 +3123,15 @@ Context
       match e with
         Obs type subject state => state
       end.
+      
+    Definition lv_event_comp_eq 
+      (e : lv_event) :
+      e = Obs (get_event_type e) (get_event_subject e) (get_event_state e).
+    Proof.
+      destruct e.
+      simpl.
+      reflexivity.
+    Qed.
     
     Definition lv_event_lt (e1 e2 : lv_event) : Prop :=
     match e1, e2 with
@@ -3149,17 +3161,106 @@ Context
       - right. auto.
     Qed.
     
-    Definition lv_observations (s : state) (target : index) : set lv_event :=
-      let messages := (get_observations target (depth s) s) in
-      let sent_messages := get_history s index_self in
-      let sent_obs := List.map (Obs Sent index_self) sent_messages in
-      let received_obs := List.map (Obs Received target) (set_remove_list sent_messages messages) in
-      let state_obs := (Obs State index_self s) in
+    Definition lv_sent_states (s : state) (target : index) : set (@state index index_listing) :=
       match decide_eq target index_self with
-      | left _ => set_union decide_eq (set_union decide_eq sent_obs received_obs) [state_obs]
-      | right _ => received_obs
-      end.  
-          
+      | left _ => get_history s index_self
+      | right _ => []
+      end.
+    
+    Definition lv_sent_observations (s : state) (target : index) : set lv_event :=
+      match decide_eq target index_self with
+      | left _ => List.map (Obs Sent index_self) (lv_sent_states s target)
+      | right _ => []
+      end.
+      
+    Lemma in_lv_sent 
+      (s : state)
+      (target : index)
+      (e : lv_event)
+      (Hin : In e (lv_sent_observations s target)) :
+      get_event_type e = Sent /\ get_event_subject e = target.
+    Proof.
+      unfold lv_sent_observations in Hin.
+      destruct (decide (target = index_self)).
+      - unfold lv_sent_states in Hin.
+        rewrite decide_True in Hin.
+        apply in_map_iff in Hin.
+        destruct Hin as [x [Hsent _]].
+        rewrite <- Hsent; simpl.
+        rewrite e0.
+        all : intuition.
+      - intuition.
+    Qed.
+      
+    Definition lv_received_observations (s : state) (target : index) : set lv_event :=
+      let obs := (get_observations target (depth s) s) in
+      let sent_obs := lv_sent_states s target in
+      match decide_eq target index_self with
+      | left _ => []
+      | right _ => List.map (Obs Received target) (set_remove_list sent_obs obs)
+      end.
+      
+    Lemma in_lv_received 
+      (s : state)
+      (target : index)
+      (e : lv_event)
+      (Hin : In e (lv_received_observations s target)) :
+      get_event_type e = Received /\ get_event_subject e = target.
+    Proof.
+      unfold lv_received_observations in Hin.
+      destruct (decide (target = index_self)).
+      - intuition.
+      - apply in_map_iff in Hin.
+        destruct Hin as [x [Hobs _]].
+        rewrite <- Hobs; simpl.
+        intuition.
+    Qed.
+      
+    Definition lv_state_observations (s : state) (target : index) : set lv_event :=
+      match decide_eq target index_self with
+      | left _ => [Obs State index_self s]
+      | right _ => []
+      end.
+    
+    Lemma in_lv_state 
+      (s : state)
+      (target : index)
+      (e : lv_event)
+      (Hin : In e (lv_state_observations s target)) :
+      get_event_type e = State /\ get_event_subject e = target.
+    Proof.
+      unfold lv_state_observations in Hin.
+      destruct (decide (target = index_self)).
+      - simpl in Hin.
+        destruct Hin.
+        rewrite <- H; simpl.
+        rewrite e0.
+        all : intuition.
+      - intuition.
+    Qed.
+      
+    Definition lv_message_observations (s : state) (target : index) : set lv_event :=
+      set_union decide_eq (lv_sent_observations s target) (lv_received_observations s target).
+      
+    Definition lv_observations (s : state) (target : index) : set lv_event :=
+      set_union decide_eq (lv_state_observations s target) (lv_message_observations s target).
+    
+    Lemma lv_observations_other 
+      (s : state)
+      (target : index)
+      (Hdif : target <> index_self) :
+      lv_observations s target = lv_received_observations s target.
+    Proof.
+      unfold lv_observations.
+      unfold lv_state_observations.
+      unfold lv_message_observations.
+      unfold lv_sent_observations.
+      rewrite decide_False.
+      rewrite decide_False.
+      unfold set_union.
+      simpl.
+    Admitted.
+           
     Definition complete_observations (s : state) : set lv_event :=
       fold_right (set_union decide_eq) [] (List.map (lv_observations s) index_listing).
     
@@ -3175,29 +3276,16 @@ Context
        observable_events := lv_observations;
       |}.
     Next Obligation.
+    destruct e as [te ie se].
     unfold lv_observations in He.
-    destruct (decide (v = index_self)).
-    - apply set_union_elim in He.
-      destruct He.
-      + apply set_union_elim in H. 
-        destruct H;
-        rewrite in_map_iff in H;
-        destruct H as [x [Hobs Hinx]];
-        rewrite <- Hobs;
-        simpl;
-        intuition.
-      + simpl in H.
-        destruct H.
-        rewrite <- H.
-        simpl.
-        symmetry.
-        assumption.
-        intuition.
-    - rewrite in_map_iff in He.
-      destruct He as [x [Hobs Hinx]].
-      rewrite <- Hobs.
-      simpl.
-      reflexivity.
+    apply set_union_elim in He.
+    destruct He.
+    - apply in_lv_state in H; intuition.
+    - unfold lv_message_observations in H.
+      apply set_union_elim in H.
+      destruct H.
+      + apply in_lv_sent in H; intuition.
+      + apply in_lv_received in H; intuition.
    Defined.
    
    Existing Instance observable_full.
@@ -3214,7 +3302,7 @@ Context
    Qed.
 
   Check @basic_observable_equivocation.
-   Definition lv_basic_equivocation : basic_equivocation state index :=
+  Definition lv_basic_equivocation : basic_equivocation state index :=
       @basic_observable_equivocation
       (@state index index_listing)
       index
@@ -3229,21 +3317,206 @@ Context
       get_validators
       get_validators_nodup.
 
-   Existing Instance lv_basic_equivocation.
-  
-  Lemma observations_in_project
+  Existing Instance lv_basic_equivocation.  
+    
+  Lemma unfold_raw_observations
+      (s s': state)
+      (Hnb : s <> Bottom /\ s' <> Bottom)
+      (target : index) :
+      In s' (get_raw_observations s target) <->
+      (project s target = s') \/
+      (exists (i : index), (In s' (get_raw_observations (project s i) target))).
+  Proof.
+      split.
+      - intros.
+        unfold get_raw_observations in H.
+        destruct s.
+        simpl in *.
+        exfalso.
+        assumption.
+        destruct (depth (Something b is)) eqn : eq_d.
+        apply depth_zero_bottom in eq_d.
+        discriminate eq_d.
+        apply set_remove_1 in H.
+        apply set_union_elim in H.
+        destruct H.
+        + apply set_union_in_iterated in H.
+          rewrite Exists_exists in H.
+          destruct H as [child_res [Heq_child_res Hin_child_res]].
+          rewrite in_map_iff in Heq_child_res.
+          destruct Heq_child_res as [child [Heq_child Hin_child]].
+          rewrite in_map_iff in Hin_child.
+          destruct Hin_child as [i [Hproject Hini]].
+          right.
+          exists i.
+          rewrite get_observations_depth_redundancy in Heq_child.
+          rewrite <- Heq_child in Hin_child_res.
+          rewrite <- Hproject in Hin_child_res.
+          assumption.
+          specialize (@depth_parent_child index index_listing Hfinite idec is b i).
+          intros Hdpc.
+          rewrite <- Hproject.
+          unfold project.
+          lia.
+        + simpl in H.
+          left.
+          intuition.
+      - intros.
+        destruct H.
+        unfold get_raw_observations.
+        destruct s.
+        intuition.
+        destruct (depth (Something b is)) eqn : eq_d.
+        apply depth_zero_bottom in eq_d.
+        discriminate eq_d.
+        apply set_remove_3.
+        apply set_union_intro.
+        right.
+        simpl.
+        intuition.
+        intuition.
+        unfold get_raw_observations.
+        destruct s.
+        intuition.
+        destruct (depth (Something b is)) eqn : eq_d.
+        apply depth_zero_bottom in eq_d.
+        discriminate eq_d.
+        apply set_remove_3.
+        apply set_union_intro.
+        left.
+        apply set_union_in_iterated.
+        rewrite Exists_exists.
+        destruct H as [i Hin_i].
+        exists (get_raw_observations (project (Something b is) i) target).
+        split.
+        rewrite in_map_iff.
+        exists (project (Something b is) i).
+        split.
+        rewrite get_observations_depth_redundancy.
+        unfold lv_observations.
+        reflexivity.
+        specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hdpc.
+        unfold project.
+        lia.
+        rewrite in_map_iff.
+        exists i.
+        split.
+        reflexivity.
+        apply ((proj2 Hfinite) i).
+        all : intuition.
+    Qed.
+    
+    Lemma unfold_lv_observations
+      (s : state)
+      (target : index)
+      (Hdif : target <> index_self)
+      (e : lv_event) 
+      (Hnb : s <> Bottom /\ (get_event_state e) <> Bottom) :
+      In e (lv_observations s target) <->
+      (e = Obs Received target (project s target)) \/
+      (exists (i : index), (In e (lv_observations (project s i) target))).
+    Proof.
+    Admitted.
+    (*
+      rewrite lv_observations_other by intuition.
+      specialize (unfold_raw_observations s (get_event_state e) Hnb target) as Hraw.
+      split; intros.
+      - destruct Hraw as [Hraw _].
+        spec Hraw. {
+          admit.
+        }
+        destruct Hraw.
+        + left.
+          rewrite H0.
+          apply in_lv_received in H.
+          rewrite lv_event_comp_eq at 1.
+          f_equal. all : intuition.
+        + right.
+          destruct H0 as [i Hin].
+          exists i.
+          rewrite lv_observations_other.
+          unfold lv_received_observations.
+          rewrite decide_False.
+          unfold lv_sent_states.
+          rewrite decide_False; simpl.
+          apply in_map_iff.
+          exists (get_event_state e).
+          split.
+          * rewrite lv_event_comp_eq.
+            f_equal.
+            apply in_lv_received.
+        
+      (*
+      - unfold lv_received_observations in H.
+        rewrite decide_False in H by intuition.
+        apply in_map_iff in H.
+        destruct H as [s' [Hobs Hother]].
+        apply set_remove_list_1 in Hother.
+        apply unfold_raw_observations in Hother.
+        2 : rewrite <- Hobs in Hnb; intuition;
+        destruct Hother.
+        + left. 
+          rewrite <- Hobs.
+          intuition.
+        + right.
+          destruct H as [i Hin].
+          exists i.
+          rewrite lv_observations_other by intuition.
+          unfold lv_received_observations.
+          rewrite decide_False.
+          apply in_map_iff.
+          exists s'.
+          intuition.
+          unfold lv_sent_states.
+          rewrite decide_False.
+          simpl.
+          unfold get_raw_observations in Hin.
+          all : intuition.
+      - destruct H.
+        + specialize (unfold_raw_observations s (project s target)) as Hraw.
+          spec Hraw. {
+            admit.
+          }
+          specialize (Hraw target).
+          destruct Hraw as [_ Hraw].
+          spec Hraw. {
+            intuition.
+          }
+          unfold lv_received_observations.
+          rewrite decide_False.
+          unfold lv_sent_states.
+          rewrite decide_False; simpl.
+          apply in_map_iff.
+          exists (project s target).
+          all : intuition.
+       + destruct H as [i Hin].
+         rewrite lv_observations_other in Hin by intuition.
+         specialize (unfold_raw_observations s (get_event_state e)) as Hraw.
+         spec Hraw. {
+          admit.
+         }
+         specialize (Hraw target).
+         destruct Hraw as [_ Hraw].
+         destruct Hraw *)
+         
+    Qed. *)
+      
+  Lemma raw_observations_in_project
       (s : state)
       (target i : index)
       (Hdif : target <> index_self)
-      : incl (lv_observations (project s i) target) (lv_observations s target).
+      : incl (get_raw_observations (project s i) target) (get_raw_observations s target).
   Proof.
+  Qed.
+  (*
     unfold incl.
     intros.
-    unfold lv_observations.
+    unfold get_raw_observations.
     destruct (decide (target = index_self)).
     contradict e; assumption.
     destruct s eqn : eq_s.
-    - unfold lv_observations in H.
+    - unfold get_raw_observations in H.
+      unfold get_observations in H.
       rewrite decide_False in H.
       simpl in *.
       assumption.
@@ -3286,9 +3559,8 @@ Context
         unfold project.
         lia.
         assumption.
-  Qed.
-  (* 
-
+  Qed. *) 
+    (* 
     Lemma observations_disregards_cv
       (s : vstate X)
       (cv : bool)
@@ -3297,6 +3569,9 @@ Context
       = lv_observations s target.
     Proof.
       unfold lv_observations.
+      destruct (decide (target = index_self)).
+      - admit.
+      - 
       unfold get_observations.
       rewrite <- depth_consensus_clean with (value := cv).
       destruct (depth s) eqn : eq_d.
@@ -3317,8 +3592,9 @@ Context
         reflexivity.
         simpl.
         reflexivity.
-    Qed.
-
+    Qed. *)
+  
+    (* 
     Lemma observations_update_eq
       (s s' : vstate X)
       (Hsnot : s <> Bottom)
@@ -3334,6 +3610,8 @@ Context
           )
         ).
     Proof.
+    Admitted. *)
+    (*
      unfold set_eq.
      split; unfold incl; intros.
      - destruct (decide (a = s')).
@@ -3649,102 +3927,10 @@ Context
               apply H1.
               rewrite <- H0 in H.
               assumption.
-    Qed.
+    Qed. *)
+    (* 
 
-    Lemma unfold_lv_observations
-      (s s' : state)
-      (Hsnot_bottom : s <> Bottom)
-      (Hs'not_bottom : s' <> Bottom)
-      (target : index) :
-      In s' (lv_observations s target) <->
-      project s target = s' \/
-      (exists (i : index), (In s' (lv_observations (project s i) target))).
-    Proof.
-      split.
-      - intros.
-        unfold lv_observations in H.
-        unfold get_observations in H.
-        destruct s.
-        simpl in *.
-        exfalso.
-        assumption.
-        destruct (depth (Something b is)) eqn : eq_d.
-        apply depth_zero_bottom in eq_d.
-        discriminate eq_d.
-        apply set_remove_1 in H.
-        apply set_union_elim in H.
-        destruct H.
-        + apply set_union_in_iterated in H.
-          rewrite Exists_exists in H.
-          destruct H as [child_res [Heq_child_res Hin_child_res]].
-          rewrite in_map_iff in Heq_child_res.
-          destruct Heq_child_res as [child [Heq_child Hin_child]].
-          rewrite in_map_iff in Hin_child.
-          destruct Hin_child as [i [Hproject Hini]].
-          right.
-          exists i.
-          rewrite get_observations_depth_redundancy in Heq_child.
-          rewrite <- Heq_child in Hin_child_res.
-          rewrite <- Hproject in Hin_child_res.
-          assumption.
-          specialize (@depth_parent_child index index_listing Hfinite idec is b i).
-          intros Hdpc.
-          rewrite <- Hproject.
-          unfold project.
-          lia.
-        + simpl in H.
-          left.
-          intuition.
-      - intros.
-        destruct H.
-        unfold lv_observations.
-        unfold get_observations.
-        destruct s.
-        elim Hsnot_bottom.
-        reflexivity.
-        destruct (depth (Something b is)) eqn : eq_d.
-        apply depth_zero_bottom in eq_d.
-        discriminate eq_d.
-        apply set_remove_3.
-        apply set_union_intro.
-        right.
-        simpl.
-        intuition.
-        assumption.
-        unfold lv_observations.
-        unfold get_observations.
-        destruct s.
-        elim Hsnot_bottom.
-        reflexivity.
-        destruct (depth (Something b is)) eqn : eq_d.
-        apply depth_zero_bottom in eq_d.
-        discriminate eq_d.
-        apply set_remove_3.
-        apply set_union_intro.
-        left.
-        apply set_union_in_iterated.
-        rewrite Exists_exists.
-        destruct H as [i Hin_i].
-        exists (lv_observations (project (Something b is) i) target).
-        split.
-        rewrite in_map_iff.
-        exists (project (Something b is) i).
-        split.
-        rewrite get_observations_depth_redundancy.
-        unfold lv_observations.
-        reflexivity.
-        specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hdpc.
-        unfold project.
-        lia.
-        rewrite in_map_iff.
-        exists i.
-        split.
-        reflexivity.
-        apply ((proj2 Hfinite) i).
-        assumption.
-        assumption.
-    Qed.
-
+    
     Lemma observations_update_neq
       (s s' : vstate X)
       (Hsnot : s <> Bottom)
@@ -3759,6 +3945,8 @@ Context
           (lv_observations s' target)
         ).
     Proof.
+    Admitted.
+    (*
       remember (update_state s s' i) as u.
 
       assert (Hproj_ui : project u i = s'). {

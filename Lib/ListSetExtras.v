@@ -649,6 +649,22 @@ Qed.
 
 Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
   fold_right (set_remove decide_eq) l2 l1.
+
+Lemma set_remove_list_1 
+  `{EqDecision A} 
+  (a : A)
+  (l1 l2 : list A)
+  (Hin : In a (set_remove_list l1 l2)) :
+  In a l2.
+Proof.
+  unfold set_remove_list in Hin.
+  induction l1.
+  - simpl in Hin; intuition.
+  - simpl in Hin.
+    apply set_remove_1 in Hin.
+    apply IHl1 in Hin.
+    assumption.
+Qed. 
   
 Definition get_maximal_elements {A}
   (preceeds : A -> A -> bool)

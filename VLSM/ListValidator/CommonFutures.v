@@ -168,8 +168,7 @@ Context
       + exists e2. 
         split. assumption.
         assumption.
-    - 
-      
+    -
   Admitted.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
