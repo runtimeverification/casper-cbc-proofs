@@ -1405,6 +1405,37 @@ in <<s>> by outputting <<m>> *)
         intros Hlf; apply Hlf. intros HC; inversion HC.
     Qed.
 
+    (** Giving a trace for [protocol_state_prop] can be stated more
+        simply than [protocol_is_trace], because we don't need a
+        disjunction because we are not making claims about [output]
+        messages.
+     *)
+    Lemma protocol_state_has_trace
+          (s : state)
+          (Hp : protocol_state_prop s):
+      exists (is : state) (tr : list transition_item),
+        finite_protocol_trace is tr /\
+        last (List.map destination tr) is = s.
+    Proof using.
+      destruct Hp as [_om Hp].
+      apply protocol_is_trace in Hp.
+      destruct Hp as [Hinit|Htrace].
+      + exists s, [].
+        split;[|reflexivity].
+        split;[|assumption].
+        apply finite_ptrace_empty.
+        apply initial_is_protocol.
+        assumption.
+      + destruct Htrace as [is [tr [Htr [Hlast _]]]].
+        exists is, tr.
+        split;[assumption|].
+        clear -Hlast.
+        destruct tr;[discriminate Hlast|].
+        rewrite last_map.
+        injection Hlast.
+        trivial.
+    Qed.
+
     (** Any trace with the 'finite_protocol_trace_from' property can be completed
     (to the left) to start in an initial state*)
     Lemma finite_protocol_trace_from_complete_left
