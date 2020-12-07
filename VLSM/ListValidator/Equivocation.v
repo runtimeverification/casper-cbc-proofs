@@ -3642,43 +3642,4 @@ Context
         rewrite Hproj_ui.
         assumption.
     Qed.
-
-    Definition observable_full :
-      (observation_based_equivocation_evidence
-       (@state index index_listing)
-       index
-       (@state index index_listing)
-       state_eq_dec state_lt state_lt_dec) := {|
-       observable_events := full_observations;
-      |}.
-
-   Existing Instance observable_full.
-
-   Definition get_validators {State : Type} (s : State) : list index := index_listing.
-
-   Lemma get_validators_nodup
-    {State : Type}
-    (s : State) :
-    NoDup (get_validators s).
-   Proof.
-    unfold get_validators.
-    apply Hfinite.
-   Qed.
-
-   Definition lv_basic_equivocation : basic_equivocation state index :=
-      @basic_observable_equivocation
-      (@state index index_listing)
-      index
-      (@state index index_listing)
-      state_eq_dec
-      state_lt
-      state_lt_dec
-      observable_full
-      Mindex
-      Rindex
-      get_validators
-      get_validators_nodup.
-
-   Existing Instance lv_basic_equivocation.
-
 End Equivocation.

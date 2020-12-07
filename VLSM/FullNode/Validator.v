@@ -40,12 +40,19 @@ Section CompositeValidator.
     :=
     full_node_client_observable_events (get_message_set s) v.
 
-  Definition full_node_validator_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (state C V) V message decide_eq _ message_preceeds_dec
+  Program Definition full_node_validator_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (state C V) V message decide_eq _ message_preceeds_dec sender
     :=
     {|
       observable_events := full_node_validator_observable_events
     |}.
+  Next Obligation.
+  unfold full_node_validator_observable_events in He.
+  unfold full_node_client_observable_events in He.
+  apply filter_In in He.
+  destruct He as [_ He].
+  destruct (decide (sender e = v)); solve [intuition; discriminate He].
+  Qed.
 
   Existing Instance full_node_validator_observation_based_equivocation_evidence.
 
@@ -65,7 +72,7 @@ Section CompositeValidator.
   Definition validator_basic_equivocation
     : basic_equivocation (state C V) V
     := basic_observable_equivocation (state C V) V message _
-        full_node_validator_state_validators full_node_validator_state_validators_nodup.
+        _ full_node_validator_state_validators full_node_validator_state_validators_nodup.
 
   (** * Full-node validator VLSM instance
 

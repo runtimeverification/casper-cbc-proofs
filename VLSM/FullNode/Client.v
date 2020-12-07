@@ -47,12 +47,18 @@ messages, implementing a limited equivocation tolerance policy.
     :=
     filter (fun m => if decide (sender m = v) then true else false) s.
 
-  Definition full_node_client_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (set message) V message decide_eq _ happens_before_dec
+  Program Definition full_node_client_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (set message) V message decide_eq _ happens_before_dec sender
     :=
     {|
       observable_events := full_node_client_observable_events
     |}.
+  Next Obligation.
+    unfold full_node_client_observable_events in He.
+    apply filter_In in He.
+    destruct He as [_ He].
+    destruct (decide (sender e = v)); solve [intuition;discriminate He].
+  Qed.
 
   Existing Instance full_node_client_observation_based_equivocation_evidence.
 
@@ -72,7 +78,7 @@ messages, implementing a limited equivocation tolerance policy.
   Definition client_basic_equivocation
     : basic_equivocation (set message) V
     := basic_observable_equivocation (set message) V message
-        _ full_node_client_state_validators full_node_client_state_validators_nodup.
+        _ happens_before full_node_client_state_validators full_node_client_state_validators_nodup.
 
   Existing Instance client_basic_equivocation.
 
