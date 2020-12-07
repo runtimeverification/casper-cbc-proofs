@@ -131,6 +131,14 @@ Context
     lv_event_lt
     lv_event_lt_dec
     get_event_subject ce.
+    
+  Definition obs 
+    (i : index) := 
+    @observable_events (@state index index_listing) index lv_event
+    decide_eq 
+    lv_event_lt
+    lv_event_lt_dec
+    get_event_subject (Hevidence i).
   
   Definition cequiv_evidence
     := (@equivocation_evidence (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject ce).
@@ -140,7 +148,6 @@ Context
     (i : index) :
     In i (GE s) <-> (cequiv_evidence s i).
   Proof.
-    split; intros.
   Admitted.
   
   Lemma GE_existing_update
@@ -168,6 +175,87 @@ Context
       + exists e2. 
         split. assumption.
         assumption.
+  Admitted.
+  
+  Lemma cobs_update_different
+    (s : vstate X)
+    (i j : index)
+    (Hdif : i <> j)
+    (b : bool)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
+    set_eq (cobs s' j) (cobs s j).
+  Proof.
+    unfold set_eq.
+    split; (unfold incl; 
+      intros e He; 
+      unfold cobs in *; 
+      unfold observable_events in *; 
+      simpl in *; 
+      unfold composed_witness_observable_events in *).
+    - apply set_union_in_iterated in He; rewrite Exists_exists in He.
+      destruct He as [x [Hinx Hine]].
+      apply in_map_iff in Hinx.
+      destruct Hinx as [k [Hobs _]].
+      apply set_union_in_iterated; rewrite Exists_exists.
+      destruct (decide (k = i)).
+      + exists (obs k (s k) j).
+        split.
+        * apply in_map_iff.
+          exists k; simpl.
+          unfold obs.
+          unfold observable_events; simpl.
+          intuition. 
+          apply ((proj2 Hfinite) k).
+        * unfold obs.
+          unfold observable_events in *; simpl in *.
+          admit.
+      + assert (s' k = s k). {
+          unfold s'.
+          rewrite state_update_neq.
+          all : intuition.
+        }
+        exists (obs k (s k) j).
+        split.
+        * apply in_map_iff.
+          exists k; simpl.
+          unfold obs.
+          unfold observable_events; simpl.
+          intuition. 
+          apply ((proj2 Hfinite) k).
+        * rewrite H in Hobs.
+          unfold obs.
+          unfold observable_events in *.
+          simpl in *.
+          rewrite Hobs.
+          assumption. 
+  Admitted.
+  
+  Lemma GE_existing_update'
+    (s : vstate X)
+    (i : index)
+    (b : bool)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
+    incl (GE s') (GE s).
+  Proof.
+    unfold incl; intros v H.
+    apply GE_direct in H as Hev.
+    apply GE_direct.
+    unfold cequiv_evidence in *.
+    unfold equivocation_evidence in *.
+    destruct Hev as [e1 [Hine1 Hrem]].
+    destruct Hrem as [e2 [Hine2 Hcomp]].
+    destruct (decide (v = i)).
+    - admit. 
+    - assert (set_eq (cobs s' v) (cobs s v)) by (apply cobs_update_different).
+      unfold cobs in H0.
+      unfold observable_events in Hine1, Hine2, H0; simpl in Hine1, Hine2, H0.
+      setoid_rewrite H0 in Hine1.
+      setoid_rewrite H0 in Hine2.
+      exists e1.
+      split; [intuition|].
+      exists e2.
+      split; [intuition|].
+      assumption.
   Admitted.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
@@ -456,34 +544,22 @@ Context
              reflexivity.
         * simpl.
           assert (Hge_short : incl (GE res_short) (GE s)). {
-            remember (update_state (s i) (s i) i) as new_si.
+            remember (update_consensus (update_state (s i) (s i) i) (feasible_update_value (s i) i)) as new_si.
             remember (state_update IM_index s i new_si) as new_s.
-            specialize (GE_existing_update s (s i) i i) as Hexist.
+            specialize (GE_existing_update' s i) as Hexist.
             simpl in Hexist.
             assert (Hu: res_short = new_s). {
-              admit.
+              rewrite H0.
+              rewrite Heqnew_s.
+              unfold apply_action.
+              unfold feasible_update_composite; simpl.
+              rewrite Heqnew_si.
+              reflexivity.
             }
             rewrite Hu.
             rewrite Heqnew_s.
             rewrite Heqnew_si.
             apply Hexist.
-            
-            (*
-            unfold incl; intros.
-            unfold GE in *.
-            apply set_diff_elim2 in H3; simpl in H3.
-            apply set_diff_intro.
-            apply ((proj2 Hfinite) a0).
-            intros contra.
-            unfold GH in *.
-            apply filter_In in contra.
-            destruct contra as [_ contra].
-            apply negb_true_iff in contra.
-            apply bool_decide_eq_false in contra.
-            unfold equivocation_evidence in contra.
-            simpl in *.
-            contradict contra.
-            admit. *)
           }
           
           assert (Hge_long : incl (GE res_long) (GE res_short)). {
@@ -498,7 +574,7 @@ Context
           apply incl_tran with (m := (GE res_short)).
           assumption.
           assumption.
-  Admitted.
+  Qed.
   
   Lemma phase_one_protocol
     (s : vstate X)

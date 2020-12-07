@@ -1159,10 +1159,16 @@ Admitted.
 Definition map_option
   {A B : Type}
   (f : A -> option B)
-  (l : list A)
-  : list B
+  : list A -> list B
   :=
-  cat_option (List.map f l).
+  fold_right
+    (fun x lb =>
+      match f x with
+      | None => lb
+      | Some b => b :: lb
+      end
+    )
+    [].
 
 Lemma map_option_length
   {A B : Type}
@@ -1171,7 +1177,13 @@ Lemma map_option_length
   (Hfl : Forall (fun a => f a <> None) l)
   : length (map_option f l) = length l.
 Proof.
-Admitted.
+  induction l; try reflexivity.
+  inversion Hfl; subst.
+  spec IHl H2.
+  simpl.
+  destruct (f a); try (elim H1; reflexivity).
+  simpl. f_equal. assumption.
+Qed.
 
 Lemma map_option_nth
   {A B : Type}
@@ -1185,7 +1197,16 @@ Lemma map_option_nth
   (dummyb : B)
   : Some (nth i (map_option f l) dummyb) = f (nth i l dummya).
 Proof.
-Admitted.
+  generalize dependent i.
+  induction l; intros; simpl in *. { lia. }
+  inversion Hfl. subst. spec IHl H2.
+  destruct (f a) eqn: Hfa; try (elim H1; reflexivity).
+  symmetry in Hfa.
+  destruct i; try assumption.
+  spec IHl i.
+  spec IHl. { lia. }
+  assumption.
+Qed.
 
 
 Lemma in_map_option
@@ -1195,7 +1216,26 @@ Lemma in_map_option
   (b : B)
   : In b (map_option f l) <-> exists a : A, In a l /\ f a = Some b.
 Proof.
-Admitted.
+  split.
+  - intro Hin.
+    induction l; try inversion Hin.
+    simpl in Hin. destruct (f a) eqn:Hfa.
+    + destruct Hin as [Heq | Hin]; subst.
+      * exists a.
+        split; try assumption.
+        left. reflexivity.
+      * specialize (IHl Hin). destruct IHl as [a' [Hin' Hfa']].
+        exists a'. split; try assumption.
+        right. assumption.
+    + specialize (IHl Hin). destruct IHl as [a' [Hin' Hfa']].
+      exists a'. split; try assumption.
+      right. assumption.
+  - induction l; intros [a' [Hin' Hfa']]; try inversion Hin'; subst; clear Hin'.
+    + simpl. rewrite Hfa'. left. reflexivity.
+    + simpl. destruct (f a) eqn:Hfa.
+      * right. apply IHl. exists a'. split; try assumption.
+      * apply IHl. exists a'. split; try assumption.
+Qed.
 
 Lemma nth_error_eq
   {A : Type}

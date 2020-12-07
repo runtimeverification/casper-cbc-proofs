@@ -319,6 +319,7 @@ Section Simple.
       assert (Hlst := last_error_destination_last _ _ Hlast is).
       exists Hlst.
       apply (Hall _ _ Htr Hlst).
+    Qed.
 
     Lemma has_been_sent_consistency
       {Hbs : has_been_sent_capability}

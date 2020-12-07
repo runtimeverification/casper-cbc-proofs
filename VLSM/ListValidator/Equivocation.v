@@ -3247,6 +3247,48 @@ Context
     Definition lv_observations (s : state) (target : index) : set lv_event :=
       set_union decide_eq (lv_state_observations s target) (lv_message_observations s target).
     
+    Lemma get_event_state_nb
+      (s s': state)
+      (i : index)
+      (e : lv_event)
+      (He : e = (Obs Received i s') \/ e = (Obs Sent i s'))
+      (Hin : In e (lv_observations s i)) :
+      s' <> Bottom.
+    Proof.
+      assert (Hse : get_event_state e = s'). {
+        destruct He; rewrite H; intuition.
+      }
+      unfold lv_observations in Hin.
+      apply set_union_elim in Hin.
+      destruct Hin.
+      - apply in_lv_state in H.
+        destruct He as [He|He]; rewrite He in H; simpl in H; destruct H; congruence.
+      - unfold lv_message_observations in H.
+        apply set_union_elim in H.
+        destruct H.
+        + unfold lv_sent_observations in H.
+          destruct (decide (i = index_self)).
+          * unfold lv_sent_states in H.
+            rewrite decide_True in H.
+            apply in_map_iff in H.
+            destruct H as [x [Hobs Hinx]].
+            apply no_bottom_in_history in Hinx.
+            rewrite <- Hobs in Hse; simpl in Hse.
+            rewrite <- Hse.
+            all : intuition.
+          * simpl in H; intuition.
+        + unfold lv_received_observations in H.
+          destruct (decide (i = index_self)).
+          * simpl in H; intuition.
+          * apply in_map_iff in H.
+          destruct H as [x [Hobs Hinx]].
+          apply set_remove_list_1 in Hinx.
+          apply no_bottom_in_observations in Hinx.
+          rewrite <- Hobs in Hse; simpl in Hse.
+          rewrite <- Hse.
+          intuition.
+    Qed.
+    
     Lemma lv_observations_other 
       (s : state)
       (target : index)
@@ -3502,6 +3544,61 @@ Context
          destruct Hraw *)
          
     Qed. *)
+    
+  Lemma self_update_j
+    (s : state)
+    (Hnb : s <> Bottom)
+    (j : index)
+    (Hdif : index_self <> j)
+    (b : bool)
+    (s' := (update_consensus (update_state s s index_self) b)) :
+    set_eq (lv_observations s' j) (lv_observations s j).
+  Proof.
+    unfold set_eq.
+    unfold incl.
+    split; intros e He.
+    - specialize (unfold_lv_observations s' j) as Hunf.
+      spec Hunf; intuition.
+      specialize (Hunf e).
+      specialize (get_event_state_nb s' (get_event_state e) j e) as Hsubj_nb.
+      spec Hsubj_nb. {
+        rewrite lv_observations_other in He by intuition.
+        left.
+        apply in_lv_received in He.
+        rewrite lv_event_comp_eq at 1.
+        f_equal.
+        all : intuition.
+      }
+      spec Hunf. {
+        split.
+        - intros contra.
+          unfold s' in contra.
+          unfold update_consensus in contra.
+          destruct (update_state s s index_self) eqn : eq_su.
+          + unfold update_state in eq_su.
+            destruct s; congruence.
+          + congruence.
+        - apply Hsubj_nb.
+          assumption. 
+      }
+      apply Hunf in He as He'.
+      destruct He' as [He'|He'].
+      + apply unfold_lv_observations. intuition.
+        split. intuition.
+        apply Hsubj_nb; intuition.
+        assert (project s j = project s' j). {
+          unfold s'.
+          rewrite <- update_consensus_clean with (value := b).
+          rewrite (@project_different index index_listing).
+          all : intuition.
+        }
+        rewrite H.
+        left; intuition.
+      + apply unfold_lv_observations. intuition.
+        split. intuition.
+        apply Hsubj_nb; intuition.
+        right.
+  Admitted.
       
   Lemma raw_observations_in_project
       (s : state)
