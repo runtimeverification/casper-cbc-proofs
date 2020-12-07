@@ -106,6 +106,38 @@ Definition equivocator_state_update
   existT _ n
     (fun j => if Fin.eq_dec i j then si else projT2 bs j).
 
+(** Some basic properties for 'equivocator_state_update' *)
+
+Lemma equivocator_state_update_size
+  (bs : equivocator_state)
+  (i : Fin.t (S (projT1 bs)))
+  (si : vstate X)
+  : projT1 (equivocator_state_update bs i si) = projT1 bs.
+Proof.
+  destruct bs. reflexivity.
+Qed.
+
+Lemma equivocator_state_update_eq
+  (bs : equivocator_state)
+  (n := projT1 bs)
+  (i : Fin.t (S n))
+  (si : vstate X)
+  : projT2 (equivocator_state_update bs i si) i = si.
+Proof.
+  simpl. rewrite eq_dec_if_true; reflexivity.
+Qed.
+
+Lemma equivocator_state_update_neq
+  (bs : equivocator_state)
+  (n := projT1 bs)
+  (i j : Fin.t (S n))
+  (si : vstate X)
+  (Hij : i <> j)
+  : projT2 (equivocator_state_update bs i si) j = projT2 bs j.
+Proof.
+  simpl. rewrite eq_dec_if_false by assumption. reflexivity.
+Qed.
+
 (**
 Extends an [equivocator_state] with a new state of the original machine.
 *)
@@ -124,6 +156,7 @@ Next Obligation.
   lia.
 Defined.
 
+(** The original state index is present in any equivocator state*)
 Lemma Hzero (s : equivocator_state) : 0 < S (projT1 s).
 Proof. lia. Qed.
 
@@ -143,7 +176,7 @@ Proof.
   exists (mk_singleton_state (proj1_sig (vs0 X))).
   unfold mk_singleton_state.
   unfold equivocator_initial_state_prop.
-  split; try reflexivity.
+  split; [reflexivity|].
   simpl. destruct (vs0 X). assumption.
 Defined.
 
@@ -170,9 +203,8 @@ Definition equivocator_transition
   let s := projT2 bs in
   let l := fst bl in
   match snd bl with
-  | NewMachine sn  => (* transition from a new machine with initial state sn*)
-    let (sn', om') := vtransition X l (sn, om) in
-    (equivocator_state_extend bs sn', om')
+  | NewMachine sn  => (* creating a new machine with initial state sn*)
+    (equivocator_state_extend bs sn, None)
   | Existing i is_equiv => (* transition using the state of machine i *)
     match (le_lt_dec (S n) i) with
     | right lt_in =>
@@ -197,9 +229,8 @@ Definition equivocator_valid
   let s := projT2 bs in
   let l := fst bl in
   match snd bl with
-  | NewMachine sn  => (* state is initial and it's valid to transition from it *)
-    vinitial_state_prop X sn
-    /\ vvalid X l (sn, om)
+  | NewMachine sn  => (* state is initial *)
+    vinitial_state_prop X sn /\ om = None
   | Existing i is_equiv => (* the index is good, and transition valid for it *)
     exists (Hi : i < S n), vvalid X l (s (of_nat_lt Hi), om)
   end.
@@ -227,6 +258,36 @@ Context
   (MachineDescriptor := MachineDescriptor X)
   .
 
+ (** Whether a descriptor can be used when projecting a state*)
+Definition proper_descriptor
+  (d : MachineDescriptor)
+  (s : vstate equivocator_vlsm)
+  :=
+  match d with
+  | NewMachine _ sn => vinitial_state_prop X sn
+  | Existing _ i _ => i < S (projT1 s)
+  end.
+
+Definition not_equivocating_descriptor
+  (d : MachineDescriptor)
+  (s : vstate equivocator_vlsm)
+  :=
+  match d with
+  | Existing _ i false => i < S (projT1 s)
+  | _ => False
+  end.
+
+Lemma not_equivocating_descriptor_proper
+  (d : MachineDescriptor)
+  (s : vstate equivocator_vlsm)
+  (Hned : not_equivocating_descriptor d s)
+  : proper_descriptor d s.
+Proof.
+  destruct d; [contradict Hned|].
+  destruct b; [contradict Hned|].
+  assumption.
+Qed.
+
 Local Tactic Notation "unfold_transition"  hyp(H) :=
   ( unfold transition in H; unfold equivocator_vlsm in H
   ; unfold Common.equivocator_vlsm in H
@@ -248,49 +309,30 @@ Lemma equivocator_state_project_protocol
   let (n, bs) := bs in
   forall (i : Fin.t (S n)), protocol_state_prop X (bs i).
 Proof.
-  remember (bs, om) as bsom.
-  generalize dependent om. generalize dependent bs.
-  induction Hbs; intros; split; try (apply pair_equal_spec in Heqbsom; destruct Heqbsom as [Heqbs Heqom]; subst).
+  dependent induction Hbs; split.
   - exists (proj1_sig (vs0 X)). apply protocol_initial_state.
   - destruct is as [is His]. unfold s; clear s. simpl.
     destruct His as [Hzero His].
     destruct is as (n, is). simpl in Hzero. subst n. simpl in His.
-    intro i. dependent destruction i; try inversion i.
-    exists None. replace (is F1) with (proj1_sig (exist _ _ His)) by reflexivity.
+    intro i. dependent destruction i; [|inversion i].
+    exists None. change (is F1) with (proj1_sig (exist _ _ His)).
     apply protocol_initial_state.
-  - unfold om; clear om.
+  - unfold om0; clear om0.
     exists (proj1_sig (vs0 X)). apply (protocol_initial_message X).
   - unfold s; clear s. unfold s0. simpl.
-    intro i. exists None. apply protocol_initial_state. 
-  - specialize (IHHbs1 s _om eq_refl).
-    specialize (IHHbs2 _s om eq_refl).
+    intro i. exists None. apply protocol_initial_state.
+  - specialize (IHHbs1 X s _om eq_refl JMeq_refl).
+    specialize (IHHbs2 X _s om0 eq_refl JMeq_refl).
     specialize (protocol_generated X) as Hgen.
     simpl in Hv.
     destruct l as (l, descriptor). simpl in Hv.
     destruct descriptor as [sn| i is_equiv].
-    + simpl in Heqbsom.
-      destruct Hv as [Hsn Hv].
-      assert (Hbsnt : protocol_prop X (sn, None)).
-      { replace sn with (proj1_sig (exist _ sn Hsn)) by reflexivity.
-        apply protocol_initial_state.
-      }
-      destruct IHHbs2 as [Hom _].
-      clear Hbs2 _s.
-      destruct Hom as [_s Hom].
-      specialize (Hgen l sn None Hbsnt _s om Hom Hv).
-      replace
-        (@transition message (@type message X) (@sign message X)
-        (@machine message X) l
-        (@pair (@state message (@type message X)) (option message) sn om))
-        with (vtransition X l (sn, om))
-        in Hgen
-        by reflexivity.
-      destruct (vtransition X l (sn, om)) as (si', om') eqn:Ht.
-      exists si'. inversion Heqbsom. subst om'. assumption.
-    + unfold_transition Heqbsom.
-      unfold snd in Heqbsom. destruct Hv as [Hi Hv].
-      destruct (le_lt_dec (S (projT1 s)) i). { lia. }
-      replace (of_nat_lt l0) with (of_nat_lt Hi) in *; try apply of_nat_ext.
+    + destruct Hv as [Hsn Hv]. subst om0.
+      simpl in x. inversion x. subst. apply IHHbs2.
+    + unfold_transition x.
+      unfold snd in x. destruct Hv as [Hi Hv].
+      destruct (le_lt_dec (S (projT1 s)) i); [lia|].
+      replace (of_nat_lt l0) with (of_nat_lt Hi) in * by apply of_nat_ext.
       clear l0.
       destruct s as (n, bs').
       destruct IHHbs1 as [_ IHHbs1].
@@ -299,74 +341,57 @@ Proof.
       destruct IHHbs2 as [Hom _].
       clear Hbs2 _s.
       destruct Hom as [_s Hom].
-      specialize (Hgen l (bs' (of_nat_lt Hi)) _om' Hbs't _s om Hom Hv).
-      replace
-        (@transition message (@type message X) (@sign message X)
-              (@machine message X) l
-              (@pair (@state message (@type message X))
-                 (option message) (bs' (of_nat_lt Hi)) om))
-        with (vtransition X l (bs' (of_nat_lt Hi), om))
-        in Hgen
-        by reflexivity.
+      specialize (Hgen l (bs' (of_nat_lt Hi)) _om' Hbs't _s om0 Hom Hv).
+      match type of Hgen with
+      | protocol_prop _ ?t => 
+        change t  with (vtransition X l (bs' (of_nat_lt Hi), om0))
+          in Hgen
+      end.
       simpl in *.
-      destruct (vtransition X l (bs' (of_nat_lt Hi), om)) as (si', om') eqn:Ht.
+      destruct (vtransition X l (bs' (of_nat_lt Hi), om0)) as (si', om') eqn:Ht.
       exists si'.
-      destruct is_equiv as [|]; inversion Heqbsom; subst; assumption.
+      destruct is_equiv as [|]; inversion x; subst; assumption.
   - destruct bs as (n, bs).
     intro j.
-    specialize (IHHbs1 s _om eq_refl).
+    specialize (IHHbs1 X s _om eq_refl JMeq_refl).
     destruct IHHbs1 as [_ IHHbs1].
-    specialize (IHHbs2 _s om eq_refl).
+    specialize (IHHbs2 X _s om0 eq_refl JMeq_refl).
     specialize (protocol_generated X) as Hgen.
-    unfold_transition Heqbsom.
-    destruct l as (l, descriptor). unfold snd in Heqbsom.
+    unfold_transition x.
+    destruct l as (l, descriptor). unfold snd in x.
     destruct descriptor as [sn | i is_equiv].
-    + destruct Hv as [Hsn Hv].
+    + destruct Hv as [Hsn Hv]. subst om0.
+      inversion x. subst om.
+      unfold equivocator_state_extend in H0.
       destruct s as (n0, bs0).
-      destruct IHHbs2 as [(_som, Hom) _].
-      assert (Hbsnt : protocol_prop X (sn, None)).
-      { replace sn with (proj1_sig (exist _ sn Hsn)) by reflexivity.
-        apply protocol_initial_state.
-      }
-      specialize (Hgen l sn None Hbsnt _som om Hom Hv).
-      simpl in *.
-      replace
-        (@transition message (@type message X) (@sign message X)
-        (@machine message X) l
-        (@pair (@state message (@type message X)) (option message) sn om))
-        with (vtransition X l (sn, om))
-        in Hgen
-        by reflexivity.
-      destruct (vtransition X l (sn, om)) as (si', om') eqn:Ht.
-      inversion Heqbsom. clear Heqbsom.
-      subst n om'. apply inj_pairT2 in H1. subst.
-      * destruct (to_nat j) as (nj, Hnj).
-        try destruct (nat_eq_dec nj (S n0)); try (exists om0; assumption).
-        apply IHHbs1.
+      inversion H0. subst n.
+      simpl_existT. subst.
+      destruct (to_nat j) as (nj, Hnj).
+      try destruct (nat_eq_dec nj (S n0)).
+      * exists None. change sn with (proj1_sig (exist _ sn Hsn)).
+        constructor.
+      * apply IHHbs1.
     + destruct Hv as [Hi Hv].
-      destruct (le_lt_dec (S (projT1 s)) i). { lia. }
-      replace (of_nat_lt l0) with (of_nat_lt Hi) in *; try apply of_nat_ext.
+      destruct (le_lt_dec (S (projT1 s)) i); [lia|].
+      replace (of_nat_lt l0) with (of_nat_lt Hi) in * by apply of_nat_ext.
       clear l0.
       destruct s as (n0, bs0); simpl in *.
       destruct (IHHbs1 (of_nat_lt Hi)) as [_om0 Hbs0t].
       destruct IHHbs2 as [(_som, Hom) _].
-      specialize (Hgen l (bs0 (of_nat_lt Hi))  _om0 Hbs0t _som om Hom Hv).
-      replace
-        (@transition message (@type message X) (@sign message X)
-              (@machine message X) l
-              (@pair (@state message (@type message X))
-                 (option message) (bs0 (of_nat_lt Hi)) om))
-        with (vtransition X l (bs0 (of_nat_lt Hi), om))
-        in Hgen
-        by reflexivity.
-      destruct (vtransition X l (bs0 (of_nat_lt Hi), om)) as (si', om') eqn:Ht.
-      destruct is_equiv as [|]; inversion Heqbsom; clear Heqbsom
+      specialize (Hgen l (bs0 (of_nat_lt Hi))  _om0 Hbs0t _som om0 Hom Hv).
+      match type of Hgen with
+      | protocol_prop _ ?t => 
+        change t  with (vtransition X l (bs0 (of_nat_lt Hi), om0))
+          in Hgen
+      end.
+      destruct (vtransition X l (bs0 (of_nat_lt Hi), om0)) as (si', om') eqn:Ht.
+      destruct is_equiv as [|]; inversion x; clear x
       ; subst n om'; apply inj_pairT2 in H1; subst.
       * destruct (to_nat j) as (nj, Hnj).
-        try destruct (nat_eq_dec  nj (S n0)); try (exists om0; assumption).
+        destruct (nat_eq_dec  nj (S n0)); [exists om; assumption|].
         apply IHHbs1.
-      * destruct (Fin.eq_dec (of_nat_lt Hi) j); try apply IHHbs1.
-        exists om0. assumption.
+      * destruct (Fin.eq_dec (of_nat_lt Hi) j); [|apply IHHbs1].
+        exists om. assumption.
 Qed.
 
 Lemma equivocator_state_project_protocol_state
@@ -410,52 +435,44 @@ Proof.
   pose (fun bs : vstate equivocator_vlsm => forall i : t (S (projT1 bs)), protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 bs i)) as P.
   revert Hbs. revert bs.
   apply (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm equivocator_vlsm) P)
-  ; try assumption; unfold P in *; clear P; intros.
+  ; unfold P in *; clear P; intros.
   - destruct Hs as [Hzero His].
     destruct s. simpl in *. subst x. exists None.
-    dependent destruction i; try inversion i.
-    replace (v F1) with (proj1_sig (exist _ _ His)) by reflexivity.
+    dependent destruction i; [|inversion i].
+    change (v F1) with (proj1_sig (exist _ _ His)).
      apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X)).
   - destruct Ht as [[Hps [_ Hv]] Ht].
     simpl in Ht. unfold vtransition in Ht. unfold_transition Ht.
     destruct l as (l, description).
     unfold snd in Ht.
     destruct description as [sn| j is_equiv].
-    + destruct Hv as [Hsn Hv].
-      simpl in Ht.
-      destruct (vtransition X l (sn, om)) as (sn', snom') eqn:Htx.
-      inversion Ht. subst . clear Ht.
+    + destruct Hv as [Hsn Hv]. subst om.
+      inversion Ht. subst.
+      unfold equivocator_state_extend.
       destruct s as (ns, bs).
       simpl in *. destruct (to_nat i) as (ni, Hni).
-      destruct (nat_eq_dec ni (S ns)); try apply Hs.
-      subst. exists om'.
-      replace (@pair (@state message (@type message (@pre_loaded_with_all_messages_vlsm message X))) (option message) sn' om')
-        with (vtransition X l (sn, om)).
-      assert (Hpsn : protocol_prop (pre_loaded_with_all_messages_vlsm X) (sn, None)).
-      { replace sn with (proj1_sig (exist _ sn Hsn)) by reflexivity.
-        apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X)).
-      }
-      apply
-        (protocol_generated (pre_loaded_with_all_messages_vlsm X) l sn None Hpsn
-        (proj1_sig (vs0 X)) om (pre_loaded_with_all_messages_message_protocol_prop X om) Hv).
+      destruct (nat_eq_dec ni (S ns)); [|apply Hs].
+      subst. exists None.
+      change sn with (proj1_sig (exist _ sn Hsn)).
+      constructor.
     + destruct Hv as [Hj Hv].
-      destruct (le_lt_dec (S (projT1 s)) j). { lia. }
-      replace (of_nat_lt l0) with (of_nat_lt Hj) in *; try apply of_nat_ext. clear l0.
+      destruct (le_lt_dec (S (projT1 s)) j); [lia|].
+      replace (of_nat_lt l0) with (of_nat_lt Hj) in * by apply of_nat_ext. clear l0.
       destruct (Hs (of_nat_lt Hj)) as [_omj Hsj].
       specialize (protocol_generated (pre_loaded_with_all_messages_vlsm X) l (projT2 s (of_nat_lt Hj)) _omj Hsj)
         as Hgen.
       spec Hgen (proj1_sig (vs0 X)) om (pre_loaded_with_all_messages_message_protocol_prop X om) Hv.
-      replace (transition l (projT2 s (of_nat_lt Hj), om))
+      change (transition l (projT2 s (of_nat_lt Hj), om))
         with (vtransition X l (projT2 s (of_nat_lt Hj), om))
-        in Hgen by reflexivity.
+        in Hgen.
       simpl in *.
       destruct (vtransition X l (projT2 s (of_nat_lt Hj), om)) as (sj', omj').
       destruct is_equiv as [|]; inversion Ht; subst; clear Ht; simpl in *.
       * destruct s as (ns, bs). simpl in *.
         destruct (to_nat i) as (ni, Hni).
-        destruct (nat_eq_dec ni (S ns)); try (exists om'; assumption).
-        apply Hs.
-      * destruct (Fin.eq_dec (of_nat_lt Hj) i); try apply Hs.
+        destruct (nat_eq_dec ni (S ns)); [|apply Hs].
+        exists om'. assumption.
+      * destruct (Fin.eq_dec (of_nat_lt Hj) i); [|apply Hs].
         exists om'. assumption.
 Qed.
 

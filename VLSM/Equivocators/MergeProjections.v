@@ -71,10 +71,10 @@ Definition equivocator_projection_update
   (ni_trace : option (vstate X * list (vtransition_item X)))
   (nj : Fin.t (S (projT1 (last (map destination btr) is))))
   : option (vstate X * list (vtransition_item X))
-  := 
+  :=
   if Fin.eq_dec ni nj then ni_trace else projector nj.
 
-(** The update operation specialized to 
+(** The update operation specialized to
 [preloaded_protocol_equivocator_vlsm_trace_oproject]
 *)
 Definition preloaded_protocol_equivocator_vlsm_trace_oproject_update
@@ -100,7 +100,7 @@ Definition projection_traces
   :=
   map_option projector (fin_t_listing (S n)).
 
-(** [projection_traces] specialized to 
+(** [projection_traces] specialized to
 [preloaded_protocol_equivocator_vlsm_trace_oproject_update]
 (swapping one projection with the provided one)
 *)
@@ -130,15 +130,15 @@ Lemma projection_traces_replace_one_length
 Proof.
   unfold projection_traces_replace_one.
   unfold projection_traces.
-  rewrite map_option_length; try apply fin_t_listing_length.
+  rewrite map_option_length; [apply fin_t_listing_length|].
   apply Forall_forall.
   intros nj Hnj.
   unfold preloaded_protocol_equivocator_vlsm_trace_oproject_update.
   unfold equivocator_projection_update.
   destruct (Fin.eq_dec ni nj).
-  - rewrite eq_dec_if_true; try assumption.
-    intro contra. discriminate contra.
-  - rewrite eq_dec_if_false; try assumption.
+  - rewrite eq_dec_if_true by assumption.
+    congruence.
+  - rewrite eq_dec_if_false by assumption.
     unfold preloaded_protocol_equivocator_vlsm_trace_oproject.
     destruct (to_nat nj) as [j Hj] eqn:Heqnj.
     destruct
@@ -146,10 +146,10 @@ Proof.
       as [trX [di [Hproject Hdi]]].
     rewrite Hproject.
     destruct di as [sn | i fi].
-    + intro contra. discriminate contra.
+    + congruence.
     + destruct Hdi as [Hi [HlstX [HtrX]]].
-      destruct (le_lt_dec (S (projT1 is)) i). { lia. }
-      intro contra. discriminate contra.
+      destruct (le_lt_dec (S (projT1 is)) i); [lia|].
+      congruence.
 Qed.
 
 Context
@@ -158,7 +158,7 @@ Context
   (traces : list (vstate X * list (vtransition_item X)))
   (Hn : length traces = S n)
   (Htraces : Forall
-    (fun trace => 
+    (fun trace =>
       finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) (fst trace) (snd trace)
     )
     traces)
@@ -224,15 +224,6 @@ Definition lift_traces_to_equivocator
           ) traces ([], proj1_sig (vs0 equivocator_vlsm))
         ))
   end.
-
-Lemma lift_traces_to_equivocator_protocol_trace
-  : exists
-    (is : vstate equivocator_vlsm)
-    (tr : list (vtransition_item equivocator_vlsm))
-    (Hproject :  lift_traces_to_equivocator = Some (is, tr)),
-    finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr.
-Proof.
-Admitted.
 
 End trace_mixer.
 

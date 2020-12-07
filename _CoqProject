@@ -13,7 +13,10 @@ VLSM/Equivocators/Common.v
 VLSM/Equivocators/Projections.v
 VLSM/Equivocators/MessageProperties.v
 VLSM/Equivocators/MergeProjections.v
-VLSM/Equivocators/Composition.v
+VLSM/Equivocators/Composition/Common.v
+VLSM/Equivocators/Composition/Projections.v
+VLSM/Equivocators/Composition/SimulatingFree/ResetTraces.v
+VLSM/Equivocators/Composition/SimulatingFree/SimulatingFree.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
 VLSM/ObservableEquivocation.v
@@ -50,4 +53,5 @@ Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
 Lib/FinExtras.v
+Lib/FinFunExtras.v
 Lib/Classes.v

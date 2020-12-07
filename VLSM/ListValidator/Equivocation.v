@@ -1694,6 +1694,7 @@ Context
       unfold has_been_sent_prop.
       unfold all_traces_have_message_prop.
       unfold selected_message_exists_in_all_traces.
+      unfold specialized_selected_message_exists_in_all_traces.
       split.
       - intros.
         unfold send_oracle in H.
@@ -1958,6 +1959,7 @@ Context
       unfold has_been_received_prop.
       unfold all_traces_have_message_prop.
       unfold selected_message_exists_in_all_traces.
+      unfold specialized_selected_message_exists_in_all_traces.
       split.
       - intros.
         unfold receive_oracle in H.

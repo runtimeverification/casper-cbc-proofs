@@ -173,10 +173,24 @@ Proof.
       apply state_update_neq. assumption.
 Qed.
 
-Lemma finite_trace_projection_last_state
+Lemma finite_trace_projection_list_app
+  (tr1 tr2 : list (vtransition_item X))
+  : finite_trace_projection_list (tr1 ++ tr2) =
+    finite_trace_projection_list tr1 ++ finite_trace_projection_list tr2.
+Proof.
+  induction tr1;[reflexivity|].
+  simpl.
+  match goal with
+  |- context [decide ?d] => destruct (decide d)
+  end
+  ; [|assumption].
+  simpl. rewrite IHtr1. reflexivity.
+Qed.
+
+Lemma preloaded_finite_trace_projection_last_state
   (start : vstate X)
   (transitions : list (vtransition_item X))
-  (Htr : finite_protocol_trace_from X start transitions)
+  (Htr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) start transitions)
   (lstx := last (List.map destination transitions) start)
   (lstj := last (List.map destination (finite_trace_projection_list transitions)) (start j))
   : lstj = lstx j.
@@ -191,11 +205,25 @@ Proof.
     assumption.
   - destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
     unfold transition in Htransition; simpl in Htransition.
+    unfold vtransition in Htransition. simpl in Htransition.
     destruct (vtransition (IM i) l (s' i, iom)) as [si' om'] eqn:Hteq.
     inversion Htransition; subst. clear Htransition.
     specialize (state_update_neq _ s' i si' j n); intro Hupd.
     rewrite Hupd in *.
     assumption.
+Qed.
+
+Lemma finite_trace_projection_last_state
+  (start : vstate X)
+  (transitions : list (vtransition_item X))
+  (Htr : finite_protocol_trace_from X start transitions)
+  (lstx := last (List.map destination transitions) start)
+  (lstj := last (List.map destination (finite_trace_projection_list transitions)) (start j))
+  : lstj = lstx j.
+Proof.
+  apply preloaded_finite_trace_projection_last_state.
+  apply VLSM_incl_finite_trace; [|assumption].
+  apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
 Qed.
 
 (* The projection of a finite protocol trace remains a protocol trace *)
@@ -254,6 +282,69 @@ Proof.
       assumption.
 Qed.
 
+(* The projection of a preloaded finite protocol trace remains a preloaded protocol trace *)
+
+Lemma preloaded_finite_ptrace_projection
+  (s : vstate X)
+  (Psj : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM j)) (s j))
+  (trx : list (vtransition_item X))
+  (Htr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) s trx)
+   : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm (IM j)) (s j) (finite_trace_projection_list trx).
+Proof.
+  induction Htr.
+  - constructor. assumption.
+  - destruct l as [x lx]; simpl.
+    destruct H as [[Ps' [Piom [Hv Hc]]] Ht].
+    assert (Hpp : protocol_prop (pre_loaded_with_all_messages_vlsm X) (s, oom)).
+    { rewrite <- Ht. destruct Ps' as [_om Ps']. destruct Piom as [_s Piom].
+      apply protocol_generated with _om _s; try assumption. split; assumption.
+    }
+    assert (Hps : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by (exists oom; assumption).
+    destruct (decide (j = x)).
+    + subst x.
+      unfold vtransition in Ht. simpl in Ht.
+      unfold vtransition in Ht. simpl in Ht.
+      destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.
+      inversion Ht; subst. rewrite state_update_eq in *.
+      simpl in Hv.
+      apply (finite_ptrace_extend (pre_loaded_with_all_messages_vlsm (IM j))).
+      * apply IHHtr.
+        exists oom.
+
+        replace
+          (@pair
+            (@state message
+              (@type message (@pre_loaded_with_all_messages_vlsm message (IM j))))
+            (option message)
+            si' oom)
+          with (vtransition (IM j) lx (s' j, iom)).
+        destruct Psj as [os'j Psj].
+        specialize (protocol_generated (pre_loaded_with_all_messages_vlsm (IM j)) lx (s' j) os'j Psj)
+          as Hgen.
+        specialize (Hgen (proj1_sig (vs0 (IM j))) iom).
+        spec Hgen; [apply (pre_loaded_with_all_messages_message_protocol_prop (IM j))|].
+        spec Hgen; [| apply Hgen].
+        assumption.
+      * assert
+          (Heqlx :
+            (@eq_rect_r index j (fun n : index => vlabel (IM n)) lx j (@eq_refl index j))
+            = lx
+          ) by reflexivity.
+        rewrite Heqlx.
+        split; [|assumption].
+        split; [assumption|].
+        split; [|assumption].
+        exists (proj1_sig (vs0 (IM j))).
+        apply (pre_loaded_with_all_messages_message_protocol_prop (IM j)).
+    + simpl in Ht. unfold vtransition in Ht.
+      simpl in Ht.
+      destruct (vtransition (IM x) lx (s' x, iom)) eqn:Hteq.
+      inversion Ht; subst.
+      rewrite state_update_neq in IHHtr by assumption.
+      apply IHHtr.
+      assumption.
+Qed.
+
 Lemma protocol_state_projection
   (s : state)
   (Hps : protocol_state_prop X s)
@@ -265,7 +356,7 @@ Proof.
   specialize (vlsm_run_last_state X run); intros Hlast.
   destruct run as [run Hrun]; simpl in *.
   rewrite <- Heqfinal in *. simpl in Hlast.
-  destruct run; simpl in *. destruct start as [start Hstart]. simpl in *.
+  destruct run; simpl in *.
   clear - Htrace Hlast.
   destruct Htrace as [Htrace Hinit].
   specialize (finite_ptrace_projection start); intro Hproj.
@@ -273,18 +364,19 @@ Proof.
   remember (exist _ (start j) Hstartj) as istartj.
   assert (Hpstartj : protocol_state_prop Xj (start j)).
   { exists None.
-    specialize (protocol_initial_state Xj istartj); subst; simpl; intro Hpinit.
+    specialize (protocol_initial_state Xj istartj) as Hpinit.
+    subst.
     assumption.
   }
   specialize (Hproj Hpstartj _ Htrace).
-  specialize (trace_is_run Xj istartj (finite_trace_projection_list transitions))
-  ; subst istartj; simpl; intro Hrun.
-  specialize (Hrun Hproj).
+  specialize (trace_is_run Xj (start j) (finite_trace_projection_list transitions)) as Hrun.
+  specialize (Hrun (conj Hproj Hstartj)).
   destruct Hrun as [run [Hrun [Hstart Htrans]]].
   specialize (run_is_protocol Xj (exist _ run Hrun)); simpl; intro Hps.
   specialize (vlsm_run_last_state Xj (exist _ run Hrun)); simpl; intros Hlast'.
+  simpl in *.
   rewrite Htrans in Hlast'. rewrite Hstart in Hlast'. simpl in Hlast'.
-  destruct (final Xj run) as (s', om). simpl in Hlast'.
+  destruct (final run) as (s', om). simpl in Hlast'.
   exists om.
   subst.
   specialize (finite_trace_projection_last_state start transitions Htrace)
@@ -738,3 +830,76 @@ Proof.
 Qed.
 
 End ProjectionTraces.
+
+Section ProjectionTraces_membership.
+
+Context
+  {message : Type}
+  {index : Type}
+  {IndEqDec : EqDecision index}
+  (IM : index -> VLSM message)
+  (i0 : index)
+  (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+  (X := composite_vlsm IM i0 constraint)
+  .
+
+Lemma finite_trace_projection_list_in
+  (tr : list (vtransition_item X))
+  (itemX : vtransition_item X)
+  (HitemX : In itemX tr)
+  (j := projT1 (l itemX))
+  : In (@Build_transition_item _ (type (IM j)) (projT2 (l itemX)) (input itemX) (destination itemX j) (output itemX)) (finite_trace_projection_list IM i0 constraint j tr).
+Proof.
+  induction tr; [inversion HitemX|].
+  destruct HitemX as [HitemX | HitemX].
+  - simpl. subst a. unfold j in *. clear j.
+    match goal with
+    |- context [decide ?eq] => destruct (decide eq)
+    end
+    ; [| elim n; reflexivity].
+    left.
+    f_equal.
+    replace e with (@eq_refl index (projT1 (l itemX))) by apply UIP.
+    reflexivity.
+  - spec IHtr HitemX.
+    simpl.
+    match goal with
+    |- context [decide ?eq] => destruct (decide eq)
+    end
+    ;[|assumption].
+    right. assumption.
+Qed.
+
+Lemma finite_trace_projection_list_in_rev
+  (tr : list (vtransition_item X))
+  (j : index)
+  (itemj : vtransition_item (IM j))
+  (Hitemj : In itemj  (finite_trace_projection_list IM i0 constraint j tr))
+  : exists
+    (itemX : vtransition_item X)
+    (Houtput : output itemX = output itemj)
+    (Hinput : input itemX = input itemj)
+    (Hl1 : j = projT1 (l itemX))
+    (Hl2 : eq_rect_r _ (projT2 (l itemX)) Hl1 = l itemj)
+    (Hdestination : destination itemX j = destination itemj),
+    In itemX tr.
+Proof.
+  induction tr; [contradict Hitemj|].
+  simpl in Hitemj.
+  match type of Hitemj with
+  | context [decide ?eq] => destruct (decide eq)
+  end.
+  - destruct Hitemj as [Hitemj | Hitemj].
+    + subst itemj. simpl. exists a. exists eq_refl. exists eq_refl. exists e.
+      exists eq_refl. exists eq_refl. left. reflexivity.
+    + spec IHtr Hitemj.
+      destruct IHtr as [itemX [Houtput [Hinput [Hl1 [Hl2 [Hdestination HitemX]]]]]].
+      exists itemX. repeat split; [assumption| assumption |].
+      exists Hl1. exists Hl2. exists Hdestination. right. assumption.
+  - spec IHtr Hitemj.
+    destruct IHtr as [itemX [Houtput [Hinput [Hl1 [Hl2 [Hdestination HitemX]]]]]].
+    exists itemX. repeat split; [assumption| assumption |].
+    exists Hl1. exists Hl2. exists Hdestination. right. assumption.
+Qed.
+
+End ProjectionTraces_membership.
