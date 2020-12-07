@@ -3507,7 +3507,7 @@ Context
       (Hdif : target <> index_self)
       : incl (get_raw_observations (project s i) target) (get_raw_observations s target).
   Proof.
-  Qed.
+  Admitted.
   (*
     unfold incl.
     intros.
@@ -3560,6 +3560,7 @@ Context
         lia.
         assumption.
   Qed. *) 
+  
     (* 
     Lemma observations_disregards_cv
       (s : vstate X)
@@ -3611,6 +3612,7 @@ Context
         ).
     Proof.
     Admitted. *)
+    
     (*
      unfold set_eq.
      split; unfold incl; intros.
@@ -3946,6 +3948,7 @@ Context
         ).
     Proof.
     Admitted.
+    *)
     (*
       remember (update_state s s' i) as u.
 

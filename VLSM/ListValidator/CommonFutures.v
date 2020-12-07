@@ -146,10 +146,10 @@ Context
   Lemma GE_existing_update
     (s : vstate X)
     (so : state)
-    (i : index)
-    (s' := state_update IM_index s i so)
-    (Hhave : In (Obs Sent i so) (cobs s i) \/
-             In (Obs Received i so) (cobs s i)) :
+    (i j : index)
+    (s' := state_update IM_index s i (update_state (s i) so j))
+    (Hhave : In (Obs Sent j so) (cobs s j) \/
+             In (Obs Received j so) (cobs s j)) :
     incl (GE s') (GE s).
   Proof.
     unfold incl; intros.
@@ -168,7 +168,6 @@ Context
       + exists e2. 
         split. assumption.
         assumption.
-    -
   Admitted.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
@@ -344,6 +343,7 @@ Context
         apply finite_protocol_action_from_one.
         unfold protocol_transition in H.
         rewrite <- Heqa.
+        unfold protocol_transition.
         intuition.
       }
       
@@ -385,6 +385,8 @@ Context
         split.
         * unfold feasible_update_composite; simpl.
           apply finite_protocol_action_from_one.
+          unfold protocol_transition.
+          split.
           apply feasible_update_protocol.
           all : intuition.
         * rewrite Heqs' in IHli at 1.
@@ -454,6 +456,19 @@ Context
              reflexivity.
         * simpl.
           assert (Hge_short : incl (GE res_short) (GE s)). {
+            remember (update_state (s i) (s i) i) as new_si.
+            remember (state_update IM_index s i new_si) as new_s.
+            specialize (GE_existing_update s (s i) i i) as Hexist.
+            simpl in Hexist.
+            assert (Hu: res_short = new_s). {
+              admit.
+            }
+            rewrite Hu.
+            rewrite Heqnew_s.
+            rewrite Heqnew_si.
+            apply Hexist.
+            
+            (*
             unfold incl; intros.
             unfold GE in *.
             apply set_diff_elim2 in H3; simpl in H3.
@@ -468,7 +483,7 @@ Context
             unfold equivocation_evidence in contra.
             simpl in *.
             contradict contra.
-            admit.
+            admit. *)
           }
           
           assert (Hge_long : incl (GE res_long) (GE res_short)). {
