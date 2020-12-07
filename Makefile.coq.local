@@ -13,7 +13,7 @@ COQDOCHTMLFLAGS = --toc --toc-depth 2 --index indexpage --html -s \
 COQ2HTML = coq2html
 COQ2HTMLDIR = docs/coq2html
 
-ALECTRYON = ../alectryon/alectryon.py
+ALECTRYON = ~/alectryon/alectryon.py
 ALECTRYONDIR = docs/alectryon
 ALECTRYONHTMLFLAGS = --frontend coqdoc --webpage-style windowed
 ALECTRYONHTMLFILES = $(VFILES:.v=.alectryon.html)
