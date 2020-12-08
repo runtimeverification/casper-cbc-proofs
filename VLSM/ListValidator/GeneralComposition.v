@@ -32,10 +32,11 @@ Context
   {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
   (X := composite_vlsm IM_index i0 constraint)
   (preX := pre_loaded_with_all_messages_vlsm X)
-  (Hevidence := fun (i : index) => @observable_full index index_listing Hfinite idec)
+  (* (Hevidence := fun (i : index) => @observable_full index index_listing Hfinite idec) *)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
   .
+ (*
 
   Definition composed_eqv_evidence
   : observation_based_equivocation_evidence (vstate X) index state state_eq_dec state_lt state_lt_dec
@@ -466,5 +467,5 @@ Context
     {
       comparable_generated_events := comparable_generated_events_lv
     }.
-
+ *)
 End Composition.

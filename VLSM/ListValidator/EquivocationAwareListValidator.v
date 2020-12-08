@@ -11,7 +11,7 @@ Require Import
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
   .
-
+(* 
 Section EquivocationAwareValidator.
 
   Context
@@ -61,4 +61,4 @@ Section EquivocationAwareValidator.
     :=
     @VLSM_list index index_self index_listing idec equivocation_aware_estimator.
 
-End EquivocationAwareValidator.
+End EquivocationAwareValidator. *)
