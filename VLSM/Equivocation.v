@@ -718,6 +718,17 @@ Section Simple.
       |}.
 End Simple.
 
+Record has_been_sent_stepwise_props
+       [message] [vlsm: VLSM message] (has_been_sent_pred: state_message_oracle vlsm) : Prop :=
+  {inits_no_sent: forall (s: vstate vlsm), initial_state_prop (VLSM_sign:=sign vlsm) s ->
+                                             forall m, ~has_been_sent_pred s m;
+     sent_step_update:
+       forall l s im s' om,
+         protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
+         forall msg, has_been_sent_pred s' msg
+                     <-> (om = Some msg \/ has_been_sent_pred s msg)
+  }.
+
 (**
 ** Lemmas to help define [has_been_sent_capability]
 
@@ -750,13 +761,7 @@ Section HasBeenSentLemmas.
     (message : Type)
     (vlsm: VLSM message)
     (has_been_sent_pred: state_message_oracle vlsm)
-    (H_inits_no_sent: forall (s: vstate vlsm), initial_state_prop (VLSM_sign:=sign vlsm) s ->
-                                               forall m, ~has_been_sent_pred s m)
-    (H_step_property:
-       forall l s im s' om,
-         vtransition vlsm l (s,im) = (s',om) ->
-         forall msg, has_been_sent_pred s' msg
-                     <-> (om = Some msg \/ has_been_sent_pred s msg)).
+    (has_been_sent_alt_props: has_been_sent_stepwise_props has_been_sent_pred).
 
   Local Lemma H_trace_prop
         s0 s tr
@@ -778,8 +783,7 @@ Section HasBeenSentLemmas.
       intro m.
       specialize (IHHtr m).
       rewrite Exists_cons. simpl.
-      destruct H as [_ H].
-      apply H_step_property with (msg:=m) in H.
+      apply (has_been_sent_alt_props.(sent_step_update _)) with (msg:=m) in H.
       tauto.
   Qed.
 
@@ -795,7 +799,7 @@ Section HasBeenSentLemmas.
       apply (H_trace_prop _ _ _ Htr Hlast) in Hsent.
       destruct Hsent;[assumption|exfalso].
       revert H.
-      apply H_inits_no_sent;assumption.
+      apply inits_no_sent;assumption.
     - intro H_all_traces.
       apply protocol_state_has_trace in Hproto.
       destruct Hproto as [s0 [tr [Htr Hlast]]].
@@ -829,10 +833,110 @@ Section HasBeenSentLemmas.
       destruct H_no_traces;[assumption|].
       exfalso.
       revert H.
-      apply H_inits_no_sent.
-      assumption.
+      apply inits_no_sent;assumption.
+  Qed.
+
+  Context
+    (has_been_sent_pred_dec: RelDecision has_been_sent_pred).
+  Lemma cap_from_alt: has_been_sent_capability vlsm.
+  Proof.
+    refine ({|has_been_sent:=has_been_sent_pred|}).
+    apply prove_proper_sent_from_stepwise.
+    apply prove_proper_not_sent_from_stepwise.
+  Defined.
+
+  Lemma cap_from_all_right_pred: @has_been_sent _ _ cap_from_alt = has_been_sent_pred.
+  Proof.
+    reflexivity.
   Qed.
 End HasBeenSentLemmas.
+
+Section HBSEquiv.
+  Context
+    (message : Type)
+    (vlsm: VLSM message)
+    (Hhbs: has_been_sent_capability vlsm).
+
+  Lemma all_hbs_inits_no_sent:
+    forall (s: vstate vlsm), initial_state_prop (VLSM_sign:=sign vlsm) s ->
+                             forall m, ~has_been_sent vlsm s m.
+  Proof.
+    intros s Hinit m Hsent.
+    assert (Hproto : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
+      by (apply initial_is_protocol;assumption).
+    apply proper_sent in Hsent;[|assumption].
+    specialize (Hsent s nil).
+    eapply Exists_nil;refine (Hsent _ (eq_refl _));clear Hsent.
+    split;[|assumption].
+    constructor;assumption.
+  Qed.
+
+  Lemma examine_one_trace:
+    forall is s tr,
+      last (List.map destination tr) is = s ->
+      finite_protocol_trace (pre_loaded_with_all_messages_vlsm vlsm) is tr ->
+    forall m,
+      has_been_sent vlsm s m <->
+      List.Exists (fun elem : transition_item => output elem = Some m) tr.
+  Proof.
+    intros is s tr Hlast Htr m.
+    assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
+      by (rewrite <- Hlast; apply trace_is_protocol;assumption).
+    split.
+    - intros Hsent.
+      apply proper_sent in Hsent;[|assumption].
+      specialize (Hsent is tr Htr Hlast).
+      assumption.
+    - intro Hexists.
+      apply proper_sent;[assumption|].
+      apply has_been_sent_consistency;[assumption..|].
+      exists is, tr, Htr, Hlast.
+      assumption.
+  Qed.
+
+  Lemma all_hbs_step_property:
+       forall l s im s' om,
+         protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
+         forall msg, has_been_sent vlsm s' msg
+                     <-> (om = Some msg \/ has_been_sent vlsm s msg).
+  Proof.
+    intros l s im s' om Htrans msg.
+    rename Htrans into Htrans'.
+    pose proof Htrans' as [[Hproto_s [Hproto_m Hvalid]] Htrans].
+    set (preloaded:= pre_loaded_with_all_messages_vlsm vlsm) in * |- *.
+
+    pose proof (protocol_state_has_trace _ _ Hproto_s)
+      as [is [tr [[Htr Hinit] Hlast]]].
+
+    rewrite <- Hlast in Htrans'.
+    pose proof (Htr' := extend_right_finite_trace_from _ _ _ Htr _ _ _ _ Htrans').
+
+    match type of Htr' with (finite_protocol_trace_from _ _ ?tr') =>
+                            assert (last (List.map destination tr') is = s') as Hlast'
+    end.
+    {
+      rewrite map_app.
+      simpl List.map.
+      rewrite last_is_last.
+      reflexivity.
+    }
+
+    rewrite (examine_one_trace is s tr Hlast (conj Htr Hinit) msg).
+    rewrite (examine_one_trace is s' _ Hlast' (conj Htr' Hinit) msg).
+    clear.
+    progress cbn.
+    rewrite Exists_app, Exists_cons, Exists_nil.
+    simpl.
+    tauto.
+  Qed.
+
+  Lemma alt_props : has_been_sent_stepwise_props (@has_been_sent _ _ Hhbs).
+  Proof.
+    constructor.
+    refine all_hbs_inits_no_sent.
+    refine all_hbs_step_property.
+  Defined.
+End HBSEquiv.
 
 (**
 *** Equivocation in compositions.
