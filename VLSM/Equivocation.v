@@ -719,6 +719,122 @@ Section Simple.
 End Simple.
 
 (**
+** Lemmas to help define [has_been_sent_capability]
+
+This section defines simpler conditions on a candiate [has_been_sent]
+predicate which involve only a single transition at a time,
+and are sufficient to establish the full
+[has_been_sent_prop] and [has_not_been_sent_prop].
+
+The conditions are the section parameters [H_inits_no_sent]
+and [H_step_property].
+The first checks that the candidate predicate never claims
+that any [intiial_state] has sent any message.
+The second says that for any [transition], the predicate
+claims that the final state sent some message <<m>> iff
+that message was the output of this transition, or
+the message was already sent in the initial state.
+
+The formulation of [H_step_property] could be weakend
+a bit by only considering [transition] on [valid] inputs,
+or further by [protocol_transition] (over the
+[pre_loaded_with_all_messages_vlsm] of the [VLSM])
+but this has not been necessary so far.
+(It would only make a difference if there the [transition] function
+can actually violate the condition on some non-[valid]
+or non-[protocol_prop] input).
+**)
+
+Section HasBeenSentLemmas.
+  Context
+    (message : Type)
+    (vlsm: VLSM message)
+    (has_been_sent_pred: state_message_oracle vlsm)
+    (H_inits_no_sent: forall (s: vstate vlsm), initial_state_prop (VLSM_sign:=sign vlsm) s ->
+                                               forall m, ~has_been_sent_pred s m)
+    (H_step_property:
+       forall l s im s' om,
+         vtransition vlsm l (s,im) = (s',om) ->
+         forall msg, has_been_sent_pred s' msg
+                     <-> (om = Some msg \/ has_been_sent_pred s msg)).
+
+  Local Lemma H_trace_prop
+        s0 s tr
+        (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm vlsm) s0 tr)
+        (Hlast: last (List.map Common.destination tr) s0 = s):
+    forall m,
+      has_been_sent_pred s m
+      <-> (List.Exists (fun elem : transition_item => output elem = Some m) tr
+           \/ has_been_sent_pred s0 m).
+  Proof.
+    induction Htr.
+    - simpl in Hlast; subst s.
+      intro m.
+      rewrite Exists_nil.
+      tauto.
+    - simpl List.map in Hlast.
+      rewrite unroll_last in Hlast.
+      specialize (IHHtr Hlast);clear Hlast.
+      intro m.
+      specialize (IHHtr m).
+      rewrite Exists_cons. simpl.
+      destruct H as [_ H].
+      apply H_step_property with (msg:=m) in H.
+      tauto.
+  Qed.
+
+  Lemma prove_proper_sent_from_stepwise:
+    forall (s : state)
+           (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
+           (m : message),
+      (has_been_sent_prop vlsm has_been_sent_pred s m).
+  Proof.
+    intros s Hproto m.
+    split.
+    - intros Hsent s0 tr [Htr Hinit] Hlast.
+      apply (H_trace_prop _ _ _ Htr Hlast) in Hsent.
+      destruct Hsent;[assumption|exfalso].
+      revert H.
+      apply H_inits_no_sent;assumption.
+    - intro H_all_traces.
+      apply protocol_state_has_trace in Hproto.
+      destruct Hproto as [s0 [tr [Htr Hlast]]].
+      specialize (H_all_traces s0 tr Htr Hlast).
+      destruct Htr as [Htr _].
+      apply (H_trace_prop _ _ tr Htr Hlast).
+      left.
+      assumption.
+  Qed.
+
+  Lemma prove_proper_not_sent_from_stepwise:
+    forall (s : state)
+           (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
+           (m : message),
+      has_not_been_sent_prop vlsm (fun m s => ~has_been_sent_pred m s) s m.
+  Proof.
+    intros s Hproto m.
+    split.
+    - intros H_not_sent start tr [Htr Hinit] Hlast.
+      contradict H_not_sent.
+      apply (H_trace_prop _ _ tr Htr Hlast).
+      left.
+      assumption.
+    - intros H_no_traces.
+      apply protocol_state_has_trace in Hproto.
+      destruct Hproto as [s0 [tr [Htr Hlast]]].
+      specialize (H_no_traces s0 tr Htr Hlast).
+      contradict H_no_traces.
+      destruct Htr as [Htr Hinit].
+      apply (H_trace_prop _ _ tr Htr Hlast) in H_no_traces.
+      destruct H_no_traces;[assumption|].
+      exfalso.
+      revert H.
+      apply H_inits_no_sent.
+      assumption.
+  Qed.
+End HasBeenSentLemmas.
+
+(**
 *** Equivocation in compositions.
 
  We now move on to a composite context. Each component of our composition
