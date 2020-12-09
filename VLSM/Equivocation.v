@@ -980,21 +980,9 @@ Section Composite.
   Lemma composite_has_been_sent_dec : RelDecision composite_has_been_sent.
   Proof.
     intros s m.
-    destruct (existsb (fun i => bool_decide(has_been_sent (IM i) (s i) m)) index_listing)
-      eqn:Hexists.
-    - left.
-      apply existsb_exists in Hexists.
-      destruct Hexists as [i [_ Hi]].
-      exists i.
-      apply bool_decide_eq_true_1 in Hi.
-      assumption.
-    - right.
-      rewrite existsb_forall in Hexists.
-      intros Hbs.
-      destruct Hbs as [i Hbs].
-      spec Hexists i (proj2 finite_index i).
-      apply bool_decide_eq_false_1 in Hexists.
-      elim Hexists. assumption.
+    apply (Decision_iff (P:=List.Exists (fun i => has_been_sent (IM i) (s i) m) index_listing)).
+    rewrite <- exists_finite by (apply finite_index). reflexivity.
+    apply Exists_dec.
   Qed.
 
   (** 'composite_has_been_sent' has the 'proper_sent' property. *)
