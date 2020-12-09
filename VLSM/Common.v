@@ -614,6 +614,15 @@ and [protocol_message]s, similar to their recursive definition.
         + exists om'. rewrite <- Ht. apply protocol_generated with _om _s; assumption.
     Qed.
 
+    (** A specialized induction principle for [protocol_state_prop].
+
+        Compared to opening the existential and using [protocol_prop_ind],
+        this avoids the redundancy of the [protocol_initial_state] case
+        needing a proof for any [initial_state] and then [protocol_initial_message]
+        asking for a proof specifically for [s0], and also avoids the
+        little trouble of needing <<set>> or <<dependent induction>> to
+        handle the pair in the index in [protocol_prop (s,om)].
+     *)
     Lemma protocol_state_prop_ind
       (P : state -> Prop)
       (IHinit : forall (s : state) (Hs : initial_state_prop s), P s)
@@ -2009,6 +2018,12 @@ that contains it as a prefix.
       }.
 (* end hide *)
   End VLSM.
+
+(** Make all arguments of [protocol_state_prop_ind] explicit
+    so it will work with the <<induction using>> tactic.
+    (closing the section added <<{message}>> as an implicit argument)
+ *)
+Arguments protocol_state_prop_ind : clear implicits.
 
 (**
 ** VLSM Inclusion and Equality.

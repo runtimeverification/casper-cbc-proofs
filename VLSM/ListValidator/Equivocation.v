@@ -1154,51 +1154,46 @@ Context
       (Hnb : last_sent s <> Bottom)
       : state_lt (last_sent s) s.
     Proof.
-      generalize dependent s.
-      remember (fun s => last_sent s <> Bottom -> state_lt (last_sent s) s) as P.
-      specialize (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm X) P) as Hind.
-      subst P.
-      apply Hind; intros; clear Hind.
-      - inversion Hs. subst s. elim H.
+      induction Hs using protocol_state_prop_ind.
+      - inversion Hs. subst s. elim Hnb.
         unfold last_sent. simpl. apply project_all_bottom.
       - unfold last_sent.
         destruct Ht as [[Hps [Hom Hv]] Ht].
-        specialize (protocol_prop_no_bottom _ Hps) as Hnb.
+        specialize (protocol_prop_no_bottom _ Hps) as Hnb'.
         simpl in Ht. unfold vtransition in Ht. simpl in Ht.
         simpl in Hv. unfold vvalid in Hv. simpl in Hv.
         destruct l as [c|].
         + inversion Ht. clear Ht.
           subst s'.
           rewrite <- update_consensus_clean.
-          rewrite (@project_same _ _ Hfinite); try assumption.
-          repeat split
-          ; try (intro j; rewrite history_disregards_cv; destruct (decide (index_self = j))).
-          * subst j. rewrite history_append; try assumption; try reflexivity.
+          rewrite (@project_same _ _ Hfinite);[|assumption].
+          split;[(intro j; rewrite history_disregards_cv; destruct (decide (index_self = j)))|].
+          * subst j. rewrite history_append;[|assumption|assumption|reflexivity].
             apply incl_tl. apply incl_refl.
-          * rewrite <- history_oblivious; try assumption. apply incl_refl.
+          * rewrite <- history_oblivious;[|assumption]. apply incl_refl.
           * exists index_self. exists s.
-            split; try apply history_no_self_reference.
+            split;[|solve[apply history_no_self_reference]].
             rewrite history_disregards_cv.
-            rewrite history_append; try assumption; try reflexivity.
+            rewrite history_append;[|assumption|assumption|reflexivity].
             left. reflexivity.
         + destruct om as [m|]; inversion Ht; clear Ht; subst s'.
           * destruct m as (im, sm); simpl in *.
             destruct Hv as [Hsim [Hsm Him]].
-            rewrite (@project_different _ _ Hfinite); try assumption.
-            unfold last_sent in H.
-            rewrite (@project_different _ _ Hfinite) in H; try assumption.
-            { repeat split; try (intro j; destruct (decide (im = j))).
+            rewrite (@project_different _ _ Hfinite) by assumption.
+            unfold last_sent in Hnb.
+            rewrite (@project_different _ _ Hfinite) in Hnb by assumption.
+            { split;[intro j; destruct (decide (im = j))|].
             - subst im. rewrite history_append; auto.
-              apply incl_tl. apply Hs. assumption.
-            - rewrite <- history_oblivious; try assumption.
-              apply Hs. assumption.
+              apply incl_tl. apply IHHs. assumption.
+            - rewrite <- history_oblivious by assumption.
+              apply IHHs. assumption.
             - exists index_self. exists (project s index_self).
-              split; try apply history_no_self_reference.
+              split;[|solve[apply history_no_self_reference]].
               rewrite <- history_oblivious.
-              + rewrite unfold_history_cons; try assumption. left. reflexivity.
+              + rewrite unfold_history_cons;[|assumption]. left. reflexivity.
               + intro. subst. elim Him. reflexivity.
             }
-          * apply Hs. assumption.
+          * apply IHHs. assumption.
     Qed.
 
     Lemma byzantine_message_self_id
