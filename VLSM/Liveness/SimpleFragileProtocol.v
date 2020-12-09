@@ -17,6 +17,76 @@ This module defines a simple consensus protocol, and
 proves that it is live when there are no synchronization faults.
  *)
 
+  (* TODO: move this to ListSetExtras *)
+  Definition set_diff_filter `{EqDecision A} (l r : list A) :=
+    filter (fun a => if in_dec decide_eq a r then false else true) l.
+
+  Lemma set_diff_filter_iff `{EqDecision A} (a:A) l r:
+    In a (set_diff_filter l r) <-> (In a l /\ ~In a r).
+  Proof.
+    induction l;simpl.
+    - tauto.
+    - destruct (in_dec decide_eq a0 r) as [H|H];simpl;rewrite IHl;
+        clear -H;intuition congruence.
+  Qed.
+
+  Lemma set_diff_filter_nodup `{EqDecision A} (l r:list A):
+    NoDup l -> NoDup (set_diff_filter l r).
+  Proof (@NoDup_filter _ _ _).
+
+  Lemma len_set_diff_incl_le `{EqDecision A} (l a b: list A)
+        (H_incl: forall x, In x b -> In x a):
+    length (set_diff_filter l a) <= length (set_diff_filter l b).
+  Proof.
+    induction l;[reflexivity|].
+    simpl.
+    destruct (in_dec decide_eq a0 a);destruct (in_dec decide_eq a0 b).
+    - assumption.
+    - simpl. apply le_S. assumption.
+    - exfalso. apply n, H_incl, i.
+    - simpl. apply le_n_S. assumption.
+  Qed.
+
+  Lemma len_set_diff_decrease `{EqDecision A} (new:A) (l a b: list A)
+        (H_incl: forall x, In x b -> In x a)
+        (H_new_is_new: In new a /\ ~In new b)
+        (H_new_is_relevant: In new l):
+    length (set_diff_filter l a) < length (set_diff_filter l b).
+  Proof.
+    induction l;destruct H_new_is_relevant.
+    - subst a0.
+      simpl.
+      destruct (in_dec decide_eq new a);[|exfalso;tauto].
+      destruct (in_dec decide_eq new b);[exfalso;tauto|].
+      simpl. unfold lt. apply le_n_S.
+      apply len_set_diff_incl_le;assumption.
+    - specialize (IHl H);clear H.
+      simpl.
+      destruct (in_dec decide_eq a0 a);destruct (in_dec decide_eq a0 b).
+      + assumption.
+      + simpl. apply le_n_S. apply len_set_diff_incl_le;assumption.
+      + exfalso. apply n, H_incl, i.
+      + simpl. apply Lt.lt_n_S. assumption.
+  Qed.
+
+  Lemma len_set_diff_map_set_add `{EqDecision B} (new:B) `{EqDecision A} (f: B -> A)
+        (a: list B) (l: list A)
+        (H_new_is_new: ~In (f new) (map f a))
+        (H_new_is_relevant: In (f new) l):
+           length (set_diff_filter l (map f (set_add decide_eq new a)))
+           < length (set_diff_filter l (map f a)).
+  Proof.
+    apply len_set_diff_decrease with (f new).
+    - intro x. rewrite 2 in_map_iff.
+      intros [x0 [Hx0 Hin]]. exists x0.
+      rewrite set_add_iff. tauto.
+    - split;[|assumption].
+      apply in_map.
+      apply set_add_iff.
+      left. reflexivity.
+    - assumption.
+  Qed.
+
 (** * Validators
 
 The components are similar to [CBC.FullNode.Validator], except
@@ -26,7 +96,7 @@ only send messages at the times given in a [Plan].
 Section Define_Component.
 
   Context
-    (C V:Type)
+    {C V:Type}
     {EqC: EqDecision C}
     {EqV: EqDecision V}
     (c0:C)
@@ -34,7 +104,11 @@ Section Define_Component.
   .
 
   Inductive validator_message : Type :=
-    Msg (time:nat) (proposal:C) (proposer:V) (history:list validator_message).
+    Msg {message_time:nat;
+         message_proposal: C;
+         message_sender: V;
+         message_justification: list validator_message
+        }.
   Global Instance validator_message_eq_dec : EqDecision validator_message.
   Proof using C V EqC EqV.
   refine (fix validator_message_eq_dec (m n : validator_message) {struct m} : Decision (m=n) :=
@@ -52,10 +126,11 @@ Section Define_Component.
     end);congruence.
   Defined.
 
+  Definition message_slot (m : validator_message) : (nat * V) :=
+    let '(Msg t _ v _) := m in (t, v).
+
   Fixpoint message_height (m: validator_message) {struct m}: nat :=
-    match m with
-    | Msg _ _ _ history => S (list_max (map message_height history))
-    end.
+    S (list_max (map message_height (message_justification m))).
 
   Lemma validator_message_well_founded:
     forall time c v history,
@@ -80,6 +155,12 @@ Section Define_Component.
   Definition validator_time : validator_state -> nat :=
     fun '(State t _ _ _) => t.
 
+  Definition validator_sends : validator_state -> list validator_message :=
+    fun '(State _ _ sends _) => sends.
+
+  Definition validator_received : validator_state -> list validator_message :=
+    fun '(State _ received _ _) => received.
+
   Definition initial_validator_state (s:validator_state) : Prop :=
     let (t,msgs,log,flag) := s in t = 0 /\ msgs = nil /\ log = nil /\ ~flag.
   Definition initial_validator_message (m:validator_message) : Prop := False.
@@ -91,10 +172,6 @@ Section Define_Component.
     : validator_message -> validator_state -> validator_state :=
     fun msg '(State t msgs log flag) =>
       State t (set_add decide_eq msg msgs) log flag.
-  Definition record_send
-    : validator_message -> validator_state -> validator_state :=
-    fun msg '(State t msgs log flag) =>
-      State t (set_add decide_eq msg msgs) (msg::log) flag.
 
   Context
     (estimator: list validator_message -> C -> Prop)
@@ -118,9 +195,13 @@ Section Define_Component.
       let (n,msgs,log,f) := s in ((State (1+n) msgs log false),None)
     | Some (Proposal c) =>
       (* Send a proposal *)
-      let (n,msgs,_,_) := s in
-      let m := Msg n c v msgs in
-      (record_send m s,Some m)
+      let (n,known,sent,_) := s in
+      let m := Msg n c v known in
+      (State n
+             (set_add decide_eq m known)
+             (m::sent)
+             true,
+       Some m)
     end.
 
 
@@ -140,9 +221,8 @@ Section Define_Component.
         c <> c' \/ (forall c2, estimator msgs c2 -> c2 = c)
       end.
 
-  (* TODO: This needs to be altered to require that we have recieved
-     all earlier plan messages before we can assert or tick *)
-  Definition validator_valid (l:option validator_label) (sim:(validator_state * option validator_message)) : Prop :=
+  Definition validator_valid (l:option validator_label)
+             (sim:(validator_state * option validator_message)) : Prop :=
     let (s,im) := sim in
     match l with
     | None =>
@@ -164,7 +244,10 @@ Section Define_Component.
       end
     | Some Tick =>
       match im with
-      | None => let (n,_,_,f) := s in f \/ ~plan n v
+      | None =>
+        (let (n,_,_,f) := s in f \/ ~plan n v)
+        /\ (let (t,received,_,_) := s in
+            forall v, plan t v -> In (t,v) (map message_slot received))
       | Some _ => False
       end
     | Some (Proposal c) =>
@@ -178,9 +261,9 @@ Section Define_Component.
     end.
 
   Instance Validator_type : VLSM_type validator_message :=
-             {|state := validator_state
-              ;label:= option validator_label
-             |}.
+    {| state := validator_state;
+       label:= option validator_label
+    |}.
   Instance Validator_sign : VLSM_sign Validator_type :=
     {| initial_state_prop := initial_validator_state;
        initial_message_prop := initial_validator_message;
@@ -198,11 +281,8 @@ Section Define_Component.
   Definition Validator : VLSM validator_message :=
     mk_vlsm Validator_machine.
 
-  Definition validator_clock_fn (s : vstate Validator) : nat
-    := let '(State n _ _ _) := s in n.
-
   Lemma validator_clock_monotone: forall l s om s' om',
-      vtransition Validator l (s,om) = (s',om') -> validator_clock_fn s <= validator_clock_fn s'.
+      vtransition Validator l (s,om) = (s',om') -> validator_time s <= validator_time s'.
   Proof using C V.
     intros l s om s' om' H.
     apply (f_equal fst) in H.
@@ -214,10 +294,9 @@ Section Define_Component.
   Defined.
 
   Definition validator_clock: ClockFor Validator :=
-    {| clock := validator_clock_fn;
+    {| clock := validator_time: vstate Validator -> nat;
        clock_monotone := validator_clock_monotone
     |}.
-
 
   Definition validator_has_been_sent : state_message_oracle Validator :=
     fun '(State _ _ sent _) m => In m sent.
@@ -259,14 +338,10 @@ Section Define_Component.
          validator_has_been_sent_dec
          validator_sent_stepwise_props.
 
-  Definition validator_has_been_observed : validator_state -> validator_message -> Prop.
-  Proof using.
-    exact (fun '(State _ received _ _) m => In m received).
-  Defined.
-  Definition validator_has_been_observed_dec : RelDecision validator_has_been_observed.
-  Proof using EqV EqC.
-    exact (fun s m => let '(State _ received _ _) := s in in_dec decide_eq m received).
-  Defined.
+  Definition validator_has_been_observed : validator_state -> validator_message -> Prop
+    := fun '(State _ received _ _) m => In m received.
+  Definition validator_has_been_observed_dec : RelDecision validator_has_been_observed
+    := fun s m => let '(State _ received _ _) := s in in_dec decide_eq m received.
 
   Lemma validator_initial_not_observed:
     forall (s : vstate Validator),
@@ -276,13 +351,14 @@ Section Define_Component.
     simpl. assert (received = nil) as -> by apply Hinit. tauto.
   Qed.
 
-  Lemma validator_transition_updates_observed:
-       forall l s im s' om,
-         protocol_transition (pre_loaded_with_all_messages_vlsm Validator) l (s,im) (s',om) ->
-         forall msg, validator_has_been_observed s' msg
-                     <-> ((im = Some msg \/ om = Some msg) \/ validator_has_been_observed s msg).
+  Lemma validator_transition_updates_observed
+        [l s im s' om]
+        (Hptrans: protocol_transition (pre_loaded_with_all_messages_vlsm Validator) l (s,im) (s',om)):
+    forall msg, validator_has_been_observed s' msg
+                <-> ((im = Some msg \/ om = Some msg) \/ validator_has_been_observed s msg).
   Proof using.
-    intros l s im s' om [[_ [_ Hvalid]] Htrans] msg.
+    intro msg.
+    destruct Hptrans as [[_ [_ Hvalid]] Htrans].
     destruct s.
     unfold vtransition in Htrans.
     simpl in Htrans.
@@ -291,15 +367,18 @@ Section Define_Component.
     - destruct l'.
       + destruct im;[exfalso;assumption|clear Hvalid].
         inversion_clear Htrans.
-        simpl;rewrite set_add_iff;firstorder congruence.
+        simpl;rewrite set_add_iff.
+        clear;intuition congruence.
       + destruct im;[exfalso;assumption|clear Hvalid].
         inversion_clear Htrans.
-        simpl;firstorder congruence.
+        simpl.
+        clear;intuition congruence.
     - destruct im;[|exfalso;assumption].
       inversion_clear Htrans;simpl.
       rewrite set_add_iff.
       destruct v0.
-      firstorder congruence.
+      clear.
+      clear;intuition congruence.
   Qed.
 
   Definition validator_observed_stepwise_props :
@@ -313,7 +392,232 @@ Section Define_Component.
         has_been_observed_dec := validator_has_been_observed_dec;
         has_been_observed_stepwise_props :=
           validator_observed_stepwise_props |}.
+
+  Definition unsent_time (s:validator_state) :=
+    let (t,_,_,f) := s in
+    (if f then 1 else 0) + t.
+
+  Definition sends_respect_plan (s: validator_state) : Prop :=
+    forall m, validator_has_been_sent s m ->
+              plan (message_time m) v
+              /\ message_sender m = v
+              /\ message_time m < unsent_time s.
+
+  Definition sends_fill_plan (s: validator_state) : Prop :=
+    forall t, plan t v -> t < unsent_time s ->
+    exists m, message_slot m = (t,v) /\ validator_has_been_sent s m.
+
+  Definition sends_unique (s: validator_state) : Prop :=
+    forall m1, validator_has_been_sent s m1 ->
+    forall m2, validator_has_been_sent s m2 ->
+               message_slot m1 = message_slot m2 -> m1 = m2.
+
+  Lemma message_send_invariant_init s:
+    initial_validator_state s ->
+    sends_respect_plan s /\ sends_fill_plan s /\ sends_unique s.
+  Proof.
+    destruct s; simpl.
+    intros (-> & -> & -> & Hfinished).
+    destruct finished_send;[elim Hfinished;exact I|clear Hfinished].
+    unfold sends_respect_plan, sends_fill_plan, sends_unique;simpl.
+    pose proof PeanoNat.Nat.nlt_0_r.
+    firstorder.
+  Qed.
+
+  Lemma message_send_invariant_maintained
+        l s im s' om:
+    validator_valid l (s,im) ->
+    validator_transition l (s,im) = (s',om) ->
+    sends_respect_plan s /\ sends_fill_plan s /\ sends_unique s ->
+    sends_respect_plan s' /\ sends_fill_plan s' /\ sends_unique s'.
+  Proof.
+    intros Hvalid Htrans IH.
+    destruct l as [[c|]|].
+    + (* sending a proposal message, unsent_time advances and
+           the set of sent messages grows *)
+      destruct s.
+      simpl in Htrans.
+      inversion_clear Htrans.
+      simpl in Hvalid.
+      destruct im;[exfalso;exact Hvalid|].
+      destruct Hvalid as [_ [_ [Hplan Hflag]]].
+      destruct finished_send;[elim Hflag;exact I|clear Hflag].
+      destruct IH as [Hrespect [Hfill Hunique]].
+      split;[|split].
+      * unfold sends_respect_plan;simpl.
+        intros m [<-|Hsent];[solve[auto with arith]|].
+        apply Hrespect in Hsent.
+        simpl in Hsent.
+        pose proof (PeanoNat.Nat.lt_lt_succ_r (message_time m) time).
+        tauto.
+      * unfold sends_fill_plan;simpl.
+        intros t Hplan_t Hlt.
+        apply le_S_n, Lt.le_lt_or_eq in Hlt.
+        destruct Hlt as [H| ->].
+        -- specialize (Hfill t Hplan_t H).
+           simpl in Hfill. firstorder.
+        -- eexists;split;[|left;reflexivity].
+           simpl. congruence.
+      * revert Hunique;unfold sends_unique;simpl;intros Hunique.
+        assert (forall m, message_slot m = (time,v) -> ~In m sent).
+        {
+          clear -Hrespect.
+          intros m Hslot Hsent.
+          assert (message_time m < time) by (apply Hrespect;assumption).
+          apply PeanoNat.Nat.lt_neq in H.
+          revert Hslot H.
+          clear.
+          destruct m;simpl;congruence.
+        }
+        intros m1 [<-|Hm1] m2 [<-|Hm2].
+        -- congruence.
+        -- simpl. intro Hslot. symmetry in Hslot.
+           destruct (H m2 Hslot);assumption.
+        -- simpl. intro Hslot.
+           destruct (H m1 Hslot);assumption.
+        -- auto.
+    + assert (validator_sends s = validator_sends s'
+              /\ forall t, plan t v -> t < unsent_time s <-> t < unsent_time s').
+      {
+        destruct s.
+        simpl in Htrans.
+        inversion_clear Htrans.
+        split;[reflexivity|].
+        destruct finished_send;[reflexivity|].
+        simpl.
+        clear IH.
+        split;[auto with arith|].
+        intro Hle.
+        apply le_S_n, Lt.le_lt_or_eq in Hle.
+        destruct Hle;[assumption|exfalso;subst t].
+        simpl in Hvalid.
+        destruct im;[solve[destruct Hvalid]|].
+        tauto.
+      }
+      clear Htrans.
+      revert IH.
+      unfold sends_respect_plan, sends_fill_plan, sends_unique.
+      set (st := unsent_time s) in H |- *.
+      set (s't := unsent_time s') in H |- *.
+      clearbody st s't.
+      destruct s, s';simpl in * |- *.
+      destruct H as [<- H].
+      intros [Ha [Hb Hc]].
+      firstorder.
+    + (* receiving a message, none of the parts of
+           the state mentioned in these properties change *)
+      destruct s.
+      simpl in Htrans.
+      destruct im;inversion_clear Htrans;assumption.
+  Qed.
+
+  Lemma message_send_invariant (s : validator_state) :
+    protocol_state_prop Validator s ->
+    sends_respect_plan s /\ sends_fill_plan s /\ sends_unique s.
+  Proof.
+    intro Hproto.
+    induction Hproto using @protocol_state_prop_ind.
+    - apply message_send_invariant_init;assumption.
+    - revert IHHproto;apply (message_send_invariant_maintained l s om s' om');apply Ht.
+  Qed.
+  Lemma message_send_invariant_preloaded (s : validator_state) :
+    protocol_state_prop (pre_loaded_with_all_messages_vlsm Validator) s ->
+    sends_respect_plan s /\ sends_fill_plan s /\ sends_unique s.
+  Proof.
+    intro Hproto.
+    induction Hproto using @protocol_state_prop_ind.
+    - apply message_send_invariant_init;assumption.
+    - revert IHHproto;apply (message_send_invariant_maintained l s om s' om');apply Ht.
+  Qed.
+
 End Define_Component.
+Arguments validator_message _ _ : clear implicits.
+Arguments validator_state _ _ : clear implicits.
+Arguments Validator {C V} {EqC EqV} _ _ _ _.
+
+(* TODO: move to definition of pre_loaded_with_all_messages_vlsm *)
+Lemma any_message_is_protocol_in_preloaded [message] (XV: VLSM message) (om: option message):
+  option_protocol_message_prop (pre_loaded_with_all_messages_vlsm XV) om.
+Proof.
+  destruct om.
+  - pose proof I : vinitial_message_prop (pre_loaded_with_all_messages_vlsm XV) m.
+    pose proof (protocol_initial_message (pre_loaded_with_all_messages_vlsm XV) (exist _ m H)).
+    eexists;eexact H0.
+  - apply option_protocol_message_None.
+Qed.
+
+(* TODO: move to definition of composite_vlsm *)
+Lemma protocol_state_project_preloaded
+      message `(EqDecision index) IM i0 constraint
+      (X:=@composite_vlsm message index _ IM i0 constraint)
+      (s: vstate X) i:
+  protocol_state_prop X s ->
+  protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
+Proof.
+  intro H.
+  apply ProjectionTraces.protocol_state_projection with (j:=i) in H.
+  destruct H.
+  exists x.
+  apply proj_pre_loaded_with_all_messages_protocol_prop in H.
+  assumption.
+Qed.
+
+Lemma protocol_transition_project_active
+      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
+      (X := composite_vlsm IM v0 constraint)
+      l s im s' om:
+  protocol_transition X l (s,im) (s',om) ->
+  protocol_transition (pre_loaded_with_all_messages_vlsm (IM (projT1 l))) (projT2 l)
+                      (s (projT1 l), im) (s' (projT1 l), om).
+Proof.
+  intro Hptrans.
+  destruct l as [j lj].
+  destruct Hptrans as [Hpvalid Htrans].
+  split.
+  - destruct Hpvalid as [Hproto_s [_ Hcvalid]].
+    split;[|split].
+    + revert Hproto_s.
+      apply protocol_state_project_preloaded.
+    + apply any_message_is_protocol_in_preloaded.
+    + destruct Hcvalid as [Hvalid Hconstraint].
+      exact Hvalid.
+  - simpl.
+    simpl in Htrans.
+    destruct (vtransition (IM j) lj (s j, im)).
+    inversion_clear Htrans.
+    f_equal.
+    rewrite state_update_eq.
+    reflexivity.
+Qed.
+
+Lemma protocol_transition_project_any {V} (i:V)
+      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
+      (X := composite_vlsm IM v0 constraint)
+      (l:vlabel X) s im s' om:
+  protocol_transition X l (s,im) (s',om) ->
+  (s i = s' i \/
+   exists li, (l = existT _ i li) /\
+   protocol_transition (pre_loaded_with_all_messages_vlsm (IM i))
+                       li
+                       (s i,im) (s' i,om)).
+Proof.
+  intro Hptrans.
+  destruct l as [j lj].
+  destruct (decide (i = j)).
+  - subst j.
+    right.
+    exists lj.
+    split;[reflexivity|].
+    revert Hptrans.
+    apply protocol_transition_project_active.
+  - left.
+    destruct Hptrans as [Hpvalid Htrans].
+    simpl in Htrans.
+    destruct (vtransition (IM j) lj (s j, im)).
+    inversion_clear Htrans.
+    rewrite state_update_neq by assumption.
+    reflexivity.
+Qed.
 
 (** * Composition and Proofs
 
@@ -327,8 +631,10 @@ Section Protocol_Proofs.
     {EqC: EqDecision C}
     {EqV: EqDecision V}
     (c0:C)
+    {Hweights: Common.Measurable V}
     (plan : nat -> V -> Prop)
     {plan_dec : RelDecision plan}
+    {HPlan : Plan V plan}
     (ClientState := State.justification C V)
     (estimator: list (validator_message C V) -> C -> Prop)
     (validator_list: list V)
@@ -337,13 +643,10 @@ Section Protocol_Proofs.
   .
 
   Definition IM : V -> VLSM (validator_message C V) :=
-    fun v => Validator C V c0 plan estimator v.
+    fun v => Validator c0 plan estimator v.
 
   Definition simple_liveness_VLSM :=
     (Composition.composite_vlsm IM v0).
-
-  Definition message_time (m: validator_message C V) : nat :=
-    let (n,_,_,_) := m in n.
 
   (** *** Constructing a variant to show that
       a component's clock eventually ticks.
@@ -352,16 +655,38 @@ Section Protocol_Proofs.
   Definition message_slots_before (t:nat) : list (nat * V) :=
     filter (fun '(n,v) => bool_decide (plan n v)) (set_prod (seq 0 t) validator_list).
 
-  Definition received_message_slots (msgs:list (validator_message C V)) : list (nat * V) :=
-    map (fun '(Msg _ _ n _ v _) => (n,v)) msgs.
+  Lemma In_message_slots_before tm v t :
+    In (tm,v) (message_slots_before t) <-> (plan tm v /\ tm < t).
+  Proof.
+    split.
+    - intro Hin.
+      apply filter_In in Hin.
+      destruct Hin as [Hin Hplan].
+      split.
+      + apply bool_decide_eq_true in Hplan.
+        assumption.
+      + rewrite in_prod_iff in Hin.
+        destruct Hin as [Hin_t _].
+        apply in_seq in Hin_t.
+        destruct Hin_t.
+        assumption.
+    - intros [Hplan Htime].
+      apply filter_In.
+      split.
+      + apply in_prod_iff.
+        split.
+        * apply in_seq. lia.
+        * apply validators_finite.
+      + apply bool_decide_eq_true.
+        assumption.
+  Qed.
 
   Definition unreceived_message_count_before (t:nat) (s: validator_state C V) : nat :=
-    let '(State _ _ _ msgs _ _) := s in
-    let received := received_message_slots msgs in
-    length (filter (fun slot => if in_dec decide_eq slot received then false else true)
-                   (message_slots_before t)).
+    length (set_diff_filter (message_slots_before t)
+                            (map message_slot (validator_received s))).
+
   Definition validator_ticks_before (t:nat) (s: validator_state C V) : nat :=
-    let '(State _ _ time _ _ _) := s in t - time.
+     t - validator_time s.
 
   (** The component variant is an upper bound on the number of transitions the component
       can take before its clock exceeds <<t>>, by counting the number of plan
@@ -375,7 +700,7 @@ Section Protocol_Proofs.
   Context
     (constraint : composite_label IM -> composite_state IM * option (validator_message C V) -> Prop
        := no_synch_faults_no_equivocation_constraint v0 validators_finite IM
-                 (validator_clock C V c0 plan estimator)
+                 (validator_clock c0 plan estimator)
              message_time)
     (X: VLSM (validator_message C V) := composite_vlsm IM v0 constraint)
   .
@@ -422,33 +747,314 @@ Section Protocol_Proofs.
       + apply PeanoNat.Nat.add_le_lt_mono;auto.
   Qed.
 
-  (* TODO: this property will not actually be true until
-     we add a restriction about waiting for expected messages
-     to the synchronization constraint and the validator definition.
-     Perhaps this will also need to use a later time than <<<= t>>
-     in <<H_times>> and the conclusion, depending how closely the
-     modified conditions will keep the times of different nodes.
+  Definition received_were_sent s : Prop :=
+    forall i msg, validator_has_been_observed (s i) msg ->
+    let j := message_sender msg in has_been_sent (IM j) (s j) msg.
+
+  (** Weaken the received_were_sent' statement to avoid
+      committing to which component sent the message.
+      This version can be proven to be an invariant from
+      the [no_equivocation] constraint without needing
+      to refer to the details of the components,
+      and should eventually be generalized to
+      apply to any composite VLSM.
+      After proving this is an invariant, a later
+      lemma will strengthen the conclusion to [recieved_were_sent]
+      by using [message_send_invariant].
    *)
+  (* TODO: define a composite_has_been_observed_capability instance,
+     then extract this.
+   *)
+  Definition received_were_sent' s : Prop :=
+    forall i msg, validator_has_been_observed (s i) msg ->
+    (exists j, has_been_sent (IM j) (s j) msg).
+
+  Lemma received_were_sent'_preserved l s im s' om:
+    protocol_transition X l (s,im) (s',om) ->
+    received_were_sent' s ->
+    received_were_sent' s'.
+  Proof.
+    intros Hptrans Hprev i msg Hobs.
+    specialize (Hprev i msg).
+    assert ((im = Some msg \/ om = Some msg)\/ validator_has_been_observed (s i) msg).
+    {
+      apply (protocol_transition_project_any i) in Hptrans.
+      destruct Hptrans as [->|[li [-> Hptrans]]].
+      - right; assumption.
+      - rewrite <- validator_transition_updates_observed by eassumption.
+        assumption.
+    }
+    destruct H as [[|]|].
+    - (* by [no_equivocations], the incoming message [im] was previously sent *)
+      destruct (id Hptrans) as [Hpvalid Htrans].
+      destruct Hpvalid as [Hproto_s [Hproto_im Hcvalid]].
+      destruct Hcvalid as [Hcomponent_valid Hconstraint].
+      unfold constraint in Hconstraint.
+      unfold no_synch_faults_no_equivocation_constraint in Hconstraint.
+      destruct Hconstraint as [H_no_equivs Hconstraint].
+      rewrite H in H_no_equivs.
+      simpl in H_no_equivs.
+      unfold composite_has_been_sent in H_no_equivs.
+      destruct H_no_equivs as [j Hsent].
+      exists j.
+      revert Hsent.
+      pose proof (protocol_transition_project_any j _ _ _ _ _ Hptrans) as Hstep_how.
+      destruct Hstep_how as [?|[lj [-> ?]]].
+      + congruence.
+      + (* carry forward by the stepwise has_been_sent completeness thingy... *)
+        intro Hpre.
+        rewrite has_been_sent_step_update by eassumption.
+        right;assumption.
+    - (* It's the output message, conclusion is made true by
+         soundness of the has_been_sent predicate *)
+      destruct l as [j lj].
+      exists j.
+      apply protocol_transition_project_active in Hptrans;simpl in Hptrans.
+      (* use the stepwise has_been_sent completeness thingy... *)
+      rewrite has_been_sent_step_update by eassumption.
+      left;assumption.
+    - (* another component updated, use the induction hypothesis *)
+      specialize (Hprev H).
+      destruct Hprev as [j Hsent].
+      exists j.
+      revert Hsent.
+      pose proof (protocol_transition_project_any j _ _ _ _ _ Hptrans) as Hstep_how.
+      destruct Hstep_how as [?|[lj [-> ?]]].
+      + congruence.
+      + (* carry forward by the stepwise has_been_sent completeness thingy... *)
+        intro Hpre.
+        rewrite has_been_sent_step_update by eassumption.
+        right;assumption.
+  Qed.
+
+  Lemma received_were_sent'_initial s:
+    vinitial_state_prop X s ->
+    received_were_sent' s.
+  Proof.
+    intros Hinitial i msg Hsend.
+    contradict Hsend.
+    apply validator_initial_not_observed.
+    apply Hinitial.
+  Qed.
+
+  Lemma received_were_sent_invariant s:
+    protocol_state_prop X s ->
+    received_were_sent s.
+  Proof.
+    intro Hproto.
+    assert (received_were_sent' s).
+    {
+      apply protocol_state_has_trace in Hproto.
+      destruct Hproto as [is [tr [[Htr Hinit] Hlast]]].
+      rewrite <- Hlast; clear Hlast s.
+      apply received_were_sent'_initial in Hinit.
+      induction Htr.
+      - assumption.
+      - simpl map.
+        rewrite ListExtras.unroll_last.
+        apply IHHtr.
+        revert H Hinit.
+        apply received_were_sent'_preserved.
+    }
+    intros i msg Hobs.
+    specialize (H i msg Hobs).
+    destruct H as [j Hsent].
+    cut (j = message_sender msg);
+      [intros ->;exact Hsent|].
+    apply protocol_state_project_preloaded with (i:=j) in Hproto.
+    apply message_send_invariant_preloaded in Hproto.
+    destruct Hproto as [Hsends _].
+    specialize (Hsends msg Hsent).
+    symmetry.
+    apply Hsends.
+  Qed.
+
+  Definition clock_limit_invariant (s: vstate X): Prop
+    := forall v t,
+      plan t v ->
+      validator_time (s v) < t ->
+      forall i, validator_time (s i) <= t.
+
+  Lemma clock_limit_invariant_init (s: vstate X):
+    vinitial_state_prop X s ->
+    clock_limit_invariant s.
+  Proof.
+    intros Hinit _ t _ _ i.
+    specialize (Hinit i).
+    cbn in Hinit.
+    destruct (s i).
+    simpl.
+    destruct Hinit as [-> _].
+    auto with arith.
+  Qed.
+
+  Lemma clock_limit_invariant_step l s im s' om:
+    protocol_transition X l (s,im) (s',om) ->
+    clock_limit_invariant s ->
+    clock_limit_invariant s'.
+  Proof.
+    intros Hptrans IH v t Hplan Hlt i.
+    specialize (IH v t Hplan).
+    assert (validator_time (s v) < t) as Hlt2.
+    {
+      apply PeanoNat.Nat.le_lt_trans with (validator_time (s' v));[|assumption].
+      apply (protocol_transition_project_any v) in Hptrans.
+      destruct Hptrans as [?|[lj [-> ?]]].
+      - rewrite H. reflexivity.
+      - destruct H as [_ Htrans].
+        revert Htrans.
+        apply validator_clock_monotone.
+    }
+    assert (forall i msg, message_slot msg = (t,v) ->
+                          ~has_been_observed (IM i) (s i) msg)
+           as Hunknown.
+    {
+      destruct Hptrans as [[Hproto _] _].
+      clear i.
+      intros i msg Hslot Hobserved.
+      pose proof (received_were_sent_invariant s Hproto i msg Hobserved) as Hsent.
+      replace (message_sender msg) with v in Hsent
+        by (destruct msg;simpl in Hslot |- *;congruence).
+      simpl in Hsent.
+      apply protocol_state_project_preloaded with (i:=v) in Hproto.
+      pose proof (message_send_invariant_preloaded _ _ _ _ _ Hproto) as Hsend_inv.
+      destruct Hsend_inv as [Hsend_inv _].
+      specialize (Hsend_inv msg Hsent).
+      destruct Hsend_inv as [_ [_ Hsend_early]].
+      clear -Hlt2 Hsend_early Hslot.
+      replace (message_time msg) with t in Hsend_early
+        by (destruct msg; simpl in Hslot |- *; congruence).
+      clear Hslot.
+      destruct (s v);simpl in Hlt2, Hsend_early.
+      destruct finished_send;lia.
+    }
+    specialize (IH Hlt2 i).
+    apply (protocol_transition_project_any i) in Hptrans.
+    destruct Hptrans as [|[li [-> Hptrans]]].
+    - rewrite <- H;assumption.
+    - simpl in Hptrans.
+      destruct Hptrans as [[_ [_ Hvalid]] Htrans].
+
+      specialize (Hunknown i).
+      set (si := s i) in *;clearbody si.
+      set (si' := s' i) in *;clearbody si'.
+      clear Hlt Hlt2.
+      clear s s'.
+
+      destruct li as [[c|]|].
+      + (* protosal *)
+        replace (validator_time si') with (validator_time si);[assumption|].
+        destruct si.
+        cbn in Htrans;inversion_clear Htrans;reflexivity.
+      + (* tick *)
+        destruct si.
+        cbn in Htrans; inversion_clear Htrans.
+        simpl in Hunknown, IH |- *.
+        fold (time < t).
+        apply PeanoNat.Nat.le_lteq in IH.
+        destruct IH as [| ->];[assumption|exfalso].
+
+        cbn in Hvalid.
+        destruct im;[exfalso;assumption|].
+        destruct Hvalid as [_ Hhave_plan].
+        specialize (Hhave_plan v Hplan).
+        apply in_map_iff in Hhave_plan.
+        destruct Hhave_plan as [m [Hslot HIn]].
+        exact (Hunknown m Hslot HIn).
+      + (* receive *)
+        replace (validator_time si') with (validator_time si);[assumption|].
+        destruct si.
+        destruct im;cbn in Htrans;inversion_clear Htrans;reflexivity.
+  Qed.
+
   Lemma early_validator_limits_clock_advance
-        v t (s:vstate X)
-      (H_time : validator_time _ _ (s v) < t)
-      (H_plan : plan t v)
-      (H_times : forall i, validator_time _ _ (s i) <= t):
-    forall l im s' om,
-      protocol_transition X l (s,im) (s',om) ->
-      forall i, validator_time _ _ (s' i) <= t.
-  Admitted.
+        v t (H_plan : plan t v)
+        (s:vstate X):
+    protocol_state_prop X s ->
+    validator_time (s v) < t ->
+    forall i, validator_time (s i) <= t.
+  Proof.
+    intros Hproto H_time.
+    revert v t H_plan H_time.
+    change (clock_limit_invariant s).
+    apply protocol_state_has_trace in Hproto.
+    destruct Hproto as [is [tr [[Htr Hinit] Hlast]]].
+    rewrite <- Hlast; clear Hlast s.
+    apply clock_limit_invariant_init in Hinit.
+    induction Htr.
+    - assumption.
+    - simpl map.
+      rewrite ListExtras.unroll_last.
+      apply IHHtr.
+      revert H Hinit.
+      apply clock_limit_invariant_step.
+  Qed.
+
+  Lemma sending_decreases_validator_variant t i c (si si':vstate (IM i)) im om
+        (H_protocol: protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) si)
+        (H_valid: validator_valid plan estimator i (Some (Proposal c)) (si, im))
+        (H_time: validator_time si < t)
+        (H_know_own_sends: forall m,
+            message_sender m = i ->
+            validator_has_been_observed si m ->
+            validator_has_been_sent c0 plan estimator i si m)
+    (H_transition: validator_transition i (Some (Proposal c)) (si, im) = (si', om))
+    :
+    validator_variant t si' < validator_variant t si.
+  Proof.
+    destruct si eqn:Heq_si.
+    destruct im;[solve[exfalso;exact H_valid]|].
+    assert (finished_send = false)
+      by (apply Bool.not_true_is_false;intro;subst finished_send;apply H_valid;exact I).
+    subst finished_send.
+    assert (plan time i) as H_plan by apply H_valid;clear H_valid.
+    simpl in H_transition.
+    inversion_clear H_transition.
+    unfold validator_variant.
+    unfold validator_ticks_before.
+    apply Plus.plus_lt_compat_r.
+
+    unfold unreceived_message_count_before.
+    assert (~In (time,i) (map message_slot received)) as H_msg_new.
+    {
+      (* by known_own_sends, we already sent it *)
+      assert (unsent_time si = time) as H_unsent_time by (rewrite Heq_si;reflexivity).
+      apply message_send_invariant_preloaded in H_protocol.
+      destruct H_protocol as [H_inv _].
+      unfold sends_respect_plan in H_inv.
+      intro H_in.
+      apply in_map_iff in H_in.
+      destruct H_in as [old_msg [H_old_slot H_in]].
+      destruct old_msg.
+      injection H_old_slot;clear H_old_slot;intros -> ->.
+      apply H_know_own_sends in H_in;[|reflexivity].
+      simpl in H_in.
+      apply H_inv in H_in.
+      simpl in H_in.
+      apply (PeanoNat.Nat.lt_irrefl time).
+      apply H_in.
+    }
+
+    simpl validator_received.
+    apply len_set_diff_map_set_add.
+    - assumption.
+    - apply In_message_slots_before.
+      split;assumption.
+  Qed.
 
   (** If all validator clock are below the time used in the
       variant, the the variant decreases.
    *)
   Lemma eventually_ticks_variant_progress t
         l (s:vstate X) im s' om
-        (H_times : forall i, validator_time _ _ (s i) < t):
+        (H_times : forall i, validator_time (s i) < t)
+    :
     protocol_transition X l (s,im) (s',om) ->
     eventually_ticks_variant t s' < eventually_ticks_variant t s.
   Proof.
     intros [Hvalid Htrans].
+    assert (received_were_sent s) as H_received_were_sent
+        by apply received_were_sent_invariant, Hvalid.
     destruct l as [i li] eqn:Heq_l.
     simpl in Htrans.
     rename om into _om.
@@ -459,19 +1065,16 @@ Section Protocol_Proofs.
          own message decreases the number of unreceived slots
          in their own variant *)
       apply state_update_variant_progress.
-      unfold vtransition in H_transition.
-      destruct (s i).
-      simpl in Hvalid.
-      simpl in H_transition.
-      inversion_clear H_transition.
-      unfold validator_variant.
-      unfold validator_ticks_before.
-      apply Plus.plus_lt_compat_r.
-      (* we will need to rely on an invariant to
-         conclude that received can't already have a
-         message for the slot (time,i)
-         and finish this inequality *)
-      admit.
+      apply sending_decreases_validator_variant with c im om.
+      + apply protocol_state_project_preloaded.
+        apply Hvalid.
+      + apply Hvalid.
+      + apply H_times.
+      + clear -H_received_were_sent.
+        intros m Hsender Hobs.
+        rewrite <- Hsender.
+        apply (H_received_were_sent _ _ Hobs).
+      + apply H_transition.
     - (* A node ticking decreases the clock-based apart
          of the variant *)
       apply state_update_variant_progress.
@@ -483,26 +1086,189 @@ Section Protocol_Proofs.
       unfold validator_variant.
       unfold validator_ticks_before.
       apply Plus.plus_lt_compat_l.
+      simpl.
       lia.
     - (* Receiving a message fills one of the
          receivers slots *)
       apply state_update_variant_progress.
       unfold vtransition in H_transition.
-      destruct (s i).
+      destruct (s i) eqn:Heq_si.
       simpl in Hvalid.
       simpl in H_transition.
-      destruct im.
-      2:{ (* input message cannot be None *)
-        destruct Hvalid as [_ [_ [Hcomponent_valid _]]].
-        exfalso;exact Hcomponent_valid.
-      }
+      (* message cannot be None *)
+      destruct im;[|solve[exfalso;apply Hvalid]].
       inversion_clear H_transition.
       unfold validator_variant.
       apply Plus.plus_lt_compat_r.
-      (* we will need to rely on an invariant to
-         conclude that received can't already have a
-         message for the slot (time,i)
-         and finish this inequality *)
-      admit.
-  Admitted.
+
+      rename Hvalid into Hcomposite_valid.
+      destruct (id Hcomposite_valid) as [Hproto [_ [Hvalidator_valid [[ix Hsent] _]]]].
+      simpl in Hvalidator_valid.
+      (* The validity condition ensures that the exact
+         message has not been received before, but to
+         show there is also no previously-received message
+         for that slot we need to use the invariants *)
+      apply protocol_state_project_preloaded with (i:=ix) in Hproto.
+      pose Hproto as Hinvariants;apply message_send_invariant_preloaded in Hinvariants.
+
+      assert (message_sender v = ix) as Hsender.
+      {
+        destruct Hinvariants as [Hsend _].
+        apply Hsend in Hsent.
+        apply Hsent.
+      }
+      assert (~In (message_slot v) (map message_slot received)).
+      {
+        intro H_in.
+        apply in_map_iff in H_in.
+        destruct H_in as [v2 [Hslots Hin2]].
+        assert (v <> v2) as Hneq.
+        { (* because by the validity condition, new message [v]
+             cannot have already been received, but [Hin2: In v2 received]. *)
+          cbn in Hvalidator_valid.
+          rewrite Heq_si in Hvalidator_valid.
+          destruct v.
+          destruct Hvalidator_valid as [H_not_in _].
+          congruence.
+        }
+        assert (has_been_sent (IM (message_sender v2)) (s (message_sender v2)) v2).
+        {
+          apply H_received_were_sent with (i:=i).
+          rewrite Heq_si.
+          simpl.
+          assumption.
+        }
+        replace (message_sender v2) with ix in H
+          by (destruct v,v2;simpl in Hsender, Hslots |- *;congruence).
+        destruct Hinvariants as [_ [_ Hunique]].
+        unfold sends_unique in Hunique.
+        specialize (Hunique v Hsent v2 H).
+        symmetry in Hslots.
+        apply Hneq, Hunique, Hslots.
+      }
+      apply len_set_diff_map_set_add.
+      assumption.
+      apply (proj1 Hinvariants) in Hsent.
+      destruct v.
+      simpl in Hsent.
+      destruct Hsent as [Hplan [-> Htime_ix]].
+      apply In_message_slots_before.
+      split.
+      assumption.
+      apply PeanoNat.Nat.lt_le_trans with (unsent_time (s ix)).
+      apply Htime_ix.
+      clear -H_times.
+      specialize (H_times ix).
+      revert H_times.
+      destruct (s ix);simpl.
+      destruct finished_send;lia.
+  Qed.
+
+  Theorem eventually_ticks
+          s (Hproto: protocol_state_prop X s)
+          tr (Htr: infinite_protocol_trace_from X s tr):
+    forall v, exists n, validator_time (s v) < validator_time (destination (Streams.Str_nth n tr) v).
+  Proof.
+    intro v.
+    (* First, find a time greater than v's current clock for which it is in the plan *)
+    destruct (recurring_sends _ _ HPlan (validator_time (s v)) v) as [t [Hlt Hplan]].
+    (* Then strengthen the goal to finding a step where <<v>>'s clock is at least
+       <<t>> *)
+    cut (exists n, t <= validator_time (destination (Streams.Str_nth n tr) v));
+      [intros [n Hn];exists n;lia|].
+    (* Use [early_validator_limits_clock_advance] to reduce that to
+       to finding a time where any validators clock is greater than <<t>> *)
+    assert (forall n, protocol_state_prop X (destination (Streams.Str_nth n tr))) as Hall_proto.
+    {
+      intro n.
+      clear Hproto Hlt.
+      revert s tr Htr.
+      clear -n.
+      induction n;intros s tr Htr.
+      - destruct Htr.
+        simpl.
+        revert H.
+        apply protocol_transition_destination.
+      - destruct Htr.
+        apply (IHn s tl Htr).
+    }
+    pose proof (early_validator_limits_clock_advance _ _ Hplan) as clocks_inv.
+    cut (exists n, ~(forall i, validator_time (destination (Streams.Str_nth n tr) i) < S t)).
+    {
+      intros [n Htimes];exists n.
+      apply PeanoNat.Nat.nlt_ge.
+      contradict Htimes.
+      intro i.
+      apply le_n_S.
+      apply (clocks_inv _ (Hall_proto n)).
+      assumption.
+    }
+    (*
+       This happens within <<validator_variant (S t) s>> steps, by well-foudned
+       induction on the remaining value of the variant.
+       First sharpen the claim to existing in a given prefix of the stream.
+     *)
+    remember (eventually_ticks_variant (S t) s) as len.
+    set (P := fun (s:vstate X) => forall i, validator_time (s i) < S t).
+    cut (Exists (fun item => ~P (destination item))
+                (StreamExtras.stream_prefix tr len)).
+    {
+      intro H.
+      apply Exists_exists in H.
+      destruct H as [x [Hin HP]].
+      apply StreamExtras.stream_prefix_in in Hin.
+      destruct Hin as [k [_ Hnth]].
+      exists k.
+      rewrite Hnth.
+      assumption.
+    }
+    (*
+      Now we set up for the induction.
+     *)
+    assert (P s) as Hstart.
+    {
+      intro i.
+      apply le_n_S.
+      apply clocks_inv;assumption.
+    }
+    assert (forall s, Decision (P s)) as P_dec.
+    {
+      intros s0.
+      unfold P.
+      eapply Decision_iff.
+      symmetry.
+      eapply ListExtras.forall_finite;apply validators_finite.
+      apply Forall_dec.
+      intro x.
+      apply Compare_dec.lt_dec.
+    }
+    clear Hall_proto clocks_inv Hproto Hlt.
+    revert s Heqlen tr Htr Hstart.
+    clear -P_dec.
+    apply (Wf_nat.lt_wf_ind len);clear len.
+    intros len IH s Hlen tr Htr HP.
+    destruct Htr.
+    pose proof (eventually_ticks_variant_progress _ _ _ _ _ _ HP H).
+    rewrite <- Hlen in H0.
+    specialize (IH _ H0 s (eq_refl _) tl Htr).
+    destruct (decide (P s));last first.
+    - destruct len;[exfalso;lia|].
+      apply Exists_cons_hd.
+      assumption.
+    - remember (eventually_ticks_variant (S t) s) as len' in IH, H0.
+      specialize (IH p).
+      clear -H IH H0.
+      unfold lt in H0.
+      destruct len;[exfalso;lia|].
+      apply le_S_n in H0.
+      simpl.
+      apply Exists_cons_tl.
+      pose proof @StreamExtras.stream_prefix_segment as Hprefix.
+      specialize (Hprefix _ tl len' len H0).
+      progress simpl in Hprefix.
+      rewrite <- Hprefix.
+      apply Exists_app.
+      left.
+      assumption.
+  Qed.
 End Protocol_Proofs.

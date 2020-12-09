@@ -415,6 +415,20 @@ Proof.
       rewrite IHl. reflexivity.
 Qed.
 
+Lemma set_add_new `{EqDecision A}:
+  forall (x:A) l,
+    ~In x l -> set_add decide_eq x l = l++[x].
+Proof.
+  induction l.
+  - reflexivity.
+  - simpl.
+    destruct (decide (x = a)).
+    + intro H_not_in. exfalso. apply H_not_in. left. symmetry. assumption.
+    + intro H_not_in.
+      rewrite IHl by tauto.
+      reflexivity.
+Qed.
+
 Lemma set_remove_not_in `{EqDecision A} : forall x (s : list A),
   ~ In x s ->
   set_remove decide_eq x s = s.

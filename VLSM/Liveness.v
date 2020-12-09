@@ -129,11 +129,10 @@ Section Plan.
       NoDup (l1++l2) ->
       sum_weights l1 <> sum_weights l2.
 
-  Record Plan := {
-    planned_senders : nat -> index -> Prop;
-    stages_nonempty : forall n, ~forall v, ~planned_senders n v;
-    plan_has_odd_stage: exists n, odd_set (planned_senders n);
-    recurring_sends: forall n v, exists n', n' > n /\ planned_senders n' v;
+  Record Plan (plan: nat -> index -> Prop) := {
+    stages_nonempty : forall n, ~forall v, ~plan n v;
+    plan_has_odd_stage: exists n, odd_set (plan n);
+    recurring_sends: forall n v, exists n', n' > n /\ plan n' v;
     }.
 End Plan.
 
