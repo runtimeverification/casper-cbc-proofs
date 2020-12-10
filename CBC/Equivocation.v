@@ -45,7 +45,8 @@ From CasperCBC
     {measurable_V : Measurable validator}
     {reachable_threshold : ReachableThreshold validator}
     :=
-    { is_equivocating_fn (s : state) (v : validator) : bool
+    { is_equivocating (s : state) (v : validator) : Prop
+    ; is_equivocating_dec : RelDecision is_equivocating
 
       (** retrieves a set containing all possible validators for a state. **)
 
@@ -58,7 +59,7 @@ From CasperCBC
     ; equivocating_validators
         (s : state)
         : list validator
-        := List.filter (is_equivocating_fn s) (state_validators s)
+        := List.filter (fun v => bool_decide (is_equivocating s v)) (state_validators s)
 
        (** The equivocation fault sum: the sum of the weights of equivocating
        validators **)

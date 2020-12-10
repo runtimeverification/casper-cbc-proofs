@@ -41,7 +41,7 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
   ( unfold transition in Ht; unfold Common.equivocator_IM in Ht;
   unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
   unfold machine in Ht; unfold projT2 in Ht;
-  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht). 
+  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
 
 Definition update_euivocators_transition_item_descriptor
   (s : vstate equivocators_no_equivocations_vlsm)
@@ -424,7 +424,7 @@ Proof.
     + unfold vtransition in Heqtr_full_replay_is_epref'. simpl in Heqtr_full_replay_is_epref'.
       unfold vtransition in Heqtr_full_replay_is_epref'.
       match type of Heqtr_full_replay_is_epref' with
-      | _ = let (_, _) := let (_, _) := let (_, _) := let (_, _) := ?t 
+      | _ = let (_, _) := let (_, _) := let (_, _) := let (_, _) := ?t
             in _ in _ in _ in _ => remember t as t_full_replay_is_epref'
       end.
       unfold_transition Heqt_full_replay_is_epref'.
@@ -432,7 +432,7 @@ Proof.
       unfold vtransition in Heqtr_is_epref'.
       simpl in Heqtr_is_epref'.
       match type of Heqtr_is_epref' with
-      | _ = let (_, _) := let (_, _) := let (_, _) := let (_, _) := ?t 
+      | _ = let (_, _) := let (_, _) := let (_, _) := let (_, _) := ?t
             in _ in _ in _  in _ => remember t as t_is_epref'
       end.
       unfold vtransition in Heqt_is_epref'.

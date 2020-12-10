@@ -876,21 +876,10 @@ Section Composite.
   Lemma composite_has_been_sent_dec : RelDecision composite_has_been_sent.
   Proof.
     intros s m.
-    destruct (existsb (fun i => bool_decide(has_been_sent (IM i) (s i) m)) index_listing)
-      eqn:Hexists.
-    - left.
-      apply existsb_exists in Hexists.
-      destruct Hexists as [i [_ Hi]].
-      exists i.
-      apply bool_decide_eq_true_1 in Hi.
-      assumption.
-    - right.
-      rewrite existsb_forall in Hexists.
-      intros Hbs.
-      destruct Hbs as [i Hbs].
-      spec Hexists i (proj2 finite_index i).
-      apply bool_decide_eq_false_1 in Hexists.
-      elim Hexists. assumption.
+    apply (Decision_iff (P := List.Exists (fun i => has_been_sent (IM i) (s i) m) index_listing)).
+    - rewrite Exists_exists. split; intros [i Hex]; exists i; intuition. apply finite_index.
+    - apply @Exists_dec.
+      intro i. apply has_been_sent_dec.
   Qed.
 
   (** 'composite_has_been_sent' has the 'proper_sent' property. *)
@@ -1239,27 +1228,25 @@ Section Composite.
       in the future **)
 
   Definition equivocation_dec_statewise
-     (Hdec : forall (s : vstate X) (v : validator),
-       {is_equivocating_statewise s v} + {~is_equivocating_statewise s v})
+     (Hdec : RelDecision is_equivocating_statewise)
       : basic_equivocation (vstate X) (validator)
     :=
     {|
       state_validators := fun _ => validator_listing;
       state_validators_nodup := fun _ => proj1 finite_validator;
-      is_equivocating_fn := fun (s : vstate X) (v : validator) =>
-        if Hdec s v then true else false
+      is_equivocating := is_equivocating_statewise;
+      is_equivocating_dec := Hdec
     |}.
 
   Definition equivocation_dec_tracewise
-     (Hdec : forall (s : vstate X) (v : validator),
-       {is_equivocating_tracewise s v} + {~is_equivocating_tracewise s v})
+     (Hdec : RelDecision is_equivocating_tracewise)
       : basic_equivocation (vstate X) (validator)
     :=
     {|
       state_validators := fun _ => validator_listing;
       state_validators_nodup := fun _ => proj1 finite_validator;
-      is_equivocating_fn := fun (s : vstate X) (v : validator) =>
-        if Hdec s v then true else false
+      is_equivocating := is_equivocating_tracewise;
+      is_equivocating_dec := Hdec
     |}.
 
   Definition equivocation_fault_constraint

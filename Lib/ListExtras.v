@@ -225,6 +225,58 @@ Proof.
       * apply IHl; assumption.
 Qed.
 
+Lemma Exists_first
+  {A : Type}
+  (l : list A)
+  (P : A -> Prop)
+  (Pdec : forall a, Decision (P a))
+  (Hsomething : Exists P l)
+  : exists (prefix : list A)
+         (suffix : list A)
+         (first : A),
+         P first /\
+         l = prefix ++ [first] ++ suffix /\
+         ~Exists P prefix.
+
+Proof.
+  generalize dependent l.
+  induction l; intros; [inversion Hsomething|].
+  destruct (decide (P a)).
+  - exists [].
+    exists l.
+    exists a.
+    split; [assumption|].
+    simpl.
+    intuition.
+    inversion H.
+  - simpl in *.
+    inversion Hsomething; [elim n; assumption|].
+    subst.
+    specialize (IHl H0).
+    destruct IHl as [prefix [suffix [first [Hf [Hconcat Hnone_before]]]]].
+    exists (a :: prefix).
+    exists suffix.
+    exists first.
+    split; [assumption|].
+    subst.
+    split; [reflexivity|].
+    intro contra.
+    inversion contra; contradiction.
+Qed.
+
+Lemma existsb_forall {A} (f : A -> bool):
+  forall l, existsb f l = false <-> forall x, In x l -> f x = false.
+Proof.
+  induction l; split; intros.
+  - inversion H0.
+  - reflexivity.
+  - inversion H. apply orb_false_iff in  H2. destruct H2 as [Hfa Hex]. rewrite Hfa.
+    rewrite Hex. simpl. destruct H0 as [Heq | Hin]; subst; try assumption.
+    apply IHl; try assumption.
+  - simpl. rewrite H; try (left; reflexivity). rewrite IHl; try reflexivity.
+    intros. apply H. right. assumption.
+Qed.
+
 Lemma existsb_first
   {A : Type}
   (l : list A)
@@ -236,40 +288,20 @@ Lemma existsb_first
          (f first = true) /\
          l = prefix ++ [first] ++ suffix /\
          (existsb f prefix = false).
-
 Proof.
-  generalize dependent l.
-  induction l.
-  - intros.
-    simpl in *.
-    discriminate Hsomething.
-  - intros.
-    unfold existsb in Hsomething.
-    destruct (f a) eqn : eq_a.
-    + simpl in Hsomething.
-      exists [].
-      exists l.
-      exists a.
-      split.
-      assumption.
-      simpl.
-      intuition.
-    + simpl in *.
-      specialize (IHl Hsomething).
-      destruct IHl as [prefix [suffix [first [Hf [Hconcat Hnone_before]]]]].
-      exists (a :: prefix).
-      exists suffix.
-      exists first.
-      split.
-      assumption.
-      split.
-      rewrite Hconcat.
-      auto.
-      unfold existsb.
-      rewrite eq_a.
-      simpl.
-      unfold existsb in Hnone_before.
-      assumption.
+  specialize (Exists_first l (fun a => f a = true)) as Hexists.
+  spec Hexists. { intro a. destruct (f a); intuition. }
+  rewrite existsb_exists in Hsomething.
+  rewrite Exists_exists in Hexists at 1.
+  spec Hexists Hsomething.
+  destruct Hexists as [prefix [suffix [first [Hf [Hconcat Hnone_before]]]]].
+  exists prefix, suffix, first.
+  split; [assumption|].
+  split; [assumption|].
+  apply existsb_forall.
+  intros.
+  destruct (f x) eqn:Hfx; [|reflexivity].
+  elim Hnone_before. apply Exists_exists. exists x. intuition.
 Qed.
 
 Lemma in_not_in : forall A (x y : A) l,
@@ -342,19 +374,6 @@ Proof.
   apply in_map_iff in Hin.
   destruct Hin as [x [Heq Hin]].
   exists x. split; try assumption. apply Hincl. assumption.
-Qed.
-
-Lemma existsb_forall {A} (f : A -> bool):
-  forall l, existsb f l = false <-> forall x, In x l -> f x = false.
-Proof.
-  induction l; split; intros.
-  - inversion H0.
-  - reflexivity.
-  - inversion H. apply orb_false_iff in  H2. destruct H2 as [Hfa Hex]. rewrite Hfa.
-    rewrite Hex. simpl. destruct H0 as [Heq | Hin]; subst; try assumption.
-    apply IHl; try assumption.
-  - simpl. rewrite H; try (left; reflexivity). rewrite IHl; try reflexivity.
-    intros. apply H. right. assumption.
 Qed.
 
 Definition app_cons {A}
@@ -1157,6 +1176,17 @@ Proof.
     + simpl. destruct (f a) eqn:Hfa.
       * right. apply IHl. exists a'. split; try assumption.
       * apply IHl. exists a'. split; try assumption.
+Qed.
+
+Lemma map_option_incl
+  {A B : Type}
+  (f : A -> option B)
+  (l1 l2 : list A)
+  (Hincl : incl l1 l2)
+  : incl (map_option f l1) (map_option f l2).
+Proof.
+  intro b. repeat rewrite in_map_option.
+  firstorder.
 Qed.
 
 Lemma nth_error_eq

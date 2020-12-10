@@ -43,7 +43,7 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
   ( unfold transition in Ht; unfold Common.equivocator_IM in Ht;
   unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
   unfold machine in Ht; unfold projT2 in Ht;
-  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht). 
+  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
 
 Context
   (Hno_initial : forall (m : message) (eqv : equiv_index), ~vinitial_message_prop (IM (eqv)) m)
@@ -71,7 +71,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init'
   in fold_right
     (equivocators_trace_project_folder IM Hbs i0 index_listing finite_index)
       (Some ([], eqv_choice)) (fst app_tr) = Some ([], eqv_choice)
-    /\ (forall eqv, 
+    /\ (forall eqv,
       projT1 (snd (app_tr) (eqv)) >= projT1 (full_replay_state (eqv))
       /\ (In eqv eqvs -> projT1 (snd (app_tr) (eqv)) > projT1 (full_replay_state (eqv)))
     ).
@@ -141,7 +141,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init
      apply_action
         (Common.equivocators_no_equivocations_vlsm IM Hbs i0 index_listing
            finite_index) full_replay_state
-        (spawn_initial_state IM Hbs i0 index_listing finite_index is) 
+        (spawn_initial_state IM Hbs i0 index_listing finite_index is)
   in fold_right
     (equivocators_trace_project_folder IM Hbs i0 index_listing finite_index)
       (Some ([], eqv_choice)) (fst app_tr) = Some ([], eqv_choice)
@@ -163,7 +163,7 @@ Proof.
   apply Hsize.
   apply (proj2 finite_index).
 Qed.
- 
+
 Lemma equivocators_trace_project_skip_full_replay_trace
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
   (eqv_choice: equivocators_choice)
@@ -231,7 +231,7 @@ Proof.
     * subst eqv'. rewrite state_update_eq. simpl. lia.
     * rewrite state_update_neq; [|assumption]. apply Hsize.
   + unfold vtransition in Heqa_app. simpl in Heqa_app.
-    unfold vtransition in Heqa_app. 
+    unfold vtransition in Heqa_app.
     unfold_transition Heqa_app. unfold snd in Heqa_app.
     destruct
       (le_lt_dec
@@ -288,7 +288,7 @@ Proof.
         destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
         simpl in Hsize_eqv.
         assert
-          (Heqv_size : 
+          (Heqv_size :
             projT1 (equivocator_state_update (IM (eqv))
               (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
                  n_tr_final_eqv s_tr_final_eqv) (Fin2Restrict.n2f l) si')
@@ -514,7 +514,7 @@ Proof.
     rewrite Heqemsg_tr in Heqess.
     change ess with es in Happ_extend.
     subst ess. unfold es in Hesom'.
-    
+
     match type of Hesom' with
     | context [le_lt_dec ?X ?Y] =>
        destruct (le_lt_dec X Y)
@@ -543,10 +543,10 @@ Proof.
     | _ = (let (_,_) := ?t in _)  => destruct t as (si', om'') eqn:Ht
     end.
     subst som''. simpl.
-    inversion Hesom'. clear Hesom'. subst om''. 
+    inversion Hesom'. clear Hesom'. subst om''.
 
     spec Happ_extend.
-    { 
+    {
       split; [|assumption].
       specialize (finite_ptrace_last_pstate equivocators_no_equivocations_vlsm _ _ Happ) as Hps.
       rewrite map_app in Hps.
@@ -618,7 +618,7 @@ Proof.
           rewrite <- Heqv_state_final. subst.
           rewrite <- Heqv_state_final in Hspec.
           apply Hspec.
-          
+
           apply Exists_app. right.
           spec Houtput n.
           clear - Hfinal Houtput Hom n.
@@ -690,7 +690,7 @@ Proof.
     assert (Hesu_size : projT1 esu = projT1 lst)
       by (subst; apply equivocator_state_update_size).
     assert
-      (Hproject : 
+      (Hproject :
         equivocators_state_project eqv_state_choice es' =
         state_update IM (fst (final state_run)) (eqv) si'
       ).
@@ -717,7 +717,7 @@ Proof.
         simpl.
         rewrite <- Hstate_final.
         assumption.
-      - clear - Heqesu. 
+      - clear - Heqesu.
         subst.
         simpl.
         rewrite eq_dec_if_true; [reflexivity|].
@@ -743,7 +743,7 @@ Proof.
     assert (last_prj = Some (last_item, eqv_state_choice)).
     { subst last_prj. subst last_item.
       unfold equivocators_trace_project_folder.
-      subst el. 
+      subst el.
       unfold equivocators_transition_item_project.
       simpl in Hproject.
       rewrite <- Hproject.

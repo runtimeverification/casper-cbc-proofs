@@ -81,7 +81,7 @@ Definition VLSM_full_composed_free : VLSM message
   := free_composite_vlsm IM_index i0.
 
 Definition project
-  (s : vstate VLSM_full_composed_free)
+  (s : composite_state IM_index)
   (i : index)
   : state C V
   :=
@@ -506,7 +506,7 @@ Qed.
 Definition free_observation_based_equivocation_evidence_index
   (i : index)
   : observation_based_equivocation_evidence
-        (vstate (IM_index i)) V message message_eq _ message_preceeds_dec sender.
+        (vstate (IM_index i)) V message message_eq _ message_preceeds_dec full_node_message_subject_of_observation.
 Proof.
   destruct i.
   - apply full_node_validator_observation_based_equivocation_evidence.
@@ -541,74 +541,47 @@ Proof.
 Qed.
 
 Definition composed_equivocation_evidence
-  : observation_based_equivocation_evidence (vstate VLSM_full_composed_free) V message message_eq message_preceeds message_preceeds_dec sender
-  := @composed_observation_based_equivocation_evidence message V message message_eq message_preceeds message_preceeds_dec sender index indices IM_index free_observation_based_equivocation_evidence_index.
+  : observation_based_equivocation_evidence (composite_state IM_index) V message message_eq message_preceeds message_preceeds_dec full_node_message_subject_of_observation
+  := @composed_observation_based_equivocation_evidence message V message message_eq message_preceeds message_preceeds_dec full_node_message_subject_of_observation index indices IM_index free_observation_based_equivocation_evidence_index.
 
 Existing Instance composed_equivocation_evidence.
-
-Definition composed_basic_observable_equivocation
-  : basic_equivocation (vstate VLSM_full_composed_free) V
-  := @composed_observable_basic_equivocation
-      message V message message_eq message_preceeds message_preceeds_dec
-      sender index indices IM_index
-      free_observation_based_equivocation_evidence_index
-      Hmeasurable Hrt
-      (fun s => validators)
-      (fun s => proj1 finite_validators).
-
 
 Program Instance free_composite_vlsm_observable_messages
   : composite_vlsm_observable_messages indices IM_index free_observation_based_equivocation_evidence_index i0 (free_constraint IM_index)
   :=
   {
-    message_observable_events := full_message_observable_messages
+    message_has_been_observed (m e :message) := m = e
   }.
 Next Obligation.
   unfold vinitial_state_prop in His.
-  unfold composed_witness_observable_events in Hin.
-  apply set_union_in_iterated in Hin.
-  rewrite Exists_exists in Hin.
-  destruct Hin as [lm [Hinx Hinei]].
-  rewrite in_map_iff in Hinx.
-  destruct Hinx as [i [Hobs Hind]].
-  unfold Common.initial_state_prop in His.
+  unfold composed_witness_has_been_observed in He.
+  destruct He as [i [_ He]].
   simpl in His.
   unfold composite_initial_state_prop in His.
-  specialize (His i).
-  destruct i;
-    (simpl in His;
-    unfold vinitial_state_prop in His;
-    simpl in His;
-    unfold initial_state_prop in His;
-    rewrite His in Hobs;
-    unfold observable_events in Hobs;
-    simpl in Hobs;
-    unfold full_node_validator_observable_events in Hobs;
-    unfold full_node_client_observable_events in Hobs;
-    simpl in Hobs;
-    rewrite <- Hobs in Hinei;
-    contradict Hinei).
+  spec His i.
+  exfalso.
+  destruct i; simpl in He; simpl in His
+  ; unfold vinitial_state_prop in His; simpl in His; unfold initial_state_prop in His
+  ; rewrite His in He; inversion He.
 Qed.
-
+Next Obligation.
+  intros m e. apply message_eq.
+Qed.
 Next Obligation.
   apply free_protocol_transition_out in Ht.
   destruct Ht as [Hl [Hj Hm]].
-  destruct l as (i, l). unfold full_message_observable_messages.
+  destruct l as (i, l).
   simpl in *.
 
-  destruct i as [v0|c]; try discriminate Hl.
+  destruct i as [v0|c]; [|congruence].
   inversion Hl. subst. clear Hl.
-  destruct (decide (v = sender m)); try apply incl_nil_l.
-  subst. simpl.
-  intros m' Hm'.
-  destruct Hm' as [Hm' | contra]; try inversion contra.
-  subst m'.
-  apply filter_In. split; try assumption.
-  rewrite decide_True; auto.
+  assumption.
 Qed.
 
 Existing Instance message_eq.
 Existing Instance message_preceeds_dec.
+
+
 
 (**
 Equivocation is defined as non-heaviness of the full set of exchanged messages.
@@ -616,11 +589,11 @@ Equivocation is defined as non-heaviness of the full set of exchanged messages.
 *)
 
 Definition state_union
-  (s : vstate VLSM_full_composed_free)
+  (s : composite_state IM_index)
   : set message
   :=
-  fold_right (set_union compare_eq_dec) []
-    (map (fun v : V => observable_events s v) validators).
+  fold_right (set_union decide_eq) []
+    (map (fun i => State.get_message_set (project s i)) indices).
 
 Lemma state_union_nodup
   (s : vstate VLSM_full_composed_free)
@@ -630,20 +603,15 @@ Proof.
   apply set_union_iterated_nodup.
   intros msgsi Hmsgsi.
   apply in_map_iff in Hmsgsi.
-  destruct Hmsgsi as [v [Hmsgsv _]]. subst.
-  simpl. unfold composed_observable_events.
-  apply set_union_iterated_nodup.
-  intros msgsi Hmsgsi.
-  apply in_map_iff in Hmsgsi.
-  destruct Hmsgsi as [i [Hmsgsi _]]. subst.
-  pose (preloaded_composed_protocol_state IM_index i0 s Hs i) as Hi.
-  destruct i; simpl; apply NoDup_filter.
-  + apply validator_protocol_state_nodup with v0. assumption.
+  destruct Hmsgsi as [i [Hmsgsv _]]. subst.
+  pose proof (preloaded_composed_protocol_state IM_index i0 s Hs i) as Hi.
+  destruct i; simpl.
+  + apply validator_protocol_state_nodup with v. assumption.
   + apply client_protocol_state_nodup. assumption.
 Qed.
 
 Lemma state_union_iff
-  (s : vstate VLSM_full_composed_free)
+  (s : composite_state IM_index)
   (m : message)
   : In m (state_union s)
     <-> ex (fun v : V => In m (get_message_set (s (inl v))))
@@ -655,30 +623,20 @@ Proof.
     apply Exists_exists in Hm.
     destruct Hm as [msgs [Hmsgs Hm]].
     apply in_map_iff in Hmsgs.
-    destruct Hmsgs as [v [Heq _]]. subst msgs.
-    simpl in Hm.
-    apply set_union_in_iterated in Hm.
-    apply Exists_exists in Hm.
-    destruct Hm as [msgs [Hmsgs Hm]].
-    apply in_map_iff in Hmsgs.
     destruct Hmsgs as [i [Heq _]]. subst msgs.
-    destruct i; simpl in Hm; apply filter_In in Hm; destruct Hm as [Hm Hsender].
-    + left. exists v0. assumption.
+    destruct i; simpl in Hm.
+    + left. exists v. assumption.
     + right. exists c. assumption.
   - intro H.
     apply set_union_in_iterated.
     apply Exists_exists.
-    exists (@observable_events _ _ _ _ _ _ sender composed_equivocation_evidence s (sender m)).
-    split.
-    + apply in_map_iff. exists (sender m). split; try reflexivity.
-      apply (proj2 finite_validators).
-    + simpl. apply set_union_in_iterated. apply Exists_exists.
-      destruct H as [[v Hm] | [client Hm]]
-      ; exists (@observable_events _ _ _ _ _ _ sender full_node_validator_observation_based_equivocation_evidence (s (inl v)) (sender m))
-      || exists (@observable_events _ _ _ _ _ _ sender full_node_client_observation_based_equivocation_evidence (s (inr client)) (sender m))
-      ; split; try (apply in_map_iff; exists (inl v) || exists (inr client); split; try reflexivity; apply (proj2 finite_index))
-      ; simpl; apply filter_In; split; try assumption
-      ; rewrite decide_True; auto.
+    destruct H as [[v Hm] | [c Hm]].
+    + exists (get_message_set (project s (inl v))).
+      split; [|assumption].
+      apply in_map_iff. exists (inl v). intuition. apply (proj2 finite_index).
+    + exists (get_message_set (project s (inr c))).
+      split; [|assumption].
+      apply in_map_iff. exists (inr c). intuition. apply (proj2 finite_index).
 Qed.
 
 Lemma state_union_initially_empty
@@ -688,64 +646,88 @@ Proof.
   apply incl_l_nil.
   intros m Hm.
   apply state_union_iff in Hm.
+  destruct is as [is His].
   destruct Hm as [[v Hm] | [client Hm]]
-  ; destruct is as [is His]
   ; simpl in Hm
-  ; specialize (His (inl v)) || specialize (His (inr client))
-  ; simpl in His
-  ; unfold initial_state_prop in His
+  ; [specialize (His (inl v)) | specialize (His (inr client))]
   ;  rewrite His in Hm
   ; inversion Hm.
 Qed.
 
-Existing Instance composed_basic_observable_equivocation.
+Definition composite_validators
+  (s : composite_state IM_index)
+  : set V
+  := set_map decide_eq sender (state_union s).
+
+Lemma composite_validators_nodup
+  (s : composite_state IM_index)
+  : NoDup (composite_validators s).
+Proof.
+  apply set_map_nodup.
+Qed.
+
+Lemma composite_has_been_observed_state_union
+  (s : composite_state IM_index)
+  (m : message)
+  : has_been_observed s m <-> In m (state_union s).
+Proof.
+  unfold has_been_observed. simpl.
+  unfold composed_witness_has_been_observed.
+  rewrite state_union_iff.
+  split.
+  - intros [i [_ Hm]].
+    destruct i as [v | c]; [left; exists v | right; exists c]; assumption.
+  - intros [[v Hm] | [c Hm]]; [exists (inl v) | exists (inr c)]; intuition; apply (proj2 finite_index).
+Qed.
+
+Program Instance composed_basic_observable_equivocation
+  : basic_equivocation (vstate VLSM_full_composed_free) V
+  := @composed_observable_basic_equivocation
+      message V message message_eq message_preceeds message_preceeds_dec
+      full_node_message_subject_of_observation index indices IM_index
+      free_observation_based_equivocation_evidence_index
+      Hmeasurable Hrt
+      composite_validators
+      composite_validators_nodup _.
+Next Obligation.
+  intros s v.
+  unfold equivocation_evidence.
+  apply
+    (Decision_iff
+      (P :=
+        (Exists
+          (fun e1 =>
+            full_node_message_subject_of_observation e1 = Some v /\
+            (Exists
+              (fun e2 =>
+                full_node_message_subject_of_observation e2 = Some v /\
+                ~ comparable message_preceeds e1 e2) 
+              (state_union s)))
+          (state_union s)
+        )
+    )).
+  - rewrite Exists_exists.
+    split; intros [m1 [Hm1 [Hv1 Hm2]]]
+    ; apply composite_has_been_observed_state_union in Hm1
+    ; exists m1; intuition
+    ; [apply Exists_exists in Hm2|apply Exists_exists]
+    ; destruct Hm2 as [m2 [Hm2 [Hv2 H12]]]
+    ; apply composite_has_been_observed_state_union in Hm2
+    ; exists m2; intuition.
+  - apply @Exists_dec.
+    intro m1.
+    apply Decision_and; [apply option_eq_dec|].
+    apply @Exists_dec.
+    intro m2.
+    apply Decision_and; [apply option_eq_dec|].
+    apply Decision_not.
+    apply comparable_dec.
+    assumption.
+Qed.
 
 Let client_equivocation := @client_basic_equivocation C V about_C about_V Hmeasurable Hrt.
 
 Existing Instance client_equivocation.
-
-Lemma observable_event_sender
-  (s : vstate VLSM_full_composed_free)
-  (v : V)
-  (m : message)
-  (Hm : In m (observable_events s v))
-  : sender m = v.
-Proof.
-  simpl in Hm. unfold composed_observable_events in Hm.
-  apply set_union_in_iterated in Hm. apply Exists_exists in Hm.
-  destruct Hm as [msgsi [Hmsgsi Hm]].
-  apply in_map_iff in Hmsgsi. destruct Hmsgsi as [i [Heq _]]. subst.
-  destruct i as [v0 | client]; simpl in Hm; apply filter_In in Hm;
-  destruct Hm as [Hm Hsender];
-  destruct (decide (sender m = v)); try discriminate Hsender
-  ; assumption.
-Qed.
-
-Lemma observable_events_commute
-  (s : vstate VLSM_full_composed_free)
-  (v : V)
-  : set_eq (observable_events s v) (@observable_events _ _ _ _ _  _ sender full_node_client_observation_based_equivocation_evidence (state_union s) v).
-Proof.
-  split; intros m Hm.
-  - simpl.
-    apply filter_In.
-    split.
-    + apply set_union_in_iterated. apply Exists_exists.
-      exists (@observable_events _ _ _ _ _ _  sender composed_equivocation_evidence s v).
-      split; try assumption.
-      apply in_map_iff. exists v. split; try reflexivity.
-      apply (proj2 finite_validators).
-    + rewrite decide_True; try reflexivity. apply observable_event_sender with s.
-      assumption.
-  - simpl in Hm. apply filter_In in Hm.
-    destruct Hm as [Hm Hsender].
-    apply set_union_in_iterated in Hm. apply Exists_exists in Hm.
-    destruct Hm as [msgsi [Hmsgsi Hm]].
-    apply in_map_iff in Hmsgsi. destruct Hmsgsi as [v0 [Heq _]]. subst.
-    replace v with v0; try assumption.
-    destruct (decide (sender m = v)); try discriminate Hsender. subst.
-    symmetry. apply  observable_event_sender with s. assumption.
-Qed.
 
 Lemma not_heavy_commute
   (s : vstate VLSM_full_composed_free)
@@ -757,20 +739,27 @@ Proof.
   unfold equivocation_fault.
   apply sum_weights_incl;
     [apply NoDup_filter, set_map_nodup
-    |apply NoDup_filter, finite_validators
+    |apply NoDup_filter, composite_validators_nodup
     |];[].
   unfold equivocating_validators.
 
-  apply incl_tran with (filter (is_equivocating_fn (state_union s)) (state_validators s)).
-  * apply filter_incl. intros v Hv. apply finite_validators.
+  match goal with
+  |- incl (filter ?p1 _) (filter _ ?l2) =>
+    apply incl_tran with (filter p1 l2)
+  end.
+
+  * apply filter_incl. intros v Hv. assumption.
 
   * apply filter_incl_fn.
     simpl. intro v.
     rewrite !bool_decide_eq_true.
     unfold equivocation_evidence.
     intro H.
-    setoid_rewrite observable_events_commute.
-    exact H.
+    destruct H as [m1 [Hm1 [Hv1 [m2 [Hm2 [Hv2 H12]]]]]].
+    unfold has_been_observed in Hm1, Hm2. simpl in Hm1, Hm2.
+    apply composite_has_been_observed_state_union in Hm1.
+    apply composite_has_been_observed_state_union in Hm2.
+    exists m1; intuition; exists m2; intuition.
 Qed.
 
 End ClientsAndValidators.

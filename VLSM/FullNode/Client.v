@@ -35,32 +35,53 @@ messages, implementing a limited equivocation tolerance policy.
     (message := State.message C V)
     (happens_before := validator_message_preceeds C V)
     (happens_before_dec := validator_message_preceeds_dec C V)
+    (message_eq : EqDecision message := @message_eq _ _ about_C about_V)
     .
 
   Existing Instance eq_V.
   Existing Instance happens_before_dec.
 
-  Definition full_node_client_observable_events
+  Definition full_node_client_has_been_observed
     (s : set message)
-    (v : V)
-    : set message
-    :=
-    filter (fun m => if decide (sender m = v) then true else false) s.
+    (m : message)
+    : Prop
+    := In m s.
 
-  Program Definition full_node_client_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (set message) V message decide_eq _ happens_before_dec sender
+  Definition full_node_message_subject_of_observation
+    (m : message)
+    : option V
+    := Some (sender m).
+
+
+  Program Instance full_node_client_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (set message) V message decide_eq _ happens_before_dec full_node_message_subject_of_observation
     :=
     {|
-      observable_events := full_node_client_observable_events
+      has_been_observed := full_node_client_has_been_observed
     |}.
   Next Obligation.
-    unfold full_node_client_observable_events in He.
-    apply filter_In in He.
-    destruct He as [_ He].
-    destruct (decide (sender e = v)); solve [intuition;discriminate He].
+    intros s m.
+    apply in_dec.
+    apply message_eq.
   Qed.
 
-  Existing Instance full_node_client_observation_based_equivocation_evidence.
+  Instance full_node_client_observation_based_equivocation_evidence_dec
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence).
+  Proof.
+    intros s m. unfold equivocation_evidence.
+    unfold has_been_observed. simpl. unfold full_node_client_has_been_observed.
+    apply (Decision_iff (Exists_exists _ _)).
+    apply @Exists_dec.
+    intro m1.
+    apply Decision_and; [apply option_eq_dec|].
+    apply (Decision_iff (Exists_exists _ _)).
+    apply @Exists_dec.
+    intro m2.
+    apply Decision_and; [apply option_eq_dec|].
+    apply Decision_not.
+    apply comparable_dec.
+    assumption.
+  Qed.
 
   Definition full_node_client_state_validators
     (s : set message)
@@ -77,8 +98,8 @@ messages, implementing a limited equivocation tolerance policy.
 
   Definition client_basic_equivocation
     : basic_equivocation (set message) V
-    := basic_observable_equivocation (set message) V message
-        _ happens_before full_node_client_state_validators full_node_client_state_validators_nodup.
+    := @basic_observable_equivocation (set message) V message
+        message_eq _ happens_before_dec full_node_message_subject_of_observation full_node_client_observation_based_equivocation_evidence _ _ _  full_node_client_state_validators full_node_client_state_validators_nodup.
 
   Existing Instance client_basic_equivocation.
 

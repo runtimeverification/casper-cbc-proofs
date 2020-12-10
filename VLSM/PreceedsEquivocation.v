@@ -44,10 +44,10 @@ Class message_equivocation_evidence
   (message_preceeds : message -> message -> Prop)
   {message_preceeds_dec : RelDecision message_preceeds}
   :=
-  { sender : message -> validator
+  { sender : message -> option validator
   ; equivocating_with (msg1 msg2 : message)  : Prop
-    :=
-      sender msg1 = sender msg2 /\ ~comparable message_preceeds msg1 msg2
+    := (exists v, sender msg1 = Some v /\ sender msg2 = Some v) /\
+    ~comparable message_preceeds msg1 msg2
   ; equivocating_in_set
       (msg : message)
       (msgs : set message)
@@ -57,12 +57,16 @@ Class message_equivocation_evidence
 
 Instance equivocating_with_dec `{message_equivocation_evidence}:
   RelDecision equivocating_with.
-Proof.
+Proof with (try (right; intros [v1 [Hv Hv0]]; congruence)).
   intros msg1 msg2.
   unfold equivocating_with.
-  apply Decision_and;[solve[apply EqDecision1]|].
-  apply Decision_not.
-  typeclasses eauto.
+  apply Decision_and.
+  - destruct (sender msg1) eqn:Hmsg1 ...
+    destruct (sender msg2) eqn:Hmsg2 ...
+    destruct (decide (v = v0)) ...
+    subst. left. exists v0. intuition.
+  - apply Decision_not.
+    typeclasses eauto.
 Qed.
 
 Instance equivocating_in_set_dec `{message_equivocation_evidence} :
@@ -98,6 +102,56 @@ Class state_encapsulating_messages
   :=
   { get_messages : state -> set message }.
 
+Definition state_encapsulating_messages_is_equivocating
+  {state validator : Type}
+  `{Hstate : state_encapsulating_messages state message}
+  `{Hmessage : message_equivocation_evidence message validator}
+  (s : state)
+  (v : validator)
+  : Prop
+  :=
+  exists (msg : message),
+    In msg (get_messages s) /\
+    sender msg = Some v /\
+    equivocating_in_set msg (get_messages s).
+
+Lemma state_encapsulating_messages_is_equivocating_dec
+  {state validator : Type}
+  `{Hstate : state_encapsulating_messages state message}
+  `{Hmessage : message_equivocation_evidence message validator}
+  : RelDecision state_encapsulating_messages_is_equivocating.
+Proof.
+  intros s v.
+  unfold state_encapsulating_messages_is_equivocating.
+  apply (Decision_iff (Exists_exists _ _)).
+  apply @Exists_dec.
+  intro m.
+  apply Decision_and; [apply option_eq_dec|].
+  unfold equivocating_in_set.
+  apply (Decision_iff (Exists_exists _ _)).
+  apply @Exists_dec.
+  intro m'.
+  apply equivocating_with_dec.
+Qed.
+
+Definition state_encapsulating_messages_validators
+  {state message validator : Type}
+  `{Hstate : state_encapsulating_messages state message}
+  `{Hmessage : message_equivocation_evidence message validator}
+  (s : state)
+  : set validator
+  := nodup decide_eq (map_option sender (get_messages s)).
+
+Lemma state_encapsulating_messages_validators_nodup
+  {state message validator : Type}
+  `{Hstate : state_encapsulating_messages state message}
+  `{Hmessage : message_equivocation_evidence message validator}
+  (s : state)
+  : NoDup (state_encapsulating_messages_validators s).
+Proof.
+  apply NoDup_nodup.
+Qed.
+
 Definition state_encapsulating_messages_equivocation
   (state message validator : Type)
   `{Hstate : state_encapsulating_messages state message}
@@ -106,12 +160,10 @@ Definition state_encapsulating_messages_equivocation
   {reachable_threshold : ReachableThreshold validator}
   : basic_equivocation state validator
   :=
-  {|  state_validators := fun s => set_map decide_eq sender (get_messages s)
-   ;  state_validators_nodup := fun s => set_map_nodup sender (get_messages s)
-   ;  is_equivocating_fn := fun s v =>
-        let msgs := get_messages s in
-        inb decide_eq v
-          (map sender (filter (fun msg => bool_decide (equivocating_in_set msg msgs)) msgs))
+  {|  state_validators := state_encapsulating_messages_validators
+   ;  state_validators_nodup := state_encapsulating_messages_validators_nodup
+   ;  is_equivocating := state_encapsulating_messages_is_equivocating
+   ;  is_equivocating_dec := state_encapsulating_messages_is_equivocating_dec
   |}.
 
 Section equivocation_properties.
@@ -142,22 +194,9 @@ Lemma state_validators_incl
   (Hincl : incl (get_messages sigma) (get_messages sigma'))
   : incl (state_validators sigma) (state_validators sigma').
 Proof.
-  simpl. apply set_map_incl. assumption.
-Qed.
-
-Definition is_equivocating s v : Prop :=
-  let msgs := get_messages s in
-  exists m, sender m = v /\ In m msgs /\ equivocating_in_set m msgs.
-
-Lemma is_equivocating_reflect s v:
-  is_equivocating s v <-> is_equivocating_fn s v = true.
-Proof.
-  unfold is_equivocating;simpl.
-  rewrite <- (in_function EqDecision1 v).
-  rewrite in_map_iff.
-  setoid_rewrite filter_In.
-  setoid_rewrite bool_decide_eq_true.
-  reflexivity.
+  simpl. unfold incl. unfold state_encapsulating_messages_validators.
+  intro v. repeat rewrite nodup_In. apply map_option_incl.
+  assumption.
 Qed.
 
 Lemma equivocating_validators_incl
@@ -166,8 +205,9 @@ Lemma equivocating_validators_incl
   : incl (equivocating_validators sigma) (equivocating_validators sigma').
 Proof.
   unfold equivocating_validators.
-  intro v. rewrite !filter_In, <- !is_equivocating_reflect.
+  intro v. rewrite !filter_In.
   pose proof (state_validators_incl _ _ Hincl).
+  rewrite !bool_decide_eq_true.
   firstorder.
 Qed.
 
@@ -199,7 +239,7 @@ Lemma empty_not_heavy
   : not_heavy s.
 Proof.
   unfold not_heavy. unfold equivocation_fault. unfold equivocating_validators.
-  simpl. rewrite Hempty. simpl.
+  simpl. unfold state_encapsulating_messages_validators. rewrite Hempty. simpl.
   destruct threshold;simpl.
   apply Rge_le;assumption.
 Qed.
@@ -337,31 +377,43 @@ function to select ones having a given validator and obtain the
 corresponding [observable_events].
 *)
 
-Definition observable_messages
+Definition has_been_observed_messages
   (s : state)
-  (v : validator)
+  (m : message)
   :=
-  filter (fun m => if decide ((sender m) = v) then true else false) (get_messages s).
+  In m (get_messages s).
 
-Lemma in_observable_messages_iff m s v:
-  In m (observable_messages s v) <-> In m (get_messages s) /\ sender m = v.
+Lemma has_been_observed_messages_dec
+  : RelDecision has_been_observed_messages.
 Proof.
-  unfold observable_messages. rewrite filter_In.
-  rewrite <- bool_decide_decide, bool_decide_eq_true.
-  reflexivity.
+  intros s m.
+  apply in_dec. assumption.
 Qed.
 
-Program Definition message_observation_based_equivocation_evidence
+Definition message_observation_based_equivocation_evidence
   : @observation_based_equivocation_evidence state validator message _ _ message_preceeds_dec sender
   :=
-  {| observable_events := observable_messages |}.
-Next Obligation.
-  unfold observable_messages in He.
-  apply filter_In in He.
-  destruct He as [_ He].
-  destruct (decide (sender e = v)).
-  - assumption.
-  - discriminate He.
+  {| has_been_observed := has_been_observed_messages;
+     has_been_observed_dec := has_been_observed_messages_dec
+  |}.
+
+Local Instance message_observation_based_equivocation_evidence_dec
+  : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ message_observation_based_equivocation_evidence).
+Proof.
+  intros s v.
+  unfold equivocation_evidence.
+  unfold has_been_observed. simpl. unfold has_been_observed_messages.
+  apply (Decision_iff (Exists_exists _ _)).
+  apply @Exists_dec.
+  intro m1.
+  apply Decision_and; [apply option_eq_dec|].
+  apply (Decision_iff (Exists_exists _ _)).
+  apply @Exists_dec.
+  intro m2.
+  apply Decision_and; [apply option_eq_dec|].
+  apply Decision_not.
+  apply comparable_dec.
+  assumption.
 Qed.
 
 (**
@@ -372,10 +424,9 @@ on [sender] and thus obtain a [basic_equivocation] instance through the
 
 Definition message_basic_observable_equivocation
   (Hevidence := message_observation_based_equivocation_evidence)
-  (validators := fun s => set_map decide_eq sender (get_messages s))
-  (validators_nodup := fun s => set_map_nodup sender (get_messages s))
   : basic_equivocation state validator
-  := @basic_observable_equivocation state validator message _ _ _ message_preceeds_dec Hevidence _ _ validators validators_nodup.
+  := @basic_observable_equivocation state validator message _ _ _ sender Hevidence _ _ _ state_encapsulating_messages_validators state_encapsulating_messages_validators_nodup.
+
 
 (**
 We can now show that the [message_based_equivocation] (customly built for
@@ -387,20 +438,17 @@ as an instance of event-based equivocation) yield the same
 Lemma message_basic_observable_equivocation_iff
   (s : state)
   (v : validator)
-  : @is_equivocating_fn _ _ _ _ message_basic_observable_equivocation s v
-  = @is_equivocating_fn _ _ _ _ message_based_equivocation s v.
+  : @is_equivocating _ _ _ _ message_basic_observable_equivocation s v
+  <-> @is_equivocating _ _ _ _ message_based_equivocation s v.
 Proof.
-  apply eq_true_iff_eq.
-  simpl is_equivocating_fn at 1; rewrite bool_decide_eq_true.
-  progress unfold message_based_equivocation.
-  rewrite <- is_equivocating_reflect.
-  unfold equivocation_evidence, is_equivocating;simpl observable_events.
-  setoid_rewrite in_observable_messages_iff.
-  unfold equivocating_in_set,equivocating_with.
-
-  generalize (get_messages s), sender, (comparable message_preceeds).
-  clear.
-  firstorder congruence.
+  unfold is_equivocating. simpl. unfold equivocation_evidence.
+  unfold state_encapsulating_messages_is_equivocating.
+  unfold has_been_observed. simpl. unfold has_been_observed_messages.
+  unfold equivocating_in_set. unfold equivocating_with.
+  firstorder.
+  exists x. split; [assumption|].  split; [assumption|].
+  exists x0.  split; [assumption|].  split; [congruence|].
+  firstorder.
 Qed.
 
 End message_observable_equivocation_equivalent_defnitions.

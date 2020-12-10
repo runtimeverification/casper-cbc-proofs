@@ -155,7 +155,7 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
   ( unfold transition in Ht; unfold equivocator_IM in Ht;
   unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
   unfold machine in Ht; unfold projT2 in Ht;
-  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht). 
+  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
 
 Lemma equivocators_protocol_trace_project
   (final_choice : equivocators_choice)
@@ -277,7 +277,7 @@ Proof.
       unfold equivocator_vlsm_transition_item_project.
       destruct (le_lt_dec (S nsi') ieqv); [lia|].
       unfold vvalid in Hv. simpl in Hv.
-      unfold vtransition in Ht'. 
+      unfold vtransition in Ht'.
       unfold transition in Ht'. unfold Common.equivocator_IM in Ht'.
       unfold equivocator_vlsm in Ht'. unfold mk_vlsm in Ht'.
       unfold machine in Ht'. unfold projT2 in Ht'.

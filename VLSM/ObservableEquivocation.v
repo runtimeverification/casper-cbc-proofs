@@ -34,91 +34,157 @@ Class observation_based_equivocation_evidence
   (event_eq : EqDecision event)
   (happens_before : event -> event -> Prop)
   (happens_before_dec : RelDecision happens_before)
-  (subject_of_observation : event -> validator) :=
+  (subject_of_observation : event -> option validator)
+  :=
   {
-    observable_events : state -> validator -> set event;
-    observed_event_subject :
-      forall
-        (s : state)
-        (v : validator)
-        (e : event)
-        (He : In e (observable_events s v)),
-        subject_of_observation e = v;
+    has_been_observed : state -> event -> Prop;
+    has_been_observed_dec : RelDecision has_been_observed;
     equivocation_evidence (s : state) (v : validator) : Prop :=
-      exists e1, In e1 (observable_events s v) /\
-      exists e2, In e2 (observable_events s v) /\
-        ~ comparable happens_before e1 e2
+      exists e1,
+        has_been_observed s e1 /\
+        subject_of_observation e1 = Some v /\
+        exists e2,
+          has_been_observed s e2 /\
+          subject_of_observation e2 = Some v /\
+        ~ comparable happens_before e1 e2;
   }.
 
-Lemma iff_dec {P Q : Prop}:
-  P <-> Q -> Decision P -> Decision Q.
-Proof. firstorder. Qed.
+Section observable_events.
 
-Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
-  (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
-Proof. firstorder. Qed.
+Context
+  (state validator event : Type)
+  (event_eq : EqDecision event)
+  (validator_eq : EqDecision validator)
+  (happens_before : event -> event -> Prop)
+  (happens_before_dec : RelDecision happens_before)
+  (observable_events : state -> validator -> set event)
+  (observed_validators :
+    forall s, {vs | forall v e, In e (observable_events s v) -> In v vs})
+  (subject_of_observation : event -> option validator)
+  (observed_event_subject : forall s v e,
+      In e (observable_events s v) -> subject_of_observation e = Some v)
+  .
 
-Global Instance equivocation_evidence_dec {state validator event:Type}
-      `{Hevidence: observation_based_equivocation_evidence state validator event}:
-      RelDecision equivocation_evidence.
+Definition observable_events_has_been_observed (s : state) (e : event) : Prop :=
+  exists (v : validator), In e (observable_events s v).
+
+Lemma observable_events_has_been_observed_dec : RelDecision observable_events_has_been_observed.
+Proof.
+  intros s e.
+  destruct
+    (existsb
+      (fun v => inb decide_eq e (observable_events s v))
+      (proj1_sig (observed_validators s))
+    ) eqn:Hexist; [left|right].
+  - apply existsb_exists in Hexist.
+    destruct Hexist as [v [Hv He]].
+    exists v. apply in_correct in He. assumption.
+  - rewrite existsb_forall in Hexist.
+    intros [v contra].
+    spec Hexist v. rewrite <- in_correct' in Hexist.
+    apply Hexist; [|assumption]. clear -contra.
+    spec observed_validators s.
+    destruct observed_validators as [vs Hvs].
+    simpl. apply Hvs with e. assumption.
+Qed.
+
+Definition observable_events_subject_of_observation
+  (s : state)
+  (v1 v2 : validator)
+  (e : event)
+  (H1: In e (observable_events s v1))
+  (H2: In e (observable_events s v2))
+  : v1 = v2.
+Proof.
+  apply observed_event_subject in H1.
+  apply observed_event_subject in H2.
+  congruence.
+Qed.
+
+Local Instance observable_events_equivocation_evidence
+  : observation_based_equivocation_evidence state validator _ event_eq _ happens_before_dec subject_of_observation
+  := {| has_been_observed := observable_events_has_been_observed;
+        has_been_observed_dec := observable_events_has_been_observed_dec
+     |}.
+
+Instance equivocation_evidence_dec : RelDecision equivocation_evidence.
 Proof.
   intros s v.
-  assert (Exists (fun e1 => Exists (fun e2 => ~ comparable happens_before e1 e2)
+  assert
+    (Exists (fun e1 => subject_of_observation e1 = Some v /\ Exists (fun e2 => subject_of_observation e2 = Some v /\ ~ comparable happens_before e1 e2)
                                    (observable_events s v)) (observable_events s v)
-          <-> equivocation_evidence s v).
+    <-> equivocation_evidence s v).
   {
   unfold equivocation_evidence.
   rewrite Exists_exists.
   apply Morphisms_Prop.ex_iff_morphism; intro e1.
+  repeat rewrite <- and_assoc.
+  assert
+    (In e1 (observable_events s v) /\ subject_of_observation e1 = Some v
+    <->
+    has_been_observed s e1 /\ subject_of_observation e1 = Some v).
+  { firstorder. replace v with x; [assumption|]. apply observed_event_subject in H.
+    congruence.
+  }
+  rewrite H.
   apply and_iff_compat_l.
   rewrite Exists_exists.
   apply Morphisms_Prop.ex_iff_morphism; intro e2.
-  apply and_iff_compat_l.
-  reflexivity.
+  repeat rewrite <- and_assoc.
+  apply and_iff_compat_r.
+  firstorder. replace v with x; [assumption|]. apply observed_event_subject in H1.
+  congruence.
   }
 
   apply (iff_dec H);clear H.
   apply @Exists_dec;intro e1.
+  apply Decision_and; [apply option_eq_dec|].
   apply @Exists_dec;intro e2.
+  apply Decision_and; [apply option_eq_dec|].
   destruct (decide (comparable happens_before e1 e2)); [right|left]; tauto.
 Qed.
+
+End observable_events.
 
 (** We can use this notion of [observation_based_equivocation_evidence]
  to obtain the [basic_equivocation] between states and validators.
  *)
 Definition basic_observable_equivocation
   (state validator event : Type)
-  (subject_of_observation : event -> validator)
   {event_eq: EqDecision event}
   (happens_before : event -> event -> Prop)
   {happens_before_dec : RelDecision happens_before}
+  (subject_of_observation : event -> option validator)
   {Hevidence : observation_based_equivocation_evidence state validator event event_eq happens_before happens_before_dec subject_of_observation}
+  {equivocation_evidence_dec : RelDecision equivocation_evidence}
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
   (validators_nodup : forall (s : state), NoDup (validators s))
   : basic_equivocation state validator
   := {|
-    is_equivocating_fn := fun s v => @bool_decide _ (equivocation_evidence_dec s v);
+    is_equivocating := equivocation_evidence;
+    is_equivocating_dec := equivocation_evidence_dec;
     state_validators := validators;
     state_validators_nodup := validators_nodup
-         |}.
+    |}.
 
 Section not_heavy_incl.
 
 Context
   (state validator event : Type)
-  (subject_of_observation : event -> validator)
   `{EqDecision event}
   (v_eq : EqDecision validator)
   {happens_before : event -> event -> Prop}
   {happens_before_dec : RelDecision happens_before}
+  (subject_of_observation : event -> option validator)
   {Hevidence : observation_based_equivocation_evidence state validator event decide_eq happens_before happens_before_dec subject_of_observation}
+  {equivocation_evidence_dec : RelDecision equivocation_evidence}
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
   (validators_nodup : forall (s : state), NoDup (validators s))
-  (basic_eqv := basic_observable_equivocation state validator event subject_of_observation happens_before validators validators_nodup)
+  (basic_eqv := basic_observable_equivocation state validator event happens_before subject_of_observation validators validators_nodup)
   .
 
 Existing Instance basic_eqv.
@@ -126,18 +192,20 @@ Existing Instance basic_eqv.
 Lemma equivocation_fault_incl
   (sigma sigma' : state)
   (Hincl_validators : incl (validators sigma) (validators sigma'))
-  (Hincl : forall v : validator, incl (observable_events sigma v) (observable_events sigma' v))
+  (Hincl : forall e, has_been_observed sigma e -> has_been_observed sigma' e)
   : (equivocation_fault sigma <= equivocation_fault sigma')%R.
 Proof.
   intros.
   unfold equivocation_fault.
   unfold equivocating_validators.
   apply sum_weights_incl; try (apply NoDup_filter; apply state_validators_nodup).
-  apply incl_tran with (filter (is_equivocating_fn sigma') (state_validators sigma))
-  ; try (apply filter_incl; assumption).
+  apply incl_tran with (filter (fun v : validator => bool_decide (is_equivocating sigma' v))
+  (state_validators sigma))
+  ; [|apply filter_incl; assumption].
   apply filter_incl_fn.
-  intro v. spec Hincl v. simpl. unfold equivocation_evidence.
+  intro v.
   repeat rewrite bool_decide_eq_true.
+  unfold equivocation_evidence.
   clear -Hincl;firstorder.
 Qed.
 
@@ -145,7 +213,7 @@ Qed.
 Lemma not_heavy_incl
   (sigma sigma' : state)
   (Hincl_validators : incl (validators sigma) (validators sigma'))
-  (Hincl : forall v : validator, incl (observable_events sigma v) (observable_events sigma' v))
+  (Hincl : forall e, has_been_observed sigma e -> has_been_observed sigma' e)
   (Hsigma' : not_heavy sigma')
   : not_heavy sigma.
 Proof.
@@ -168,7 +236,7 @@ Context
   `{EqDecision event}
   {happens_before: event -> event -> Prop}
   {happens_before_dec: RelDecision happens_before}
-  {subject_of_observation : event -> validator}
+  {subject_of_observation : event -> option validator}
   {index : Type}
   `{EqDecision index}
   (index_listing : list index)
@@ -190,40 +258,65 @@ the composition, by just defining the [observable_events] for the composite stat
 to be the union of [observable_events] for each of the component states.
 *)
 
-Definition composed_witness_observable_events
+Definition composed_witness_has_been_observed
   (witness_set : set index)
   (s : composite_state IM)
-  (v : validator)
-  : set event
+  (e : event)
+  : Prop
   :=
-  fold_right (set_union decide_eq) [] (map (fun i => observable_events (s i) v) witness_set).
+  exists i : index, In i witness_set /\ has_been_observed (s i) e.
 
-Definition composed_observable_events
-  (s : composite_state IM)
-  (v : validator)
-  : set event
-  :=
-  composed_witness_observable_events index_listing s v.
-
-Program Definition composed_witness_observation_based_equivocation_evidence
+Lemma composed_witness_has_been_observed_dec
   (witness_set : set index)
-  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq happens_before happens_before_dec subject_of_observation 
-  := {| observable_events := (composed_witness_observable_events witness_set)|}.
-  Next Obligation.
-  unfold composed_witness_observable_events in He.
-  rewrite set_union_in_iterated in He.
-  rewrite Exists_exists in He.
-  destruct He as [x [Hinx Hine]].
-  rewrite in_map_iff in Hinx.
-  destruct Hinx as [x0 [Heq Hin_index]].
-  rewrite <- Heq in Hine.
-  apply observed_event_subject in Hine.
+  (s : composite_state IM)
+  (e : event)
+  : Decision (composed_witness_has_been_observed witness_set s e).
+Proof.
+  apply (Decision_iff (Exists_exists _ _ )).
+  apply @Exists_dec.
+  intro i.
+  apply has_been_observed_dec.
+Qed.
+
+Definition composed_has_been_observed
+  (s : composite_state IM)
+  (e : event)
+  : Prop
+  :=
+  composed_witness_has_been_observed index_listing s e.
+
+Lemma composed_has_been_observed_dec : RelDecision composed_has_been_observed.
+Proof.
+  specialize (composed_witness_has_been_observed_dec index_listing) as Hdec.
   assumption.
-  Qed.
+Qed.
+
+
+Definition composed_witness_observation_based_equivocation_evidence
+  (witness_set : set index)
+  : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq happens_before happens_before_dec subject_of_observation
+  :=
+    {|
+      has_been_observed := (composed_witness_has_been_observed witness_set);
+      has_been_observed_dec := (composed_witness_has_been_observed_dec witness_set);
+    |}.
 
 Instance composed_observation_based_equivocation_evidence
   : observation_based_equivocation_evidence (composite_state IM) validator event decide_eq happens_before happens_before_dec subject_of_observation
   := composed_witness_observation_based_equivocation_evidence index_listing.
+
+Lemma equivocation_evidence_lift
+  (s : composite_state IM)
+  (v : validator)
+  (i : index)
+  (Hsi : equivocation_evidence (s i) v)
+  : equivocation_evidence s v.
+Proof.
+  destruct Hsi as [e1 [Hsi1 [He1 [e2 [Hsi2 [He2 He12]]]]]].
+  exists e1. firstorder.
+  - exists i. firstorder.
+  - exists e2. firstorder. exists i. firstorder.
+Qed.
 
 (**
 Let us now factor [VLSM]s into the event observability framework.
@@ -234,38 +327,37 @@ Class composite_vlsm_observable_messages
   :=
   {
 (**
-To simplify the presentation, we assume that no events can be observed in
-initial states.
+To simplify the presentation, we assume that the events which can be observed
+in initial states have no subject, thus they cannot contribute to any
+evidence of equivocation.
 *)
     no_events_in_initial_state
       (s : state)
       (His : vinitial_state_prop X s)
-      (v : validator)
-      (ei e: event)
-      (Hsubj : subject_of_observation e = v)
-      (Hin : In ei (observable_events s v)) :
-      comparable happens_before ei e;
+      (e : event)
+      (He : has_been_observed s e)
+      : subject_of_observation e = None;
 
 (**
 We assume that machines communicate through messages,
 and that messages can carry some of the information of their originating
 states.
 
-To formalize that, we willl assume a function [message_observable_events]
-yielding the events which can be observed in a message for a validator,
+To formalize that, we willl assume a property [message_has_been_observed]
+characterizing the events which can be observed in a message,
 and we will require that we cannot observe in a sent message events which
 were not available in the transition that generated it
 ([message_observable_consistency]).
 *)
-    message_observable_events : message -> validator -> set event;
+    message_has_been_observed : message -> event -> Prop;
+    message_has_been_observed_dec : RelDecision message_has_been_observed ;
     message_observable_consistency
       (m : message)
-      (v : validator)
       (som : state * option message)
       (l : label)
       (s : state)
       (Ht : protocol_transition X l som (s, Some m))
-      : incl (message_observable_events m v) (observable_events (s (projT1 l)) v);
+      : forall e, message_has_been_observed m e -> has_been_observed (s (projT1 l)) e;
   }.
 
 Context
@@ -273,15 +365,23 @@ Context
   `{EqDecision message}
   .
 
-Definition option_message_observable_events
+Definition option_message_has_been_observed
   (om : option message)
-  (v : validator)
-  : set event
+  (e : event)
+  : Prop
   :=
   match om with
-  | Some m => message_observable_events m v
-  | None => []
+  | Some m => message_has_been_observed m e
+  | None => False
   end.
+
+Lemma option_message_has_been_observed_dec
+  : RelDecision option_message_has_been_observed.
+Proof.
+  intros om e.
+  destruct om; simpl; [|right; intuition].
+  apply message_has_been_observed_dec.
+Qed.
 
 (**
 An useful result, corollary of the abstract [existsb_first] says that if
@@ -293,55 +393,60 @@ Lemma in_observable_events_first
   (is : vstate X)
   (tr : list (vtransition_item X))
   (Htr : finite_protocol_trace X is tr)
-  (v : validator)
   (e : event)
   (s := last (map destination tr) is)
-  (He : In e (observable_events s v))
+  (He : has_been_observed s e)
   : s = is \/
     exists
     (pre suf : list transition_item)
-    (item : transition_item)
-    (Heq : tr = pre ++ [item] ++ suf)
-    (He' : In e (observable_events (destination item) v)),
-    Forall (fun item => ~In e (observable_events (destination item) v)) pre.
+    (item : transition_item),
+    tr = pre ++ [item] ++ suf /\
+    has_been_observed (destination item) e /\
+    Forall (fun item => ~has_been_observed (destination item) e) pre.
 Proof.
-  assert (Htr0 : tr = [] \/ tr <> [])
-    by (destruct tr; (left; reflexivity) || (right; intro contra; discriminate contra)).
-  destruct Htr0 as [Htr0 | Htr0].
-  - left.
-    unfold s.
-    rewrite Htr0.
-    simpl.
-    reflexivity.
+  destruct (null_dec tr) as [Htr0 | Htr0].
+  - subst tr. destruct Htr as [Htr His].
+    left. reflexivity.
   - destruct (exists_last Htr0) as [l' [a Heq]].
     specialize
-      (existsb_first tr (fun item => inb decide_eq e (observable_events (destination item) v)))
+      (Exists_first tr (fun item => has_been_observed (destination item) e))
       as Hfirst.
+    spec Hfirst. { intro item. apply has_been_observed_dec. }
     spec Hfirst.
-    + apply existsb_exists. exists a.
+    + apply Exists_exists. exists a.
       split.
       * subst tr. apply in_app_iff. right. left. reflexivity.
-      * apply in_correct.
-        unfold s in *. clear s. rewrite Heq in He.
+      * unfold s in *. clear s. rewrite Heq in He.
         rewrite map_app in He. simpl in He. rewrite last_last in He.
         assumption.
     + right.
       destruct Hfirst as [pre [suf [a' [He' [Heq' Hfirst]]]]].
-      apply in_correct in He'.
-      rewrite existsb_forall in Hfirst.
-      exists pre. exists suf. exists a'. exists Heq'. exists He'.
+      exists pre, suf, a'.
+      repeat (split; [assumption|]).
       apply Forall_forall.
-      intros x Hx.
-      specialize (Hfirst x Hx).
-      apply in_correct' in Hfirst.
-      assumption.
+      intros x Hx contra.
+      elim Hfirst. apply Exists_exists. exists x.
+      intuition.
 Qed.
 
 (** ** Defining observable equivocation based on observable messages
 *)
 
+Definition transition_generated_event
+  {i : index}
+  (s : vstate (IM i))
+  (om : option message)
+  (s' : vstate (IM i))
+  (e : event)
+  : Prop
+  :=
+  has_been_observed s' e /\
+  ~ has_been_observed s e /\
+  ~ option_message_has_been_observed om e.
+
+
 (**
-We call [trace_generated_event] a new event for validator <<v>> which
+We call [trace_generated_event] an event which
 appeared as result of a transition in a trace, that is, which it was
 not in the state prior to the transition, nor in the received message,
 but it is in the state resulted after the transition.
@@ -349,91 +454,63 @@ but it is in the state resulted after the transition.
 Definition trace_generated_event
   (is : vstate X)
   (tr : list (vtransition_item X))
-  (v : validator)
   (e : event)
   : Prop
   :=
-  In e (observable_events is v) \/
   exists
   (prefix suffix : list transition_item)
-  (item : transition_item)
-  (Heq : tr = prefix ++ [item] ++ suffix)
+  (item : vtransition_item X)
   (i := projT1 (l item))
   (s := last (map destination prefix) is)
   (s' := destination item),
-  In e
-    (set_diff decide_eq
-      (observable_events (s' i) v)
-      (set_union decide_eq
-        (observable_events (s i) v)
-        (option_message_observable_events (input item) v)
-      )
-    ).
+  tr = prefix ++ [item] ++ suffix /\
+  transition_generated_event (s i) (input item) (s' i) e.
 
-Definition trace_generated_event_fn
+Lemma trace_generated_event_dec
   (is : vstate X)
   (tr : list (vtransition_item X))
-  (v : validator)
   (e : event)
-  : bool
-  :=
-  orb (inb decide_eq e (observable_events is v))
-  (existsb
-    (fun t : list (vtransition_item X) * vtransition_item X * list (vtransition_item X) =>
-      match t with (pre, item, _) =>
-        let i := projT1 (l item) in
-          let s := last (map destination pre) is in
-          let s' := destination item in
-          inb decide_eq e
-            (set_diff decide_eq
-              (observable_events (s' i) v)
-              (set_union decide_eq
-                (observable_events (s i) v)
-                (option_message_observable_events (input item) v)
-              )
-            )
-      end
-    )
-    (one_element_decompositions tr)).
-
-Lemma trace_generated_event_function
-  (is : vstate X)
-  (tr : list (vtransition_item X))
-  (v : validator)
-  (e : event)
-  : trace_generated_event is tr v e <->
-  trace_generated_event_fn is tr v e = true.
+  : Decision (trace_generated_event is tr e).
 Proof.
-  unfold trace_generated_event.
-  unfold trace_generated_event_fn.
-  split.
-  - intros.
-    destruct H.
-    apply orb_true_intro.
-    left.
-    apply in_correct in H.
+  destruct
+    (existsb
+      (fun t : list (vtransition_item X) * vtransition_item X * list (vtransition_item X) =>
+        match t with (pre, item, _) =>
+          let i := projT1 (l item) in
+            let s := last (map destination pre) is in
+            let s' := destination item in
+            andb
+              (@bool_decide _ (has_been_observed_dec (s' i) e))
+              (negb
+                (orb
+                  (@bool_decide _ (has_been_observed_dec (s i) e))
+                  (@bool_decide _ (option_message_has_been_observed_dec (input item) e)))
+              )
+        end
+      )
+      (one_element_decompositions tr)
+    ) eqn:Hdec; [left|right].
+  - apply existsb_exists in Hdec.
+    destruct Hdec as [((pre,item), suf) [Hin Hdec]].
+    apply in_one_element_decompositions_iff in Hin.
+    exists pre, suf, item. split; [symmetry; assumption|].
+    simpl in Hdec. apply Bool.andb_true_iff in Hdec.
+    rewrite Bool.negb_true_iff in Hdec.
+    rewrite Bool.orb_false_iff in Hdec.
+    rewrite bool_decide_eq_true in Hdec.
+    repeat rewrite bool_decide_eq_false in Hdec.
     assumption.
-    apply orb_true_intro.
-    right.
-    destruct H as [pre [suf [item [Heq Hin]]]].
-    simpl in Hin.
-    unfold trace_generated_event_fn. apply existsb_exists.
-    exists (pre, item, suf).
-    symmetry in Heq. apply in_one_element_decompositions_iff in Heq.
-    split; try assumption.
-    apply in_correct. assumption.
-  - intros.
-    apply orb_true_iff in H.
-    destruct H.
-    left.
-    apply in_correct in H.
-    assumption.
-    right.
-    apply existsb_exists in H.
-    destruct H as [((pre, item), suf) [Hdec H]].
-    simpl in H. apply in_correct in H.
-    apply in_one_element_decompositions_iff in Hdec. symmetry in Hdec.
-    exists pre. exists suf. exists item. exists Hdec. assumption.
+  - rewrite existsb_forall in Hdec.
+    intros [pre [suf [item [Htr Hgen]]]].
+    spec Hdec (pre, item, suf).
+    spec Hdec. { apply in_one_element_decompositions_iff. symmetry. assumption. }
+    simpl in Hdec. apply Bool.andb_false_iff in Hdec.
+    rewrite Bool.negb_false_iff in Hdec.
+    rewrite Bool.orb_true_iff in Hdec.
+    repeat rewrite bool_decide_eq_true in Hdec.
+    rewrite bool_decide_eq_false in Hdec.
+    clear -Hgen Hdec.
+    firstorder.
 Qed.
 
 (**
@@ -443,19 +520,16 @@ any trace having <<tr>> as a prefix.
 Lemma trace_generated_prefix
   (is : vstate X)
   (pre : list (vtransition_item X))
-  (v : validator)
   (e : event)
-  (Hgen : trace_generated_event is pre v e)
+  (Hgen : trace_generated_event is pre e)
   (suf : list transition_item)
-  : trace_generated_event is (pre ++ suf) v e.
+  : trace_generated_event is (pre ++ suf) e.
 Proof.
   unfold trace_generated_event in *.
-  destruct Hgen as [Hgen|Hgen].
-  left. assumption.
-  right.
   destruct Hgen as [pre' [suf' [item [Heq Hgen]]]].
   exists pre'. exists (suf' ++ suf). exists item.
-  subst pre. repeat rewrite <- app_assoc. exists eq_refl. assumption.
+  subst pre. repeat rewrite <- app_assoc.
+  intuition.
 Qed.
 
 (**
@@ -465,11 +539,10 @@ generated by any of its prefixes.
 Lemma not_trace_generated_prefix
   (is : vstate X)
   (pre : list (vtransition_item X))
-  (v : validator)
   (e : event)
   (suf : list transition_item)
-  (Hngen : ~trace_generated_event is (pre ++ suf) v e)
-  : ~trace_generated_event is pre v e.
+  (Hngen : ~trace_generated_event is (pre ++ suf) e)
+  : ~trace_generated_event is pre e.
 Proof.
   intro contra. elim Hngen. apply trace_generated_prefix. assumption.
 Qed.
@@ -483,43 +556,23 @@ the incoming message.
 Lemma not_trace_generated_event
   (is : vstate X)
   (tr : list (vtransition_item X))
-  (v : validator)
   (e : event)
-  (Hne : ~trace_generated_event is tr v e)
+  (Hne : ~trace_generated_event is tr e)
   (prefix suffix : list transition_item)
   (item : transition_item)
   (Heq : tr = prefix ++ [item] ++ suffix)
   (i := projT1 (l item))
   (s := last (map destination prefix) is)
   (s' := destination item)
-  (Hin : In e (observable_events (s' i) v))
-  : In e (observable_events (s i) v)
-  \/ In e (option_message_observable_events (input item) v).
+  (Hin : has_been_observed (s' i) e)
+  : has_been_observed (s i) e \/ option_message_has_been_observed (input item) e.
 Proof.
-  destruct (trace_generated_event_fn is tr v e) eqn:Hne'.
-  - apply trace_generated_event_function in Hne'. elim Hne. assumption.
-  - unfold trace_generated_event_fn in Hne'. 
-    rewrite orb_false_iff in Hne'.
-    destruct Hne' as [_ Hne'].
-    rewrite existsb_forall in Hne'.
-    specialize (Hne' (prefix, item, suffix)).
-    rewrite in_one_element_decompositions_iff in Hne'. symmetry in Heq.
-    specialize (Hne' Heq).
-    apply in_correct' in Hne'.
-    rewrite set_diff_iff in Hne'.
-    rewrite set_union_iff in Hne'.
-    repeat rewrite in_correct in Hne'. rewrite <- in_correct in Hne'.
-    rewrite <- Bool.orb_true_iff in Hne'.
-    repeat rewrite in_correct.
-    rewrite <- Bool.orb_true_iff.
-    unfold s. unfold s'. unfold i.
-    destruct
-      (inb decide_eq e
-        (observable_events (last (map destination prefix) is (projT1 (l item))) v)
-      || inb decide_eq e (option_message_observable_events (input item) v)
-      )%bool
-      eqn:Hor; try reflexivity.
-    elim Hne'. split; try assumption. intro contra. discriminate contra.
+  destruct (has_been_observed_dec (s i) e) as [|Hsi]; [left; assumption|].
+  destruct (option_message_has_been_observed_dec (input item) e) as [|Hitem]; [right; assumption|].
+  elim Hne.
+  exists prefix, suffix, item.
+  unfold transition_generated_event.
+  intuition.
 Qed.
 
 (**
@@ -535,44 +588,10 @@ Definition equivocating_in_trace_last
   (v : validator)
   : Prop
   :=
-  exists
-    (e : event)
-    (He : In e (observable_events s v)),
-    ~ trace_generated_event is tr v e.
-
-Definition equivocating_in_trace_last_fn
-  (is : vstate X)
-  (tr : list transition_item)
-  (s := last (map destination tr) is)
-  (v : validator)
-  : bool
-  :=
-  existsb
-    (fun e : event =>
-      negb (trace_generated_event_fn is tr v e)
-    )
-    (observable_events s v).
-
-
-Lemma equivocating_in_trace_last_function
-  (is : vstate X)
-  (tr : list transition_item)
-  (v : validator)
-  : equivocating_in_trace_last is tr v
-  <-> equivocating_in_trace_last_fn is tr v = true.
-Proof.
-  split.
-  - intros [e [He Hnobs]].
-    unfold equivocating_in_trace_last_fn.
-    apply existsb_exists. exists e. split; try assumption.
-    destruct (trace_generated_event_fn is tr v e) eqn:H; try reflexivity.
-    elim Hnobs. apply trace_generated_event_function. assumption.
-  - intro H. apply existsb_exists in H.
-    destruct H as [e [Hin H]].
-    exists e. exists Hin.
-    intro contra. apply trace_generated_event_function in contra.
-    rewrite contra in H. simpl in H. discriminate H.
-Qed.
+  exists (e : event),
+    subject_of_observation e = Some v /\
+    has_been_observed s e /\
+    ~ trace_generated_event is tr e.
 
 (**
 Since the initial state has no events, no equivocations can exist in an
@@ -584,11 +603,9 @@ Lemma not_equivocating_in_trace_last_initial
   (v : validator)
   : ~ equivocating_in_trace_last s [] v.
 Proof.
-  intro contra. destruct contra as [e [He Hne]].
-  simpl in He.
-  unfold trace_generated_event in Hne.
-  destruct Hne.
-  left. assumption.
+  intro contra. destruct contra as [e [Hv [He Hne]]].
+  specialize (no_events_in_initial_state (last (map destination []) s) Hs) as Hno.
+  spec Hno e He. congruence.
 Qed.
 
 (**
@@ -604,8 +621,8 @@ Definition equivocating_in_trace
   :=
   exists
     (prefix : list transition_item)
-    (last : transition_item)
-    (Hpr : trace_prefix X (proj1_sig tr) last prefix),
+    (last : transition_item),
+    trace_prefix X (proj1_sig tr) last prefix /\
     equivocating_in_trace_last (trace_first (proj1_sig tr)) prefix v.
 
 (**
@@ -633,9 +650,9 @@ Definition not_equivocating_in_some_traces_ending_in_state
   : Prop
   := exists
     (is : vstate X)
-    (tr : list transition_item)
-    (Htr : finite_protocol_trace X is tr)
-    (Hlast : last (map destination tr) is = proj1_sig s),
+    (tr : list transition_item),
+    finite_protocol_trace X is tr /\
+    last (map destination tr) is = proj1_sig s /\
     ~equivocating_in_trace_last is tr v.
 
 (**
@@ -671,8 +688,8 @@ Proof.
     + constructor. apply initial_is_protocol. assumption.
     + apply not_equivocating_in_trace_last_initial. assumption.
   - assert (Hlst := last_error_destination_last tr s Hlast is).
-    exists is. exists tr. exists Htr. exists Hlst.
-    specialize (Hall is tr Htr Hlst). assumption.
+    exists is. exists tr. split; [assumption|].  split; [assumption|].
+    apply (Hall is tr); assumption.
 Qed.
 
 (** ** Linking observable equivocation to message-based equivocation
@@ -696,38 +713,17 @@ Lemma event_equivocation_implies_message_equivocation
   (Heqv : equivocating_in_trace_last is tr v)
   : exists (m : message), VLSM.Equivocation.equivocation_in_trace X m tr.
 Proof.
-  destruct Heqv as [e [He Hne]].
+  destruct Heqv as [e [Hv [He Hne]]].
   unfold trace_generated_event in Hne.
-  assert (~In e (observable_events is v) /\ 
-          ~(exists
-          (prefix suffix : list transition_item) (item : transition_item) (_ : 
-                                                                           tr =
-                                                                           prefix ++ [item] ++ suffix),
-          In e
-            (set_diff decide_eq (observable_events (destination item (projT1 (l item))) v)
-               (set_union decide_eq
-                  (observable_events (last (map destination prefix) is (projT1 (l item))) v)
-                  (option_message_observable_events (input item) v))))). {
-         tauto.
-   }
-  destruct H as [Hcon H].
-  specialize (in_observable_events_first is tr Htr v e).
-  intros. 
-  intros.
-  simpl in H0.
-  specialize (H0 He).
-  destruct H0.
-  replace (last (map destination tr) is) with is in He.
-  intuition.
-  unfold trace_generated_event in Hne.
-  destruct H0 as [pre [suf [item [Heq [H0 Hpre]]]]].
-  assert (tr = pre ++ [item] ++ suf). {
-    rewrite Heq.
-    simpl.
-    reflexivity.
+  assert (Hcon : ~ has_been_observed is e).
+  { intro contra. apply no_events_in_initial_state in contra; [|apply (proj2 Htr)].
+    congruence.
   }
-  rewrite app_assoc in H1.
-  destruct Heq.
+  assert (He' := He).
+  apply (in_observable_events_first is tr Htr e) in He.
+  destruct He as [He | He]; [rewrite He in He'; intuition|].
+  destruct He as [pre [suf [item [Heq [He Hpre]]]]].
+  rewrite app_assoc in Heq.
   subst tr.
   apply not_trace_generated_prefix in Hne.
   destruct Htr as [Htr His].
@@ -736,45 +732,34 @@ Proof.
   rewrite Forall_forall in Hpre.
   apply finite_protocol_trace_from_app_iff in Htr.
   destruct Htr as [Htr Ht].
-  inversion Ht. subst item tl s'. clear Ht H4 He. simpl in H0.
-  apply set_union_in_iterated in H0. apply Exists_exists in H0.
-  destruct H0 as [esi [Hesi He]].
-  apply in_map_iff in Hesi.
-  destruct Hesi as [i [Hesi Hi]]. subst esi.
-  assert (Hnpre : ~In e (observable_events (last (map destination pre) is) v)).
-  { assert (Hpre0: pre = [] \/ pre <> [])
-      by (destruct pre; (left; reflexivity) || (right; intro contra; discriminate contra)).
-    destruct Hpre0 as [Hpre0 | Hpre0].
-    - subst pre. simpl in *.
-      unfold trace_generated_event in Hne.
-      intros contra.
-      intuition.
+  inversion Ht. subst item tl s'. clear Ht H2. simpl in He.
+  destruct He as [i [_ He]].
+  assert (Hnpre : ~has_been_observed (last (map destination pre) is) e).
+  { destruct (null_dec pre) as [Hpre0 | Hpre0].
+    - subst pre. assumption.
     - destruct (exists_last Hpre0) as [pre' [item' Heq']].
       subst pre.
       rewrite map_app. simpl. rewrite last_last.
       apply (Hpre item').
       apply in_app_iff. right. left. reflexivity.
   }
-  assert (Hnei : ~In e (observable_events (last (map destination pre) is (projT1 l)) v)).
+  assert (Hnei : ~has_been_observed (last (map destination pre) is (projT1 l)) e).
   { intro contra. elim Hnpre. simpl.
-    simpl. apply set_union_in_iterated. apply Exists_exists.
-    exists (observable_events (last (map destination pre) is (projT1 l)) v).
-    split; try assumption.
-    apply in_map_iff. exists (projT1 l). split; try reflexivity.
-    apply (proj2 finite_index).
+    simpl. exists (projT1 l). split; [|assumption]. apply (proj2 finite_index).
   }
   destruct (decide (i = (projT1 l))).
   - specialize
-    (not_trace_generated_event _ _ _ _ Hne
+    (not_trace_generated_event _ _ _ Hne
       pre [] {| l := l; input := iom; destination := s; output := oom |}
       eq_refl
     ) as Hng.
-    simpl in Hng. subst i. specialize (Hng He).
-    destruct Hng as [Hng | Hng]; try (elim Hnei; assumption).
-    destruct iom as [m|]; try inversion Hng.
+    simpl in Hng. subst i.
+    specialize (Hng He).
+    destruct Hng as [Hng | Hng]; [elim Hnei; assumption|].
+    destruct iom as [m|]; [|inversion Hng].
     exists m.
     exists pre. exists suf. exists {| l := l; input := Some m; destination := s; output := oom |}.
-    rewrite <- app_assoc. repeat split; try reflexivity.
+    rewrite <- app_assoc. repeat (split; [reflexivity|]).
     intro contra.
     apply in_map_iff in contra.
     destruct contra as [item' [Hout Hitem']].
@@ -787,19 +772,11 @@ Proof.
     destruct Htr as [_ Htr]. inversion Htr.
     subst s' item' tl. simpl in Hout. subst oom0.
     simpl.
-    apply (message_observable_consistency m v _ _ _ H4) in Hng.
-    simpl. apply set_union_in_iterated. apply Exists_exists.
-    exists (observable_events (s0 (projT1 l0)) v).
-    split; try assumption.
-    apply in_map_iff. exists (projT1 l0). split; try reflexivity.
-    apply (proj2 finite_index).
+    apply (message_observable_consistency m _ _ _ H4) in Hng.
+    exists (projT1 l0). split; [|assumption]. apply (proj2 finite_index).
   - replace (s i) with (last (map destination pre) is i) in He.
-    + elim Hnpre.
-      simpl. apply set_union_in_iterated. apply Exists_exists.
-      exists (observable_events (last (map destination pre) is i) v).
-      split; try assumption.
-      apply in_map_iff. exists i. split; try reflexivity. assumption.
-    + symmetry. apply (composite_transition_state_neq _ _ _ _ _ _ _ H5 _ n).
+    + elim Hnpre. exists i. split; [|assumption]. apply (proj2 finite_index).
+    + symmetry. apply (composite_transition_state_neq _ _ _ _ _ _ _ H3 _ n).
 Qed.
 
 (**
@@ -841,8 +818,10 @@ Class composite_vlsm_comparable_generated_events
       (Htr : finite_protocol_trace X is tr)
       (v : validator)
       (e1 e2 : event)
-      (He1 : trace_generated_event is tr v e1)
-      (He2 : trace_generated_event is tr v e2)
+      (He1 : trace_generated_event is tr e1)
+      (He2 : trace_generated_event is tr e2)
+      (Hv1 : subject_of_observation e1 = Some v)
+      (Hv2 : subject_of_observation e2 = Some v)
       : comparable happens_before e1 e2;
   }.
 
@@ -861,19 +840,18 @@ Lemma uncomparable_with_generated_event_equivocation
   (v : validator)
   (e1 e2 : event)
   (s := last (map destination tr) is)
-  (He1 : In e1 (observable_events s v))
-  (He2 : In e2 (observable_events s v))
+  (He1 : has_been_observed s e1)
+  (He2 : has_been_observed s e2)
+  (Hv1 : subject_of_observation e1 = Some v)
+  (Hv2 : subject_of_observation e2 = Some v)
   (Hnc : ~comparable happens_before e1 e2)
-  (Hgen1 : trace_generated_event is tr v e1)
+  (Hgen1 : trace_generated_event is tr e1)
   : equivocating_in_trace_last is tr v.
 Proof.
-  destruct (trace_generated_event_fn is tr v e2) eqn:Hgen2.
-  - apply trace_generated_event_function in Hgen2.
-    contradict Hnc.
-    exact (comparable_generated_events is tr Htr v e1 e2 Hgen1 Hgen2).
-  - exists e2. exists He2. intro contra.
-    apply trace_generated_event_function in contra.
-    rewrite Hgen2 in contra. discriminate contra.
+  destruct (trace_generated_event_dec is tr e2) as [Hgen2|Hgen2].
+  - contradict Hnc.
+    exact (comparable_generated_events is tr Htr v e1 e2 Hgen1 Hgen2 Hv1 Hv2).
+  - exists e2. repeat split; assumption.
 Qed.
 
 (**
@@ -888,20 +866,19 @@ Lemma evidence_implies_equivocation
   (Hs : protocol_state_prop X s)
   (v : validator)
   (e1 e2 : event)
-  (He1 : In e1 (observable_events s v))
-  (He2 : In e2 (observable_events s v))
+  (He1 : has_been_observed s e1)
+  (He2 : has_been_observed s e2)
+  (Hv1 : subject_of_observation e1 = Some v)
+  (Hv2 : subject_of_observation e2 = Some v)
   (Heqv : ~comparable happens_before e1 e2)
   : equivocating_in_all_traces_ending_in_state (exist _ s Hs) v.
 Proof.
   intro is; intros. simpl in Hlast.
   subst s.
-  destruct (trace_generated_event_fn is tr v e1) eqn:Hgen1.
+  destruct (trace_generated_event_dec is tr e1) as [Hgen1| Hgen1].
   - apply uncomparable_with_generated_event_equivocation with e1 e2
-    ; try assumption.
-    apply trace_generated_event_function. assumption.
-  - exists e1. exists He1. intro contra.
-    apply trace_generated_event_function in contra.
-    rewrite Hgen1 in contra. discriminate contra.
+    ; assumption.
+  - exists e1. repeat split; assumption.
 Qed.
 
 (**
@@ -915,15 +892,16 @@ Lemma evidence_implies_equivocation_converse
   (v : validator)
   (Hneqv : not_equivocating_in_some_traces_ending_in_state (exist _ s Hs) v)
   (e1 e2 : event)
-  (He1 : In e1 (observable_events s v))
-  (He2 : In e2 (observable_events s v))
+  (He1 : has_been_observed s e1)
+  (He2 : has_been_observed s e2)
+  (Hv1 : subject_of_observation e1 = Some v)
+  (Hv2 : subject_of_observation e2 = Some v)
   : comparable happens_before e1 e2.
 Proof.
-  destruct (comparable_dec happens_before e1 e2) as [|Hcmp].
-  assumption.
-  specialize (evidence_implies_equivocation s Hs v e1 e2 He1 He2 Hcmp)
+  destruct (comparable_dec happens_before e1 e2) as [|Hcmp]; [assumption|].
+  specialize (evidence_implies_equivocation s Hs v e1 e2 He1 He2 Hv1 Hv2 Hcmp)
     as Heqv.
-  destruct Hneqv as [is [tr [Htr [Hlast Hneqv]]]]. destruct Hneqv.
+  destruct Hneqv as [is [tr [Htr [Hlast Hneqv]]]]. elim Hneqv.
   specialize (Heqv is tr Htr Hlast). assumption.
 Qed.
 
@@ -987,8 +965,10 @@ Lemma no_equivocation_constraint_implies_comparable_events
   (Hs : protocol_state_prop X s)
   (e1 e2 : event)
   (v : validator)
-  (He1 : In e1 (observable_events s v))
-  (He2 : In e2 (observable_events s v))
+  (He1 : has_been_observed s e1)
+  (He2 : has_been_observed s e2)
+  (Hv1 : subject_of_observation e1 = Some v)
+  (Hv2 : subject_of_observation e2 = Some v)
   : comparable happens_before e1 e2.
 Proof.
   apply evidence_implies_equivocation_converse with s Hs v; try assumption.
@@ -1014,10 +994,9 @@ Proof.
   spec contra.
   { split; try assumption. constructor. assumption. }
   specialize (contra eq_refl).
-  destruct contra as [e [He Hrem]]. simpl in He.
-  unfold trace_generated_event in Hrem.
-  destruct Hrem.
-  left. assumption.
+  destruct contra as [e [Hv [He _]]]. simpl in He.
+  specialize (no_events_in_initial_state is Hs) as Heis.
+  spec Heis e He. congruence.
 Qed.
 
 
@@ -1026,16 +1005,19 @@ Context
   {reachable_threshold : ReachableThreshold validator}
   (validators : composite_state IM -> set validator)
   (validators_nodup : forall (s : composite_state IM), NoDup (validators s))
+  (composed_equivocation_evidence := @equivocation_evidence _ _ _ _ _ _ _ composed_observation_based_equivocation_evidence)
+  (composed_equivocation_evidence_dec : RelDecision composed_equivocation_evidence)
   .
 
 Definition composed_observable_basic_equivocation
   : basic_equivocation (composite_state IM) validator
   := @basic_observable_equivocation (composite_state IM) validator event
-      subject_of_observation
       decide_eq
       happens_before
       happens_before_dec
+      subject_of_observation
       composed_observation_based_equivocation_evidence
+      composed_equivocation_evidence_dec
       measurable_V
       reachable_threshold
       validators
@@ -1060,15 +1042,9 @@ Proof.
   symmetry.
   apply filter_nil. rewrite Forall_forall. intros v Hv.
   apply bool_decide_eq_false.
-  intros [e1 [He1 H]].
-  destruct H as [e2 [Hine2 Hcomp]].
-  specialize (no_events_in_initial_state is Hs v e1 e2) as Hno.
-  spec Hno. {
-    apply observed_event_subject with (s := is).
-    assumption.
-  }
-  specialize (Hno He1).
-  intuition.
+  intros [e1 [He1 [Hv1 H]]].
+  specialize (no_events_in_initial_state is Hs _ He1) as Hno.
+  congruence.
 Qed.
 
 End observable_equivocation_in_composition.
@@ -1082,7 +1058,7 @@ Context
   `{EqDecision event}
   {happens_before: event -> event -> Prop}
   {happens_before_dec: RelDecision happens_before}
-  {subject_of_observation : event -> validator}
+  {subject_of_observation : event -> option validator}
   {index : Type}
   `{EqDecision index}
   (index_listing : list index)
@@ -1118,12 +1094,12 @@ gather information through the messages it receives.
       (i := projT1 l)
       (v : validator)
       (Hv : A v <> i)
-      : incl
-        (observable_events (s' i) v)
-        (set_union decide_eq
-          (observable_events (s i) v)
-          (option_message_observable_events index_listing IM Hevidence i0 constraint om v)
-        );
+      (e : event)
+      (He : has_been_observed (s' i) e)
+      (Hv : subject_of_observation e = Some v)
+      : has_been_observed (s i) e \/
+        option_message_has_been_observed index_listing IM Hevidence i0 constraint om e
+      ;
   }.
 
 (** *** On stating unforgeability for received messages
@@ -1153,30 +1129,25 @@ Lemma trace_generated_index
   (Htr : finite_protocol_trace X is tr)
   (v : validator)
   (e : event)
+  (Hv : subject_of_observation e = Some v)
   (prefix suffix : list transition_item)
   (item : transition_item)
   (Heq : tr = prefix ++ [item] ++ suffix)
   (i := projT1 (l item))
   (s := last (map destination prefix) is)
   (s' := destination item)
-  (He : In e
-      (set_diff decide_eq
-        (observable_events (s' i) v)
-        (set_union decide_eq
-          (observable_events (s i) v)
-          (option_message_observable_events index_listing IM Hevidence i0 constraint (input item) v)
-        )
-      )
-  )
+  (He : transition_generated_event index_listing IM Hevidence i0 constraint (s i) (input item) (s' i) e)
   : A v = i.
 Proof.
-  destruct (decide ((A v) = i)); try assumption.
-  specialize (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr)).
-  intro Hpt.
-  specialize (sent_messages_unforgeability s s' (input item) (output item) (l item) Hpt v n) as Hincl.
-  apply set_diff_iff in He.
+  destruct (decide ((A v) = i)); [assumption|].
+  specialize
+    (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr))
+    as Hpt.
+  specialize
+    (sent_messages_unforgeability s s' (input item) (output item) (l item) Hpt v n e)
+    as Hincl.
   destruct He as [He Hne].
-  apply Hincl in He. elim Hne. assumption.
+  apply Hincl in He; [|assumption]. clear -He Hne. firstorder.
 Qed.
 
 End unforgeable_messages.

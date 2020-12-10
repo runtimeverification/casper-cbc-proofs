@@ -531,7 +531,7 @@ Proof.
   destruct (le_lt_dec (S (S ns')) (S ns')); [lia|].
   rewrite eq_dec_if_true; reflexivity.
 Qed.
-    
+
 Lemma equivocator_protocol_transition_item_project_inv5
   (l : vlabel equivocator_vlsm)
   (s s' : vstate equivocator_vlsm)

@@ -33,28 +33,45 @@ Section CompositeValidator.
   Existing Instance eq_V.
   Existing Instance message_preceeds_dec.
 
-  Definition full_node_validator_observable_events
+  Definition full_node_validator_has_been_observed
     (s : state C V)
-    (v : V)
-    : set message
+    (m : message)
+    : Prop
     :=
-    full_node_client_observable_events (get_message_set s) v.
+    full_node_client_has_been_observed (get_message_set s) m.
 
   Program Definition full_node_validator_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (state C V) V message decide_eq _ message_preceeds_dec sender
+    : observation_based_equivocation_evidence (state C V) V message decide_eq _ message_preceeds_dec full_node_message_subject_of_observation
     :=
     {|
-      observable_events := full_node_validator_observable_events
+      has_been_observed := full_node_validator_has_been_observed
     |}.
   Next Obligation.
-  unfold full_node_validator_observable_events in He.
-  unfold full_node_client_observable_events in He.
-  apply filter_In in He.
-  destruct He as [_ He].
-  destruct (decide (sender e = v)); solve [intuition; discriminate He].
+    intros s m.
+    apply in_dec.
+    apply message_eq.
   Qed.
 
   Existing Instance full_node_validator_observation_based_equivocation_evidence.
+
+  Instance full_node_validator_observation_based_equivocation_evidence_dec
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence).
+  Proof.
+    intros s m. unfold equivocation_evidence.
+    unfold has_been_observed. simpl. unfold full_node_client_has_been_observed.
+    apply (Decision_iff (Exists_exists _ _)).
+    apply @Exists_dec.
+    intro m1.
+    apply Decision_and; [apply option_eq_dec|].
+    apply (Decision_iff (Exists_exists _ _)).
+    apply @Exists_dec.
+    intro m2.
+    apply Decision_and; [apply option_eq_dec|].
+    apply Decision_not.
+    apply comparable_dec.
+    assumption.
+  Qed.
+
 
   Definition full_node_validator_state_validators
     (s : state C V)
@@ -71,8 +88,8 @@ Section CompositeValidator.
 
   Definition validator_basic_equivocation
     : basic_equivocation (state C V) V
-    := basic_observable_equivocation (state C V) V message _
-        _ full_node_validator_state_validators full_node_validator_state_validators_nodup.
+    := @basic_observable_equivocation (state C V) V message
+        message_eq _ (validator_message_preceeds_dec C V) full_node_message_subject_of_observation full_node_validator_observation_based_equivocation_evidence _ _ _  full_node_validator_state_validators full_node_validator_state_validators_nodup.
 
   (** * Full-node validator VLSM instance
 

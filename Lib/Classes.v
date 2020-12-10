@@ -4,6 +4,7 @@ From Coq.Program Require Import Basics Syntax.
 
 Global Generalizable All Variables.
 
+
 (** * General typeclasses *)
 
 (** This typeclass hierarchy has been adapted mainly from the
@@ -332,3 +333,64 @@ Proof.
   revert Hirr;apply Reflexive_reexpress_impl. apply complement_equivalence. assumption.
   revert Htrans;apply Transitive_reexpress_impl. assumption.
 Qed.
+
+Definition dec_sig {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)} : Type
+  := sig (fun a => bool_decide (P a) = true).
+
+Definition dec_exist {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)}
+  (a : A) (p : P a) : dec_sig P
+  := exist _ a (decide_True true false p).
+
+Definition dec_proj1_sig
+  `{P_dec : forall x : A, Decision (P x)}
+  (ap : dec_sig P) : A
+  := proj1_sig ap.
+
+Lemma dec_proj2_sig
+  `{P_dec : forall x: A, Decision (P x)}
+  (ap : dec_sig P) : P (dec_proj1_sig ap).
+Proof.
+  destruct ap as (a, Pa). simpl.
+  unfold bool_decide in Pa.
+  destruct (P_dec a).
+  - assumption.
+  - discriminate Pa.
+Qed.
+
+Lemma bool_proof_irrelevance : forall (b : bool) (p1 p2 : b = true), p1 = p2.
+Proof.
+  intros. apply Eqdep_dec.eq_proofs_unicity. intros.
+  destruct (Bool.bool_dec x y); tauto.
+Qed.
+
+Lemma dec_sig_eq_iff
+  `{P_dec : forall x: A, Decision (P x)}
+  (xp yp : dec_sig P)
+  : xp = yp <-> dec_proj1_sig xp = dec_proj1_sig yp.
+Proof.
+  destruct xp as (x, Px).  destruct yp as (y, Py).
+  simpl.
+  split; intros Heq.
+  - inversion Heq. reflexivity.
+  - subst y. f_equal. apply bool_proof_irrelevance.
+Qed.
+
+Lemma dec_sig_eq_dec
+  `{P_dec : forall x: A, Decision (P x)}
+  (EqDecA : EqDecision A)
+  : EqDecision (dec_sig P).
+Proof.
+  intros (x,Px) (y, Py).
+  destruct (decide (x = y)).
+  - left. apply dec_sig_eq_iff. assumption.
+  - right. intro contra. elim n.
+    apply dec_sig_eq_iff in contra. assumption.
+Qed.
+
+Lemma iff_dec {P Q : Prop}:
+  P <-> Q -> Decision P -> Decision Q.
+Proof. firstorder. Qed.
+
+Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
+  (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
+Proof. firstorder. Qed.
