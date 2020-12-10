@@ -350,17 +350,9 @@ Lemma dec_proj2_sig
   `{P_dec : forall x: A, Decision (P x)}
   (ap : dec_sig P) : P (dec_proj1_sig ap).
 Proof.
-  destruct ap as (a, Pa). simpl.
-  unfold bool_decide in Pa.
-  destruct (P_dec a).
-  - assumption.
-  - discriminate Pa.
-Qed.
-
-Lemma bool_proof_irrelevance : forall (b : bool) (p1 p2 : b = true), p1 = p2.
-Proof.
-  intros. apply Eqdep_dec.eq_proofs_unicity. intros.
-  destruct (Bool.bool_dec x y); tauto.
+  destruct ap;simpl.
+  apply bool_decide_eq_true in e.
+  assumption.
 Qed.
 
 Lemma dec_sig_eq_iff
@@ -368,11 +360,10 @@ Lemma dec_sig_eq_iff
   (xp yp : dec_sig P)
   : xp = yp <-> dec_proj1_sig xp = dec_proj1_sig yp.
 Proof.
-  destruct xp as (x, Px).  destruct yp as (y, Py).
-  simpl.
-  split; intros Heq.
-  - inversion Heq. reflexivity.
-  - subst y. f_equal. apply bool_proof_irrelevance.
+  apply eq_sig_hprop_iff.
+  intro x.
+  apply Eqdep_dec.UIP_dec.
+  apply Bool.bool_dec.
 Qed.
 
 Lemma dec_sig_eq_dec
@@ -380,16 +371,10 @@ Lemma dec_sig_eq_dec
   (EqDecA : EqDecision A)
   : EqDecision (dec_sig P).
 Proof.
-  intros (x,Px) (y, Py).
-  destruct (decide (x = y)).
-  - left. apply dec_sig_eq_iff. assumption.
-  - right. intro contra. elim n.
-    apply dec_sig_eq_iff in contra. assumption.
+  intros x y.
+  apply (Decision_iff (iff_sym (dec_sig_eq_iff _ _))).
+  apply EqDecA.
 Qed.
-
-Lemma iff_dec {P Q : Prop}:
-  P <-> Q -> Decision P -> Decision Q.
-Proof. firstorder. Qed.
 
 Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
   (exists x, P /\ Q x) <-> (P /\ exists x, Q x).

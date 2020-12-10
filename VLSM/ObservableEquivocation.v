@@ -136,7 +136,7 @@ Proof.
   congruence.
   }
 
-  apply (iff_dec H);clear H.
+  apply (Decision_iff H);clear H.
   apply @Exists_dec;intro e1.
   apply Decision_and; [apply option_eq_dec|].
   apply @Exists_dec;intro e2.

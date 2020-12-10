@@ -239,42 +239,36 @@ Lemma Exists_first
          ~Exists P prefix.
 
 Proof.
-  generalize dependent l.
-  induction l; intros; [inversion Hsomething|].
+  induction l;[solve[inversion Hsomething]|].
   destruct (decide (P a)).
-  - exists [].
-    exists l.
-    exists a.
-    split; [assumption|].
-    simpl.
-    intuition.
-    inversion H.
-  - simpl in *.
-    inversion Hsomething; [elim n; assumption|].
-    subst.
-    specialize (IHl H0).
-    destruct IHl as [prefix [suffix [first [Hf [Hconcat Hnone_before]]]]].
-    exists (a :: prefix).
-    exists suffix.
-    exists first.
-    split; [assumption|].
-    subst.
-    split; [reflexivity|].
-    intro contra.
-    inversion contra; contradiction.
+  - exists nil, l, a.
+    rewrite Exists_nil.
+    tauto.
+  - apply Exists_cons in Hsomething.
+    destruct Hsomething;[exfalso;tauto|].
+    specialize (IHl H);clear H.
+    destruct IHl as [prefix [suffix [first [Hf [-> Hnone_before]]]]].
+    exists (a :: prefix), suffix, first.
+    rewrite Exists_cons.
+    tauto.
+Qed.
+
+Lemma existsb_Exists {A} (f : A -> bool):
+  forall l, existsb f l = true <-> Exists (fun x => f x = true) l.
+Proof.
+  intro l.
+  rewrite Exists_exists.
+  apply existsb_exists.
 Qed.
 
 Lemma existsb_forall {A} (f : A -> bool):
   forall l, existsb f l = false <-> forall x, In x l -> f x = false.
 Proof.
-  induction l; split; intros.
-  - inversion H0.
-  - reflexivity.
-  - inversion H. apply orb_false_iff in  H2. destruct H2 as [Hfa Hex]. rewrite Hfa.
-    rewrite Hex. simpl. destruct H0 as [Heq | Hin]; subst; try assumption.
-    apply IHl; try assumption.
-  - simpl. rewrite H; try (left; reflexivity). rewrite IHl; try reflexivity.
-    intros. apply H. right. assumption.
+  intro l.
+  setoid_rewrite <- not_true_iff_false.
+  rewrite existsb_Exists, <- Forall_forall.
+  symmetry.
+  apply Forall_Exists_neg.
 Qed.
 
 Lemma existsb_first
@@ -289,19 +283,11 @@ Lemma existsb_first
          l = prefix ++ [first] ++ suffix /\
          (existsb f prefix = false).
 Proof.
-  specialize (Exists_first l (fun a => f a = true)) as Hexists.
-  spec Hexists. { intro a. destruct (f a); intuition. }
-  rewrite existsb_exists in Hsomething.
-  rewrite Exists_exists in Hexists at 1.
-  spec Hexists Hsomething.
-  destruct Hexists as [prefix [suffix [first [Hf [Hconcat Hnone_before]]]]].
-  exists prefix, suffix, first.
-  split; [assumption|].
-  split; [assumption|].
-  apply existsb_forall.
-  intros.
-  destruct (f x) eqn:Hfx; [|reflexivity].
-  elim Hnone_before. apply Exists_exists. exists x. intuition.
+  setoid_rewrite <-not_true_iff_false.
+  setoid_rewrite existsb_Exists.
+  apply Exists_first.
+  intro a;apply decide_eq.
+  apply existsb_Exists;assumption.
 Qed.
 
 Lemma in_not_in : forall A (x y : A) l,
