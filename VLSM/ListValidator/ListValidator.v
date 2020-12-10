@@ -13,7 +13,7 @@ Section ListNode.
 We introduce here the "minimal list validator protocol", by quoting the official
 documentation:
 
-In this section, we propose a protocol where each validator keeps a list of states of other validators. Each validator broadcasts its view of the other validators’
+In this section, we propose a protocol where each validator keeps a list of states of other validators. Each validator broadcasts its view of the other validators'
 states. We claim that the protocol is nontrivial and safe: when equivocations are limited, it is possible to reach either outcome, and if the protocol reaches
 a decision, all the validators agree on what it is.
 

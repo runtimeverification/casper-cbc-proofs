@@ -11,7 +11,9 @@ RUN    apt-get update               \
                     ocaml           \
                     rsync           \
                     unzip           \
-                    wget
+                    wget            \
+                    python3         \
+                    python3-pip
 
 ENV OPAM_VERSION="2.0.7"
 
@@ -49,8 +51,8 @@ RUN    opam init --auto-setup --yes --jobs=${NJOBS} --compiler=${COMPILER} --dis
 
 # From: https://github.com/coq-community/docker-coq/blob/master/Dockerfile
 
-ENV COQ_VERSION="8.12.0"
-ENV COQ_EXTRA_OPAM="coq-bignums coq-coq2html"
+ENV COQ_VERSION="8.12.1"
+ENV COQ_EXTRA_OPAM="coq-bignums coq-coq2html coq-serapi"
 
 RUN    eval $(opam env --switch=${COMPILER} --set-switch)   \
     && opam update -y -u                                    \
@@ -71,3 +73,12 @@ RUN    git config --global user.email 'admin@runtimeverification.com' \
     && echo '    identityagent SSH_AUTH_SOCK'      >> ~/.ssh/config   \
     && echo '    stricthostkeychecking accept-new' >> ~/.ssh/config   \
     && chmod go-rwx -R ~/.ssh
+
+# Setup Alectryon
+
+ENV ALECTRYON_SHA="66477e9841ae3b73bbb38f93a674d5c7d97d1feb"
+
+RUN    python3 -m pip install --user --upgrade pygments dominate beautifulsoup4 docutils \
+    && git clone https://github.com/cpitclaudel/alectryon.git ~/alectryon                \
+    && cd ~/alectryon                                                                    \
+    && git checkout ${ALECTRYON_SHA}
