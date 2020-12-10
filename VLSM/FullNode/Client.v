@@ -151,13 +151,7 @@ messages, implementing a limited equivocation tolerance policy.
     (Hs : protocol_state_prop bvlsm s)
     : NoDup s.
   Proof.
-    generalize dependent s.
-    apply
-      (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm VLSM_full_client2)
-        (fun (s : vstate (pre_loaded_with_all_messages_vlsm VLSM_full_client2)) =>
-          NoDup s
-        )
-      ); intros.
+    induction Hs using protocol_state_prop_ind.
     - inversion Hs. constructor.
     - destruct Ht as [_ Ht].
       simpl in Ht. unfold vtransition in Ht. simpl in Ht.
@@ -210,29 +204,21 @@ messages, implementing a limited equivocation tolerance policy.
     (Hm : In m s)
     : incl (unmake_message_set (justification_message_set (get_justification m))) s.
   Proof.
-    generalize dependent m. generalize dependent s.
-    pose
-      (fun (s : set message) =>
-        forall (m : message) (Hm : In m s),
-          incl
-            (unmake_message_set (justification_message_set (get_justification m)))
-            s
-      ) as P.
-    apply (protocol_state_prop_ind bvlsm P); unfold P; intros.
+    induction Hs using protocol_state_prop_ind.
     - inversion Hs. subst s. inversion Hm.
     - destruct Ht as [[Hps [Hom Hv]] Ht].
       simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       simpl in Hv. unfold vvalid in Hv. simpl in Hv.
       destruct om as [msg|]; inversion Ht; subst; clear Ht
-      ; simpl in Hs; simpl in Hv; simpl
-      ; try (apply Hs; assumption).
+      ; simpl in IHHs; simpl in Hv; simpl;
+        [|apply IHHs;assumption].
       destruct Hv as [Hnmsg [Hv Hnh]].
       apply set_add_iff in Hm.
       destruct Hm as [Heqm | Hm].
       + subst m.
         apply incl_tran with s; try assumption.
         intros x Hx; apply set_add_iff. right. assumption.
-      + specialize (Hs m Hm).
+      + specialize (IHHs Hm).
         apply incl_tran with s; try assumption.
         intros x Hx; apply set_add_iff. right. assumption.
   Qed.

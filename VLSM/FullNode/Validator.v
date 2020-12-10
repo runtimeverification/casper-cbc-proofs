@@ -186,13 +186,7 @@ Section proper_sent_received.
     (Hs : protocol_state_prop bvlsm s)
     : NoDup (get_message_set s).
   Proof.
-    generalize dependent s.
-    apply
-      (protocol_state_prop_ind bvlsm
-        (fun (s : vstate bvlsm) =>
-          NoDup (get_message_set s)
-        )
-      ); intros.
+    induction Hs using protocol_state_prop_ind.
     - inversion Hs. constructor.
     - destruct Ht as [_ Ht].
       simpl in Ht. unfold vtransition in Ht. simpl in Ht.
@@ -267,15 +261,7 @@ Section proper_sent_received.
     (Hlst : last_sent s = Some lst)
     : In lst (get_message_set s).
   Proof.
-    generalize dependent lst.
-    generalize dependent s.
-    apply
-      (protocol_state_prop_ind bvlsm
-        (fun (s : vstate bvlsm) =>
-          forall (lst: message) (Hlst : last_sent s = Some lst),
-            In lst (get_message_set s)
-        )
-      ); intros.
+    induction Hs using protocol_state_prop_ind.
     - inversion Hs. subst s. inversion Hlst.
     - destruct Ht as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       destruct s as (msgs, final).
@@ -284,7 +270,7 @@ Section proper_sent_received.
         ; inversion Hlst; apply set_add_iff; left; reflexivity.
       + destruct om as [msg|]; inversion Ht; subst
         ; simpl in Hlst; subst final
-        ; specialize (Hs lst eq_refl); simpl; try assumption.
+        ; specialize (IHHs eq_refl); simpl; [|assumption].
         apply set_add_iff. right. assumption.
   Qed.
 
@@ -296,17 +282,8 @@ Section proper_sent_received.
     (j := get_justification lst)
     : exists sj : state C V, protocol_state_prop bvlsm sj /\ make_justification sj = j.
   Proof.
-    generalize dependent lst. simpl.
-    generalize dependent s.
-    apply
-      (protocol_state_prop_ind bvlsm
-        (fun (s : vstate bvlsm) =>
-          forall (lst: message) (Hlst : last_sent s = Some lst),
-            exists sj : state C V,
-              protocol_state_prop bvlsm sj
-              /\ make_justification sj = get_justification lst
-        )
-      ); intros.
+    subst j.
+    induction Hs using protocol_state_prop_ind.
     - inversion Hs. subst s. inversion Hlst.
     - destruct Ht as [[Hps [Hom Hv]] Ht].
        simpl in Ht. unfold vtransition in Ht. simpl in Ht.
@@ -318,7 +295,7 @@ Section proper_sent_received.
         ; split; try assumption; reflexivity.
       + destruct om as [msg|]; inversion Ht; subst
         ; simpl in Hlst; subst final
-        ; specialize (Hs lst eq_refl); simpl; assumption.
+        ; specialize (IHHs eq_refl); simpl; assumption.
   Qed.
 
   Lemma in_protocol_state
@@ -328,40 +305,30 @@ Section proper_sent_received.
     (Hm : In m (get_message_set s))
     : incl (unmake_message_set (justification_message_set (get_justification m))) (get_message_set s).
   Proof.
-    generalize dependent m. generalize dependent s.
-    pose
-      (fun (s : state C V) =>
-        forall (m : message) (Hm : In m (get_message_set s)),
-          incl
-            (unmake_message_set (justification_message_set (get_justification m)))
-            (get_message_set s)
-      ) as P.
-    apply (protocol_state_prop_ind bvlsm P); unfold P; intros.
+    induction Hs using protocol_state_prop_ind.
     - inversion Hs. subst s. inversion Hm.
     - destruct Ht as [[Hps [Hom Hv]] Ht].
       simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       simpl in Hv. unfold vvalid in Hv. simpl in Hv.
       destruct s as (msgs, final).
       destruct l as [c|].
-      + inversion Ht; subst; clear Ht.
-        destruct final as [m0|]; simpl in *
-        ; apply set_add_iff in Hm
-        ; destruct Hm as [Heq | Hm]
-        ; intros msg Hmsg
-        ; apply set_add_iff
-        ; right
-        ; try (subst m; simpl in Hmsg; apply make_unmake_message_set_eq; assumption)
-        ; specialize (Hs m Hm); apply Hs; assumption.
+      + inversion Ht; subst s' om';clear Ht;simpl in * |- *.
+        apply set_add_iff in Hm.
+        intros msg Hmsg; apply set_add_iff; right.
+        destruct Hm;[|apply IHHs;assumption].
+        subst m; clear -Hmsg;simpl in Hmsg.
+        apply make_unmake_message_set_eq.
+        destruct final;assumption.
       + destruct om as [msg|]; inversion Ht; subst; clear Ht
-        ; simpl in Hs; simpl in Hv; simpl
-        ; try (apply Hs; assumption).
+        ; simpl in IHHs; simpl in Hv; simpl
+        ; [|apply IHHs; assumption].
         destruct Hv as [Hnmsg Hv].
         apply set_add_iff in Hm.
         destruct Hm as [Heqm | Hm].
         * subst m.
           apply incl_tran with msgs; try assumption.
           intros x Hx; apply set_add_iff. right. assumption.
-        * specialize (Hs m Hm).
+        * specialize (IHHs Hm).
           apply incl_tran with msgs; try assumption.
           intros x Hx; apply set_add_iff. right. assumption.
   Qed.

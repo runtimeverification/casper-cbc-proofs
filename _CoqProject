@@ -15,7 +15,7 @@ VLSM/Equivocators/MessageProperties.v
 VLSM/Equivocators/MergeProjections.v
 VLSM/Equivocators/Composition/Common.v
 VLSM/Equivocators/Composition/Projections.v
-VLSM/Equivocators/Composition/SimulatingFree/ResetTraces.v
+VLSM/Equivocators/Composition/SimulatingFree/FullReplayTraces.v
 VLSM/Equivocators/Composition/SimulatingFree/SimulatingFree.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
