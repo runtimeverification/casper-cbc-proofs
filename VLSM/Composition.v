@@ -1177,12 +1177,7 @@ All results from regular projections carry to these "free" projections.
     : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
   Proof.
     revert i. generalize dependent s.
-    apply
-      (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm X)
-        (fun (s : vstate (pre_loaded_with_all_messages_vlsm X)) =>
-          forall i : index, protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i)
-        )
-      ); intros.
+    induction 1 using protocol_state_prop_ind; intros.
     - apply protocol_state_prop_iff. left. specialize (Hs i). unfold vinitial_state_prop in Hs.
       exists (exist _ (s i) Hs). reflexivity.
     - destruct Ht as [[Hps [Hpm [Hv _]]] Ht].
@@ -1193,7 +1188,7 @@ All results from regular projections carry to these "free" projections.
       inversion Ht. subst s' omi'; clear Ht.
       destruct (decide (i = i')).
       + subst i'. rewrite state_update_eq.
-        specialize (Hs i).
+        specialize (IHHs i).
         apply protocol_state_prop_iff. right.
         exists li'. exists (s i, om). exists om'.
         repeat split; try assumption.
@@ -1204,7 +1199,7 @@ All results from regular projections carry to these "free" projections.
           pose (exist _ m Him) as im.
           apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm (IM i)) im).
         * apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm (IM i))).
-      + rewrite state_update_neq; try assumption. apply Hs.
+      + rewrite state_update_neq; try assumption. apply IHHs.
   Qed.
 
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_eq
