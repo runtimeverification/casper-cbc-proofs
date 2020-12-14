@@ -15,7 +15,7 @@ COQ2HTMLDIR = docs/coq2html
 
 ALECTRYON = ~/alectryon/alectryon.py
 ALECTRYONDIR = docs/alectryon
-ALECTRYONHTMLFLAGS = --frontend coqdoc --webpage-style windowed
+ALECTRYONHTMLFLAGS = --frontend coqdoc --webpage-style windowed --no-header
 ALECTRYONHTMLFILES = $(VFILES:.v=.alectryon.html)
 
 coqdoc: $(GLOBFILES) $(VFILES) $(CSSFILES) $(JSFILES) $(HTMLFILES)
