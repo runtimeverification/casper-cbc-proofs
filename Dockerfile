@@ -76,9 +76,9 @@ RUN    git config --global user.email 'admin@runtimeverification.com' \
 
 # Setup Alectryon
 
-ENV ALECTRYON_SHA="66477e9841ae3b73bbb38f93a674d5c7d97d1feb"
+ENV ALECTRYON_SHA="e1193454760cabbc907b74a1e67fa55d7c2d02bb"
 
 RUN    python3 -m pip install --user --upgrade pygments dominate beautifulsoup4 docutils \
-    && git clone https://github.com/cpitclaudel/alectryon.git ~/alectryon                \
+    && git clone https://github.com/palmskog/alectryon.git ~/alectryon                   \
     && cd ~/alectryon                                                                    \
     && git checkout ${ALECTRYON_SHA}
