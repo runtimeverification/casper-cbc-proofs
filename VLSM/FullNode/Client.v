@@ -52,36 +52,27 @@ messages, implementing a limited equivocation tolerance policy.
     : option V
     := Some (sender m).
 
+ Program Instance observable_messages
+   : observable_events message message
+   := {
+     has_been_observed (m e :message) := m = e \/ In e (get_message_set (unmake_justification (get_justification m))) 
+   }.
+ Next Obligation.
+   intros m e. apply Decision_or; [| apply in_dec]; apply message_eq.
+ Defined.
 
-  Program Instance full_node_client_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (set message) V message decide_eq _ happens_before_dec full_node_message_subject_of_observation
-    :=
-    {|
-      has_been_observed := full_node_client_has_been_observed
-    |}.
-  Next Obligation.
-    intros s m.
-    apply in_dec.
-    apply message_eq.
-  Qed.
+
+  Instance full_node_client_observable_messages
+    : observable_events (set message) message
+    := state_observable_events_instance (set message) message _ (fun s => s).
+
+  Instance full_node_client_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (set message) V message _ decide_eq _ happens_before_dec full_node_message_subject_of_observation
+    := observable_events_equivocation_evidence _ _ _ _ (fun s => s) _ happens_before_dec full_node_message_subject_of_observation.
 
   Instance full_node_client_observation_based_equivocation_evidence_dec
-    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence).
-  Proof.
-    intros s m. unfold equivocation_evidence.
-    unfold has_been_observed. simpl. unfold full_node_client_has_been_observed.
-    apply (Decision_iff (Exists_exists _ _)).
-    apply @Exists_dec.
-    intro m1.
-    apply Decision_and; [apply option_eq_dec|].
-    apply (Decision_iff (Exists_exists _ _)).
-    apply @Exists_dec.
-    intro m2.
-    apply Decision_and; [apply option_eq_dec|].
-    apply Decision_not.
-    apply comparable_dec.
-    assumption.
-  Qed.
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence)
+    := observable_events_equivocation_evidence_dec _ _ _ _ (fun s => s) _ _ happens_before_dec full_node_message_subject_of_observation.
 
   Definition full_node_client_state_validators
     (s : set message)
@@ -99,7 +90,7 @@ messages, implementing a limited equivocation tolerance policy.
   Definition client_basic_equivocation
     : basic_equivocation (set message) V
     := @basic_observable_equivocation (set message) V message
-        message_eq _ happens_before_dec full_node_message_subject_of_observation full_node_client_observation_based_equivocation_evidence _ _ _  full_node_client_state_validators full_node_client_state_validators_nodup.
+        message_eq _ happens_before_dec full_node_client_observable_messages full_node_message_subject_of_observation full_node_client_observation_based_equivocation_evidence _ _ _  full_node_client_state_validators full_node_client_state_validators_nodup.
 
   Existing Instance client_basic_equivocation.
 
@@ -160,6 +151,16 @@ messages, implementing a limited equivocation tolerance policy.
     |}.
 
   Definition VLSM_full_client2 : VLSM message := mk_vlsm VLSM_full_client2_machine.
+
+  Program Instance full_node_client_vlsm_observable_messages
+    : vlsm_observable_events VLSM_full_client2 full_node_message_subject_of_observation.
+  Next Obligation.
+    replace s with (@nil message) in He by assumption.
+    inversion He.
+  Qed.
+  Next Obligation.
+    unfold vtransition in Ht. simpl in Ht. destruct o; congruence.
+  Qed.
 
   Section proper_sent_received.
   Context

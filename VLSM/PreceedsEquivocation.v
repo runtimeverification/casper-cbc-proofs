@@ -390,15 +390,20 @@ Proof.
   apply in_dec. assumption.
 Qed.
 
-Definition message_observation_based_equivocation_evidence
-  : @observation_based_equivocation_evidence state validator message _ _ message_preceeds_dec sender
+Instance observable_messages
+  : observable_events state message
   :=
   {| has_been_observed := has_been_observed_messages;
      has_been_observed_dec := has_been_observed_messages_dec
   |}.
 
+
+Definition message_observation_based_equivocation_evidence
+  : @observation_based_equivocation_evidence state validator message _ _ _ message_preceeds_dec sender.
+Proof. split. Defined.  
+
 Local Instance message_observation_based_equivocation_evidence_dec
-  : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ message_observation_based_equivocation_evidence).
+  : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ message_observation_based_equivocation_evidence).
 Proof.
   intros s v.
   unfold equivocation_evidence.
@@ -425,7 +430,7 @@ on [sender] and thus obtain a [basic_equivocation] instance through the
 Definition message_basic_observable_equivocation
   (Hevidence := message_observation_based_equivocation_evidence)
   : basic_equivocation state validator
-  := @basic_observable_equivocation state validator message _ _ _ sender Hevidence _ _ _ state_encapsulating_messages_validators state_encapsulating_messages_validators_nodup.
+  := @basic_observable_equivocation state validator message _ _ _ _ sender Hevidence _ _ _ state_encapsulating_messages_validators state_encapsulating_messages_validators_nodup.
 
 
 (**

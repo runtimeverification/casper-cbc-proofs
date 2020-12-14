@@ -73,18 +73,30 @@ Definition Full_composition_constraint
 Definition Full_constrained_composition : VLSM message
   := composite_vlsm IM_index i0 Full_composition_constraint.
 
+Existing Instance observable_messages.
+
 Lemma Full_composition_constraint_state_not_heavy
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
   : not_heavy s.
 Proof.
+  specialize
+    (@initial_state_not_heavy message V message _ 
+      _ (validator_message_preceeds_dec C V)
+      full_node_message_subject_of_observation
+      _ _ _ 
+      finite_index IM_index free_observable_messages_index _
+      free_composite_vlsm_observable_messaged_index
+      free_observation_based_equivocation_evidence_index
+      i0 Full_composition_constraint _ _ _ (composite_validators_nodup indices))
+    as Hinitial_not_heavy.
   destruct Hs as [_om Hs].
   inversion Hs; subst; simpl.
   - unfold s0.
-    apply initial_state_not_heavy; try apply free_composite_vlsm_observable_messages.
+    apply Hinitial_not_heavy.
     destruct is. assumption.
   - unfold s0.
-    apply initial_state_not_heavy; try apply free_composite_vlsm_observable_messages.
+    apply Hinitial_not_heavy.
     destruct Common.s0. assumption.
   - destruct Hv as [Hv Hctr].
     unfold Full_composition_constraint in Hctr.
@@ -724,8 +736,9 @@ Proof.
       simpl in Hincl.
       apply not_heavy_incl with s; [assumption| | | assumption].
       * apply set_map_incl. assumption.
-      * intros m Hm. apply composite_has_been_observed_state_union; [assumption|].
-        apply Hincl. apply composite_has_been_observed_state_union; assumption.
+      * intros m Hm.
+       specialize (composite_has_been_observed_state_union _ finite_index) as Hunion.
+       apply Hunion. apply Hincl. apply Hunion. assumption.
     + unfold receive_destination.
       unfold vtransition. simpl.
       destruct i as [v | client]

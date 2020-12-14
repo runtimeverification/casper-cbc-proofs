@@ -392,6 +392,30 @@ Section Simple.
       symmetry;exact Hconsistency.
     Qed.
 
+  (** It is now straightforward to define a [no_equivocations] composition constraint.
+      An equivocating transition can be detected by calling the [has_been_sent]
+      oracle on its arguments and we simply forbid them **)
+
+      Definition equivocation
+      {Hbs : has_been_sent_capability}
+      (m : message)
+      (s : state)
+      : Prop
+      :=
+      has_not_been_sent s m.
+   
+     Definition no_equivocations
+       {Hbs : has_been_sent_capability}
+       (l : vlabel vlsm)
+       (som : state * option message)
+       : Prop
+       :=
+       let (s, om) := som in
+       match om with
+       | None => True
+       | Some m => has_been_sent s m
+       end.
+   
     Class has_been_received_capability := {
       has_been_received: state_message_oracle;
       has_been_received_dec :> RelDecision has_been_received;
@@ -1067,28 +1091,6 @@ Section Composite.
     ; proper_sent := composite_proper_sent
     ; proper_not_sent := composite_proper_not_sent
     }.
-
-  (** It is now straightforward to define a [no_equivocations] composition constraint.
-      An equivocating transition can be detected by calling the [has_been_sent]
-      oracle on its arguments and we simply forbid them **)
-
-  Definition equivocation
-   (m : message)
-   (s : vstate X)
-   : Prop
-   :=
-   has_not_been_sent X s m.
-
-  Definition no_equivocations
-    (l : vlabel X)
-    (som : vstate X * option message)
-    : Prop
-    :=
-    let (s, om) := som in
-    match om with
-    | None => True
-    | Some m => has_been_sent X s m
-    end.
 
   Context
         {validator : Type}

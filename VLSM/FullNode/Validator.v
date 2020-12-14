@@ -33,45 +33,17 @@ Section CompositeValidator.
   Existing Instance eq_V.
   Existing Instance message_preceeds_dec.
 
-  Definition full_node_validator_has_been_observed
-    (s : state C V)
-    (m : message)
-    : Prop
-    :=
-    full_node_client_has_been_observed (get_message_set s) m.
+  Instance full_node_validator_observable_messages
+    : observable_events (state C V) message
+    := state_observable_events_instance (state C V) message _ get_message_set.
 
-  Program Definition full_node_validator_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (state C V) V message decide_eq _ message_preceeds_dec full_node_message_subject_of_observation
-    :=
-    {|
-      has_been_observed := full_node_validator_has_been_observed
-    |}.
-  Next Obligation.
-    intros s m.
-    apply in_dec.
-    apply message_eq.
-  Qed.
-
-  Existing Instance full_node_validator_observation_based_equivocation_evidence.
+  Instance full_node_validator_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (state C V) V message _ decide_eq _ message_preceeds_dec full_node_message_subject_of_observation
+    := observable_events_equivocation_evidence _ _ _ _ get_message_set _ message_preceeds_dec full_node_message_subject_of_observation.
 
   Instance full_node_validator_observation_based_equivocation_evidence_dec
-    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence).
-  Proof.
-    intros s m. unfold equivocation_evidence.
-    unfold has_been_observed. simpl. unfold full_node_client_has_been_observed.
-    apply (Decision_iff (Exists_exists _ _)).
-    apply @Exists_dec.
-    intro m1.
-    apply Decision_and; [apply option_eq_dec|].
-    apply (Decision_iff (Exists_exists _ _)).
-    apply @Exists_dec.
-    intro m2.
-    apply Decision_and; [apply option_eq_dec|].
-    apply Decision_not.
-    apply comparable_dec.
-    assumption.
-  Qed.
-
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence)
+    := observable_events_equivocation_evidence_dec _ _ _ _ get_message_set _ _ message_preceeds_dec full_node_message_subject_of_observation.
 
   Definition full_node_validator_state_validators
     (s : state C V)
@@ -89,7 +61,7 @@ Section CompositeValidator.
   Definition validator_basic_equivocation
     : basic_equivocation (state C V) V
     := @basic_observable_equivocation (state C V) V message
-        message_eq _ (validator_message_preceeds_dec C V) full_node_message_subject_of_observation full_node_validator_observation_based_equivocation_evidence _ _ _  full_node_validator_state_validators full_node_validator_state_validators_nodup.
+        message_eq _ (validator_message_preceeds_dec C V) full_node_validator_observable_messages full_node_message_subject_of_observation full_node_validator_observation_based_equivocation_evidence _ _ _  full_node_validator_state_validators full_node_validator_state_validators_nodup.
 
   (** * Full-node validator VLSM instance
 
@@ -190,6 +162,25 @@ Section CompositeValidator.
   Definition VLSM_full_validator (v : V) : VLSM message :=
     mk_vlsm (VLSM_full_validator_machine v).
 
+  Existing Instance observable_messages.
+  
+  Definition full_node_validator_vlsm_observable_messages
+    (v : V)
+    : vlsm_observable_events (VLSM_full_validator v) full_node_message_subject_of_observation.
+  Proof.
+    split; intros.
+    - replace s with (@nil message, @None message) in He by assumption.
+      inversion He.
+    - destruct som as (s, om). destruct s as (msgs, final).
+      destruct l as [c|]; [|destruct om as [msg|]]; inversion Ht.
+      subst. clear Ht.
+      apply set_add_iff. 
+      destruct H as [Hmsg | Hj]; intuition.
+      right.
+      apply in_unmake_justification in Hj.
+      apply in_make_message_set.
+      destruct final; assumption.
+  Qed.
 
 Section proper_sent_received.
   Context

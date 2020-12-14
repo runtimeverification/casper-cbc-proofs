@@ -62,25 +62,26 @@ Proof.
   apply equivocator_has_been_sent_capability. apply Hbs.
 Qed.
 
-Context
-  (index_listing : list index)
-  (finite_index : Listing index_listing)
-  .
-
-Definition equivocators_no_equivocations_constraint
-  (l : composite_label equivocator_IM)
-  (som : composite_state equivocator_IM * option message)
-  : Prop
-  :=
-  no_equivocations equivocator_IM i0 (free_constraint equivocator_IM) finite_index equivocator_Hbs l som.
-
 Definition equivocators_constrained_vlsm
   (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
   : VLSM message
   :=
   composite_vlsm equivocator_IM i0 constraint.
 
-Let equivocators_free_vlsm := equivocators_constrained_vlsm (free_constraint equivocator_IM).
+Context
+  (index_listing : list index)
+  (finite_index : Listing index_listing)
+  (equivocators_free_vlsm := equivocators_constrained_vlsm (free_constraint equivocator_IM))
+  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM i0 (free_constraint equivocator_IM) finite_index equivocator_Hbs)
+  .
+
+Existing Instance equivocators_free_Hbs.
+
+Definition equivocators_no_equivocations_constraint
+  (l : composite_label equivocator_IM)
+  (som : composite_state equivocator_IM * option message)
+  :=
+  no_equivocations equivocators_free_vlsm l som.
 
 Definition equivocators_no_equivocations_vlsm
   : VLSM message

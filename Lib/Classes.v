@@ -87,6 +87,8 @@ Lemma Decision_iff : forall {P Q}, (P <-> Q) -> Decision P -> Decision Q.
 Proof. firstorder. Qed.
 Lemma Decision_and : forall {P Q}, Decision P -> Decision Q -> Decision (P /\ Q).
 Proof. firstorder. Qed.
+Lemma Decision_or : forall {P Q}, Decision P -> Decision Q -> Decision (P \/ Q).
+Proof. firstorder. Qed.
 Lemma Decision_not : forall {P}, Decision P -> Decision (~P).
 Proof. firstorder. Qed.
 

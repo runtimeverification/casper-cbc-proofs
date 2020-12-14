@@ -503,15 +503,20 @@ Proof.
       (Hcomparable m1 m2 Hvalidator item1 item2 prefix1 prefix2 suffix2 eq_refl Hm1 Hm2).
 Qed.
 
+Definition free_observable_messages_index
+  (i : index)
+  : observable_events (vstate (IM_index i)) message.
+Proof.
+  destruct i.
+  - apply full_node_validator_observable_messages.
+  - apply full_node_client_observable_messages.
+Defined.
+
 Definition free_observation_based_equivocation_evidence_index
   (i : index)
   : observation_based_equivocation_evidence
-        (vstate (IM_index i)) V message message_eq _ message_preceeds_dec full_node_message_subject_of_observation.
-Proof.
-  destruct i.
-  - apply full_node_validator_observation_based_equivocation_evidence.
-  - apply full_node_client_observation_based_equivocation_evidence.
-Defined.
+        (vstate (IM_index i)) V message (free_observable_messages_index i) message_eq _ message_preceeds_dec full_node_message_subject_of_observation.
+Proof. split. Defined.
 
 Context
   (indices : list index)
@@ -540,43 +545,28 @@ Proof.
     split; try assumption. left. reflexivity.
 Qed.
 
-Definition composed_equivocation_evidence
-  : observation_based_equivocation_evidence (composite_state IM_index) V message message_eq message_preceeds message_preceeds_dec full_node_message_subject_of_observation
-  := @composed_observation_based_equivocation_evidence message V message message_eq message_preceeds message_preceeds_dec full_node_message_subject_of_observation index indices IM_index free_observation_based_equivocation_evidence_index.
+Local Instance composed_observable_messages
+  : observable_events (composite_state IM_index) message
+  := @composed_state_observable_events _ _ _ _ finite_index  IM_index free_observable_messages_index.
 
-Existing Instance composed_equivocation_evidence.
+Local Instance composed_equivocation_evidence
+  : observation_based_equivocation_evidence (composite_state IM_index) V message composed_observable_messages message_eq message_preceeds message_preceeds_dec full_node_message_subject_of_observation.
+Proof. split. Defined.
 
-Program Instance free_composite_vlsm_observable_messages
-  : composite_vlsm_observable_messages indices IM_index free_observation_based_equivocation_evidence_index i0 (free_constraint IM_index)
-  :=
-  {
-    message_has_been_observed (m e :message) := m = e
-  }.
-Next Obligation.
-  unfold vinitial_state_prop in His.
-  unfold composed_witness_has_been_observed in He.
-  destruct He as [i [_ He]].
-  simpl in His.
-  unfold composite_initial_state_prop in His.
-  spec His i.
-  exfalso.
-  destruct i; simpl in He; simpl in His
-  ; unfold vinitial_state_prop in His; simpl in His; unfold initial_state_prop in His
-  ; rewrite His in He; inversion He.
-Qed.
-Next Obligation.
-  intros m e. apply message_eq.
-Qed.
-Next Obligation.
-  apply free_protocol_transition_out in Ht.
-  destruct Ht as [Hl [Hj Hm]].
-  destruct l as (i, l).
-  simpl in *.
+Existing Instance observable_messages.
 
-  destruct i as [v0|c]; [|congruence].
-  inversion Hl. subst. clear Hl.
-  assumption.
-Qed.
+Definition free_composite_vlsm_observable_messaged_index
+  (i : index)
+  : @vlsm_observable_events _ (IM_index i) message _ (free_observable_messages_index i) _ full_node_message_subject_of_observation.
+Proof.
+  destruct i.
+  - apply full_node_validator_vlsm_observable_messages.
+  - apply full_node_client_vlsm_observable_messages.
+Defined.
+
+Instance free_composite_vlsm_observable_messages
+  : vlsm_observable_events (free_composite_vlsm IM_index i0) full_node_message_subject_of_observation
+  := composite_vlsm_observable _ finite_index IM_index free_observable_messages_index  _ free_composite_vlsm_observable_messaged_index free_observation_based_equivocation_evidence_index i0 (free_constraint IM_index).
 
 Existing Instance message_eq.
 Existing Instance message_preceeds_dec.
@@ -672,20 +662,20 @@ Lemma composite_has_been_observed_state_union
   : has_been_observed s m <-> In m (state_union s).
 Proof.
   unfold has_been_observed. simpl.
-  unfold composed_witness_has_been_observed.
+  unfold composed_has_been_observed.
   rewrite state_union_iff.
   split.
-  - intros [i [_ Hm]].
+  - intros [i Hm].
     destruct i as [v | c]; [left; exists v | right; exists c]; assumption.
-  - intros [[v Hm] | [c Hm]]; [exists (inl v) | exists (inr c)]; intuition; apply (proj2 finite_index).
+  - intros [[v Hm] | [c Hm]]; [exists (inl v) | exists (inr c)]; intuition.
 Qed.
 
 Program Instance composed_basic_observable_equivocation
   : basic_equivocation (vstate VLSM_full_composed_free) V
   := @composed_observable_basic_equivocation
       message V message message_eq message_preceeds message_preceeds_dec
-      full_node_message_subject_of_observation index indices IM_index
-      free_observation_based_equivocation_evidence_index
+      full_node_message_subject_of_observation index indices finite_index IM_index
+      free_observable_messages_index 
       Hmeasurable Hrt
       composite_validators
       composite_validators_nodup _.

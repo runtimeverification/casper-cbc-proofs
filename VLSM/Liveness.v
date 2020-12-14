@@ -161,6 +161,8 @@ Section StrongSynchrony.
     (Hi : index)
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
     {Hsents : forall i, has_been_sent_capability (IM i)}
+    (Free := free_composite_vlsm IM i0)
+    (composite_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM i0 (free_constraint IM) finite_index Hsents)
     (has_been_observed_op: forall i, state_message_oracle (IM i))
     (clocks : ClocksFor IM)
     (message_time : message -> nat)
@@ -208,13 +210,15 @@ Section StrongSynchrony.
          clock _ (clocks i) (s i) < clock _ (clocks i) s'
          -> all_earlier_messages_received i s.
 
+  Existing Instance composite_has_been_sent_capability.
+
   (** This strong constraint allows no equivocations and
       no failures of synchrony.
    *)
   Definition no_synch_faults_no_equivocation_constraint :
     composite_label IM -> composite_state IM * option message -> Prop
     := fun l som =>
-         no_equivocations IM i0 (free_constraint _) finite_index Hsents l som
+         no_equivocations Free l som
          /\ delivery_time_constraint l som
          /\ timely_reception_constraint l som.
 
