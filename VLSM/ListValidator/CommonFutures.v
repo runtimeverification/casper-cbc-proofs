@@ -227,7 +227,7 @@ Context
           unfold observable_events in *.
           simpl in *.
           rewrite Hobs.
-          assumption. 
+          assumption.
   Admitted.
   
   Lemma GE_existing_update'
@@ -246,7 +246,10 @@ Context
     destruct Hrem as [e2 [Hine2 Hcomp]].
     destruct (decide (v = i)).
     - admit. 
-    - assert (set_eq (cobs s' v) (cobs s v)) by (apply cobs_update_different).
+    - assert (set_eq (cobs s' v) (cobs s v)). {
+         apply cobs_update_different.
+         intuition.
+      }
       unfold cobs in H0.
       unfold observable_events in Hine1, Hine2, H0; simpl in Hine1, Hine2, H0.
       setoid_rewrite H0 in Hine1.
@@ -614,12 +617,12 @@ Context
     (s' := phase_one_res s) :
     project (s' i) i = (s i).
   Proof.
-    apply chain_updates_projections_in.
-    assumption.
-    assumption.
+    apply chain_updates_protocol.
+    intuition.
     apply (proj1 Hfinite).
+    intuition.
     apply ((proj2 Hfinite) i).
-  Qed.
+  Qed. 
   
   Lemma everything_in_projections 
     (s : vstate X)
@@ -840,7 +843,7 @@ Context
             rewrite <- e.
             assumption.
             unfold state_eqb. rewrite eq_dec_if_true. all : auto.
-          + specialize (received_component_protocol_composed IM_index i0 (free_constraint IM_index) has_been_received_capabilities (fun m => Some (fst m)) s') as Hope.
+          + specialize (received_component_protocol_composed IM_index i0 (free_constraint IM_index) (fun m => Some (fst m)) has_been_received_capabilities s') as Hope.
             spec Hope. assumption.
             specialize (Hope inter (from, sa)).
             apply Hope.
@@ -948,7 +951,7 @@ Context
         unfold apply_action. simpl.
         rewrite fold_right_app. simpl.
         rewrite eq_vtrans. simpl.
-        specialize (@apply_action_folder_additive _ X s0 (rev a0) s0 [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) as Hadd.
+        specialize (@apply_action_folder_additive _ X s0 (rev a0) [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) as Hadd.
         destruct (@fold_right
          (prod (@vstate (@message index index_listing) X)
             (list (@vtransition_item (@message index index_listing) X)))

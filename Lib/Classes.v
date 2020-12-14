@@ -291,11 +291,6 @@ Defined.
 
 Instance bool_eq_dec : EqDecision bool.
 Proof. solve_decision. Defined.
-(*
-Instance ob_eq_dec : EqDecision (option bool).
-apply option_eq_dec.
-Qed.
-*)
 
 Instance unit_eq_dec : EqDecision unit.
 Proof. solve_decision. Defined.
