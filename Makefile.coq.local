@@ -34,7 +34,7 @@ coq2html: $(GLOBFILES) $(VFILES)
 	$(HIDE)cd VLSM && $(COQ2HTML) -base CasperCBC.VLSM -d ../$(COQ2HTMLDIR) *.v *.glob
 .PHONY: coq2html
 
-$(ALECTRYONHTMLFILES): %.alectryon.html: %.v %.glob %.vo $(ALECTRYONDIR)/.d
+$(ALECTRYONHTMLFILES): %.alectryon.html: %.v %.glob %.vo $(ALECTRYONDIR)/toc.html
 	$(SHOW)'ALECTRYON --output-directory $(ALECTRYONDIR) $<'
 	$(HIDE)$(ALECTRYON) $(ALECTRYONHTMLFLAGS) $(COQDOCLIBS) --output-directory $(ALECTRYONDIR) $<
 .PHONY: $(ALECTRYONHTMLFILES)
@@ -42,9 +42,13 @@ $(ALECTRYONHTMLFILES): %.alectryon.html: %.v %.glob %.vo $(ALECTRYONDIR)/.d
 alectryon: $(ALECTRYONHTMLFILES)
 .PHONY: alectryon
 
-$(ALECTRYONDIR)/.d:
+$(ALECTRYONDIR)/toc.html:
 	$(HIDE)mkdir -p $(@D)
-	$(HIDE)touch $@
+	$(HIDE)cat resources/alectryon_toc_header.html > $@
+	$(HIDE)for vfile in $(notdir $(basename $(VFILES))) ; do \
+	    echo "    <li><a href='$$vfile.html'>$$vfile</a></li>" >> $@; \
+	done
+	$(HIDE)cat resources/alectryon_toc_footer.html >> $@
 
 resources/index.html: resources/index.md
 	pandoc -s -o $@ $<
