@@ -1092,70 +1092,6 @@ Proof.
       * right. intro Hl. inversion Hl; subst; contradiction.
 Qed.
 
-Check fold_right.
-
-Definition cat_option
-  {A : Type} :
-  list (option A) -> list A :=
-  fold_right 
-    (fun h tl =>
-     match h with
-     | None => tl
-     | Some a => a :: tl
-     end
-    )
-  [].
-  
-Lemma cat_option_length
-  {A : Type}
-  (l : list (option A))
-    (Hfl : Forall (fun a => a <> None) l)
-  : length (cat_option l) = length l.
-Proof.
-  induction l; try reflexivity.
-  simpl.
-  inversion Hfl.
-  destruct a eqn : eq_a.
-  - simpl. rewrite IHl. all : intuition.
-  - intuition. 
-Qed.
-
-Lemma cat_option_app
-  {A : Type}
-  (l1 l2 : list (option A)) :
-  cat_option (l1 ++ l2) = cat_option l1 ++ cat_option l2.
-Proof.
-  induction l1.
-  - simpl in *. intuition.
-  - destruct a eqn : eq_a;
-      simpl in *;
-      rewrite IHl1;
-      reflexivity.
-Qed.
-
-Lemma cat_option_nth
-  {A : Type}
-  (l : list (option A))
-  (Hfl : Forall (fun a => a <> None) l)
-  (n := length l)
-  (i : nat)
-  (Hi : i < n)
-  (dummya : A)
-  : Some (nth i (cat_option l) dummya) = (nth i l (Some dummya)).
-Proof.
-  generalize dependent i.
-  induction l; intros; simpl in *. { lia. }
-  inversion Hfl. subst. spec IHl H2.
-Admitted.
-
-Lemma in_cat_option
-  {A : Type}
-  (l : list (option A))
-  (a : A)
-  : In a (cat_option l) <-> exists b : (option A), In b l /\ b = Some a.
-Proof.
-Admitted.
-
 Definition map_option
   {A B : Type}
   (f : A -> option B)
@@ -1208,7 +1144,6 @@ Proof.
   assumption.
 Qed.
 
-
 Lemma in_map_option
   {A B : Type}
   (f : A -> option B)
@@ -1235,6 +1170,76 @@ Proof.
     + simpl. destruct (f a) eqn:Hfa.
       * right. apply IHl. exists a'. split; try assumption.
       * apply IHl. exists a'. split; try assumption.
+Qed.
+
+Definition cat_option
+  {A : Type} :
+  list (option A) -> list A :=
+  fold_right 
+    (fun h tl =>
+     match h with
+     | None => tl
+     | Some a => a :: tl
+     end
+    )
+  []. 
+  
+Local Lemma cat_option_map_option
+  {A : Type} :
+  cat_option = @map_option (option A) A id.
+Proof.
+  auto.
+Qed.
+  
+Lemma cat_option_length
+  {A : Type}
+  (l : list (option A))
+    (Hfl : Forall (fun a => a <> None) l)
+  : length (cat_option l) = length l.
+Proof.
+  rewrite cat_option_map_option.
+  apply map_option_length; intuition.
+Qed.
+
+Lemma cat_option_app
+  {A : Type}
+  (l1 l2 : list (option A)) :
+  cat_option (l1 ++ l2) = cat_option l1 ++ cat_option l2.
+Proof.
+  induction l1.
+  - simpl in *. intuition.
+  - destruct a eqn : eq_a;
+      simpl in *;
+      rewrite IHl1;
+      reflexivity.
+Qed.
+
+Lemma cat_option_nth
+  {A : Type}
+  (l : list (option A))
+  (Hfl : Forall (fun a => a <> None) l)
+  (n := length l)
+  (i : nat)
+  (Hi : i < n)
+  (dummya : A)
+  : Some (nth i (cat_option l) dummya) = (nth i l (Some dummya)).
+Proof.
+  rewrite cat_option_map_option.
+  specialize (@map_option_nth (option A) A id l). simpl in *.
+  intros. 
+  unfold id in *.
+  apply H.
+  all : intuition.
+Qed.
+
+Lemma in_cat_option
+  {A : Type}
+  (l : list (option A))
+  (a : A)
+  : In a (cat_option l) <-> exists b : (option A), In b l /\ b = Some a.
+Proof.
+  rewrite cat_option_map_option.
+  apply in_map_option.
 Qed.
 
 Lemma nth_error_eq

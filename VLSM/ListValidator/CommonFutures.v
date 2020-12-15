@@ -527,7 +527,7 @@ Context
              assumption.
           -- destruct IHli as [_ [IHli _]].
              specialize (IHli j).
-             spec IHli save. {
+             spec_save IHli. {
                destruct Hjli.
                simpl in H0.
                simpl in H3.
@@ -952,34 +952,15 @@ Context
         rewrite fold_right_app. simpl.
         rewrite eq_vtrans. simpl.
         specialize (@apply_action_folder_additive _ X s0 (rev a0) [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) as Hadd.
-        destruct (@fold_right
-         (prod (@vstate (@message index index_listing) X)
-            (list (@vtransition_item (@message index index_listing) X)))
-         (@vaction_item (@message index index_listing) X)
-         (@apply_action_folder (@message index index_listing) X)
-         (@pair (@_composite_state (@message index index_listing) index IM_index)
-            (list
-               (@transition_item (@message index index_listing)
-                  (@composite_type (@message index index_listing) index IM_index))) s0
-            (@cons
-               (@transition_item (@message index index_listing)
-                  (@composite_type (@message index index_listing) index IM_index))
-               (@Build_transition_item (@message index index_listing)
-                  (@composite_type (@message index index_listing) index IM_index) label_a
-                  (@Some (prod index (@state index index_listing))
-                     (@pair index (@state index index_listing) from sa)) s0 o)
-               (@nil (@vtransition_item (@message index index_listing) X))))
-         (@rev (@vaction_item (@message index index_listing) X) a0)) as (tr, dest) eqn : eqf1.
-         destruct (@fold_right
-         (prod (@vstate (@message index index_listing) X)
-            (list (@vtransition_item (@message index index_listing) X)))
-         (@vaction_item (@message index index_listing) X)
-         (@apply_action_folder (@message index index_listing) X)
-         (@pair (@vstate (@message index index_listing) X)
-            (list (@vtransition_item (@message index index_listing) X)) s0
-            (@nil (@vtransition_item (@message index index_listing) X)))
-         (@rev (@vaction_item (@message index index_listing) X) a0)) as (tr', dest') eqn : eqf2.
-         simpl.
+        match goal with
+        |- snd (let (final, items) := fold_right ?a ?b ?c in _) to = _ =>
+           destruct (fold_right a b c) as (tr, dest) eqn : eqf1 end.
+        match goal with
+        |- _ = snd (let (final, items) := fold_right ?a ?b ?c in _) to =>
+          destruct (fold_right a b c) as (tr', dest') eqn : eqf2 end.
+          
+         simpl in *.
+        
          replace (@fold_right
             (prod (@vstate (@message index index_listing) X)
                (list (@vtransition_item (@message index index_listing) X)))
@@ -1271,7 +1252,7 @@ Context
         
         (* ensures *)
         
-        spec Hind save. {
+        spec_save Hind. {
           unfold ensures. intros.
           rewrite HeqPb in H0.
           apply Hrel with (li := li).
@@ -1302,7 +1283,7 @@ Context
         
         (* preserves *)
         
-        spec Hind save. {
+        spec_save Hind. {
           rewrite HeqPb.
           unfold preserves.
           intros.

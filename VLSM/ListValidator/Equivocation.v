@@ -3345,7 +3345,6 @@ Context
     apply Hfinite.
    Qed.
 
-  Check @basic_observable_equivocation.
   Definition lv_basic_equivocation : basic_equivocation state index :=
       @basic_observable_equivocation
       (@state index index_listing)

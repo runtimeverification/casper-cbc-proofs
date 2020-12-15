@@ -343,13 +343,14 @@ Section apply_actions.
     - remember (snd (apply_action s a)) as s'.
       specialize (Hensures s').
       apply Hensures.
-      admit.
+      rewrite Heqs'.
+      apply apply_action_last_protocol.
+      intuition.
+      intuition.
       rewrite Heqs'.
       apply Hpreserves.
-      assumption.
-      assumption.
-      assumption.
-   Admitted.
+      all : intuition.
+   Qed.
    
    Definition messages_a 
     (a : vaction X) : 

@@ -1361,39 +1361,9 @@ All results from regular projections carry to these "free" projections.
     unfold transition in eq_trans.
     simpl in eq_trans.
     destruct label_a; simpl in *.
-    unfold vtransition in eq_trans.
-    destruct (@transition message
-                 (@projT1 (VLSM_type message)
-                    (fun T : VLSM_type message =>
-                     @sigT (@VLSM_sign message T)
-                       (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
-                    (IM x))
-                 (@projT1
-                    (@VLSM_sign message
-                       (@projT1 (VLSM_type message)
-                          (fun T : VLSM_type message =>
-                           @sigT (@VLSM_sign message T)
-                             (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
-                          (IM x)))
-                    (fun
-                       S : @VLSM_sign message
-                             (@projT1 (VLSM_type message)
-                                (fun T : VLSM_type message =>
-                                 @sigT (@VLSM_sign message T)
-                                   (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
-                                (IM x)) =>
-                     @VLSM_class message
-                       (@projT1 (VLSM_type message)
-                          (fun T : VLSM_type message =>
-                           @sigT (@VLSM_sign message T)
-                             (fun S0 : @VLSM_sign message T => @VLSM_class message T S0)) 
-                          (IM x)) S)
-                    (@projT2 (VLSM_type message)
-                       (fun T : VLSM_type message =>
-                        @sigT (@VLSM_sign message T)
-                          (fun S : @VLSM_sign message T => @VLSM_class message T S)) 
-                       (IM x))) (@machine message (IM x)) v
-                 (@pair (@vstate message (IM x)) (option message) (s x) input_a)).
+    unfold vtransition in eq_trans. 
+    match type of eq_trans with
+    | (let (si', om') := ?t in _) = _ => destruct t end.
     inversion eq_trans.
     rewrite state_update_neq.
     reflexivity.

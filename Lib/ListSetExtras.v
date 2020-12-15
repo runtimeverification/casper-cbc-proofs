@@ -665,10 +665,12 @@ Proof.
     apply IHl1 in Hin.
     assumption.
 Qed. 
-  
+
+(* TODO: rewrite this in Props *)
+
 Definition get_maximal_elements {A}
   (preceeds : A -> A -> bool)
-  (l : list A) 
+  (l : list A)
   : list A :=
   filter (fun a => forallb (fun b => negb (preceeds b a)) l) l.
 
