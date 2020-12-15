@@ -51,7 +51,7 @@ RUN    opam init --auto-setup --yes --jobs=${NJOBS} --compiler=${COMPILER} --dis
 
 # From: https://github.com/coq-community/docker-coq/blob/master/Dockerfile
 
-ENV COQ_VERSION="8.12.1"
+ENV COQ_VERSION="8.12.2"
 ENV COQ_EXTRA_OPAM="coq-bignums coq-coq2html coq-serapi"
 
 RUN    eval $(opam env --switch=${COMPILER} --set-switch)   \
@@ -76,9 +76,9 @@ RUN    git config --global user.email 'admin@runtimeverification.com' \
 
 # Setup Alectryon
 
-ENV ALECTRYON_SHA="e1193454760cabbc907b74a1e67fa55d7c2d02bb"
+ENV ALECTRYON_SHA="010ebf9afd3c0c45259977895a41cba52a13b84f"
 
 RUN    python3 -m pip install --user --upgrade pygments dominate beautifulsoup4 docutils \
-    && git clone https://github.com/palmskog/alectryon.git ~/alectryon                   \
+    && git clone https://github.com/cpitclaudel/alectryon.git ~/alectryon                \
     && cd ~/alectryon                                                                    \
     && git checkout ${ALECTRYON_SHA}
