@@ -323,7 +323,12 @@ Section apply_actions.
     Prop :=
     forall (s : vstate X),
     (protocol_state_prop X s -> P s -> finite_protocol_action_from s a).
-  
+   
+   (* If some property of a state guarantees a plan `b` applied to the state is protocol,
+      and this property is preserved by the application of some other plan `a`,
+      then these two plans can be composed and the application of `a ++ b` will also
+      be protocol. *)
+   
    Lemma action_independence
     (a b : vaction X)
     (Pb : vstate X -> Prop) 
