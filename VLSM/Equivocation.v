@@ -1369,13 +1369,8 @@ Section Composite.
       specialize (@finite_trace_projection_last_state message index IndEqDec IM i0 constraint i) as Hlast.
       specialize (Hlast is tr Htr).
       simpl in Hlast.
-      replace (@last (@state message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@List.map
-        (@transition_item message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@state message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@destination message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@finite_trace_projection_list message index IndEqDec IM i0 constraint i tr)) 
-        (is i)) with (last (List.map destination tr) is i).
+      match goal with
+      |- ?l = s i => replace l with (last (List.map destination tr) is i) end. 
       unfold option_map in Hs'.
       destruct (last_error tr) eqn : eq_t. 2: discriminate Hs'.
       destruct tr eqn : eq_tr.
@@ -1441,13 +1436,9 @@ Section Composite.
       specialize (@finite_trace_projection_last_state message index IndEqDec IM i0 constraint i) as Hlast.
       specialize (Hlast is tr Htr).
       simpl in Hlast.
-      replace (@last (@state message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@List.map
-        (@transition_item message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@state message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@destination message (@type message (@pre_loaded_with_all_messages_vlsm message (IM i))))
-        (@finite_trace_projection_list message index IndEqDec IM i0 constraint i tr)) 
-        (is i)) with (last (List.map destination tr) is i).
+      match goal with
+      |- ?l = s i => replace l with (last (List.map destination tr) is i) end. 
+      unfold option_map in Hs'.
       unfold option_map in Hs'.
       destruct (last_error tr) eqn : eq_t. 2: discriminate Hs'.
       destruct tr eqn : eq_tr.

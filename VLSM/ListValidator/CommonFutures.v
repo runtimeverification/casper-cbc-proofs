@@ -952,48 +952,19 @@ Context
         rewrite fold_right_app. simpl.
         rewrite eq_vtrans. simpl.
         specialize (@apply_action_folder_additive _ X s0 (rev a0) [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) as Hadd.
-        match goal with
-        |- snd (let (final, items) := fold_right ?a ?b ?c in _) to = _ =>
-           destruct (fold_right a b c) as (tr, dest) eqn : eqf1 end.
-        match goal with
-        |- _ = snd (let (final, items) := fold_right ?a ?b ?c in _) to =>
-          destruct (fold_right a b c) as (tr', dest') eqn : eqf2 end.
-          
-         simpl in *.
         
-         replace (@fold_right
-            (prod (@vstate (@message index index_listing) X)
-               (list (@vtransition_item (@message index index_listing) X)))
-            (@vaction_item (@message index index_listing) X)
-            (@apply_action_folder (@message index index_listing) X)
-            (@pair (@_composite_state (@message index index_listing) index IM_index)
-               (list
-                  (@transition_item (@message index index_listing)
-                     (@composite_type (@message index index_listing) index IM_index))) s0
-               (@cons
-                  (@transition_item (@message index index_listing)
-                     (@composite_type (@message index index_listing) index IM_index))
-                  (@Build_transition_item (@message index index_listing)
-                     (@composite_type (@message index index_listing) index IM_index) label_a
-                     (@Some (prod index (@state index index_listing))
-                        (@pair index (@state index index_listing) from sa)) s0 o)
-                  (@nil (@vtransition_item (@message index index_listing) X))))
-            (@rev (@vaction_item (@message index index_listing) X) a0)) with 
-            (@pair (@vstate (@message index index_listing) X)
-            (list (@vtransition_item (@message index index_listing) X)) tr'
-            (@app (@vtransition_item (@message index index_listing) X) dest'
-               (@cons
-                  (@transition_item (@message index index_listing)
-                     (@type (@message index index_listing) X))
-                  (@Build_transition_item (@message index index_listing)
-                     (@type (@message index index_listing) X) label_a
-                     (@Some (prod index (@state index index_listing))
-                        (@pair index (@state index index_listing) from sa)) s0 o)
-                  (@nil
-                     (@transition_item (@message index index_listing)
-                        (@type (@message index index_listing) X)))))) in eqf1.
-            inversion eqf1.
-            reflexivity.
+        match goal with
+        |- _ = snd (let (final, items) := ?f in _) to =>
+          destruct f as (tr', dest') eqn : eqf2 end.
+        
+        match goal with
+        |- snd (let (final, items) := ?f in _) to = _ =>
+           match type of Hadd with ?f1 = _ =>
+              change f with f1
+           end
+        end.
+        rewrite Hadd.
+        reflexivity.
     Qed.
    
     Definition get_candidates 
@@ -1921,15 +1892,15 @@ Context
         rewrite concat_app; simpl.
         rewrite apply_action_app; simpl.
         
-        destruct (@apply_action (@message index index_listing) X s
-            (@concat (@vaction_item (@message index index_listing) X)
-               (@zip_apply index (@vaction (@message index index_listing) X)
-                  (@map (set index) (forall _ : index, @vaction (@message index index_listing) X)
-                     (get_receives_for s) (@map index (set index) others lfrom)) lfrom))) as [tr_long res_long] eqn : eq_long.
+        match goal with
+        |- context[apply_action X s ?a] => 
+           destruct (apply_action X s a) as [tr_long res_long] eqn : eq_long 
+        end.
         
-        destruct (@apply_action (@message index index_listing) X res_long
-            (@app (@vaction_item (@message index index_listing) X) (get_receives_for s (others x) x)
-               (@nil (@vaction_item (@message index index_listing) X)))) as [tr_short res_short] eqn : eq_short.
+        match goal with
+        |- context [apply_action X res_long ?a] =>
+           destruct (apply_action X res_long a) as [tr_short res_short] eqn : eq_short
+        end.
         
         rewrite app_nil_r in *.
         simpl.
@@ -1940,11 +1911,10 @@ Context
         }
         
         assert (res_long = snd (apply_action X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom)))). {
-          replace (@apply_action (@message index index_listing) X s
-        (@concat (@vaction_item (@message index index_listing) X)
-           (@zip_apply index (@vaction (@message index index_listing) X)
-              (@map (list index) (forall _ : index, @vaction (@message index index_listing) X)
-                 (get_receives_for s) (@map index (set index) others lfrom)) lfrom))) with (tr_long, res_long).
+          match goal with
+          |- context[apply_action X s ?a] =>
+             replace (apply_action X s a) with (tr_long, res_long)
+          end.
           intuition.
         }
         
