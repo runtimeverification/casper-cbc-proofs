@@ -668,11 +668,10 @@ Qed.
 
 
 Definition get_maximal_elements {A}
-  (preceeds : A -> A -> Prop)
-  (preceeds_dec : RelDecision preceeds)
+  (preceeds : A -> A -> bool)
   (l : list A)
   : list A :=
-  filter (fun a => forallb (fun b => negb (bool_decide (preceeds b a))) l) l.
+  filter (fun a => forallb (fun b => negb (preceeds b a)) l) l.
 
 Lemma set_prod_nodup `(s1: set A) `(s2: set B):
   NoDup s1 ->

@@ -3550,49 +3550,112 @@ Context
   Proof.
     unfold set_eq.
     unfold incl.
+    
+    assert (Hnb' : s' <> Bottom). {
+      intros contra.
+      unfold s' in contra.
+      unfold update_consensus in contra.
+      destruct (update_state s s index_self) eqn : eq_su.
+      + unfold update_state in eq_su.
+        destruct s; congruence.
+      + congruence.
+    }
+    
+    assert (Hproj_j: project s j = project s' j). {
+      unfold s'.
+      rewrite <- update_consensus_clean with (value := b).
+      rewrite (@project_different index index_listing).
+      all : intuition.
+    }
+    
+    assert (Hproj_self : project s' index_self = s). {
+      unfold s'.
+      rewrite <- update_consensus_clean with (value := b).
+      rewrite (@project_same index index_listing).
+      all : intuition.
+    }
+    
+    assert (Hes' : forall (e : lv_event), In e (lv_observations s' j) -> get_event_state e <> Bottom). {
+      intros.
+      specialize (get_event_state_nb s' (get_event_state e) j e) as Hsubj_nb.
+      apply Hsubj_nb.
+      rewrite lv_observations_other in H.
+      apply in_lv_received in H.
+      left.
+      rewrite lv_event_comp_eq at 1.
+      f_equal.
+      all : intuition.
+    }
+    
+    assert (Hes : forall (e : lv_event), In e (lv_observations s j) -> get_event_state e <> Bottom). {
+      intros.
+      specialize (get_event_state_nb s (get_event_state e) j e) as Hsubj_nb.
+      apply Hsubj_nb.
+      rewrite lv_observations_other in H.
+      apply in_lv_received in H.
+      left.
+      rewrite lv_event_comp_eq at 1.
+      f_equal.
+      all : intuition.
+    }
+    
     split; intros e He.
     - specialize (unfold_lv_observations s' j) as Hunf.
-      spec Hunf; intuition.
-      specialize (Hunf e).
-      specialize (get_event_state_nb s' (get_event_state e) j e) as Hsubj_nb.
-      spec Hsubj_nb. {
-        rewrite lv_observations_other in He by intuition.
-        left.
-        apply in_lv_received in He.
-        rewrite lv_event_comp_eq at 1.
-        f_equal.
-        all : intuition.
+      spec Hunf. {
+        intuition.
       }
+      specialize (Hunf e).
+
       spec Hunf. {
         split.
-        - intros contra.
-          unfold s' in contra.
-          unfold update_consensus in contra.
-          destruct (update_state s s index_self) eqn : eq_su.
-          + unfold update_state in eq_su.
-            destruct s; congruence.
-          + congruence.
-        - apply Hsubj_nb.
-          assumption. 
+        - apply Hnb'.
+        - apply Hes'.
+          intuition.
       }
       apply Hunf in He as He'.
       destruct He' as [He'|He'].
       + apply unfold_lv_observations. intuition.
         split. intuition.
-        apply Hsubj_nb; intuition.
-        assert (project s j = project s' j). {
-          unfold s'.
-          rewrite <- update_consensus_clean with (value := b).
-          rewrite (@project_different index index_listing).
-          all : intuition.
-        }
-        rewrite H.
+        apply Hes'.
+        intuition.
+        rewrite Hproj_j.
         left; intuition.
-      + apply unfold_lv_observations. intuition.
-        split. intuition.
-        apply Hsubj_nb; intuition.
-        right.
-  Admitted.
+      + destruct He' as [k Hink].
+        destruct (decide (k = index_self)).
+        * rewrite e0 in Hink.
+          rewrite Hproj_self in Hink.
+          intuition.
+        * unfold s' in Hink.
+          rewrite <- update_consensus_clean with (value := b) in Hink.
+          rewrite (@project_different index index_listing) in Hink.
+          specialize (unfold_lv_observations s j) as Hunf2.
+          spec Hunf2. {
+            intuition.
+          }
+          specialize (Hunf2 e).
+          spec Hunf2. {
+            split; [assumption|(apply Hes'; intuition)].
+          }
+          apply Hunf2.
+          right.
+          exists k.
+          intuition.
+          all : intuition.
+    - specialize (unfold_lv_observations s' j) as Hunf.
+      spec Hunf. {
+        intuition.
+      }
+      specialize (Hunf e).
+      spec Hunf. {
+        split; [assumption|(apply Hes; intuition)].
+      }
+      destruct Hunf as [_ Hunf].
+      apply Hunf.
+      right.
+      exists index_self.
+      rewrite Hproj_self.
+      intuition.
+  Qed.
       
   Lemma raw_observations_in_project
       (s : state)

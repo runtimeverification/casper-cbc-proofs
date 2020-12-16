@@ -179,6 +179,7 @@ Context
   
   Lemma cobs_update_different
     (s : vstate X)
+    (Hpr : protocol_state_prop X s)
     (i j : index)
     (Hdif : i <> j)
     (b : bool)
@@ -186,6 +187,7 @@ Context
     set_eq (cobs s' j) (cobs s j).
   Proof.
     unfold set_eq.
+    unfold incl.
     split; (unfold incl; 
       intros e He; 
       unfold cobs in *; 
@@ -207,8 +209,20 @@ Context
           intuition. 
           apply ((proj2 Hfinite) k).
         * unfold obs.
+          rewrite <- Hobs in Hine.
           unfold observable_events in *; simpl in *.
-          admit.
+          eapply self_update_j with (b0 := b); eauto.
+          exact (@equivocation_aware_estimatorb index i index_listing Hfinite decide_eq _ _).
+          exact message_EqDecision.
+          apply protocol_state_component_no_bottom.
+          assumption.
+          rewrite <- e0 in Hdif.
+          intuition.
+          unfold s' in Hine.
+          rewrite e0 in Hine.
+          rewrite state_update_eq in Hine.
+          rewrite e0.
+          assumption.
       + assert (s' k = s k). {
           unfold s'.
           rewrite state_update_neq.
@@ -228,7 +242,41 @@ Context
           simpl in *.
           rewrite Hobs.
           assumption.
-  Admitted.
+    - apply set_union_in_iterated.
+      apply set_union_in_iterated in He.
+      rewrite Exists_exists in *.
+      destruct He as [lk Hink].
+      destruct Hink as [Hink Hine].
+      rewrite in_map_iff in Hink.
+      destruct Hink as [k [Hobs _]].
+      exists (obs k (s' k) j).
+      split.
+      + apply in_map_iff.
+        exists k.
+        split;[|apply ((proj2 Hfinite) k)].
+        unfold obs.
+        reflexivity.
+      + rewrite <- Hobs in Hine.
+        unfold obs.
+        unfold observable_events in *. simpl in *.
+        destruct (decide (k = i)).
+        * rewrite <- e0 in Hdif.
+          eapply self_update_j with (b0 := b) in Hine; eauto.
+          unfold s'.
+          rewrite e0.
+          rewrite state_update_eq.
+          rewrite e0 in Hine.
+          intuition.
+          exact (@equivocation_aware_estimatorb index i index_listing Hfinite decide_eq _ _).
+          exact message_EqDecision.
+          apply protocol_state_component_no_bottom.
+          all : intuition.
+        * unfold s'.
+          rewrite state_update_neq.
+          all : intuition.
+          Unshelve. 
+          all : intuition.
+  Qed.
   
   Lemma GE_existing_update'
     (s : vstate X)
