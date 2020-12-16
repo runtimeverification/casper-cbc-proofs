@@ -13,7 +13,7 @@ From CasperCBC
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
     VLSM.Equivocators.Composition.Projections
-    VLSM.Actions
+    VLSM.Plans
     .
 
 Section all_equivocating.
@@ -46,7 +46,7 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
 Definition update_euivocators_transition_item_descriptor
   (s : vstate equivocators_no_equivocations_vlsm)
   (item : vtransition_item equivocators_no_equivocations_vlsm)
-  : vaction_item equivocators_no_equivocations_vlsm
+  : vplan_item equivocators_no_equivocations_vlsm
   :=
   match item with
   | {| l := l; input := input; destination := destination; output := output |} =>
@@ -54,10 +54,10 @@ Definition update_euivocators_transition_item_descriptor
     let (l, d) := l in
     match d with
     | NewMachine _ sn =>
-      @Build_action_item message (type equivocators_no_equivocations_vlsm)
+      @Build_plan_item message (type equivocators_no_equivocations_vlsm)
         (@existT index (fun n : index => vlabel (equivocator_IM n)) (e) (l, d)) input
     | Existing _ i fi =>
-      @Build_action_item message (type equivocators_no_equivocations_vlsm)
+      @Build_plan_item message (type equivocators_no_equivocations_vlsm)
         (@existT index (fun n : index => vlabel (equivocator_IM n)) (e)
           (l, Existing _ (i + S (projT1 (s (e)))) fi)
         )
@@ -68,7 +68,7 @@ Definition update_euivocators_transition_item_descriptor
 Definition initial_new_machine_transition_item
   (is : vstate equivocators_no_equivocations_vlsm)
   (eqv : equiv_index)
-  : vaction_item equivocators_no_equivocations_vlsm
+  : vplan_item equivocators_no_equivocations_vlsm
   :=
   let seqv := is (eqv) in
   let new_l :=
@@ -76,11 +76,11 @@ Definition initial_new_machine_transition_item
       (vl0 (IM (eqv)), NewMachine _ (projT2 seqv (of_nat_lt (Hzero _ seqv))))
     )
     in
-  @Build_action_item message (type equivocators_no_equivocations_vlsm) new_l None.
+  @Build_plan_item message (type equivocators_no_equivocations_vlsm) new_l None.
 
 Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
   (s : vstate equivocators_no_equivocations_vlsm)
-  (a : vaction equivocators_no_equivocations_vlsm)
+  (a : vplan equivocators_no_equivocations_vlsm)
   (eqv : equiv_index)
   (sn : vstate (IM (eqv)))
   (Hsn : vinitial_state_prop (IM (eqv)) sn)
@@ -93,7 +93,7 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
   : vvalid (equivocators_constrained_vlsm IM i0 constraint)
       (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
         (vl0 (IM (eqv)), NewMachine _ sn))
-      (snd (apply_action equivocators_no_equivocations_vlsm s a), None).
+      (snd (apply_plan equivocators_no_equivocations_vlsm s a), None).
 Proof.
   split.
   - split; [assumption|reflexivity].
@@ -102,7 +102,7 @@ Qed.
 
 Definition spawn_initial_state
   (is : vstate equivocators_no_equivocations_vlsm)
-  : vaction equivocators_no_equivocations_vlsm
+  : vplan equivocators_no_equivocations_vlsm
   := map (initial_new_machine_transition_item is) index_listing.
 
 Definition replay_trace_from
@@ -113,7 +113,7 @@ Definition replay_trace_from
   :=
   let initial := spawn_initial_state is in
   let reindex := map (update_euivocators_transition_item_descriptor full_replay_state) tr in
-  fst (apply_action equivocators_no_equivocations_vlsm full_replay_state (initial ++ reindex)).
+  fst (apply_plan equivocators_no_equivocations_vlsm full_replay_state (initial ++ reindex)).
 
 Lemma replay_trace_from_app
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
@@ -124,7 +124,7 @@ Lemma replay_trace_from_app
   : replay_trace_from full_replay_state is (tra ++ trb) =
     eqva ++
     fst
-      (apply_action equivocators_no_equivocations_vlsm lsta
+      (apply_plan equivocators_no_equivocations_vlsm lsta
         (map (update_euivocators_transition_item_descriptor full_replay_state) trb)
       ).
 Proof.
@@ -132,31 +132,31 @@ Proof.
   unfold replay_trace_from in *.
   rewrite map_app at 1.
   rewrite app_assoc.
-  rewrite apply_action_app at 1.
+  rewrite apply_plan_app at 1.
   destruct
-    (apply_action equivocators_no_equivocations_vlsm full_replay_state
+    (apply_plan equivocators_no_equivocations_vlsm full_replay_state
       (spawn_initial_state is ++ map (update_euivocators_transition_item_descriptor full_replay_state) tra)
     ) as (tra_items, tra_final) eqn:Htra.
   unfold fst at 2. unfold fst at 3.
   specialize
-    (apply_action_last equivocators_no_equivocations_vlsm full_replay_state
+    (apply_plan_last equivocators_no_equivocations_vlsm full_replay_state
       (spawn_initial_state is ++
         map (update_euivocators_transition_item_descriptor full_replay_state) tra)
     ) as Hlst.
   rewrite Htra in Hlst. simpl in Hlst.
   simpl. rewrite Hlst. simpl.
   destruct
-    (apply_action equivocators_no_equivocations_vlsm tra_final
+    (apply_plan equivocators_no_equivocations_vlsm tra_final
       (map (update_euivocators_transition_item_descriptor full_replay_state) trb))
     as (trb_items, trb_final).
   reflexivity.
 Qed.
 
-Lemma apply_action_full_replay_state_initial_state
+Lemma apply_plan_full_replay_state_initial_state
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
   (is : vstate equivocators_no_equivocations_vlsm)
   (tr_full_replay_is :=
-    apply_action equivocators_no_equivocations_vlsm full_replay_state
+    apply_plan equivocators_no_equivocations_vlsm full_replay_state
       (spawn_initial_state is)
   )
   (eqv : equiv_index)
@@ -173,7 +173,7 @@ Proof.
         (Heqv : ~In eqv l)
         (s : vstate equivocators_no_equivocations_vlsm),
         snd
-          (apply_action equivocators_no_equivocations_vlsm s
+          (apply_plan equivocators_no_equivocations_vlsm s
             (map (initial_new_machine_transition_item is) l))
           (eqv)
         = s (eqv)
@@ -182,19 +182,19 @@ Proof.
     spec IHl.
     { intro contra. elim Heqv. right. assumption. }
     change (a :: l) with ([a] ++ l).
-    rewrite map_app. rewrite apply_action_app.
+    rewrite map_app. rewrite apply_plan_app.
     destruct
-      (apply_action equivocators_no_equivocations_vlsm s
+      (apply_plan equivocators_no_equivocations_vlsm s
         (map (initial_new_machine_transition_item is) [a]))
       as (aitems, afinal) eqn:Happlya.
     spec IHl afinal.
     destruct
-      (apply_action equivocators_no_equivocations_vlsm afinal
+      (apply_plan equivocators_no_equivocations_vlsm afinal
         (map (initial_new_machine_transition_item is) l))
       as (litems, lfinal)
       eqn:Happlyl.
     simpl in *. rewrite IHl.
-    unfold apply_action in Happlya. simpl in Happlya.
+    unfold apply_plan in Happlya. simpl in Happlya.
     inversion Happlya.
     rewrite state_update_neq; [reflexivity|].
     intro contra. elim Heqv. left. congruence.
@@ -206,7 +206,7 @@ Proof.
         (Hnodup : NoDup l)
         (Heqv : In eqv l),
         snd
-          (apply_action equivocators_no_equivocations_vlsm full_replay_state
+          (apply_plan equivocators_no_equivocations_vlsm full_replay_state
             (map (initial_new_machine_transition_item is) l))
           (eqv)
         = equivocator_state_extend (IM (eqv))
@@ -217,7 +217,7 @@ Proof.
     destruct Heqv as [pref [suf Heqv]].
     subst. apply NoDup_remove in Hnodup.
     destruct Hnodup as [Hnodup Heqv].
-    rewrite map_app. rewrite apply_action_app.
+    rewrite map_app. rewrite apply_plan_app.
     change (eqv :: suf) with ([eqv] ++ suf).
     rewrite map_app.
     specialize (Heq_state_not_in pref) as Hpref.
@@ -225,13 +225,13 @@ Proof.
     { intro contra. elim Heqv. apply in_app_iff. left. assumption. }
     spec Hpref full_replay_state.
     destruct
-      (apply_action equivocators_no_equivocations_vlsm full_replay_state
+      (apply_plan equivocators_no_equivocations_vlsm full_replay_state
         (map (initial_new_machine_transition_item is) pref))
       as (pref_items, pref_final).
     simpl in Hpref.
-    rewrite apply_action_app.
+    rewrite apply_plan_app.
     destruct
-      (apply_action equivocators_no_equivocations_vlsm pref_final
+      (apply_plan equivocators_no_equivocations_vlsm pref_final
         (map (initial_new_machine_transition_item is) [eqv]))
       as (eqv_items, eqv_final) eqn:Happly_eqv.
     specialize (Heq_state_not_in suf) as Hsuf.
@@ -239,12 +239,12 @@ Proof.
     { intro contra. elim Heqv. apply in_app_iff. right. assumption. }
     spec Hsuf eqv_final.
     destruct
-      (apply_action equivocators_no_equivocations_vlsm eqv_final
+      (apply_plan equivocators_no_equivocations_vlsm eqv_final
         (map (initial_new_machine_transition_item is) suf))
       as (suf_items, suf_final).
     simpl in Hsuf. simpl.
     rewrite Hsuf.
-    unfold apply_action in Happly_eqv.
+    unfold apply_plan in Happly_eqv.
     simpl in Happly_eqv. inversion Happly_eqv.
     rewrite state_update_eq. congruence.
   }
@@ -257,11 +257,11 @@ Lemma replay_trace_from_state_correspondence'
   (His : vinitial_state_prop equivocators_no_equivocations_vlsm is)
   (epref : list (vtransition_item equivocators_no_equivocations_vlsm))
   (tr_is_epref :=
-    apply_action equivocators_no_equivocations_vlsm is
-      (trace_to_action equivocators_no_equivocations_vlsm epref)
+    apply_plan equivocators_no_equivocations_vlsm is
+      (trace_to_plan equivocators_no_equivocations_vlsm epref)
   )
   (tr_full_replay_is_epref :=
-    apply_action equivocators_no_equivocations_vlsm full_replay_state
+    apply_plan equivocators_no_equivocations_vlsm full_replay_state
       (spawn_initial_state is
       ++ map (update_euivocators_transition_item_descriptor full_replay_state) epref)
   )
@@ -287,7 +287,7 @@ Proof.
   induction epref using rev_ind; intros.
   - simpl in *. clear tr_is_epref. unfold tr_full_replay_is_epref. clear tr_full_replay_is_epref.
     rewrite app_nil_r.
-    rewrite apply_action_full_replay_state_initial_state.
+    rewrite apply_plan_full_replay_state_initial_state.
     destruct (full_replay_state (eqv)) as (neqv, seqv).
     unfold equivocator_state_extend. simpl.
     specialize (equivocators_initial_state_size IM Hbs i0 _ _ is His eqv) as His_size.
@@ -306,26 +306,26 @@ Proof.
       destruct (nat_eq_dec id (S neqv)); [lia|].
       f_equal. apply of_nat_ext.
   - remember
-      (apply_action equivocators_no_equivocations_vlsm is
-      (trace_to_action equivocators_no_equivocations_vlsm
+      (apply_plan equivocators_no_equivocations_vlsm is
+      (trace_to_plan equivocators_no_equivocations_vlsm
          (epref ++ [x])))
       as tr_is_epref'.
     unfold tr_is_epref. clear tr_is_epref.
-    unfold trace_to_action in Heqtr_is_epref'.
+    unfold trace_to_plan in Heqtr_is_epref'.
     rewrite map_app in Heqtr_is_epref'.
-    rewrite apply_action_app in Heqtr_is_epref'.
+    rewrite apply_plan_app in Heqtr_is_epref'.
     simpl in IHepref.
-    unfold trace_to_action in IHepref.
+    unfold trace_to_plan in IHepref.
     remember
-      (apply_action equivocators_no_equivocations_vlsm is
+      (apply_plan equivocators_no_equivocations_vlsm is
       (map
-         (transition_item_to_action_item
+         (transition_item_to_plan_item
             equivocators_no_equivocations_vlsm) epref))
       as tr_is_epref.
     destruct tr_is_epref as (epref_items, epref_final).
     simpl in IHepref.
     remember
-      (apply_action equivocators_no_equivocations_vlsm
+      (apply_plan equivocators_no_equivocations_vlsm
       full_replay_state
       (spawn_initial_state is ++
        map
@@ -335,9 +335,9 @@ Proof.
     unfold tr_full_replay_is_epref in *. clear tr_full_replay_is_epref.
     rewrite map_app in Heqtr_full_replay_is_epref'.
     rewrite app_assoc in Heqtr_full_replay_is_epref'.
-    rewrite apply_action_app in Heqtr_full_replay_is_epref'.
+    rewrite apply_plan_app in Heqtr_full_replay_is_epref'.
     remember
-      (apply_action equivocators_no_equivocations_vlsm
+      (apply_plan equivocators_no_equivocations_vlsm
       full_replay_state
       (spawn_initial_state is ++
        map
@@ -345,8 +345,8 @@ Proof.
             full_replay_state) epref))
       as tr_full_replay_is_epref.
     destruct tr_full_replay_is_epref as (full_replay_is_epref_items, full_replay_is_epref_final).
-    unfold apply_action in Heqtr_is_epref'. simpl in Heqtr_is_epref'.
-    unfold apply_action in Heqtr_full_replay_is_epref'. simpl in Heqtr_full_replay_is_epref'.
+    unfold apply_plan in Heqtr_is_epref'. simpl in Heqtr_is_epref'.
+    unfold apply_plan in Heqtr_full_replay_is_epref'. simpl in Heqtr_full_replay_is_epref'.
     destruct x. simpl in Heqtr_full_replay_is_epref'. simpl in Heqtr_is_epref'.
     destruct l as (eqv', l).
     destruct l as (l, d).
@@ -724,14 +724,14 @@ Proof.
       (replay_trace_from_state_correspondence'
         full_replay_state _ His tr eqv0
       ) as [_ [Houtput _]].
-    rewrite trace_to_action_to_trace in Houtput; assumption.
+    rewrite trace_to_plan_to_trace in Houtput; assumption.
   - intro eqv.
     specialize
       (replay_trace_from_state_correspondence'
         full_replay_state _ His tr eqv
       ) as Hcorrespondence.
-    repeat rewrite <- apply_action_last in Hcorrespondence.
-    rewrite trace_to_action_to_trace in Hcorrespondence by assumption.
+    repeat rewrite <- apply_plan_last in Hcorrespondence.
+    rewrite trace_to_plan_to_trace in Hcorrespondence by assumption.
     destruct Hcorrespondence as [Hsize [_ Hstate]].
     split; assumption.
 Qed.
@@ -817,7 +817,7 @@ Lemma replay_trace_from_protocol
         (last
            (map Common.destination
               (fst
-                 (apply_action (equivocators_constrained_vlsm IM i0 constraint)
+                 (apply_plan (equivocators_constrained_vlsm IM i0 constraint)
                     full_replay_state
                     (spawn_initial_state is ++
                      map
@@ -832,12 +832,12 @@ Proof.
     apply (constraint_subsumption_protocol_prop equivocator_IM i0 _ _ Hconstraint_subsumption).
     assumption.
   }
-  apply (finite_protocol_action_iff  (equivocators_constrained_vlsm IM i0 constraint)).
+  apply (finite_protocol_plan_iff  (equivocators_constrained_vlsm IM i0 constraint)).
   split; [assumption|].
   specialize
-    (finite_protocol_trace_from_to_action equivocators_no_equivocations_vlsm _ _ (proj1 Htr))
+    (finite_protocol_trace_from_to_plan equivocators_no_equivocations_vlsm _ _ (proj1 Htr))
     as Htr'.
-  apply finite_protocol_action_iff in Htr'.
+  apply finite_protocol_plan_iff in Htr'.
   split.
   - apply Forall_forall. intros a Ha.
     apply in_app_iff in Ha.
@@ -911,12 +911,12 @@ Proof.
         destruct Htr' as [His [Hinputs Hvalids]].
         specialize
           (Hvalids
-            (trace_to_action equivocators_no_equivocations_vlsm epref)
-            (trace_to_action equivocators_no_equivocations_vlsm esuf)
-            (transition_item_to_action_item equivocators_no_equivocations_vlsm ea)
+            (trace_to_plan equivocators_no_equivocations_vlsm epref)
+            (trace_to_plan equivocators_no_equivocations_vlsm esuf)
+            (transition_item_to_plan_item equivocators_no_equivocations_vlsm ea)
           ).
         spec Hvalids.
-        { subst tr. unfold trace_to_action. repeat rewrite map_app. reflexivity. }
+        { subst tr. unfold trace_to_plan. repeat rewrite map_app. reflexivity. }
         destruct ea. simpl in *.
         destruct l as (eqv, l).
         destruct l as (l,d).
@@ -948,7 +948,7 @@ Proof.
               replace s with
               (projT2
               (snd
-                 (apply_action equivocators_no_equivocations_vlsm full_replay_state
+                 (apply_plan equivocators_no_equivocations_vlsm full_replay_state
                     (spawn_initial_state is ++
                      map
                        (update_euivocators_transition_item_descriptor
@@ -957,7 +957,7 @@ Proof.
             end
             ; [rewrite <- Hstate; assumption|].
             reflexivity.
-          ++ simpl. rewrite <- apply_action_last in *.
+          ++ simpl. rewrite <- apply_plan_last in *.
             specialize (Hconstraint _ _ _ eq_refl _ _ _ _ eq_refl).
             assumption.
 Qed.
@@ -1041,9 +1041,9 @@ Proof.
   rewrite app_assoc in Hepref.
   apply (finite_protocol_trace_from_app_iff equivocators_no_equivocations_vlsm) in Hepref.
   apply proj1 in Hepref.
-  rewrite trace_to_action_to_trace in Houtput'; [|assumption].
+  rewrite trace_to_plan_to_trace in Houtput'; [|assumption].
   change
-    (fst (apply_action equivocators_no_equivocations_vlsm
+    (fst (apply_plan equivocators_no_equivocations_vlsm
     full_replay_state
     (spawn_initial_state is ++
      map
@@ -1056,7 +1056,7 @@ Proof.
   apply Exists_app. right. simpl.
   rewrite last_error_is_last in Houtput'.
   simpl in Houtput'.
-  unfold apply_action. unfold apply_action in Houtput'. simpl in *.
+  unfold apply_plan. unfold apply_plan in Houtput'. simpl in *.
   destruct (update_euivocators_transition_item_descriptor full_replay_state mitem) eqn:Hupdated_item.
   simpl in *.
   match goal with

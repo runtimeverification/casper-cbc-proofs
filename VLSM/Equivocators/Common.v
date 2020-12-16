@@ -431,11 +431,8 @@ Lemma preloaded_equivocator_state_project_protocol_state
   :
   protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 bs i).
 Proof.
-  revert i.
-  pose (fun bs : vstate equivocator_vlsm => forall i : t (S (projT1 bs)), protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 bs i)) as P.
-  revert Hbs. revert bs.
-  apply (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm equivocator_vlsm) P)
-  ; unfold P in *; clear P; intros.
+  revert bs Hbs i.
+  induction 1 using protocol_state_prop_ind;intros.
   - destruct Hs as [Hzero His].
     destruct s. simpl in *. subst x. exists None.
     dependent destruction i; [|inversion i].
@@ -451,14 +448,14 @@ Proof.
       unfold equivocator_state_extend.
       destruct s as (ns, bs).
       simpl in *. destruct (to_nat i) as (ni, Hni).
-      destruct (nat_eq_dec ni (S ns)); [|apply Hs].
+      destruct (nat_eq_dec ni (S ns)); [|apply IHHbs].
       subst. exists None.
       change sn with (proj1_sig (exist _ sn Hsn)).
       constructor.
     + destruct Hv as [Hj Hv].
       destruct (le_lt_dec (S (projT1 s)) j); [lia|].
       replace (of_nat_lt l0) with (of_nat_lt Hj) in * by apply of_nat_ext. clear l0.
-      destruct (Hs (of_nat_lt Hj)) as [_omj Hsj].
+      destruct (IHHbs (of_nat_lt Hj)) as [_omj Hsj].
       specialize (protocol_generated (pre_loaded_with_all_messages_vlsm X) l (projT2 s (of_nat_lt Hj)) _omj Hsj)
         as Hgen.
       spec Hgen (proj1_sig (vs0 X)) om (pre_loaded_with_all_messages_message_protocol_prop X om) Hv.
@@ -470,9 +467,9 @@ Proof.
       destruct is_equiv as [|]; inversion Ht; subst; clear Ht; simpl in *.
       * destruct s as (ns, bs). simpl in *.
         destruct (to_nat i) as (ni, Hni).
-        destruct (nat_eq_dec ni (S ns)); [|apply Hs].
+        destruct (nat_eq_dec ni (S ns)); [|apply IHHbs].
         exists om'. assumption.
-      * destruct (Fin.eq_dec (of_nat_lt Hj) i); [|apply Hs].
+      * destruct (Fin.eq_dec (of_nat_lt Hj) i); [|apply IHHbs].
         exists om'. assumption.
 Qed.
 

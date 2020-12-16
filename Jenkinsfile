@@ -36,7 +36,10 @@ pipeline {
         sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
           sh '''
             eval $(opam env)
-            make -j 6 coqdoc coq2html alectryon
+            make -j 6
+            make coqdoc
+            make coq2html
+            make -j 6 alectryon
             export COQ_SHA=$(git rev-parse HEAD)
 
             git clone 'ssh://github.com/runtimeverification/casper-cbc-proof-docs.git'

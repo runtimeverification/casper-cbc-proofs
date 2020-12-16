@@ -8,7 +8,7 @@ From CasperCBC
   Require Import
     StreamExtras ListExtras Preamble
     VLSM.Common
-    VLSM.Actions
+    VLSM.Plans
     .
 (**
 
@@ -261,10 +261,10 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       - exact output.
     Defined.
     
-    Definition lift_to_composite_action_item
+    Definition lift_to_composite_plan_item
       (i : index)
-      (a : vaction_item (IM i)) :
-      @action_item _ composite_type.
+      (a : vplan_item (IM i)) :
+      @plan_item _ composite_type.
     Proof.
       destruct a.
       split.
@@ -1223,12 +1223,7 @@ All results from regular projections carry to these "free" projections.
     : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
   Proof.
     revert i. generalize dependent s.
-    apply
-      (protocol_state_prop_ind (pre_loaded_with_all_messages_vlsm X)
-        (fun (s : vstate (pre_loaded_with_all_messages_vlsm X)) =>
-          forall i : index, protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i)
-        )
-      ); intros.
+    induction 1 using protocol_state_prop_ind; intros.
     - apply protocol_state_prop_iff. left. specialize (Hs i). unfold vinitial_state_prop in Hs.
       exists (exist _ (s i) Hs). reflexivity.
     - destruct Ht as [[Hps [Hpm [Hv _]]] Ht].
@@ -1239,7 +1234,7 @@ All results from regular projections carry to these "free" projections.
       inversion Ht. subst s' omi'; clear Ht.
       destruct (decide (i = i')).
       + subst i'. rewrite state_update_eq.
-        specialize (Hs i).
+        specialize (IHHs i).
         apply protocol_state_prop_iff. right.
         exists li'. exists (s i, om). exists om'.
         repeat split; try assumption.
@@ -1250,7 +1245,7 @@ All results from regular projections carry to these "free" projections.
           pose (exist _ m Him) as im.
           apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm (IM i)) im).
         * apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm (IM i))).
-      + rewrite state_update_neq; try assumption. apply Hs.
+      + rewrite state_update_neq; try assumption. apply IHHs.
   Qed.
   
   Lemma relevant_component_transition
@@ -1304,18 +1299,18 @@ All results from regular projections carry to these "free" projections.
   Lemma relevant_components_one
     (s s' : vstate X)
     (Hprs' : protocol_state_prop X s')
-    (ai : vaction_item X)
+    (ai : vplan_item X)
     (i := projT1 (label_a ai))
     (Heq : (s i) = (s' i))
-    (Hpr : finite_protocol_action_from X s [ai]) :
-    let res' := snd (apply_action X s' [ai]) in
-    let res := snd (apply_action X s [ai]) in 
-    finite_protocol_action_from X s' [ai] /\ 
+    (Hpr : finite_protocol_plan_from X s [ai]) :
+    let res' := snd (apply_plan X s' [ai]) in
+    let res := snd (apply_plan X s [ai]) in 
+    finite_protocol_plan_from X s' [ai] /\ 
     (res' i) = res i.
   Proof.
     simpl.
-    unfold finite_protocol_action_from in *.
-    unfold apply_action in *.
+    unfold finite_protocol_plan_from in *.
+    unfold apply_plan in *.
     destruct ai; simpl in *.
     destruct (vtransition X label_a (s', input_a)) eqn : eq_trans'.
     destruct (vtransition X label_a (s, input_a)) eqn : eq_trans.
@@ -1345,13 +1340,13 @@ All results from regular projections carry to these "free" projections.
   
   Lemma irrelevant_components_one
     (s : state)
-    (ai : vaction_item X)
+    (ai : vplan_item X)
     (i : index)
     (Hdif : i <> projT1 (label_a ai)) :
-    let res := snd (apply_action X s [ai]) in  
+    let res := snd (apply_plan X s [ai]) in  
     (res i) = (s i).
   Proof.
-    unfold apply_action.
+    unfold apply_plan.
     simpl.
     destruct ai.
     destruct (vtransition X label_a (s, input_a)) eqn : eq_trans.
@@ -1373,19 +1368,19 @@ All results from regular projections carry to these "free" projections.
     
   Lemma irrelevant_components
     (s : state)
-    (a : vaction X)
+    (a : vplan X)
     (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
     (i : index)
     (Hdif : ~In i a_indices) :
-    let res := snd (apply_action X s a) in  
+    let res := snd (apply_plan X s a) in  
     (res i) = (s i).
   Proof.
     induction a using rev_ind.
     - simpl; intuition.
     - simpl in *.
-      rewrite apply_action_app.
-      destruct (apply_action X s a) eqn : eq_a; simpl in *.
-      destruct (apply_action X v [x]) eqn : eq_x; simpl in *.
+      rewrite apply_plan_app.
+      destruct (apply_plan X s a) eqn : eq_a; simpl in *.
+      destruct (apply_plan X v [x]) eqn : eq_x; simpl in *.
       
       unfold a_indices in Hdif.
       rewrite map_app in Hdif.
@@ -1396,7 +1391,7 @@ All results from regular projections carry to these "free" projections.
       }
       
       rewrite <- IHa.
-      replace v0 with (snd (apply_action X v [x])).
+      replace v0 with (snd (apply_plan X v [x])).
       apply irrelevant_components_one.
       intros contra.
       rewrite contra in Hdif.
@@ -1410,25 +1405,25 @@ All results from regular projections carry to these "free" projections.
   Lemma relevant_components
     (s s' : vstate X)
     (Hprs' : protocol_state_prop X s')
-    (a : vaction X)
+    (a : vplan X)
     (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
     (li : list index)
     (Heq : forall (i : index), In i li -> (s' i) = (s i))
     (Hincl : incl a_indices li)
-    (Hpr : finite_protocol_action_from X s a) :
-    let res' := snd (apply_action X s' a) in
-    let res := snd (apply_action X s a) in 
-    finite_protocol_action_from X s' a /\ 
+    (Hpr : finite_protocol_plan_from X s a) :
+    let res' := snd (apply_plan X s' a) in
+    let res := snd (apply_plan X s a) in 
+    finite_protocol_plan_from X s' a /\ 
     (forall (i : index), In i li -> (res' i) = res i).
   Proof.
     induction a using rev_ind.
     - split.
-      apply finite_protocol_action_empty.
+      apply finite_protocol_plan_empty.
       assumption.
       simpl. assumption.
     - simpl in *.
       (* replace (a :: a0) with ([a] ++ a0) in *. 2: auto. *)
-      apply finite_protocol_action_from_app_iff in Hpr.
+      apply finite_protocol_plan_from_app_iff in Hpr.
       destruct Hpr as [Hrem Hsingle].
       
       spec IHa. {
@@ -1447,10 +1442,10 @@ All results from regular projections carry to these "free" projections.
       
       destruct IHa as [IHapr IHaind].
       
-      specialize (relevant_components_one (snd (apply_action X s a)) (snd (apply_action X s' a))) as Hrel.
+      specialize (relevant_components_one (snd (apply_plan X s a)) (snd (apply_plan X s' a))) as Hrel.
       
       spec Hrel. {
-        apply apply_action_last_protocol.
+        apply apply_plan_last_protocol.
         all : intuition.
       }
       
@@ -1473,16 +1468,16 @@ All results from regular projections carry to these "free" projections.
       specialize (Hrel Hsingle).
       destruct Hrel as [Hrelpr Hrelind].
       split.
-      + apply finite_protocol_action_from_app_iff.
+      + apply finite_protocol_plan_from_app_iff.
         split; intuition.
       + intros.
-        rewrite apply_action_app.
-        rewrite apply_action_app.
-        destruct (apply_action X s' a) eqn : eq_as'.
-        destruct (apply_action X s a) eqn : eq_as.
+        rewrite apply_plan_app.
+        rewrite apply_plan_app.
+        destruct (apply_plan X s' a) eqn : eq_as'.
+        destruct (apply_plan X s a) eqn : eq_as.
         simpl in *.
-        destruct (apply_action X v [x]) eqn : eq_xv.
-        destruct (apply_action X v0 [x]) eqn : eq_xv0.
+        destruct (apply_plan X v [x]) eqn : eq_xv.
+        destruct (apply_plan X v0 [x]) eqn : eq_xv0.
         simpl in *.
         destruct (decide (i = (projT1 (label_a x)))).
         * rewrite e; intuition.
@@ -1492,8 +1487,8 @@ All results from regular projections carry to these "free" projections.
           specialize (irrelevant_components_one v0) as Hdiff0.
           specialize (Hdiff0 x i n).
           simpl in *.
-          replace v1 with (snd (apply_action X v [x])).
-          replace v2 with (snd (apply_action X v0 [x])).
+          replace v1 with (snd (apply_plan X v [x])).
+          replace v2 with (snd (apply_plan X v0 [x])).
           rewrite Hdiff.
           rewrite Hdiff0.
           apply IHaind.

@@ -1,7 +1,7 @@
 -Q . CasperCBC
 
 VLSM/Common.v
-VLSM/Actions.v
+VLSM/Plans.v
 VLSM/CommonTraces.v
 VLSM/Composition.v
 VLSM/Decisions.v
@@ -31,6 +31,8 @@ VLSM/ListValidator/GeneralComposition.v
 VLSM/ListValidator/NoEquivocationComposition.v
 VLSM/ListValidator/EquivocationAwareListValidator.v
 VLSM/ListValidator/CommonFutures.v
+VLSM/Liveness.v
+VLSM/Liveness/SimpleFragileProtocol.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v

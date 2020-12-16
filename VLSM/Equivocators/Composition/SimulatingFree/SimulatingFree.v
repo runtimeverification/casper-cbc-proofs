@@ -14,7 +14,7 @@ From CasperCBC
     VLSM.Equivocators.Composition.Common
     VLSM.Equivocators.Composition.Projections
     VLSM.Equivocators.Composition.SimulatingFree.FullReplayTraces
-    VLSM.Actions
+    VLSM.Plans
     .
 
 Section all_equivocating.
@@ -64,7 +64,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init'
   (is : vstate equivocators_no_equivocations_vlsm)
   (eqvs : list equiv_index)
   : let app_tr :=
-     apply_action
+     apply_plan
         (Common.equivocators_no_equivocations_vlsm IM Hbs i0 index_listing
            finite_index) full_replay_state
         (map (initial_new_machine_transition_item IM Hbs i0 index_listing finite_index is) eqvs)
@@ -78,7 +78,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init'
 Proof.
   induction eqvs using rev_ind
   ; [repeat split; [simpl;lia|intro contra; inversion contra]|].
-  rewrite map_app. rewrite apply_action_app.
+  rewrite map_app. rewrite apply_plan_app.
   match type of IHeqvs with
   | context[let _ := ?a in _] => remember a as tr_app
   end.
@@ -98,7 +98,7 @@ Proof.
   end.
   destruct IHeqvs as [Hproject Hsize].
   simpl in Heqa_app.
-  unfold apply_action in Heqa_app.
+  unfold apply_plan in Heqa_app.
   simpl in Heqa_app.
   inversion Heqa_app. subst. clear Heqa_app. simpl.
   rewrite state_update_eq.
@@ -138,7 +138,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init
   (Heqv_choice: not_equivocating_equivocators_choice eqv_choice full_replay_state)
   (is : vstate equivocators_no_equivocations_vlsm)
   : let app_tr :=
-     apply_action
+     apply_plan
         (Common.equivocators_no_equivocations_vlsm IM Hbs i0 index_listing
            finite_index) full_replay_state
         (spawn_initial_state IM Hbs i0 index_listing finite_index is) 
@@ -172,7 +172,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace
   (is_final : vstate equivocators_no_equivocations_vlsm)
   (His_final_size : forall eqv, projT1 (is_final (eqv)) > projT1 (full_replay_state (eqv)))
   : let app_tr :=
-    apply_action equivocators_no_equivocations_vlsm is_final
+    apply_plan equivocators_no_equivocations_vlsm is_final
       (map
          (update_euivocators_transition_item_descriptor IM Hbs i0
             index_listing finite_index full_replay_state)
@@ -184,7 +184,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace
 Proof.
   induction tr using rev_ind
   ; [split; [reflexivity|]; assumption|].
-  rewrite map_app. rewrite apply_action_app.
+  rewrite map_app. rewrite apply_plan_app.
   match type of IHtr with
   | context[let _ := ?a in _] => remember a as tr_app
   end.
@@ -204,7 +204,7 @@ Proof.
   end.
   destruct IHtr as [Hproject Hsize].
   simpl in Heqa_app.
-  unfold apply_action in Heqa_app.
+  unfold apply_plan in Heqa_app.
   simpl in Heqa_app.
   unfold update_euivocators_transition_item_descriptor in Heqa_app.
   destruct x. destruct l as (eqv, li).
@@ -322,15 +322,15 @@ Lemma equivocators_trace_project_skip_full_replay_trace_full
     Some ([], eqv_choice).
 Proof.
   unfold replay_trace_from.
-  rewrite apply_action_app.
+  rewrite apply_plan_app.
   destruct
-    (apply_action
+    (apply_plan
       (Common.equivocators_no_equivocations_vlsm IM Hbs i0 index_listing
         finite_index) full_replay_state
       (spawn_initial_state IM Hbs i0 index_listing finite_index is))
     as (is_items, is_final) eqn:His.
   destruct
-    (apply_action
+    (apply_plan
       (Common.equivocators_no_equivocations_vlsm IM Hbs i0 index_listing
           finite_index) is_final
       (map
