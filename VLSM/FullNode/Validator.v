@@ -629,14 +629,14 @@ Section proper_sent_received.
     ; try assert (Hlst : last (List.map destination tr) is = s)
       by (destruct tr as [|i tr]; inversion Hdest; apply last_map)
     .
-    - destruct x as [m0 Hm0]. unfold selected_message_exists_in_some_traces in Hm0.
-      destruct Hm0 as [is [tr [Htr [Hlst Hex]]]]. simpl in *.
+    - destruct x as [m0 Hm0].
+      destruct Hm0 as [is [tr [Htr [Hlst Hex]]]];simpl in *.
       apply Exists_exists in Hex.
       destruct Hex as [item [Hitem Hout]].
       specialize (last_state_empty_trace is tr Htr Hlst item Hitem).
       intros [_ [Hnout _]].
       rewrite Hnout in Hout. discriminate Hout.
-    - assert (Hm : selected_message_exists_in_some_traces vlsm output s m).
+    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm output s m).
       { exists is. exists tr. exists Htr. exists Hlst.
         apply Exists_exists.
         apply (has_been_sent_in_trace_rev s m H is tr Htr Hlst).
@@ -654,8 +654,8 @@ Section proper_sent_received.
     (s : vstate vlsm)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    : selected_message_exists_in_some_traces vlsm output s m <->
-    selected_message_exists_in_all_traces vlsm output s m.
+    : selected_message_exists_in_some_preloaded_traces vlsm output s m <->
+    selected_message_exists_in_all_preloaded_traces vlsm output s m.
   Proof.
     specialize (sent_messages_prop s Hs m) as Hin.
     split; intros.
@@ -856,7 +856,7 @@ Section proper_sent_received.
     exists (sm : received_messages vlsm s), proj1_sig sm = m.
   Proof.
     split; intros.
-    - assert (Hm : selected_message_exists_in_some_traces vlsm input s m)
+    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm input s m)
       ; try (exists (exist _ m Hm); reflexivity).
       destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
@@ -878,8 +878,8 @@ Section proper_sent_received.
     (s : vstate vlsm)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    : selected_message_exists_in_some_traces vlsm input s m <->
-    selected_message_exists_in_all_traces vlsm input s m.
+    : selected_message_exists_in_some_preloaded_traces vlsm input s m <->
+    selected_message_exists_in_all_preloaded_traces vlsm input s m.
   Proof.
     specialize (received_messages_prop s Hs m) as Hin.
     split; intros.

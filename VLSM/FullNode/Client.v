@@ -260,6 +260,23 @@ messages, implementing a limited equivocation tolerance policy.
     :=
     fun s m => in_dec decide_eq m s.
 
+  Lemma VLSM_full_client_has_been_sent_step_properties:
+    has_been_sent_stepwise_props client_has_been_sent.
+  Proof.
+    unfold client_has_been_sent.
+    split.
+    - tauto.
+    - intros l s im s' om Hptrans msg.
+      assert (om <> Some msg).
+      {
+        destruct Hptrans as [_ Htrans].
+        cbn in Htrans.
+        destruct im;inversion Htrans;congruence.
+      }
+      tauto.
+  Qed.
+
+  (*
   Lemma has_been_sent_in_trace
     (s : set message)
     (m: message)
@@ -309,6 +326,42 @@ messages, implementing a limited equivocation tolerance policy.
         exfalso.
         apply has_been_sent_in_trace with s m is tr item; assumption.
   Qed.
+   *)
+
+  (*
+  Definition client_has_not_been_sent
+    (s : set message)
+    (m : message)
+    : Prop
+    :=
+    ~ client_has_been_sent s m.
+
+  Lemma VLSM_full_client_proper_not_sent
+    (s : set message)
+    (Hs : protocol_state_prop bvlsm s)
+    (m : message)
+    : has_not_been_sent_prop vlsm client_has_not_been_sent s m.
+  Proof.
+    unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
+    unfold client_has_not_been_sent. simpl.
+    split; intros;[|tauto].
+    unfold selected_message_exists_in_no_preloaded_trace.
+    unfold generalized_selected_message_exists_in_no_trace.
+    intros.
+    rewrite <- Forall_Exists_neg.
+    apply Forall_forall.
+    intros item Hitem Hm.
+    apply (has_been_sent_in_trace s m start tr Htr item Hitem Hm Hlast).
+  Qed.
+   *)
+
+  Definition VLSM_full_client_has_been_sent
+    : has_been_sent_capability VLSM_full_client2.
+  Proof.
+    apply cap_from_alt with client_has_been_sent.
+    apply VLSM_full_client_has_been_sent_step_properties.
+    exact client_has_been_sent_dec.
+  Defined.
 
   Lemma has_been_received_in_trace
     (s : set message)
@@ -349,38 +402,6 @@ messages, implementing a limited equivocation tolerance policy.
     apply set_add_iff. left. reflexivity.
   Qed.
 
-  Definition client_has_not_been_sent
-    (s : set message)
-    (m : message)
-    : Prop
-    :=
-    ~ client_has_been_sent s m.
-
-  Lemma VLSM_full_client_proper_not_sent
-    (s : set message)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_not_been_sent_prop vlsm client_has_not_been_sent s m.
-  Proof.
-    unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
-    unfold client_has_not_been_sent. simpl.
-    split; intros;[|tauto].
-    unfold selected_message_exists_in_no_trace.
-    intros.
-    rewrite <- Forall_Exists_neg.
-    apply Forall_forall.
-    intros item Hitem Hm.
-    apply (has_been_sent_in_trace s m start tr Htr item Hitem Hm Hlast).
-  Qed.
-
-  Definition VLSM_full_client_has_been_sent
-    : has_been_sent_capability VLSM_full_client2
-    :=
-    {| has_been_sent := client_has_been_sent
-     ; proper_sent := VLSM_full_client_proper_sent
-     ; proper_not_sent := VLSM_full_client_proper_not_sent
-    |}.
-
   Lemma VLSM_full_client_proper_received
     (s : set message)
     (Hs : protocol_state_prop bvlsm s)
@@ -389,7 +410,7 @@ messages, implementing a limited equivocation tolerance policy.
   Proof.
     unfold has_been_received_prop. unfold all_traces_have_message_prop.
     unfold client_has_been_received.
-    unfold selected_message_exists_in_all_traces.
+    unfold selected_message_exists_in_all_preloaded_traces.
     unfold specialized_selected_message_exists_in_all_traces.
     split; intros.
     - apply Exists_exists.
@@ -451,7 +472,8 @@ messages, implementing a limited equivocation tolerance policy.
     unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
     unfold client_has_not_been_received.
     unfold client_has_been_received.
-    unfold selected_message_exists_in_no_trace.
+    unfold selected_message_exists_in_no_preloaded_trace,
+       specialized_selected_message_exists_in_no_trace.
     split.
     - intros.
       rewrite <- Forall_Exists_neg.

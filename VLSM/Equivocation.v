@@ -96,7 +96,7 @@ Section Simple.
       (Hlast : last (List.map destination tr) start = s),
       List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
 
-    Definition selected_message_exists_in_all_traces
+    Definition selected_message_exists_in_all_preloaded_traces
       := specialized_selected_message_exists_in_all_traces pre_vlsm.
 
     Definition specialized_selected_message_exists_in_some_traces
@@ -113,10 +113,11 @@ Section Simple.
       (Hlast : last (List.map destination tr) start = s),
       List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
 
-    Definition selected_message_exists_in_some_traces
+    Definition selected_message_exists_in_some_preloaded_traces
       := specialized_selected_message_exists_in_some_traces pre_vlsm.
 
-    Definition selected_message_exists_in_no_trace
+    Definition specialized_selected_message_exists_in_no_trace
+      (X : VLSM message)
       (message_selector : transition_item -> option message)
       (s : state)
       (m : message)
@@ -125,16 +126,20 @@ Section Simple.
       forall
       (start : state)
       (tr : list transition_item)
-      (Htr : finite_protocol_trace pre_vlsm start tr)
+      (Htr : finite_protocol_trace X start tr)
       (Hlast : last (List.map destination tr) start = s),
       ~List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
 
+    Definition selected_message_exists_in_no_preloaded_trace :=
+      specialized_selected_message_exists_in_no_trace pre_vlsm.
+
     Lemma selected_message_exists_not_some_iff_no
+      (X : VLSM message)
       (message_selector : transition_item -> option message)
       (s : state)
       (m : message)
-      : ~ selected_message_exists_in_some_traces message_selector s m
-        <-> selected_message_exists_in_no_trace message_selector s m.
+      : ~ specialized_selected_message_exists_in_some_traces X message_selector s m
+        <-> specialized_selected_message_exists_in_no_trace X message_selector s m.
     Proof.
       split.
       - intro Hnot.
@@ -143,6 +148,16 @@ Section Simple.
         exists is, tr, Htr, Hlast. exact Hsend.
       - intros Hno [is [tr [Htr [Hlast Hsend]]]].
         exact (Hno is tr Htr Hlast Hsend).
+    Qed.
+
+    Lemma selected_message_exists_preloaded_not_some_iff_no
+      (message_selector : transition_item -> option message)
+      (s : state)
+      (m : message)
+      : ~ selected_message_exists_in_some_preloaded_traces message_selector s m
+        <-> selected_message_exists_in_no_preloaded_trace message_selector s m.
+    Proof.
+      apply selected_message_exists_not_some_iff_no.
     Qed.
 
     (** Sufficient condition for 'specialized_selected_message_exists_in_some_traces'
@@ -183,15 +198,15 @@ Section Simple.
       (m : message)
       : Prop
       :=
-      selected_message_exists_in_some_traces message_selector s m
-      <-> selected_message_exists_in_all_traces message_selector s m.
+      selected_message_exists_in_some_preloaded_traces message_selector s m
+      <-> selected_message_exists_in_all_preloaded_traces message_selector s m.
 
     Lemma selected_message_exists_in_all_traces_initial_state
       (s : vstate vlsm)
       (Hs : vinitial_state_prop vlsm s)
       (selector : transition_item -> option message)
       (m : message)
-      : ~ selected_message_exists_in_all_traces selector s m.
+      : ~ selected_message_exists_in_all_preloaded_traces selector s m.
     Proof.
       intro Hselected.
       assert (Hps : protocol_state_prop pre_vlsm s).
@@ -223,7 +238,7 @@ Section Simple.
       (m : message)
       : Prop
       :=
-      oracle s m <-> selected_message_exists_in_all_traces message_selector s m.
+      oracle s m <-> selected_message_exists_in_all_preloaded_traces message_selector s m.
 
     Definition no_traces_have_message_prop
       (message_selector : transition_item -> option message)
@@ -232,7 +247,7 @@ Section Simple.
       (m : message)
       : Prop
       :=
-      oracle s m <-> selected_message_exists_in_no_trace message_selector s m.
+      oracle s m <-> selected_message_exists_in_no_preloaded_trace message_selector s m.
 
     Definition has_been_sent_prop : state_message_oracle -> state -> message -> Prop
       := (all_traces_have_message_prop output).
@@ -285,8 +300,8 @@ Section Simple.
       (Hs: protocol_state_prop pre_vlsm s)
       (m : message)
       (selector : transition_item -> option message)
-      (Hall : selected_message_exists_in_all_traces selector s m)
-      : selected_message_exists_in_some_traces selector s m.
+      (Hall : selected_message_exists_in_all_preloaded_traces selector s m)
+      : selected_message_exists_in_some_preloaded_traces selector s m.
     Proof.
       destruct Hs as [om Hs].
       apply protocol_is_trace in Hs.
@@ -386,7 +401,7 @@ Section Simple.
       unfold has_not_been_sent_prop.
       unfold no_traces_have_message_prop.
       unfold has_not_been_sent.
-      rewrite <- selected_message_exists_not_some_iff_no.
+      rewrite <- selected_message_exists_preloaded_not_some_iff_no.
       apply not_iff_compat.
       apply (iff_trans proper_sent).
       symmetry;exact Hconsistency.
@@ -447,7 +462,7 @@ Section Simple.
       unfold has_not_been_received.
       split.
       - intros Hsm is tr Htr Hlast Hsome.
-        assert (Hsm' : selected_message_exists_in_some_traces input s m)
+        assert (Hsm' : selected_message_exists_in_some_preloaded_traces input s m)
           by (exists is; exists tr; exists Htr; exists Hlast; assumption).
         apply Hconsistency in Hsm'.
         apply proper_received in Hsm'. contradiction.
@@ -462,7 +477,7 @@ Section Simple.
       (s : vstate vlsm)
       : Type
       :=
-      sig (fun m => selected_message_exists_in_some_traces output s m).
+      sig (fun m => selected_message_exists_in_some_preloaded_traces output s m).
 
     Lemma sent_messages_proper
       (Hhbs : has_been_sent_capability)
@@ -483,7 +498,7 @@ Section Simple.
       (s : vstate vlsm)
       : Type
       :=
-      sig (fun m => selected_message_exists_in_some_traces input s m).
+      sig (fun m => selected_message_exists_in_some_preloaded_traces input s m).
 
     Lemma received_messages_proper
       (Hhbs : has_been_received_capability)
@@ -588,7 +603,7 @@ Section Simple.
       unfold computable_sent_messages_has_been_sent.
       split.
       - intro Hin.
-        cut (~ selected_message_exists_in_some_traces output s m).
+        cut (~ selected_message_exists_in_some_preloaded_traces output s m).
         { intros Hno is tr Htr Hlast Hexists.
           contradict Hno;exists is, tr, Htr,Hlast;assumption.
         }
@@ -698,7 +713,7 @@ Section Simple.
       unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
       unfold computable_received_messages_has_not_been_received.
       unfold computable_received_messages_has_been_received.
-      rewrite <- selected_message_exists_not_some_iff_no.
+      rewrite <- selected_message_exists_preloaded_not_some_iff_no.
       apply not_iff_compat.
       rewrite received_messages_full;[|assumption].
       unfold received_messages.
@@ -1088,7 +1103,7 @@ Section Composite.
       apply Exists_exists in Hsome.
       destruct Hsome as [item0 [Hitem0 Houtput0]].
       pose (projT1 (l item0)) as j.
-      assert (Hsomej : selected_message_exists_in_some_traces (IM j) output (s j) m).
+      assert (Hsomej : selected_message_exists_in_some_preloaded_traces (IM j) output (s j) m).
       { exists (is0 j).
         exists (finite_trace_projection_list IM i0 constraint j tr0).
         assert
