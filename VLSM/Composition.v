@@ -1776,11 +1776,11 @@ All results from regular projections carry to these "free" projections.
   Qed.
 
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_neq
-    (s1 s2 : vstate X)
-    (om1 om2 : option message)
-    (l : label)
+    [s1 s2 : vstate X]
+    [om1 om2 : option message]
+    [l : label]
     (Ht : protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s1, om1) (s2, om2))
-    (i : index)
+    [i : index]
     (Hi : i <> projT1 l)
     : s1 i = s2 i.
   Proof.
@@ -1799,30 +1799,24 @@ All results from regular projections carry to these "free" projections.
     (i : index)
     : in_futures (pre_loaded_with_all_messages_vlsm (IM i))  (s1 i) (s2 i).
   Proof.
-    destruct Hfutures as [tr [Htr Hlast]].
-    generalize dependent s1.
-    induction tr; intros.
-    - exists []. simpl in Hlast. subst.
-      split; try constructor; simpl; try reflexivity.
-      inversion Htr.
-      apply preloaded_composed_protocol_state. assumption.
-    - rewrite map_cons in Hlast. rewrite unroll_last in Hlast.
-      inversion Htr. subst. simpl in *.
-      specialize (IHtr s H2 eq_refl).
-      destruct (decide (i = projT1 l)).
-      + subst. apply pre_loaded_with_all_messages_projection_protocol_transition_eq in H3.
-        destruct IHtr as [tri [Htri Hlasti]].
+    destruct Hfutures as [tr Htr].
+    induction Htr using finite_protocol_trace_from_to_ind.
+    - exists [].
+      constructor.
+      apply preloaded_composed_protocol_state;assumption.
+    - destruct (decide (i = projT1 l)).
+      + subst. apply pre_loaded_with_all_messages_projection_protocol_transition_eq in H.
+        destruct IHHtr as [tri Htri].
         exists
           ({| l := projT2 l; input := iom; destination := s (projT1 l); output := oom |}
           ::tri
           ).
-        split; try apply (finite_ptrace_extend (pre_loaded_with_all_messages_vlsm (IM (projT1 l))))
-        ; try assumption.
-        rewrite map_cons. rewrite unroll_last. simpl.
+        apply (finite_ptrace_from_to_extend (pre_loaded_with_all_messages_vlsm (IM (projT1 l)))).
         assumption.
-      + specialize
-          (pre_loaded_with_all_messages_projection_protocol_transition_neq _ _ _ _ _ H3 _ n) as Hs1i.
-        rewrite Hs1i. assumption.
+        assumption.
+      + replace (s' i) with (s i). assumption.
+        symmetry.
+        apply (pre_loaded_with_all_messages_projection_protocol_transition_neq H n).
   Qed.
 
 End free_projections.

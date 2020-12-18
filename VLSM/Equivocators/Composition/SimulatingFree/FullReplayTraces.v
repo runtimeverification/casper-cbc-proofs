@@ -121,7 +121,7 @@ Lemma replay_trace_from_app
   (is : vstate equivocators_no_equivocations_vlsm)
   (tra trb : list (composite_transition_item equivocator_IM))
   (eqva := replay_trace_from full_replay_state is tra)
-  (lsta := last (map destination eqva) full_replay_state)
+  (lsta := finite_trace_last full_replay_state eqva)
   : replay_trace_from full_replay_state is (tra ++ trb) =
     eqva ++
     fst
@@ -700,9 +700,9 @@ Lemma replay_trace_from_state_correspondence
   (His : vinitial_state_prop equivocators_no_equivocations_vlsm is)
   (tr : list (composite_transition_item equivocator_IM))
   (Htr : finite_protocol_trace_from equivocators_no_equivocations_vlsm is tr)
-  (last_is_tr := last (map destination tr) is)
+  (last_is_tr := finite_trace_last is tr)
   (tr_full_replay_is_tr := replay_trace_from full_replay_state is tr)
-  (last_full_replay_is_tr := last (map destination tr_full_replay_is_tr) full_replay_state)
+  (last_full_replay_is_tr := finite_trace_last full_replay_state tr_full_replay_is_tr)
   : (tr <> [] -> option_map output (last_error tr) = option_map output (last_error tr_full_replay_is_tr))
   /\ forall
     (eqv : equiv_index),
@@ -747,7 +747,7 @@ Lemma replay_trace_from_full_replay_state_project
   (tr : list (composite_transition_item equivocator_IM))
   (Htr : finite_protocol_trace_from equivocators_no_equivocations_vlsm is tr)
   (tr_full_replay_is_tr := replay_trace_from full_replay_state is tr)
-  (last_full_replay_is_tr := last (map destination tr_full_replay_is_tr) full_replay_state)
+  (last_full_replay_is_tr := finite_trace_last full_replay_state tr_full_replay_is_tr)
   (eqv_descriptors : equivocator_descriptors)
   (Heqv_descriptors : proper_equivocator_descriptors eqv_descriptors full_replay_state)
   : proper_equivocator_descriptors eqv_descriptors last_full_replay_is_tr /\
@@ -820,15 +820,15 @@ Lemma replay_trace_from_protocol
            (eqv)
            (l0,
            Existing (IM (eqv)) (id + S (projT1 (full_replay_state (eqv)))) fd))
-        (last
-           (map Common.destination
-              (fst
+        (finite_trace_last
+           full_replay_state
+           (fst
                  (apply_plan (composite_vlsm equivocator_IM constraint)
                     full_replay_state
                     (spawn_initial_state is ++
                      map
                        (update_euivocators_transition_item_descriptor full_replay_state)
-                       epref)))) full_replay_state, input eitem)
+                       epref))), input eitem)
   )
   : finite_protocol_trace_from (composite_vlsm equivocator_IM constraint)
       full_replay_state (replay_trace_from full_replay_state is tr).
@@ -1021,17 +1021,17 @@ Proof.
   spec Heqv is epref.
   spec Heqv.
   {
+    apply ptrace_add_last;[|reflexivity].
     split;[|assumption].
     apply (VLSM_incl_finite_protocol_trace_from); [|assumption].
     apply constraint_subsumption_incl.
     intro. intros. exact I.
   }
-  specialize (Heqv eq_refl).
   apply
     (specialized_selected_message_exists_in_some_traces_from (free_composite_vlsm equivocator_IM)
       (field_selector Common.output)
     ) with full_replay_state (replay_trace_from full_replay_state is epref)
-  ; [assumption|reflexivity|].
+  ; [apply ptrace_add_last;[assumption|reflexivity]|].
   apply Exists_exists in Heqv.
   destruct Heqv as [mitem [Hmitem Houtput]].
   apply in_split in Hmitem.

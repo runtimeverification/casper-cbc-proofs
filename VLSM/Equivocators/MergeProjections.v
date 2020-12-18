@@ -122,7 +122,7 @@ Lemma projection_traces_replace_one_length
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
   (Hbtr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is btr)
-  (n := projT1 (last (map destination btr) is))
+  (n := projT1 (finite_trace_last is btr))
   (ni : Fin.t (S n))
   (isi : vstate X)
   (tri : list (vtransition_item X))
@@ -141,13 +141,15 @@ Proof.
   - rewrite eq_dec_if_false by assumption.
     unfold preloaded_protocol_equivocator_vlsm_trace_oproject.
     destruct (to_nat nj) as [j Hj] eqn:Heqnj.
+    pose proof (ptrace_add_last
+      (base_prop:=@finite_protocol_trace_from) (proj1 Hbtr) (eq_refl _)).
     destruct
-      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ (proj1 Hbtr) _ Hj false)
+      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ _ H _ Hj false)
       as [trX [di [Hproject Hdi]]].
     rewrite Hproject.
     destruct di as [sn | i fi].
     + congruence.
-    + destruct Hdi as [Hi [HlstX [HtrX]]].
+    + destruct Hdi as [Hi [HtrX]].
       destruct (le_lt_dec (S (projT1 is)) i); [lia|].
       congruence.
 Qed.

@@ -205,25 +205,25 @@ Lemma preloaded_finite_trace_projection_last_state
   (start : vstate X)
   (transitions : list (vtransition_item X))
   (Htr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) start transitions)
-  (lstx := last (List.map destination transitions) start)
-  (lstj := last (List.map destination (finite_trace_projection_list transitions)) (start j))
+  (lstx := finite_trace_last start transitions)
+  (lstj := finite_trace_last (start j) (finite_trace_projection_list transitions))
   : lstj = lstx j.
 Proof.
   unfold lstx. unfold lstj. clear lstx. clear lstj.
   induction Htr; try reflexivity.
   destruct l as [i l].
-  rewrite map_cons.
-  rewrite unroll_last. simpl.
+  rewrite finite_trace_last_cons.
+  simpl.
   destruct (decide (j = i)).
-  - rewrite map_cons. rewrite unroll_last.
+  - rewrite finite_trace_last_cons.
+    simpl.
     assumption.
-  - destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
-    unfold transition in Htransition; simpl in Htransition.
-    unfold vtransition in Htransition. simpl in Htransition.
+  - replace (s' j) with (s j). assumption.
+    destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
+    cbn in Htransition.
     destruct (vtransition (IM i) l (s' i, iom)) as [si' om'] eqn:Hteq.
     inversion Htransition; subst. clear Htransition.
-    specialize (state_update_neq _ s' i si' j n); intro Hupd.
-    rewrite Hupd in *.
+    apply state_update_neq.
     assumption.
 Qed.
 
@@ -231,8 +231,8 @@ Lemma finite_trace_projection_last_state
   (start : vstate X)
   (transitions : list (vtransition_item X))
   (Htr : finite_protocol_trace_from X start transitions)
-  (lstx := last (List.map destination transitions) start)
-  (lstj := last (List.map destination (finite_trace_projection_list transitions)) (start j))
+  (lstx := finite_trace_last start transitions)
+  (lstj := finite_trace_last (start j) (finite_trace_projection_list transitions))
   : lstj = lstx j.
 Proof.
   apply preloaded_finite_trace_projection_last_state.
@@ -302,14 +302,15 @@ Lemma protocol_state_projection
   : protocol_state_prop Xj (s j).
 Proof.
   apply protocol_state_has_trace in Hps.
-  destruct Hps as [is [tr [[Htr His] Hs]]].
+  destruct Hps as [is [tr [Htr Hinit]]].
+  pose proof (ptrace_get_last Htr) as Hlast.
+  apply ptrace_forget_last in Htr.
   specialize (finite_trace_projection_last_state _ _ Htr) as Hlst.
   apply _finite_ptrace_projection in Htr as Hptr.
   - apply finite_ptrace_last_pstate in Hptr.
     simpl in *.
-    rewrite Hlst in Hptr.
-    subst. assumption.
-  - apply initial_is_protocol. specialize (His j). assumption.
+    congruence.
+  - apply initial_is_protocol. apply (Hinit j).
 Qed.
 
 (* The projection of a finite protocol trace remains a protocol trace *)
@@ -397,13 +398,14 @@ Lemma preloaded_protocol_state_projection
   : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM j)) (s j).
 Proof.
   apply protocol_state_has_trace in Hps.
-  destruct Hps as [is [tr [[Htr His] Hs]]].
+  destruct Hps as [is [tr [Htr His]]].
+  pose proof (ptrace_get_last Htr).
+  apply ptrace_forget_last in Htr.
   specialize (preloaded_finite_trace_projection_last_state _ _ Htr) as Hlst.
   apply _preloaded_finite_ptrace_projection in Htr as Hptr.
   - apply finite_ptrace_last_pstate in Hptr.
     simpl in *.
-    rewrite Hlst in Hptr.
-    subst. assumption.
+    congruence.
   - apply initial_is_protocol. specialize (His j). assumption.
 Qed.
 
@@ -424,10 +426,12 @@ Lemma in_futures_projection
   (Hfutures : in_futures X s1 s2)
   : in_futures Xj (s1 j) (s2 j).
 Proof.
-  destruct Hfutures as [tr [Htr Hs2]].
+  destruct Hfutures as [tr Htr].
+  pose proof (ptrace_get_last Htr) as Hs2.
+  apply ptrace_forget_last in Htr.
   specialize (finite_ptrace_projection s1 tr Htr); intros Htrj.
   exists (finite_trace_projection_list tr).
-  split; [assumption|].
+  apply ptrace_add_last;[assumption|].
   subst s2.
   apply finite_trace_projection_last_state.
   assumption.
@@ -640,13 +644,9 @@ Lemma projection_friendly_in_futures'
   (s1 s2: state)
   (n1 n2: nat)
   (Hle: n1 <= n2)
-  (Hs1: nth_error
-        (sj
-         :: List.map destination (finite_trace_projection_list_alt trx Hall))
+  (Hs1: finite_trace_nth sj (finite_trace_projection_list_alt trx Hall)
         n1 = Some s1)
-  (Hs2: nth_error
-        (sj
-         :: List.map destination (finite_trace_projection_list_alt trx Hall))
+  (Hs2: finite_trace_nth sj (finite_trace_projection_list_alt trx Hall)
         n2 = Some s2)
   : exists sX1 sX2 : vstate X, sX1 j = s1 /\ sX2 j = s2 /\ in_futures X sX1 sX2.
 Proof.
@@ -654,14 +654,15 @@ Proof.
       (HsX1 :
         exists (nX1 nX2 : nat) (sX1 sX2 : vstate X),
           nX1 <= nX2 /\ sX1 j = s1 /\ sX2 j = s2
-          /\ nth_error (sx :: List.map destination trx) nX1 = Some sX1
-          /\ nth_error (sx :: List.map destination trx) nX2 = Some sX2
+          /\ finite_trace_nth sx trx nX1 = Some sX1
+          /\ finite_trace_nth sx trx nX2 = Some sX2
       ).
     {
       destruct n1; destruct n2.
       - exists 0; exists 0; exists sx; exists sx
         ; inversion Hs1; inversion Hs2; subst; repeat split; assumption.
       - exists 0; inversion Hs1; clear Hs1; subst.
+        unfold finite_trace_nth in Hs2.
         simpl in Hs2.
         rewrite nth_error_map in Hs2.
         unfold finite_trace_projection_list_alt in Hs2.
@@ -687,13 +688,15 @@ Proof.
         exists (destination item).
         repeat split.
         + lia.
-        + simpl. rewrite nth_error_map.
+        + unfold finite_trace_nth.
+          simpl. rewrite nth_error_map.
           replace
             (@nth_error (@transition_item message (@composite_type message index IM)) trx nX2)
             with (Some item).
           reflexivity.
       - inversion Hle.
-      - simpl in Hs1. simpl in Hs2.
+      - unfold finite_trace_nth in Hs1, Hs2.
+        simpl in Hs1. simpl in Hs2.
         rewrite nth_error_map in Hs1.
         rewrite nth_error_map in Hs2.
         unfold finite_trace_projection_list_alt in Hs1.
@@ -739,11 +742,13 @@ Proof.
         + assert (Hle' : n1 <= n2) by lia.
           specialize (nth_error_filter_index_le _ _ _ _ Hle' _ _ Hindex1 Hindex2).
           intro; lia.
-        + simpl. rewrite nth_error_map.
+        + unfold finite_trace_nth.
+          simpl. rewrite nth_error_map.
           replace (@nth_error (@transition_item message (@composite_type message index IM)) trx nX1)
             with (Some item1).
           reflexivity.
-        + simpl. rewrite nth_error_map.
+        + unfold finite_trace_nth.
+          simpl. rewrite nth_error_map.
           replace (@nth_error (@transition_item message (@composite_type message index IM)) trx nX2)
             with (Some item2).
           reflexivity.
@@ -781,21 +786,25 @@ Proof.
     simpl in Hs2.
     assert
       (Hs1' :
-        nth_error (sj :: List.map destination lj) n1 =
-        nth_error (sj :: List.map destination (list_prefix lj n2)) n1
+        finite_trace_nth sj lj n1 =
+        finite_trace_nth sj (list_prefix lj n2) n1
       ).
-    { destruct n1; try reflexivity. simpl.
-      rewrite list_prefix_map.
-      symmetry. apply list_prefix_nth. assumption.
+    {
+      rewrite <- (list_prefix_suffix lj n2) at 1.
+      rewrite finite_trace_nth_app1. reflexivity.
+      rewrite list_prefix_length. assumption.
+      apply finite_trace_nth_length in Hs2. assumption.
     }
     assert
       (Hs2' :
-        nth_error (sj :: List.map destination lj) n2 =
-        nth_error (sj :: List.map destination (list_prefix lj n2)) n2
+        finite_trace_nth sj lj n2 =
+        finite_trace_nth sj (list_prefix lj n2) n2
       ).
-    { destruct n2; try reflexivity. simpl.
-      rewrite list_prefix_map.
-      symmetry. apply list_prefix_nth. constructor.
+    {
+      rewrite <- (list_prefix_suffix lj n2) at 1.
+      rewrite finite_trace_nth_app1. reflexivity.
+      rewrite list_prefix_length. reflexivity.
+      apply finite_trace_nth_length in Hs2. assumption.
     }
     apply projection_friendly_in_futures' with sx trx sj Hall n1 n2; try assumption
     ; rewrite Hproj.

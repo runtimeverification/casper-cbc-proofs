@@ -462,7 +462,7 @@ Proof.
     specialize (Happ (conj (proj1 Hstate_trace) Hmsg_trace_full_replay)).
     simpl.
     specialize
-      (extend_right_finite_trace_from equivocators_no_equivocations_vlsm _ _ Happ) as Happ_extend.
+      (extend_right_finite_trace_from equivocators_no_equivocations_vlsm Happ) as Happ_extend.
     destruct l as (eqv, li).
     specialize (Heqv_state_choice eqv) as Heqv_state_choice_i.
     destruct (eqv_state_choice eqv) as [| eqv_state_choice_i eqv_state_choice_f]
@@ -472,8 +472,7 @@ Proof.
     pose
       (existT (fun i : index => vlabel (equivocator_IM i)) (eqv) (li, Existing (IM (eqv)) eqv_state_choice_i false))
       as el.
-    pose (last (map destination (transitions eqv_state_run ++ emsg_tr))
-      (start eqv_state_run))
+    pose (finite_trace_last (start eqv_state_run) (transitions eqv_state_run ++ emsg_tr))
       as es.
 
     destruct (vtransition equivocators_no_equivocations_vlsm el (es, om))
@@ -497,7 +496,7 @@ Proof.
     destruct
       (replay_trace_from_state_correspondence
         IM Hbs index_listing finite_index
-        (last (map destination (transitions eqv_state_run)) (start eqv_state_run))
+        (finite_trace_last (start eqv_state_run) (transitions eqv_state_run))
         _ (proj2 Hmsg_trace) _ (proj1 Hmsg_trace)
       )
       as [Houtput Hstate].
@@ -505,9 +504,9 @@ Proof.
     destruct Hstate_eqv as [Hstate_size [Hstate_msg Hstate_state]].
     spec Hstate_state eqv_state_choice_i.
 
-    remember (last (map destination (transitions eqv_state_run ++ emsg_tr)) (start eqv_state_run))
+    remember (finite_trace_last (start eqv_state_run) (transitions eqv_state_run ++ emsg_tr))
       as ess.
-    rewrite map_app in Heqess. rewrite last_app in Heqess.
+    rewrite finite_trace_last_app in Heqess.
     specialize
       (vlsm_run_last_state equivocators_no_equivocations_vlsm
         (exist _ _ Heqv_state_run)
@@ -557,8 +556,7 @@ Proof.
     {
       split; [|assumption].
       specialize (finite_ptrace_last_pstate equivocators_no_equivocations_vlsm _ _ Happ) as Hps.
-      rewrite map_app in Hps.
-      rewrite last_app in Hps. simpl in Hps.
+      rewrite finite_trace_last_app in Hps. progress simpl in Hps.
       rewrite Heqv_state_final in Hps.
       split; [subst; assumption|].
       assert (Hpom : option_protocol_message_prop equivocators_no_equivocations_vlsm om).
@@ -597,8 +595,8 @@ Proof.
             exists _om.
             apply (constraint_subsumption_protocol_prop equivocator_IM _ (free_constraint equivocator_IM))
               in Hlst; [|intro; intros; exact I].
-            rewrite map_app in Hlst.
-            rewrite last_app in Hlst. simpl in Hlst.
+            rewrite finite_trace_last_app in Hlst.
+            simpl in Hlst.
             rewrite Heqv_state_final in Hlst.
             subst.
             assumption.
@@ -617,12 +615,14 @@ Proof.
             apply constraint_subsumption_incl.
             intro. intros. exact I.
           }
+          apply ptrace_add_default_last in Happ_free as Happ_free'.
           specialize
             (specialized_selected_message_exists_in_some_traces_from
-              (free_composite_vlsm equivocator_IM) (field_selector output) _ m _ _ Happ_free eq_refl
+              (free_composite_vlsm equivocator_IM) (field_selector output) _ m _ _ Happ_free'
             ) as Hspec.
-          rewrite map_app in Hspec.
-          rewrite last_app in Hspec. simpl in Hspec.
+          clear Happ_free'.
+          rewrite finite_trace_last_app in Hspec.
+          simpl in Hspec.
           unfold es.
           rewrite <- Heqv_state_final. subst.
           rewrite <- Heqv_state_final in Hspec.

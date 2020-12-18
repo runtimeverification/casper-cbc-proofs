@@ -306,14 +306,14 @@ Lemma equivocators_protocol_trace_project
   (final_choice : equivocator_descriptors IM)
   (is : vstate XE)
   (tr : list (vtransition_item XE))
-  (final_state := last (map destination tr) is)
+  (final_state := finite_trace_last is tr)
   (Hproper : proper_equivocator_descriptors IM final_choice final_state)
   (Htr : finite_protocol_trace XE is tr)
   : exists
     (trX : list (vtransition_item X))
     (initial_choice : equivocator_descriptors IM)
     (isX := equivocators_state_project IM initial_choice is)
-    (final_stateX := last (map destination trX) isX),
+    (final_stateX := finite_trace_last isX trX),
     proper_equivocator_descriptors IM initial_choice is /\
     equivocators_trace_project IM final_choice tr = Some (trX, initial_choice) /\
     equivocators_state_project IM final_choice final_state = final_stateX /\
@@ -343,10 +343,10 @@ Proof.
     specialize (H' tr' (conj Htr Hinit) eq_refl).
     specialize (equivocators_transition_item_project_proper_characterization IM final_choice lst) as Hproperx.
     unfold final_state in Hproper. rewrite Htr_lst in Hproper.
-    rewrite map_app in Hproper. simpl in Hproper. rewrite last_is_last in Hproper.
+    rewrite finite_trace_last_is_last in Hproper.
     spec Hproperx Hproper.
     destruct Hproperx as [oitem [final_choice' [Hprojectx [Hitemx Hproperx]]]].
-    specialize (Hproperx (last (map destination tr') is)).
+    specialize (Hproperx (finite_trace_last is tr')).
     unfold equivocators_trace_project.
     rewrite fold_right_app.
     match goal with
@@ -369,8 +369,9 @@ Proof.
       ; [|assumption].
       split; [assumption|].
       split; [reflexivity|].
-      rewrite map_app. simpl. rewrite last_is_last.
-      unfold final_state. subst tr. rewrite map_app. simpl. rewrite last_is_last.
+      rewrite finite_trace_last_is_last.
+      unfold final_state. subst tr.
+      rewrite finite_trace_last_is_last.
       split; [assumption|].
       destruct HtrX' as [HtrX' His].
       split; [|assumption].
@@ -383,7 +384,7 @@ Proof.
       destruct item.
       assert (Hplst : protocol_state_prop X lst).
       { apply finite_ptrace_last_pstate in HtrX'. subst. assumption. }
-      apply (extend_right_finite_trace_from X lst []); [constructor; assumption|].
+      apply (extend_right_finite_trace_from X); [constructor; assumption|].
       simpl in Hl. subst.
       simpl in Hc.
       destruct Hc as [[Hno_equiv _] Hfixed].
@@ -401,7 +402,7 @@ Proof.
         reflexivity.
       }
       assert
-        (Hs_free : protocol_state_prop FreeE (last (map Common.destination tr') is)).
+        (Hs_free : protocol_state_prop FreeE (finite_trace_last is tr')).
       { destruct Hs as [_om Hs].
         apply (constraint_subsumption_protocol_prop (equivocator_IM IM))
           with (constraint2 := free_constraint (equivocator_IM IM))
@@ -418,8 +419,7 @@ Proof.
         apply VLSM_incl_finite_protocol_trace_from; [apply equivocators_fixed_equivocations_vlsm_incl_free|].
         assumption.
       }
-      spec Hall Htr'.
-      specialize (Hall eq_refl).
+      spec Hall. apply ptrace_add_last;[assumption|reflexivity].
       assert
         (Htr'pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm FreeE) is tr').
       { split; [|assumption].
@@ -458,7 +458,8 @@ Proof.
       subst tr. clear -Hstate_project Hx.
       rewrite Hstate_project in Hx.
       rewrite <- Hx. f_equal. unfold final_state.
-      rewrite map_app. simpl. rewrite last_is_last. reflexivity.
+      rewrite finite_trace_last_is_last.
+      reflexivity.
 Admitted.
 
 End from_equivocators_to_nodes.

@@ -71,7 +71,7 @@ Section apply_plans.
     (start : vstate X)
     (a : vplan X)
     (after_a := apply_plan start a)
-    : last (map destination (fst after_a)) start = snd after_a.
+    : finite_trace_last start (fst after_a) = snd after_a.
   Proof.
     induction a using rev_ind; try reflexivity.
     unfold after_a. clear after_a. unfold apply_plan.
@@ -84,7 +84,8 @@ Section apply_plans.
     destruct x.
     destruct (vtransition X label_a0 (final, input_a0)) as (dest,out) eqn:Ht.
     unfold fst. unfold snd.
-    simpl. rewrite map_app. simpl. rewrite last_last. reflexivity.
+    simpl.
+    rewrite finite_trace_last_is_last. reflexivity.
   Qed.
 
   Lemma apply_plan_app
@@ -296,18 +297,18 @@ Section apply_plans.
         destruct Hinput_ai as [_s Hinput_a0].
         apply protocol_generated with _oma _s; assumption.
   Qed.
-  
+
   Lemma finite_protocol_plan_from_one
     (s : vstate X)
     (a : plan_item) :
-    let res := vtransition X (label_a a) (s, input_a a) in 
+    let res := vtransition X (label_a a) (s, input_a a) in
     finite_protocol_plan_from s [a] <-> protocol_transition X (label_a a) (s, input_a a) res.
   Proof.
-    split; 
-    intros; 
-    destruct a; 
+    split;
+    intros;
+    destruct a;
     unfold apply_plan in *; simpl in *;
-    unfold finite_protocol_plan_from in *; 
+    unfold finite_protocol_plan_from in *;
     unfold apply_plan in *; simpl in *;
     destruct (vtransition X label_a0 (s, input_a0)) as [dest output] eqn : eq_trans; simpl in *.
     - inversion H.
@@ -351,7 +352,7 @@ Section apply_plans.
     unfold ensures in *.
     unfold preserves in *.
     apply finite_protocol_plan_from_app_iff.
-    split. 
+    split.
     - assumption.
     - remember (snd (apply_plan s a)) as s'.
       specialize (Hensures s').

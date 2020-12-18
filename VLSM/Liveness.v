@@ -44,7 +44,7 @@ Definition live : Prop :=
     (n : nat)
     (i : index)
     (st : vstate X),
-    trace_nth X tr n = (Some st)
+    trace_nth tr n = (Some st)
     /\ (ID i) (st i) <> None.
 
 End Liveness.
