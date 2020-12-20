@@ -610,7 +610,7 @@ Proof.
           }
           specialize
             (specialized_selected_message_exists_in_some_traces_from
-              (free_composite_vlsm equivocator_IM i0) output _ m _ _ Happ_free eq_refl
+              (free_composite_vlsm equivocator_IM i0) (field_selector output) _ m _ _ Happ_free eq_refl
             ) as Hspec.
           rewrite map_app in Hspec.
           rewrite last_app in Hspec. simpl in Hspec.
@@ -618,7 +618,7 @@ Proof.
           rewrite <- Heqv_state_final. subst.
           rewrite <- Heqv_state_final in Hspec.
           apply Hspec.
-          
+
           apply Exists_app. right.
           spec Houtput n.
           clear - Hfinal Houtput Hom n.

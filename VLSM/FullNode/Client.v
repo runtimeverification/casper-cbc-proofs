@@ -358,7 +358,7 @@ messages, implementing a limited equivocation tolerance policy.
   Definition VLSM_full_client_has_been_sent
     : has_been_sent_capability VLSM_full_client2.
   Proof.
-    apply cap_from_alt with client_has_been_sent.
+    apply (has_been_sent_capability_from_stepwise client_has_been_sent).
     apply VLSM_full_client_has_been_sent_step_properties.
     exact client_has_been_sent_dec.
   Defined.

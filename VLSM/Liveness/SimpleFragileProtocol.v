@@ -249,27 +249,17 @@ Section Define_Component.
 
   Definition validator_sent_stepwise_props:
     has_been_sent_stepwise_props validator_has_been_sent :=
-    {| inits_no_sent := validator_initial_not_sent;
-       sent_step_update l s im s' om H :=
+    {| oracle_no_inits := validator_initial_not_sent;
+       oracle_step_update l s im s' om H :=
          (validator_transition_updates_sent l s im s' om (proj2 H));
     |}.
 
-  Definition validator_proper_sent :=
-    prove_proper_sent_from_stepwise
-      _ _ validator_has_been_sent
-      validator_sent_stepwise_props.
-  Definition validator_proper_not_sent :=
-    prove_proper_not_sent_from_stepwise
-      _ _ validator_has_been_sent
-      validator_sent_stepwise_props.
-
-  Global Instance validator_has_been_sent_capability : has_been_sent_capability Validator
-    :=
-      { has_been_sent := validator_has_been_sent;
-        has_been_sent_dec := validator_has_been_sent_dec;
-        proper_sent := validator_proper_sent;
-        proper_not_sent := validator_proper_not_sent;
-      }.
+  Global Instance validator_has_been_sent_capability : has_been_sent_capability Validator.
+  Proof.
+    eapply has_been_sent_capability_from_stepwise.
+    eapply validator_sent_stepwise_props.
+    exact validator_has_been_sent_dec.
+  Defined.
 
   (** N.B. this is not actually a [has_been_received_capability],
       because a validator counts a message as "received" when it

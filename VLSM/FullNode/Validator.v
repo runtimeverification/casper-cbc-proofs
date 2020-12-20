@@ -635,8 +635,9 @@ Section proper_sent_received.
       destruct Hex as [item [Hitem Hout]].
       specialize (last_state_empty_trace is tr Htr Hlst item Hitem).
       intros [_ [Hnout _]].
+      simpl in Hout.
       rewrite Hnout in Hout. discriminate Hout.
-    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm output s m).
+    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm (field_selector output) s m).
       { exists is. exists tr. exists Htr. exists Hlst.
         apply Exists_exists.
         apply (has_been_sent_in_trace_rev s m H is tr Htr Hlst).
@@ -654,8 +655,8 @@ Section proper_sent_received.
     (s : vstate vlsm)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    : selected_message_exists_in_some_preloaded_traces vlsm output s m <->
-    selected_message_exists_in_all_preloaded_traces vlsm output s m.
+    : selected_message_exists_in_some_preloaded_traces vlsm (field_selector output) s m <->
+    selected_message_exists_in_all_preloaded_traces vlsm (field_selector output) s m.
   Proof.
     specialize (sent_messages_prop s Hs m) as Hin.
     split; intros.
@@ -667,7 +668,7 @@ Section proper_sent_received.
     - destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit output m) as Hsm.
+      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit (field_selector output) m) as Hsm.
         elim Hsm. assumption.
       + exists is. exists tr. exists Htr.
         assert (Hlst : last (List.map destination tr) is = s).
@@ -701,7 +702,7 @@ Section proper_sent_received.
     destruct Hs as [_om Hs].
     pose (protocol_is_trace bvlsm s _om Hs) as Htr.
     destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-    + elim (selected_message_exists_in_all_traces_initial_state vlsm s Hinit output m).
+    + elim (selected_message_exists_in_all_traces_initial_state vlsm s Hinit (field_selector output) m).
       assumption.
     + assert (Hlst : last (map destination tr) is = s).
       { destruct tr as [|i tr]; inversion Hlsts.
@@ -856,7 +857,7 @@ Section proper_sent_received.
     exists (sm : received_messages vlsm s), proj1_sig sm = m.
   Proof.
     split; intros.
-    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm input s m)
+    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm (field_selector input) s m)
       ; try (exists (exist _ m Hm); reflexivity).
       destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
@@ -878,8 +879,8 @@ Section proper_sent_received.
     (s : vstate vlsm)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    : selected_message_exists_in_some_preloaded_traces vlsm input s m <->
-    selected_message_exists_in_all_preloaded_traces vlsm input s m.
+    : selected_message_exists_in_some_preloaded_traces vlsm (field_selector input) s m <->
+    selected_message_exists_in_all_preloaded_traces vlsm (field_selector input) s m.
   Proof.
     specialize (received_messages_prop s Hs m) as Hin.
     split; intros.
@@ -891,7 +892,7 @@ Section proper_sent_received.
     - destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit input m) as Hsm.
+      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit (field_selector input) m) as Hsm.
         elim Hsm. assumption.
       + exists is. exists tr. exists Htr.
         assert (Hlst : last (List.map destination tr) is = s).
@@ -958,8 +959,8 @@ Section proper_sent_received.
     (tr : list transition_item)
     (Htr : finite_protocol_trace bvlsm s tr)
     (m1 m2 : message)
-    (Hm1 : Equivocation.trace_has_message vlsm output m1 tr)
-    (Hm2 : Equivocation.trace_has_message vlsm output m2 tr)
+    (Hm1 : Equivocation.trace_has_message vlsm (field_selector output) m1 tr)
+    (Hm2 : Equivocation.trace_has_message vlsm (field_selector output) m2 tr)
     : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
   Proof.
     unfold Equivocation.trace_has_message in *.
@@ -981,7 +982,7 @@ Section proper_sent_received.
           s tr Htr prefix2 suffix2 suffix1 item2 item1 Hitem1
           m2 m1 Hm2 Hm1
         ).
-    - left. subst. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
+    - left. subst. simpl in Hm1, Hm2. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
     - right. left.
       apply
         (VLSM_full_validator_sent_messages_comparable'

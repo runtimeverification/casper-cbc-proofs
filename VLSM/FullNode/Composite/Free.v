@@ -477,8 +477,8 @@ Lemma full_composed_free_sent_messages_comparable
   (Htr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s tr)
   (m1 m2 : message)
   (Hvalidator : sender m1 = sender m2)
-  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free output m1 tr)
-  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free output m2 tr)
+  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free (Equivocation.field_selector output) m1 tr)
+  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free (Equivocation.field_selector output) m2 tr)
   : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
 Proof.
   unfold Equivocation.trace_has_message in *.
@@ -497,7 +497,7 @@ Proof.
   - right. right. symmetry in Hvalidator. rewrite <- app_assoc in Hitem1. subst tr.
     apply
       (Hcomparable m2 m1 Hvalidator item2 item1 prefix2 suffix2 suffix1 eq_refl Hm2 Hm1).
-  - left. subst. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
+  - left. subst. simpl in Hm1, Hm2. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
   - right. left. subst tr.
     apply
       (Hcomparable m1 m2 Hvalidator item1 item2 prefix1 prefix2 suffix2 eq_refl Hm1 Hm2).

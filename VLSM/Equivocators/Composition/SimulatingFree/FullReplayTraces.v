@@ -1021,7 +1021,7 @@ Proof.
   specialize (Heqv eq_refl).
   apply
     (specialized_selected_message_exists_in_some_traces_from (free_composite_vlsm equivocator_IM i0)
-      output
+      (field_selector output)
     ) with full_replay_state (replay_trace_from full_replay_state is epref)
   ; [assumption|reflexivity|].
   apply Exists_exists in Heqv.

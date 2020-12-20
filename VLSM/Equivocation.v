@@ -53,11 +53,11 @@ Section Simple.
 (** We begin with a basic utility function. **)
 
     Definition trace_has_message
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (msg : message)
       (tr : list (vtransition_item vlsm))
       : Prop
-      := List.Exists (fun item => message_selector item = Some msg) tr.
+      := List.Exists (message_selector msg) tr.
 
 (** The following property detects equivocation in a given trace for a given message. **)
 
@@ -84,7 +84,7 @@ Section Simple.
 
     Definition specialized_selected_message_exists_in_all_traces
       (X : VLSM message)
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (s : state)
       (m : message)
       : Prop
@@ -94,14 +94,14 @@ Section Simple.
       (tr : list transition_item)
       (Htr : finite_protocol_trace X start tr)
       (Hlast : last (List.map destination tr) start = s),
-      List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+      List.Exists (message_selector m) tr.
 
     Definition selected_message_exists_in_all_preloaded_traces
       := specialized_selected_message_exists_in_all_traces pre_vlsm.
 
     Definition specialized_selected_message_exists_in_some_traces
       (X : VLSM message)
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (s : state)
       (m : message)
       : Prop
@@ -111,14 +111,18 @@ Section Simple.
       (tr : list transition_item)
       (Htr : finite_protocol_trace X start tr)
       (Hlast : last (List.map destination tr) start = s),
-      List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+      List.Exists (message_selector m) tr.
 
-    Definition selected_message_exists_in_some_preloaded_traces
+    Definition selected_message_exists_in_some_preloaded_traces: forall
+      (message_selector : message -> transition_item -> Prop)
+      (s : state)
+      (m : message),
+        Prop
       := specialized_selected_message_exists_in_some_traces pre_vlsm.
 
     Definition specialized_selected_message_exists_in_no_trace
       (X : VLSM message)
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (s : state)
       (m : message)
       : Prop
@@ -128,14 +132,14 @@ Section Simple.
       (tr : list transition_item)
       (Htr : finite_protocol_trace X start tr)
       (Hlast : last (List.map destination tr) start = s),
-      ~List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr.
+      ~List.Exists (message_selector m) tr.
 
     Definition selected_message_exists_in_no_preloaded_trace :=
       specialized_selected_message_exists_in_no_trace pre_vlsm.
 
     Lemma selected_message_exists_not_some_iff_no
       (X : VLSM message)
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (s : state)
       (m : message)
       : ~ specialized_selected_message_exists_in_some_traces X message_selector s m
@@ -151,7 +155,7 @@ Section Simple.
     Qed.
 
     Lemma selected_message_exists_preloaded_not_some_iff_no
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (s : state)
       (m : message)
       : ~ selected_message_exists_in_some_preloaded_traces message_selector s m
@@ -164,14 +168,14 @@ Section Simple.
     *)
     Lemma specialized_selected_message_exists_in_some_traces_from
       (X : VLSM message)
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (s : state)
       (m : message)
       (start : state)
       (tr : list transition_item)
       (Htr : finite_protocol_trace_from X start tr)
       (Hlast : last (List.map destination tr) start = s)
-      (Hsome : List.Exists (fun (elem : transition_item) => message_selector elem = Some m) tr)
+      (Hsome : List.Exists (message_selector m) tr)
       : specialized_selected_message_exists_in_some_traces X message_selector s m.
     Proof.
       apply finite_ptrace_first_pstate in Htr as Hstart.
@@ -193,7 +197,7 @@ Section Simple.
     Qed.
 
     Definition selected_messages_consistency_prop
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (s : vstate vlsm)
       (m : message)
       : Prop
@@ -204,9 +208,9 @@ Section Simple.
     Lemma selected_message_exists_in_all_traces_initial_state
       (s : vstate vlsm)
       (Hs : vinitial_state_prop vlsm s)
-      (selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (m : message)
-      : ~ selected_message_exists_in_all_preloaded_traces selector s m.
+      : ~ selected_message_exists_in_all_preloaded_traces message_selector s m.
     Proof.
       intro Hselected.
       assert (Hps : protocol_state_prop pre_vlsm s).
@@ -232,7 +236,7 @@ Section Simple.
     composition. **)
 
     Definition all_traces_have_message_prop
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (oracle : state_message_oracle)
       (s : state)
       (m : message)
@@ -241,7 +245,7 @@ Section Simple.
       oracle s m <-> selected_message_exists_in_all_preloaded_traces message_selector s m.
 
     Definition no_traces_have_message_prop
-      (message_selector : transition_item -> option message)
+      (message_selector : message -> transition_item -> Prop)
       (oracle : state_message_oracle)
       (s : state)
       (m : message)
@@ -249,17 +253,22 @@ Section Simple.
       :=
       oracle s m <-> selected_message_exists_in_no_preloaded_trace message_selector s m.
 
+    Definition field_selector [T: VLSM_type message]
+               (field: transition_item (T:=T) -> option message) :
+      (message -> transition_item -> Prop) :=
+      fun m item => field item = Some m.
+
     Definition has_been_sent_prop : state_message_oracle -> state -> message -> Prop
-      := (all_traces_have_message_prop output).
+      := (all_traces_have_message_prop (field_selector output)).
 
     Definition has_not_been_sent_prop : state_message_oracle -> state -> message -> Prop
-      := (no_traces_have_message_prop output).
+      := (no_traces_have_message_prop (field_selector output)).
 
     Definition has_been_received_prop : state_message_oracle -> state -> message -> Prop
-      := (all_traces_have_message_prop input).
+      := (all_traces_have_message_prop (field_selector input)).
 
     Definition has_not_been_received_prop : state_message_oracle -> state -> message -> Prop
-      := (no_traces_have_message_prop input).
+      := (no_traces_have_message_prop (field_selector input)).
 
 (** Per the vocabulary of the official VLSM document, we say that VLSMs endowed
     with a [state_message_oracle] for sent messages have the [has_been_sent] capability.
@@ -299,7 +308,7 @@ Section Simple.
       (s : state)
       (Hs: protocol_state_prop pre_vlsm s)
       (m : message)
-      (selector : transition_item -> option message)
+      (selector : message -> transition_item -> Prop)
       (Hall : selected_message_exists_in_all_preloaded_traces selector s m)
       : selected_message_exists_in_some_preloaded_traces selector s m.
     Proof.
@@ -318,7 +327,7 @@ Section Simple.
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
-      : selected_messages_consistency_prop output s m.
+      : selected_messages_consistency_prop (field_selector output) s m.
     Proof.
       split.
       - intro Hsome.
@@ -341,7 +350,7 @@ Section Simple.
       (s : state)
       (Hs : protocol_state_prop vlsm s)
       (m : message)
-      (Hsome : specialized_selected_message_exists_in_some_traces vlsm output s m)
+      (Hsome : specialized_selected_message_exists_in_some_traces vlsm (field_selector output) s m)
       : has_been_sent s m.
     Proof.
       destruct Hs as [_om Hs].
@@ -370,7 +379,7 @@ Section Simple.
       (Hs : protocol_state_prop vlsm s)
       (m : message)
       (Hsm : has_been_sent s m)
-      : specialized_selected_message_exists_in_all_traces vlsm output s m.
+      : specialized_selected_message_exists_in_all_traces vlsm (field_selector output) s m.
     Proof.
       destruct Hs as [_om Hs].
       assert (Hpres : protocol_state_prop pre_vlsm s).
@@ -395,7 +404,7 @@ Section Simple.
       (proper_sent: has_been_sent_prop has_been_sent s m)
       (has_not_been_sent
         := fun (s : state) (m : message) => ~ has_been_sent s m)
-      (Hconsistency : selected_messages_consistency_prop output s m)
+      (Hconsistency : selected_messages_consistency_prop (field_selector output) s m)
       : has_not_been_sent_prop has_not_been_sent s m.
     Proof.
       unfold has_not_been_sent_prop.
@@ -432,7 +441,7 @@ Section Simple.
       (s : state)
       (Hs : protocol_state_prop pre_vlsm s)
       (m : message)
-      : selected_messages_consistency_prop input s m.
+      : selected_messages_consistency_prop (field_selector input) s m.
     Proof.
       split.
       - intro Hsome.
@@ -454,7 +463,7 @@ Section Simple.
       (proper_received: has_been_received_prop has_been_received s m)
       (has_not_been_received
         := fun (s : state) (m : message) => ~ has_been_received s m)
-      (Hconsistency : selected_messages_consistency_prop input s m)
+      (Hconsistency : selected_messages_consistency_prop (field_selector input) s m)
       : has_not_been_received_prop has_not_been_received s m.
     Proof.
       unfold has_not_been_received_prop.
@@ -462,7 +471,7 @@ Section Simple.
       unfold has_not_been_received.
       split.
       - intros Hsm is tr Htr Hlast Hsome.
-        assert (Hsm' : selected_message_exists_in_some_preloaded_traces input s m)
+        assert (Hsm' : selected_message_exists_in_some_preloaded_traces (field_selector input) s m)
           by (exists is; exists tr; exists Htr; exists Hlast; assumption).
         apply Hconsistency in Hsm'.
         apply proper_received in Hsm'. contradiction.
@@ -477,7 +486,7 @@ Section Simple.
       (s : vstate vlsm)
       : Type
       :=
-      sig (fun m => selected_message_exists_in_some_preloaded_traces output s m).
+      sig (fun m => selected_message_exists_in_some_preloaded_traces (field_selector output) s m).
 
     Lemma sent_messages_proper
       (Hhbs : has_been_sent_capability)
@@ -498,7 +507,7 @@ Section Simple.
       (s : vstate vlsm)
       : Type
       :=
-      sig (fun m => selected_message_exists_in_some_preloaded_traces input s m).
+      sig (fun m => selected_message_exists_in_some_preloaded_traces (field_selector input) s m).
 
     Lemma received_messages_proper
       (Hhbs : has_been_received_capability)
@@ -527,7 +536,7 @@ Section Simple.
           (s : vstate vlsm)
           (Hs : protocol_state_prop pre_vlsm s)
           (m : message),
-          selected_messages_consistency_prop output s m
+          selected_messages_consistency_prop (field_selector output) s m
     }.
 
     Lemma computable_sent_messages_initial_state_empty
@@ -543,8 +552,9 @@ Section Simple.
       spec Hl; try (rewrite Hsm; left; reflexivity).
       destruct Hl as [[m0 Hm] Heq]. simpl in Heq. subst m0.
       apply sent_messages_consistency in Hm; try assumption.
-      specialize (selected_message_exists_in_all_traces_initial_state s Hs output m) as H.
-      elim H. assumption.
+      exfalso. revert Hm.
+      apply selected_message_exists_in_all_traces_initial_state.
+      assumption.
     Qed.
 
     Definition computable_sent_messages_has_been_sent
@@ -603,7 +613,7 @@ Section Simple.
       unfold computable_sent_messages_has_been_sent.
       split.
       - intro Hin.
-        cut (~ selected_message_exists_in_some_preloaded_traces output s m).
+        cut (~ selected_message_exists_in_some_preloaded_traces (field_selector output) s m).
         { intros Hno is tr Htr Hlast Hexists.
           contradict Hno;exists is, tr, Htr,Hlast;assumption.
         }
@@ -641,7 +651,7 @@ Section Simple.
           (s : vstate vlsm)
           (Hs : protocol_state_prop pre_vlsm s)
           (m : message),
-          selected_messages_consistency_prop input s m
+          selected_messages_consistency_prop (field_selector input) s m
     }.
 
     Lemma computable_received_messages_initial_state_empty
@@ -657,8 +667,9 @@ Section Simple.
       spec Hl; try (rewrite Hrcv; left; reflexivity).
       destruct Hl as [[m0 Hm] Heq]. simpl in Heq. subst m0.
       apply received_messages_consistency in Hm; try assumption.
-      specialize (selected_message_exists_in_all_traces_initial_state s Hs input m) as H.
-      elim H. assumption.
+      exfalso. revert Hm.
+      apply selected_message_exists_in_all_traces_initial_state.
+      assumption.
     Qed.
 
     Definition computable_received_messages_has_been_received
@@ -733,59 +744,44 @@ Section Simple.
       |}.
 End Simple.
 
-Record has_been_sent_stepwise_props
-       [message] [vlsm: VLSM message] (has_been_sent_pred: state_message_oracle vlsm) : Prop :=
-  {inits_no_sent: forall (s: vstate vlsm), initial_state_prop (VLSM_sign:=sign vlsm) s ->
-                                             forall m, ~has_been_sent_pred s m;
-     sent_step_update:
+Arguments field_selector {message} [T] field msg item /.
+
+Record oracle_stepwise_props
+       [message] [vlsm: VLSM message]
+       (message_selector: message -> transition_item -> Prop)
+       (oracle: state_message_oracle vlsm) : Prop :=
+  {oracle_no_inits: forall (s: vstate vlsm),
+      initial_state_prop (VLSM_sign:=sign vlsm) s ->
+      forall m, ~oracle s m;
+   oracle_step_update:
        forall l s im s' om,
          protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
-         forall msg, has_been_sent_pred s' msg
-                     <-> (om = Some msg \/ has_been_sent_pred s msg)
+         forall msg, oracle s' msg <->
+                     (message_selector msg {|l:=l; input:=im; destination:=s'; output:=om|}
+                      \/ oracle s msg)
   }.
 
-(**
-** Lemmas to help define [has_been_sent_capability]
 
-This section defines simpler conditions on a candiate [has_been_sent]
-predicate which involve only a single transition at a time,
-and are sufficient to establish the full
-[has_been_sent_prop] and [has_not_been_sent_prop].
+Definition has_been_sent_stepwise_props
+       [message] [vlsm: VLSM message] (has_been_sent_pred: state_message_oracle vlsm) : Prop :=
+  (oracle_stepwise_props (field_selector output) has_been_sent_pred).
 
-The conditions are the section parameters [H_inits_no_sent]
-and [H_step_property].
-The first checks that the candidate predicate never claims
-that any [intiial_state] has sent any message.
-The second says that for any [transition], the predicate
-claims that the final state sent some message <<m>> iff
-that message was the output of this transition, or
-the message was already sent in the initial state.
-
-The formulation of [H_step_property] could be weakend
-a bit by only considering [transition] on [valid] inputs,
-or further by [protocol_transition] (over the
-[pre_loaded_with_all_messages_vlsm] of the [VLSM])
-but this has not been necessary so far.
-(It would only make a difference if there the [transition] function
-can actually violate the condition on some non-[valid]
-or non-[protocol_prop] input).
-**)
-
-Section HasBeenSentLemmas.
+Section TraceFromStepwise.
   Context
     (message : Type)
     (vlsm: VLSM message)
-    (has_been_sent_pred: state_message_oracle vlsm)
-    (has_been_sent_alt_props: has_been_sent_stepwise_props has_been_sent_pred).
+    (selector : message -> transition_item -> Prop)
+    (oracle : state_message_oracle vlsm)
+    (oracle_props : oracle_stepwise_props selector oracle)
+    .
 
   Local Lemma H_trace_prop
         s0 s tr
         (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm vlsm) s0 tr)
         (Hlast: last (List.map Common.destination tr) s0 = s):
     forall m,
-      has_been_sent_pred s m
-      <-> (List.Exists (fun elem : transition_item => output elem = Some m) tr
-           \/ has_been_sent_pred s0 m).
+      oracle s m
+      <-> (List.Exists (selector m) tr \/ oracle s0 m).
   Proof.
     induction Htr.
     - simpl in Hlast; subst s.
@@ -798,15 +794,15 @@ Section HasBeenSentLemmas.
       intro m.
       specialize (IHHtr m).
       rewrite Exists_cons. simpl.
-      apply (has_been_sent_alt_props.(sent_step_update _)) with (msg:=m) in H.
+      apply (oracle_props.(oracle_step_update _ _)) with (msg:=m) in H.
       tauto.
   Qed.
 
-  Lemma prove_proper_sent_from_stepwise:
+  Lemma prove_all_have_message_from_stepwise:
     forall (s : state)
            (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
            (m : message),
-      (has_been_sent_prop vlsm has_been_sent_pred s m).
+      (all_traces_have_message_prop vlsm selector oracle s m).
   Proof.
     intros s Hproto m.
     split.
@@ -814,7 +810,7 @@ Section HasBeenSentLemmas.
       apply (H_trace_prop _ _ _ Htr Hlast) in Hsent.
       destruct Hsent;[assumption|exfalso].
       revert H.
-      apply inits_no_sent;assumption.
+      eapply oracle_no_inits;eassumption.
     - intro H_all_traces.
       apply protocol_state_has_trace in Hproto.
       destruct Hproto as [s0 [tr [Htr Hlast]]].
@@ -825,11 +821,11 @@ Section HasBeenSentLemmas.
       assumption.
   Qed.
 
-  Lemma prove_proper_not_sent_from_stepwise:
+  Lemma prove_none_have_message_from_stepwise:
     forall (s : state)
            (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
            (m : message),
-      has_not_been_sent_prop vlsm (fun m s => ~has_been_sent_pred m s) s m.
+      no_traces_have_message_prop vlsm selector (fun m s => ~oracle m s) s m.
   Proof.
     intros s Hproto m.
     split.
@@ -848,40 +844,34 @@ Section HasBeenSentLemmas.
       destruct H_no_traces;[assumption|].
       exfalso.
       revert H.
-      apply inits_no_sent;assumption.
+      eapply oracle_no_inits;eassumption.
   Qed.
+End TraceFromStepwise.
 
-  Context
-    (has_been_sent_pred_dec: RelDecision has_been_sent_pred).
-  Lemma cap_from_alt: has_been_sent_capability vlsm.
-  Proof.
-    refine ({|has_been_sent:=has_been_sent_pred|}).
-    apply prove_proper_sent_from_stepwise.
-    apply prove_proper_not_sent_from_stepwise.
-  Defined.
-
-  Lemma cap_from_all_right_pred: @has_been_sent _ _ cap_from_alt = has_been_sent_pred.
-  Proof.
-    reflexivity.
-  Qed.
-End HasBeenSentLemmas.
-
-Section HBSEquiv.
+Section StepwiseFromTrace.
   Context
     (message : Type)
     (vlsm: VLSM message)
-    (Hhbs: has_been_sent_capability vlsm).
+    (selector: message -> transition_item -> Prop)
+    (oracle: state_message_oracle vlsm)
+    (oracle_dec: RelDecision oracle)
+    (Horacle_all_have:
+       forall s (Hs: protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s) m,
+        all_traces_have_message_prop vlsm selector oracle s m)
+    (Hnot_oracle_none_have:
+       forall s (Hs: protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s) m,
+         no_traces_have_message_prop vlsm selector (fun m s => ~oracle m s) s m).
 
-  Lemma all_hbs_inits_no_sent:
+  Lemma oracle_no_inits_from_trace:
     forall (s: vstate vlsm), initial_state_prop (VLSM_sign:=sign vlsm) s ->
-                             forall m, ~has_been_sent vlsm s m.
+                             forall m, ~oracle s m.
   Proof.
-    intros s Hinit m Hsent.
+    intros s Hinit m Horacle.
     assert (Hproto : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
       by (apply initial_is_protocol;assumption).
-    apply proper_sent in Hsent;[|assumption].
-    specialize (Hsent s nil).
-    eapply Exists_nil;refine (Hsent _ (eq_refl _));clear Hsent.
+    apply Horacle_all_have in Horacle;[|assumption].
+    specialize (Horacle s nil).
+    eapply Exists_nil;refine (Horacle _ (eq_refl _));clear Horacle.
     split;[|assumption].
     constructor;assumption.
   Qed.
@@ -891,29 +881,33 @@ Section HBSEquiv.
       last (List.map destination tr) is = s ->
       finite_protocol_trace (pre_loaded_with_all_messages_vlsm vlsm) is tr ->
     forall m,
-      has_been_sent vlsm s m <->
-      List.Exists (fun elem : transition_item => output elem = Some m) tr.
+      oracle s m <->
+      List.Exists (selector m) tr.
   Proof.
     intros is s tr Hlast Htr m.
     assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
       by (rewrite <- Hlast; apply trace_is_protocol;assumption).
     split.
-    - intros Hsent.
-      apply proper_sent in Hsent;[|assumption].
-      specialize (Hsent is tr Htr Hlast).
+    - intros Horacle.
+      apply Horacle_all_have in Horacle;[|assumption].
+      specialize (Horacle is tr Htr Hlast).
       assumption.
     - intro Hexists.
-      apply proper_sent;[assumption|].
-      apply has_been_sent_consistency;[assumption..|].
+      apply dec_stable.
+      intro Hnot.
+      apply Hnot_oracle_none_have in Hnot;[|assumption].
+      rewrite <- selected_message_exists_preloaded_not_some_iff_no in Hnot.
+      apply Hnot.
       exists is, tr, Htr, Hlast.
       assumption.
   Qed.
 
-  Lemma all_hbs_step_property:
+  Lemma oracle_step_property_from_trace:
        forall l s im s' om,
          protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
-         forall msg, has_been_sent vlsm s' msg
-                     <-> (om = Some msg \/ has_been_sent vlsm s msg).
+         forall msg, oracle s' msg
+                     <-> (selector msg {| l:=l; input:=im; destination:=s'; output:=om |}
+                          \/ oracle s msg).
   Proof.
     intros l s im s' om Htrans msg.
     rename Htrans into Htrans'.
@@ -945,13 +939,65 @@ Section HBSEquiv.
     tauto.
   Qed.
 
-  Lemma alt_props : has_been_sent_stepwise_props (@has_been_sent _ _ Hhbs).
+  Lemma stepwise_props_from_trace : oracle_stepwise_props selector oracle.
   Proof.
     constructor.
-    refine all_hbs_inits_no_sent.
-    refine all_hbs_step_property.
+    refine oracle_no_inits_from_trace.
+    refine oracle_step_property_from_trace.
   Defined.
-End HBSEquiv.
+End StepwiseFromTrace.
+
+(**
+** Lemmas to help define [has_been_sent_capability]
+
+This section defines simpler conditions on a candiate [has_been_sent]
+predicate which involve only a single transition at a time,
+and are sufficient to establish the full
+[has_been_sent_prop] and [has_not_been_sent_prop].
+
+The conditions are the section parameters [H_inits_no_sent]
+and [H_step_property].
+The first checks that the candidate predicate never claims
+that any [intiial_state] has sent any message.
+The second says that for any [transition], the predicate
+claims that the final state sent some message <<m>> iff
+that message was the output of this transition, or
+the message was already sent in the initial state.
+
+The formulation of [H_step_property] could be weakend
+a bit by only considering [transition] on [valid] inputs,
+or further by [protocol_transition] (over the
+[pre_loaded_with_all_messages_vlsm] of the [VLSM])
+but this has not been necessary so far.
+(It would only make a difference if there the [transition] function
+can actually violate the condition on some non-[valid]
+or non-[protocol_prop] input).
+**)
+
+Lemma has_been_sent_capability_from_stepwise
+      [message : Type]
+      [vlsm: VLSM message]
+      (has_been_sent_pred: state_message_oracle vlsm)
+      (has_been_sent_alt_props: has_been_sent_stepwise_props has_been_sent_pred)
+      (has_been_sent_pred_dec: RelDecision has_been_sent_pred):
+  has_been_sent_capability vlsm.
+Proof.
+  refine ({|has_been_sent:=has_been_sent_pred|}).
+  apply prove_all_have_message_from_stepwise;assumption.
+  apply prove_none_have_message_from_stepwise;assumption.
+Defined.
+
+Lemma has_been_sent_stepwise_from_trace
+      [message : Type]
+      [vlsm: VLSM message]
+      (Hhbs: has_been_sent_capability vlsm):
+  oracle_stepwise_props (field_selector output) (has_been_sent vlsm).
+Proof.
+  apply stepwise_props_from_trace.
+  apply has_been_sent_dec.
+  apply proper_sent.
+  apply proper_not_sent.
+Defined.
 
 (**
 *** Equivocation in compositions.
@@ -1042,7 +1088,7 @@ Section Composite.
       apply protocol_is_trace in Hs as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlast _]]]]]
       ; [
-        elim (selected_message_exists_in_all_traces_initial_state X s Hinit output m)
+        elim (selected_message_exists_in_all_traces_initial_state X s Hinit (field_selector output) m)
         ; assumption|].
       specialize (Hall is tr Htr).
       apply last_error_destination_last with (default := is) in Hlast.
@@ -1095,7 +1141,7 @@ Section Composite.
     (s : vstate X)
     (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
     (m : message)
-    : selected_messages_consistency_prop X output s m.
+    : selected_messages_consistency_prop X (field_selector output) s m.
   Proof.
     split.
     - intros Hsome is. intros.
@@ -1103,7 +1149,7 @@ Section Composite.
       apply Exists_exists in Hsome.
       destruct Hsome as [item0 [Hitem0 Houtput0]].
       pose (projT1 (l item0)) as j.
-      assert (Hsomej : selected_message_exists_in_some_preloaded_traces (IM j) output (s j) m).
+      assert (Hsomej : selected_message_exists_in_some_preloaded_traces (IM j) (field_selector output) (s j) m).
       { exists (is0 j).
         exists (finite_trace_projection_list IM i0 constraint j tr0).
         assert
