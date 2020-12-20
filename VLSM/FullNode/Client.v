@@ -276,92 +276,10 @@ messages, implementing a limited equivocation tolerance policy.
       tauto.
   Qed.
 
-  (*
-  Lemma has_been_sent_in_trace
-    (s : set message)
-    (m: message)
-    (is : set message)
-    (tr: list transition_item)
-    (Htr: finite_protocol_trace bvlsm is tr)
-    (item: transition_item)
-    (Hitem: In item tr)
-    (Hm: output item = Some m)
-    (Hs: last (map destination tr) is = s)
-    : False.
-  Proof.
-    apply in_split in Hitem.
-    destruct Hitem as [l1 [l2 Hitem]]. subst tr.
-    destruct Htr as [Htr Hinit].
-    pose (finite_protocol_trace_from_app_iff bvlsm is l1 (item :: l2)) as Htr_app.
-    simpl in Htr_app. destruct Htr_app as [_ Htr_app].
-    specialize (Htr_app Htr).
-    clear Htr. destruct Htr_app as [_ Htr].
-    inversion Htr. subst tl item. simpl in Hm. subst oom.
-    apply protocol_transition_inv_out in H3. contradiction H3.
-  Qed.
-
-  Lemma VLSM_full_client_proper_sent
-    (s : set message)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_been_sent_prop vlsm client_has_been_sent s m.
-  Proof.
-    unfold has_been_sent_prop. unfold all_traces_have_message_prop.
-    split;[contradiction|intro H].
-    - destruct Hs as [_om Hs].
-      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + exfalso.
-        assert (Htrs : finite_protocol_trace bvlsm s []).
-        { split; try assumption. constructor. exists _om. assumption. }
-        specialize (H s [] Htrs eq_refl).
-        apply Exists_exists in H. destruct H as [x [Hin _]]. inversion Hin.
-      + assert (Hlst : last (map destination tr) is = s).
-        { destruct tr as [|i tr]; inversion Hlsts.
-          apply last_map.
-        }
-        specialize (H is tr Htr Hlst).
-        apply Exists_exists in H.
-        destruct H as [item [Hitem Hm]].
-        exfalso.
-        apply has_been_sent_in_trace with s m is tr item; assumption.
-  Qed.
-   *)
-
-  (*
-  Definition client_has_not_been_sent
-    (s : set message)
-    (m : message)
-    : Prop
-    :=
-    ~ client_has_been_sent s m.
-
-  Lemma VLSM_full_client_proper_not_sent
-    (s : set message)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_not_been_sent_prop vlsm client_has_not_been_sent s m.
-  Proof.
-    unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
-    unfold client_has_not_been_sent. simpl.
-    split; intros;[|tauto].
-    unfold selected_message_exists_in_no_preloaded_trace.
-    unfold generalized_selected_message_exists_in_no_trace.
-    intros.
-    rewrite <- Forall_Exists_neg.
-    apply Forall_forall.
-    intros item Hitem Hm.
-    apply (has_been_sent_in_trace s m start tr Htr item Hitem Hm Hlast).
-  Qed.
-   *)
-
   Definition VLSM_full_client_has_been_sent
-    : has_been_sent_capability VLSM_full_client2.
-  Proof.
-    apply (has_been_sent_capability_from_stepwise client_has_been_sent).
-    apply VLSM_full_client_has_been_sent_step_properties.
-    exact client_has_been_sent_dec.
-  Defined.
+    : has_been_sent_capability VLSM_full_client2
+    := has_been_sent_capability_from_stepwise client_has_been_sent_dec
+                                              VLSM_full_client_has_been_sent_step_properties.
 
   Lemma has_been_received_in_trace
     (s : set message)

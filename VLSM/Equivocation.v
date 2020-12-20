@@ -258,6 +258,10 @@ Section Simple.
       (message -> transition_item -> Prop) :=
       fun m item => field item = Some m.
 
+    Definition item_sends_or_receives {T: VLSM_type message}:
+      message -> transition_item (T:=T) -> Prop :=
+      fun m item => input item = Some m \/ output item = Some m.
+
     Definition has_been_sent_prop : state_message_oracle -> state -> message -> Prop
       := (all_traces_have_message_prop (field_selector output)).
 
@@ -744,7 +748,25 @@ Section Simple.
       |}.
 End Simple.
 
-Arguments field_selector {message} [T] field msg item /.
+Arguments field_selector [message] [T] field msg item /.
+Arguments item_sends_or_receives {message} {T} msg item /.
+
+(**
+ *** Stepwise consistency properties for [state_message_oracle].
+
+ The above definitions like [all_traces_have_message_prop]
+ connect a [state_message_oracle] to a predicate on
+ [transition_item] by relating the oracle holding on a state
+ to a satsifying transition existing in all traces.
+
+ This is equivalent to two local properties,
+ one is that the oracle cannot only for any initial state,
+ the other is that the oracle judgement is appropriately
+ related for the starting and [destination] states of
+ any [protocol_transition].
+
+ These conditions are defined in the record [oracle_stepwise_props]
+ *)
 
 Record oracle_stepwise_props
        [message] [vlsm: VLSM message]
@@ -761,11 +783,19 @@ Record oracle_stepwise_props
                       \/ oracle s msg)
   }.
 
+(**
+   Proving the trace properties from the stepwise properties
+   begins with a lemma using induction along a trace to
+   prove that given a [finite_protocol_trace] to a state,
+   the oracle holds at that state for some message iff
+   a satsifying transition item exists in the trace.
 
-Definition has_been_sent_stepwise_props
-       [message] [vlsm: VLSM message] (has_been_sent_pred: state_message_oracle vlsm) : Prop :=
-  (oracle_stepwise_props (field_selector output) has_been_sent_pred).
-
+   The theorems for [all_traces_have_message_prop]
+   and [no_traces_have_message_prop] are mostly rearraning
+   quantifiers to use this lemma, also using [protocol_state_prop]
+   to choose a trace to the state for the directions where
+   one is not given.
+ *)
 Section TraceFromStepwise.
   Context
     (message : Type)
@@ -775,7 +805,7 @@ Section TraceFromStepwise.
     (oracle_props : oracle_stepwise_props selector oracle)
     .
 
-  Local Lemma H_trace_prop
+  Local Lemma H_partial_trace_prop
         s0 s tr
         (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm vlsm) s0 tr)
         (Hlast: last (List.map Common.destination tr) s0 = s):
@@ -798,6 +828,22 @@ Section TraceFromStepwise.
       tauto.
   Qed.
 
+  Local Lemma H_protocol_trace_prop
+        [s0 tr]
+        (Htr: finite_protocol_trace (pre_loaded_with_all_messages_vlsm vlsm) s0 tr)
+        [s]
+        (Hlast: last (List.map Common.destination tr) s0 = s):
+    forall m,
+      oracle s m <-> List.Exists (selector m) tr.
+  Proof.
+    intro m.
+    destruct Htr as [Htr Hinit].
+     rewrite (H_partial_trace_prop _ _ _ Htr Hlast).
+    assert (~oracle s0 m).
+    apply oracle_props, Hinit.
+    tauto.
+  Qed.
+
   Lemma prove_all_have_message_from_stepwise:
     forall (s : state)
            (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
@@ -805,19 +851,16 @@ Section TraceFromStepwise.
       (all_traces_have_message_prop vlsm selector oracle s m).
   Proof.
     intros s Hproto m.
+    unfold all_traces_have_message_prop.
     split.
-    - intros Hsent s0 tr [Htr Hinit] Hlast.
-      apply (H_trace_prop _ _ _ Htr Hlast) in Hsent.
-      destruct Hsent;[assumption|exfalso].
-      revert H.
-      eapply oracle_no_inits;eassumption.
+    - intros Hsent s0 tr Htr Hlast.
+      apply (H_protocol_trace_prop Htr Hlast).
+      assumption.
     - intro H_all_traces.
       apply protocol_state_has_trace in Hproto.
       destruct Hproto as [s0 [tr [Htr Hlast]]].
+      apply (H_protocol_trace_prop Htr Hlast).
       specialize (H_all_traces s0 tr Htr Hlast).
-      destruct Htr as [Htr _].
-      apply (H_trace_prop _ _ tr Htr Hlast).
-      left.
       assumption.
   Qed.
 
@@ -828,26 +871,28 @@ Section TraceFromStepwise.
       no_traces_have_message_prop vlsm selector (fun m s => ~oracle m s) s m.
   Proof.
     intros s Hproto m.
+    pose proof (H_protocol_trace_prop).
     split.
-    - intros H_not_sent start tr [Htr Hinit] Hlast.
+    - intros H_not_sent start tr Htr Hlast.
       contradict H_not_sent.
-      apply (H_trace_prop _ _ tr Htr Hlast).
-      left.
+      apply (H_protocol_trace_prop Htr Hlast).
       assumption.
     - intros H_no_traces.
       apply protocol_state_has_trace in Hproto.
       destruct Hproto as [s0 [tr [Htr Hlast]]].
       specialize (H_no_traces s0 tr Htr Hlast).
       contradict H_no_traces.
-      destruct Htr as [Htr Hinit].
-      apply (H_trace_prop _ _ tr Htr Hlast) in H_no_traces.
-      destruct H_no_traces;[assumption|].
-      exfalso.
-      revert H.
-      eapply oracle_no_inits;eassumption.
+      apply (H_protocol_trace_prop Htr Hlast).
+      assumption.
   Qed.
 End TraceFromStepwise.
 
+(**
+   The stepwise properties are proven from the trace properties
+   by considering the empty trace to prove the [oracle_no_inits]
+   property, and by considering a trace that ends with the given
+   [protocol_transition] to prove the [oracle_step_update] property.
+ *)
 Section StepwiseFromTrace.
   Context
     (message : Type)
@@ -948,38 +993,30 @@ Section StepwiseFromTrace.
 End StepwiseFromTrace.
 
 (**
-** Lemmas to help define [has_been_sent_capability]
+** Stepwise view of [has_been_sent_capability]
 
-This section defines simpler conditions on a candiate [has_been_sent]
-predicate which involve only a single transition at a time,
-and are sufficient to establish the full
-[has_been_sent_prop] and [has_not_been_sent_prop].
+This reduces the proof obligations in [has_been_sent_capability]
+to proving the stepwise properties of [oracle_stepwise_props].
+[has_been_step_stepwise_props] is a specialization of [oracle_stepwise_props]
+to the right <<message_selector>>.
 
-The conditions are the section parameters [H_inits_no_sent]
-and [H_step_property].
-The first checks that the candidate predicate never claims
-that any [intiial_state] has sent any message.
-The second says that for any [transition], the predicate
-claims that the final state sent some message <<m>> iff
-that message was the output of this transition, or
-the message was already sent in the initial state.
+There are also lemmas for accessing the stepwise properties about
+a [has_been_sent] predicate given an instance of [has_been_sent_capability], to allow using
+[has_been_sent_capability_from_stepwise] to define a [has_been_sent_capability]
+for composite VLSMs, or for proofs (e.g, about invariants) where
+these are more convenient.
+ **)
 
-The formulation of [H_step_property] could be weakend
-a bit by only considering [transition] on [valid] inputs,
-or further by [protocol_transition] (over the
-[pre_loaded_with_all_messages_vlsm] of the [VLSM])
-but this has not been necessary so far.
-(It would only make a difference if there the [transition] function
-can actually violate the condition on some non-[valid]
-or non-[protocol_prop] input).
-**)
+Definition has_been_sent_stepwise_props
+       [message] [vlsm: VLSM message] (has_been_sent_pred: state_message_oracle vlsm) : Prop :=
+  (oracle_stepwise_props (field_selector output) has_been_sent_pred).
 
 Lemma has_been_sent_capability_from_stepwise
       [message : Type]
       [vlsm: VLSM message]
-      (has_been_sent_pred: state_message_oracle vlsm)
-      (has_been_sent_alt_props: has_been_sent_stepwise_props has_been_sent_pred)
-      (has_been_sent_pred_dec: RelDecision has_been_sent_pred):
+      [has_been_sent_pred: state_message_oracle vlsm]
+      (has_been_sent_pred_dec: RelDecision has_been_sent_pred)
+      (has_been_sent_alt_props: has_been_sent_stepwise_props has_been_sent_pred):
   has_been_sent_capability vlsm.
 Proof.
   refine ({|has_been_sent:=has_been_sent_pred|}).
@@ -998,6 +1035,103 @@ Proof.
   apply proper_sent.
   apply proper_not_sent.
 Defined.
+
+Lemma has_been_sent_step_update
+      `(Hhbs: has_been_sent_capability message vlsm):
+  forall l s im s' om,
+    protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
+    forall m,
+      has_been_sent vlsm s' m <-> (om = Some m \/ has_been_sent vlsm s m).
+Proof.
+  exact (oracle_step_update _ _ (has_been_sent_stepwise_from_trace Hhbs)).
+Qed.
+
+(**
+** Stepwise view of [has_been_received_capability]
+ *)
+
+Definition has_been_received_stepwise_props
+       [message] [vlsm: VLSM message] (has_been_received_pred: state_message_oracle vlsm) : Prop :=
+  (oracle_stepwise_props (field_selector input) has_been_received_pred).
+
+Lemma has_been_received_capability_from_stepwise
+      [message : Type]
+      [vlsm: VLSM message]
+      [has_been_received_pred: state_message_oracle vlsm]
+      (has_been_received_pred_dec: RelDecision has_been_received_pred)
+      (has_been_sent_alt_props: has_been_received_stepwise_props has_been_received_pred):
+  has_been_received_capability vlsm.
+Proof.
+  refine ({|has_been_received:=has_been_received_pred|}).
+  apply prove_all_have_message_from_stepwise;assumption.
+  apply prove_none_have_message_from_stepwise;assumption.
+Defined.
+
+Lemma has_been_received_stepwise_from_trace
+      [message : Type]
+      [vlsm: VLSM message]
+      (Hhbr: has_been_received_capability vlsm):
+  oracle_stepwise_props (field_selector input) (has_been_received vlsm).
+Proof.
+  apply stepwise_props_from_trace.
+  apply has_been_received_dec.
+  apply proper_received.
+  apply proper_not_received.
+Defined.
+
+
+(**
+** A state message oracle for messages sent or received
+
+In protocols like the CBC full node protocol, validators often
+work with the set of all messages they have directly observed,
+which includes the messages the node sent itself along with
+messages that were received.
+The [has_been_observed] oracle holds for a message if the
+message was sent or received in any transition.
+ *)
+
+Class has_been_observed_capability {message} (vlsm: VLSM message) :=
+  {
+  has_been_observed: state_message_oracle vlsm;
+  has_been_observed_dec :> RelDecision has_been_observed;
+  has_been_observed_stepwise_props: oracle_stepwise_props item_sends_or_receives has_been_observed;
+  }.
+Arguments has_been_observed {message} vlsm {_}.
+Arguments has_been_observed_dec {message} vlsm {_}.
+
+Definition has_been_observed_step_update `{Hhbo: has_been_observed_capability message vlsm} :
+  forall l s im s' om,
+    protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s, im) (s', om) ->
+    forall msg,
+      has_been_observed vlsm s' msg <->
+      ((im = Some msg \/ om = Some msg) \/ has_been_observed vlsm s msg)
+  := oracle_step_update _ _ has_been_observed_stepwise_props.
+
+Lemma proper_observed `(Hhbo: has_been_observed_capability message vlsm):
+  forall (s:state),
+    protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s ->
+    forall m,
+      all_traces_have_message_prop vlsm item_sends_or_receives (has_been_observed vlsm) s m.
+Proof.
+  intros.
+  apply prove_all_have_message_from_stepwise.
+  apply Hhbo.
+  assumption.
+Qed.
+
+Lemma proper_not_observed `(Hhbo: has_been_observed_capability message vlsm):
+  forall (s:state),
+    protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s ->
+    forall m,
+      no_traces_have_message_prop vlsm item_sends_or_receives
+                                  (fun s m => ~has_been_observed vlsm s m) s m.
+Proof.
+  intros.
+  apply prove_none_have_message_from_stepwise.
+  apply Hhbo.
+  assumption.
+Qed.
 
 (**
 *** Equivocation in compositions.

@@ -254,17 +254,11 @@ Section Define_Component.
          (validator_transition_updates_sent l s im s' om (proj2 H));
     |}.
 
-  Global Instance validator_has_been_sent_capability : has_been_sent_capability Validator.
-  Proof.
-    eapply has_been_sent_capability_from_stepwise.
-    eapply validator_sent_stepwise_props.
-    exact validator_has_been_sent_dec.
-  Defined.
+  Global Instance validator_has_been_sent_capability : has_been_sent_capability Validator
+    := has_been_sent_capability_from_stepwise
+         validator_has_been_sent_dec
+         validator_sent_stepwise_props.
 
-  (** N.B. this is not actually a [has_been_received_capability],
-      because a validator counts a message as "received" when it
-      sends it itself
-   *)
   Definition validator_has_been_observed : validator_state -> validator_message -> Prop.
   Proof using.
     exact (fun '(State _ received _ _) m => In m received).
@@ -284,9 +278,9 @@ Section Define_Component.
 
   Lemma validator_transition_updates_observed:
        forall l s im s' om,
-         protocol_transition Validator l (s,im) (s',om) ->
+         protocol_transition (pre_loaded_with_all_messages_vlsm Validator) l (s,im) (s',om) ->
          forall msg, validator_has_been_observed s' msg
-                     <-> (im = Some msg \/ om = Some msg \/ validator_has_been_observed s msg).
+                     <-> ((im = Some msg \/ om = Some msg) \/ validator_has_been_observed s msg).
   Proof using.
     intros l s im s' om [[_ [_ Hvalid]] Htrans] msg.
     destruct s.
@@ -307,6 +301,18 @@ Section Define_Component.
       destruct v0.
       firstorder congruence.
   Qed.
+
+  Definition validator_observed_stepwise_props :
+    oracle_stepwise_props (vlsm:=Validator) item_sends_or_receives validator_has_been_observed
+    := {| oracle_no_inits := validator_initial_not_observed;
+          oracle_step_update := validator_transition_updates_observed|}.
+
+  Global Instance validator_has_been_observed_capability:
+    has_been_observed_capability Validator :=
+      {|has_been_observed := validator_has_been_observed: state_message_oracle Validator;
+        has_been_observed_dec := validator_has_been_observed_dec;
+        has_been_observed_stepwise_props :=
+          validator_observed_stepwise_props |}.
 End Define_Component.
 
 (** * Composition and Proofs
@@ -369,7 +375,6 @@ Section Protocol_Proofs.
   Context
     (constraint : composite_label IM -> composite_state IM * option (validator_message C V) -> Prop
        := no_synch_faults_no_equivocation_constraint v0 validators_finite IM
-                 (fun v => validator_has_been_observed C V:state_message_oracle (IM v))
                  (validator_clock C V c0 plan estimator)
              message_time)
     (X: VLSM (validator_message C V) := composite_vlsm IM v0 constraint)
