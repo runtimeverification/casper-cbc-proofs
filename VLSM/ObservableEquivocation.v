@@ -279,28 +279,25 @@ Lemma in_observable_events_first
     Forall (fun item => ~has_been_observed (destination item) e) pre.
 Proof.
   destruct (null_dec tr) as [Htr0 | Htr0].
-  - subst tr. destruct Htr as [Htr His].
+  - subst tr.
     left. reflexivity.
-  - destruct (exists_last Htr0) as [l' [a Heq]].
+  - right. destruct (exists_last Htr0) as [l' [a Heq]].
     specialize
       (Exists_first tr (fun item => has_been_observed (destination item) e))
       as Hfirst.
     spec Hfirst. { intro item. apply has_been_observed_dec. }
     spec Hfirst.
-    + apply Exists_exists. exists a.
+    { apply Exists_exists. exists a.
       split.
       * subst tr. apply in_app_iff. right. left. reflexivity.
       * unfold s in *. clear s. rewrite Heq in He.
         rewrite map_app in He. simpl in He. rewrite last_last in He.
         assumption.
-    + right.
-      destruct Hfirst as [pre [suf [a' [He' [Heq' Hfirst]]]]].
-      exists pre, suf, a'.
-      repeat (split; [assumption|]).
-      apply Forall_forall.
-      intros x Hx contra.
-      elim Hfirst. apply Exists_exists. exists x.
-      intuition.
+    }
+    destruct Hfirst as [pre [suf [a' [He' [Heq' Hfirst]]]]].
+    exists pre, suf, a'.
+    repeat (split; [assumption|]).
+    apply Forall_Exists_neg. assumption.
 Qed.
 
 Definition option_message_has_been_observed
