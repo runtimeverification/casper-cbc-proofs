@@ -145,7 +145,7 @@ Currently we define only a strong assumption that doesn't allow
 any messages to be delayed, which will be used for example proofs of
 liveness.
 
-Definitions allowing a limited rate of "syncrhonization faults" will
+Definitions allowing a limited rate of "synchronization faults" will
 be added before verifying more robust protocols over more realistic
 assumptions.
  *)
@@ -161,9 +161,7 @@ Section StrongSynchrony.
     (Hi : index)
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
     {Hsents : forall i, has_been_sent_capability (IM i)}
-    (Free := free_composite_vlsm IM i0)
-    (composite_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM i0 (free_constraint IM) finite_index Hsents)
-    (has_been_observed_op: forall i, state_message_oracle (IM i))
+    {Hobserveds: forall i, has_been_observed_capability (IM i)}
     (clocks : ClocksFor IM)
     (message_time : message -> nat)
   .
@@ -188,7 +186,7 @@ Section StrongSynchrony.
   Definition all_earlier_messages_received (i:index) (s:composite_state IM) : Prop :=
     forall msg, (exists (j:index), has_been_sent (IM j) (s j) msg) ->
                 message_time msg <= clock _ (clocks i) (s i) ->
-                has_been_observed_op i (s i) msg.
+                has_been_observed (IM i) (s i) msg.
 
   (** This portion of a constraint prevents a component from advancing its clock
       if it has not received all oustanding messages from the time
@@ -209,6 +207,11 @@ Section StrongSynchrony.
          let (s',_) := vtransition (IM i) l_i (s i,om) in
          clock _ (clocks i) (s i) < clock _ (clocks i) s'
          -> all_earlier_messages_received i s.
+
+  Context
+    (Free := free_composite_vlsm IM i0)
+    (composite_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM i0 (free_constraint IM) finite_index Hsents)
+    .
 
   Existing Instance composite_has_been_sent_capability.
 

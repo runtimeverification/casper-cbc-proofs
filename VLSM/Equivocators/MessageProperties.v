@@ -303,7 +303,7 @@ Lemma equivocator_has_been_sent_consistency
   (s : vstate equivocator_vlsm)
   (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
   (m : message)
-  : selected_messages_consistency_prop equivocator_vlsm output s m.
+  : selected_messages_consistency_prop equivocator_vlsm (field_selector output) s m.
 Proof.
   split.
   - intros [bis [btr [Hbtr [Hlast Hsome]]]].
@@ -327,7 +327,7 @@ Proof.
       rewrite Hlast in Hpbs.
       apply (preloaded_equivocator_state_project_protocol_state _ _ Hpbs).
     }
-    assert (Hall : selected_message_exists_in_all_traces X output (projT2 s (of_nat_lt Hj)) m).
+    assert (Hall : selected_message_exists_in_all_preloaded_traces X (field_selector output) (projT2 s (of_nat_lt Hj)) m).
     { apply has_been_sent_consistency; [assumption|assumption|].
       destruct i as [sn | i fi].
       - destruct Hi as [Hlastx HtrX].
@@ -357,7 +357,7 @@ Proof.
     destruct Hs as [om Hs].
     apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
     destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
-    ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit output m)
+    ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit (field_selector output) m)
       ; assumption|].
     exists is. exists tr. exists Htr.
     assert (Hlst := last_error_destination_last _ _ Hlast is).
@@ -405,7 +405,7 @@ Proof.
     destruct Hs as [om Hs].
     apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
     destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
-    ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit output m)
+    ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit (field_selector output) m)
       ; assumption|].
     assert (Hlst := last_error_destination_last _ _ Hlast is).
     spec Hbbs is tr Htr Hlst.
@@ -532,7 +532,7 @@ Proof.
     + specialize (last_error_destination_last _ _ Hlast is) as Hlst. clear Hlast.
       assert (Hinv := of_nat_to_nat_inv i).
       destruct (to_nat i) as [ni Hi]. simpl in Hinv. subst i.
-      assert (Hbm : selected_message_exists_in_some_traces equivocator_vlsm output s m)
+      assert (Hbm : selected_message_exists_in_some_preloaded_traces equivocator_vlsm (field_selector output) s m)
       ; [|exists (exist _ m Hbm); reflexivity].
       exists is. exists tr. exists Htr. exists Hlst.
       subst s.
@@ -573,7 +573,7 @@ Proof.
     + apply in_map_iff. exists (of_nat_lt Hi).
       split; [reflexivity|]. apply fin_t_full.
     + apply (sent_messages_full X); [apply HpsX|].
-      assert (Hm : selected_message_exists_in_some_traces X output (projT2 s (of_nat_lt Hi)) m)
+      assert (Hm : selected_message_exists_in_some_preloaded_traces X (field_selector output) (projT2 s (of_nat_lt Hi)) m)
       ; [|exists (exist _ m Hm); reflexivity].
       destruct istart as [sstart | istart fstart].
       * destruct Histart as [Hlast HtrX].
