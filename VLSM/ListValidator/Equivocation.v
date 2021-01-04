@@ -3144,6 +3144,80 @@ Context
         end
     end.
     
+    Lemma state_lt'_trans
+      (i : index)
+      (s1 s2 s3 : state)
+      (Hlt : state_lt' i s1 s2 /\ state_lt' i s2 s3) :
+      state_lt' i s1 s3.
+    Proof.
+      destruct Hlt as [Hlt1 Hlt2].
+      unfold state_lt' in Hlt1, Hlt2.
+      apply in_split in Hlt2.
+      destruct Hlt2 as [pref [suff Heq]].
+      apply unfold_history in Heq as Heq'.
+      unfold state_lt'.
+      rewrite Heq.
+      rewrite Heq'.
+      apply in_app_iff.
+      right.
+      apply in_cons.
+      assumption.
+    Qed.
+    
+    Lemma lv_event_trans
+      (e1 e2 e3 : lv_event)
+      (Hlt : lv_event_lt e1 e2 /\ lv_event_lt e2 e3) :
+      lv_event_lt e1 e3.
+    Proof.
+      destruct Hlt as [Hlt1 Hlt2].
+      unfold lv_event_lt in Hlt1, Hlt2.
+      destruct e1 as [et1 ev1 es1].
+      destruct e2 as [et2 ev2 es2].
+      destruct e3 as [et3 ev3 es3].
+      assert (ev1 = ev2) by (destruct(decide(ev1 = ev2)); intuition).
+      assert (ev2 = ev3) by (destruct(decide(ev2 = ev3)); intuition).
+      rewrite decide_True in Hlt1 by intuition. (* weird behaviour when using ,*)
+      rewrite decide_True in Hlt2 by intuition.
+      
+      assert (ev1 = ev3). {
+        apply eq_trans with (y := ev2); intuition.
+      }
+      
+      assert (et1 <> State). {
+        intros contra. rewrite contra in Hlt1.
+        destruct et2; intuition.
+      }
+      
+      assert (et2 <> State). {
+        intros contra. rewrite contra in Hlt2.
+        destruct et3; intuition.
+      }
+      
+      (* TODO : Remove duplication *)
+      destruct et1 eqn : eq_et1.
+      - intuition.
+      - destruct et2 eqn : eq_et2.
+        + intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition.
+      - destruct et2 eqn : eq_et2.
+        + intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition.
+    Qed.
+    
     Lemma lv_event_lt_dec : RelDecision lv_event_lt.
     Proof.
       unfold RelDecision. intros.
@@ -3444,6 +3518,30 @@ Context
         all : intuition.
     Qed.
     
+    Lemma raw_received
+      (s s' : state)
+      (target : index)
+      (Hdif : target <> index_self) :
+      In (Obs Received target s') (lv_received_observations s target) <-> In s' (get_raw_observations s target).
+    Proof.
+      split; intros; unfold lv_received_observations in *.
+      - rewrite decide_False in H by intuition.
+        apply in_map_iff in H.
+        destruct H as [s'' [Hobs Hins'']].
+        apply set_remove_list_1 in Hins''.
+        unfold get_raw_observations.
+        inversion Hobs.
+        rewrite <- H0.
+        intuition.
+      - rewrite decide_False by intuition.
+        apply in_map_iff.
+        exists s'.
+        split;[reflexivity|].
+        unfold lv_sent_states.
+        rewrite decide_False by intuition.
+        intuition.
+    Qed.
+    
     Lemma unfold_lv_observations
       (s : state)
       (target : index)
@@ -3454,90 +3552,60 @@ Context
       (e = Obs Received target (project s target)) \/
       (exists (i : index), (In e (lv_observations (project s i) target))).
     Proof.
-    Admitted.
-    (*
       rewrite lv_observations_other by intuition.
-      specialize (unfold_raw_observations s (get_event_state e) Hnb target) as Hraw.
+      destruct e as [et ev es].
+      
       split; intros.
-      - destruct Hraw as [Hraw _].
-        spec Hraw. {
-          admit.
-        }
+      - apply in_lv_received in H as Hrec.
+        assert (et = Received) by intuition.
+        assert (ev = target) by intuition.
+        subst et; subst ev.
+        apply raw_received in H as Hraw. 2 : intuition.
+        apply unfold_raw_observations in Hraw. 2 : intuition.
         destruct Hraw.
-        + left.
-          rewrite H0.
-          apply in_lv_received in H.
-          rewrite lv_event_comp_eq at 1.
-          f_equal. all : intuition.
+        + left. rewrite H0. intuition.
         + right.
-          destruct H0 as [i Hin].
+          destruct H0 as [i Hini].
           exists i.
+          apply raw_received in Hini.
           rewrite lv_observations_other.
-          unfold lv_received_observations.
-          rewrite decide_False.
-          unfold lv_sent_states.
-          rewrite decide_False; simpl.
-          apply in_map_iff.
-          exists (get_event_state e).
-          split.
-          * rewrite lv_event_comp_eq.
-            f_equal.
-            apply in_lv_received.
-        
-      (*
-      - unfold lv_received_observations in H.
-        rewrite decide_False in H by intuition.
-        apply in_map_iff in H.
-        destruct H as [s' [Hobs Hother]].
-        apply set_remove_list_1 in Hother.
-        apply unfold_raw_observations in Hother.
-        2 : rewrite <- Hobs in Hnb; intuition;
-        destruct Hother.
-        + left. 
-          rewrite <- Hobs.
-          intuition.
-        + right.
-          destruct H as [i Hin].
-          exists i.
-          rewrite lv_observations_other by intuition.
-          unfold lv_received_observations.
-          rewrite decide_False.
-          apply in_map_iff.
-          exists s'.
-          intuition.
-          unfold lv_sent_states.
-          rewrite decide_False.
-          simpl.
-          unfold get_raw_observations in Hin.
           all : intuition.
-      - destruct H.
-        + specialize (unfold_raw_observations s (project s target)) as Hraw.
-          spec Hraw. {
-            admit.
-          }
-          specialize (Hraw target).
-          destruct Hraw as [_ Hraw].
-          spec Hraw. {
+      - assert (et = Received /\ ev = target). {
+          destruct H.
+          - inversion H.
             intuition.
-          }
-          unfold lv_received_observations.
-          rewrite decide_False.
-          unfold lv_sent_states.
-          rewrite decide_False; simpl.
-          apply in_map_iff.
-          exists (project s target).
-          all : intuition.
-       + destruct H as [i Hin].
-         rewrite lv_observations_other in Hin by intuition.
-         specialize (unfold_raw_observations s (get_event_state e)) as Hraw.
-         spec Hraw. {
-          admit.
-         }
-         specialize (Hraw target).
-         destruct Hraw as [_ Hraw].
-         destruct Hraw *)
-         
-    Qed. *)
+          - destruct H as [i Hini].
+            rewrite lv_observations_other in Hini by intuition.
+            apply in_lv_received in Hini.
+            intuition.
+        }
+        destruct H0 as [Het Hev].
+        subst et; subst ev.
+        
+        apply raw_received. intuition.
+        apply unfold_raw_observations. intuition.
+        
+        destruct H.
+        + left. inversion H. intuition.
+        + right. 
+          destruct H as [i Hini].
+          exists i.
+          apply raw_received. intuition.
+          rewrite lv_observations_other in Hini by intuition.
+          intuition.
+   Qed.
+   
+  Lemma some_update_j
+    (s so : state)
+    (Hnb : s <> Bottom)
+    (j : index)
+    (Hdif : index_self <> j)
+    (Hfull : project s j = project so j)
+    (b : bool)
+    (s' := (update_consensus (update_state s so index_self) b)) :
+    set_eq (lv_observations s' j) (set_union decide_eq (lv_observations s j) (lv_observations so j)).
+  Proof.
+  Admitted.
     
   Lemma self_update_j
     (s : state)
