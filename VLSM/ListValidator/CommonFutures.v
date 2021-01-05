@@ -99,7 +99,8 @@ Context
     @bool_decide _ (@equivocation_evidence_dec (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject ce s i))) index_listing.
   
   Definition GE (s : vstate X) : set index :=
-    set_diff idec index_listing (GH s).
+    List.filter (fun i : index => 
+    @bool_decide _ (@equivocation_evidence_dec (vstate X) index lv_event _ lv_event_lt lv_event_lt_dec get_event_subject ce s i)) index_listing.
  
   Definition ce' (s : vstate X) := @composed_witness_observation_based_equivocation_evidence
     message index lv_event
@@ -186,7 +187,20 @@ Context
     (i : index) :
     In i (GE s) <-> (cequiv_evidence s i).
   Proof.
-  Admitted.
+    split; intros.
+    - unfold GE in H.
+      unfold GH in H.
+      apply filter_In in H.
+      destruct H as [_ H].
+      apply bool_decide_eq_true in H.
+      intuition.
+    - unfold GE.
+      apply filter_In.
+      split.
+      apply ((proj2 Hfinite) i).
+      apply bool_decide_eq_true.
+      intuition.
+  Qed.
   
   Lemma GE_existing_update
     (s : vstate X)
@@ -286,7 +300,7 @@ Context
           apply ((proj2 Hfinite) l).
           unfold obs.
           unfold observable_events. simpl.
-          
+          admit.
       + assert (Hsame : s' ii = s ii). {
           unfold s'.
           rewrite state_update_neq.
@@ -301,8 +315,8 @@ Context
           rewrite <- Hsame.
           split; intuition.
         * intuition.
-     -
-  Qed.
+     - admit.
+  Admitted.
   
   (*
     unfold set_eq.
@@ -405,7 +419,7 @@ Context
     (i j : index)
     (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
     (Hfull : project (s i) j = project so j)
-    (Hhave : exists (k : index), project (s k) j = so) :
+    (Hhave : so = (s i) \/ (exists (k : index), project (s k) j = so)) :
     incl (GE s') (GE s).
   Proof.
     unfold incl; intros v H.
@@ -747,8 +761,6 @@ Context
           assert (Hge_short : incl (GE res_short) (GE s)). {
             remember (update_consensus (update_state (s i) (s i) i) (feasible_update_value (s i) i)) as new_si.
             remember (state_update IM_index s i new_si) as new_s.
-            specialize (GE_existing_update' s Hspr i) as Hexist.
-            simpl in Hexist.
             assert (Hu: res_short = new_s). {
               rewrite H0.
               rewrite Heqnew_s.
@@ -757,6 +769,13 @@ Context
               rewrite Heqnew_si.
               reflexivity.
             }
+            specialize (GE_existing_true s Hspr (s i)) as Hexist.
+            simpl in Hexist.
+            specialize (Hexist (feasible_update_value (s i) i) i i eq_refl).
+            spec Hexist. {
+              left. reflexivity.
+            }
+            
             rewrite Hu.
             rewrite Heqnew_s.
             rewrite Heqnew_si.
@@ -937,13 +956,13 @@ Context
     (Hsync : sync s (s' inter) to from = Some a) :
     let res := snd (apply_plan X s a) in
     finite_protocol_plan_from X s a /\
-    (project (res to) from = project (s' inter) from).
+    (project (res to) from = project (s' inter) from) /\ incl (GE res) (GE s).
    Proof. 
     generalize dependent s.
     induction a.
     - intros. simpl in *.
       unfold finite_protocol_plan_from. simpl.
-      split.
+      repeat split.
         + apply finite_ptrace_empty.
           assumption. 
         + unfold res.
@@ -970,6 +989,7 @@ Context
           symmetry in eq_cs.
           apply (@eq_history_eq_project index index_listing Hfinite) in eq_cs.
           assumption.
+        + intuition. 
     - intros. simpl in *.
       
       replace (a :: a0) with ([a] ++ a0). 2: auto.
@@ -1144,6 +1164,7 @@ Context
         rewrite eq_vtrans. simpl.
         apply IHa.
       + destruct IHa as [_ IHa].
+        destruct IHa as [IHa _].
         rewrite <- IHa.
         f_equal.
         unfold apply_plan. simpl.
@@ -1163,7 +1184,9 @@ Context
         end.
         rewrite Hadd.
         reflexivity.
-    Qed.
+      + destruct IHa as [_ [_ IHa]].
+        simpl in *.
+    Admitted.
    
     Definition get_candidates 
       (s : vstate X) :
@@ -1294,7 +1317,7 @@ Context
           simpl in Hone.
           rewrite <- Hmatch.
           rewrite <- Hinter.
-          apply Hone.
+          intuition.
         + rewrite <- Hmatch.
           rewrite <- Hmatch in eq_suf.
           assert (Hempty: l = []). {
@@ -1353,7 +1376,8 @@ Context
         (Hnf : ~ In from li) :
         let res := snd (apply_plan X s (get_receives_for s li from)) in
         finite_protocol_plan_from X s (get_receives_for s li from) /\
-        forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from. 
+        forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from /\
+        incl (GE res) (GE s). 
     Proof.
       induction li; intros.
       - unfold get_receives_for. simpl.
