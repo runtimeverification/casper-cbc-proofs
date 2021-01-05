@@ -57,6 +57,18 @@ corresponding sets.
     ; l0 : label
     }.
 
+  Definition VLSM_sign_add_initial_messages
+    {message : Type} {vtype : VLSM_type message} (sign : VLSM_sign vtype)
+    (initial : message -> Prop)
+    : VLSM_sign vtype
+    :=
+    {| initial_state_prop := @initial_state_prop _ _ sign
+    ; initial_message_prop := fun m => @initial_message_prop _ _ sign  m \/ initial m
+    ; s0 := @s0 _ _ sign
+    ; m0 := @m0 _ _ sign
+    ; l0 := @l0 _ _ sign
+    |}.
+
 (**
 
 ** VLSM class definition
@@ -71,6 +83,15 @@ function and a [valid]ity condition.
     ; valid : label -> state * option message -> Prop
     }.
 
+  Definition VLSM_class_add_initial_messages
+    {message : Type} {vtype : VLSM_type message} {lsm : VLSM_sign vtype} (vlsm : VLSM_class lsm)
+    (initial : message -> Prop)
+    : VLSM_class (VLSM_sign_add_initial_messages lsm initial)
+    :=
+    {| transition := @transition _ _ _ vlsm
+     ; valid := @valid _ _ _ vlsm
+    |}.
+
   Definition VLSM (message : Type) :=
     sigT (fun T : VLSM_type message =>
       sigT (fun S : VLSM_sign T => VLSM_class S)).
@@ -83,6 +104,15 @@ function and a [valid]ity condition.
     : VLSM message
     := existT _ T (existT _ S M).
 
+  Definition vlsm_add_initial_messages
+    {message : Type}
+    (X : VLSM message)
+    (initial : message -> Prop)
+    : VLSM message
+    :=
+    let M := projT2 (projT2 X) in
+    let M' := VLSM_class_add_initial_messages M initial in
+    mk_vlsm M'.
 
 Section Traces.
 

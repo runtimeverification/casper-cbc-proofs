@@ -1688,7 +1688,7 @@ Context
     Proof.
       unfold has_been_sent_prop.
       unfold all_traces_have_message_prop.
-      unfold selected_message_exists_in_all_traces.
+      unfold selected_message_exists_in_all_preloaded_traces.
       unfold specialized_selected_message_exists_in_all_traces.
       split.
       - intros.
@@ -1953,7 +1953,7 @@ Context
     Proof.
       unfold has_been_received_prop.
       unfold all_traces_have_message_prop.
-      unfold selected_message_exists_in_all_traces.
+      unfold selected_message_exists_in_all_preloaded_traces.
       unfold specialized_selected_message_exists_in_all_traces.
       split.
       - intros.
@@ -2232,7 +2232,8 @@ Context
       intros.
       unfold has_not_been_sent_prop.
       unfold no_traces_have_message_prop.
-      unfold selected_message_exists_in_no_trace.
+      unfold selected_message_exists_in_no_preloaded_trace,
+          specialized_selected_message_exists_in_no_trace.
       split.
       - intros.
         unfold not_send_oracle in H.
@@ -2340,7 +2341,8 @@ Context
       intros.
       unfold has_not_been_received_prop.
       unfold no_traces_have_message_prop.
-      unfold selected_message_exists_in_no_trace.
+      unfold selected_message_exists_in_no_preloaded_trace,
+          specialized_selected_message_exists_in_no_trace.
       split.
       - intros.
         unfold not_receive_oracle in H.

@@ -343,7 +343,7 @@ Proof.
       destruct Hom as [_s Hom].
       specialize (Hgen l (bs' (of_nat_lt Hi)) _om' Hbs't _s om0 Hom Hv).
       match type of Hgen with
-      | protocol_prop _ ?t => 
+      | protocol_prop _ ?t =>
         change t  with (vtransition X l (bs' (of_nat_lt Hi), om0))
           in Hgen
       end.
@@ -380,7 +380,7 @@ Proof.
       destruct IHHbs2 as [(_som, Hom) _].
       specialize (Hgen l (bs0 (of_nat_lt Hi))  _om0 Hbs0t _som om0 Hom Hv).
       match type of Hgen with
-      | protocol_prop _ ?t => 
+      | protocol_prop _ ?t =>
         change t  with (vtransition X l (bs0 (of_nat_lt Hi), om0))
           in Hgen
       end.

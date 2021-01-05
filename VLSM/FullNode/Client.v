@@ -35,32 +35,44 @@ messages, implementing a limited equivocation tolerance policy.
     (message := State.message C V)
     (happens_before := validator_message_preceeds C V)
     (happens_before_dec := validator_message_preceeds_dec C V)
+    (message_eq : EqDecision message := @message_eq _ _ about_C about_V)
     .
 
   Existing Instance eq_V.
   Existing Instance happens_before_dec.
 
-  Definition full_node_client_observable_events
+  Definition full_node_client_has_been_observed
     (s : set message)
-    (v : V)
-    : set message
-    :=
-    filter (fun m => if decide (sender m = v) then true else false) s.
+    (m : message)
+    : Prop
+    := In m s.
 
-  Program Definition full_node_client_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (set message) V message decide_eq _ happens_before_dec sender
-    :=
-    {|
-      observable_events := full_node_client_observable_events
-    |}.
-  Next Obligation.
-    unfold full_node_client_observable_events in He.
-    apply filter_In in He.
-    destruct He as [_ He].
-    destruct (decide (sender e = v)); solve [intuition;discriminate He].
-  Qed.
+  Definition full_node_message_subject_of_observation
+    (m : message)
+    : option V
+    := Some (sender m).
 
-  Existing Instance full_node_client_observation_based_equivocation_evidence.
+ Program Instance observable_messages
+   : observable_events message message
+   := {
+     has_been_observed (m e :message) := m = e \/ In e (get_message_set (unmake_justification (get_justification m))) 
+   }.
+ Next Obligation.
+   intros m e. apply Decision_or; [| apply in_dec]; apply message_eq.
+ Defined.
+
+
+  Instance full_node_client_observable_messages
+    : observable_events (set message) message
+    := state_observable_events_instance (set message) message _ (fun s => s).
+
+  Instance full_node_client_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (set message) V message _ decide_eq _ happens_before_dec full_node_message_subject_of_observation
+    := observable_events_equivocation_evidence _ _ _ _ (fun s => s) _ happens_before_dec full_node_message_subject_of_observation.
+
+  Instance full_node_client_observation_based_equivocation_evidence_dec
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence)
+    := observable_events_equivocation_evidence_dec _ _ _ _ (fun s => s) _ _ happens_before_dec full_node_message_subject_of_observation.
 
   Definition full_node_client_state_validators
     (s : set message)
@@ -77,8 +89,8 @@ messages, implementing a limited equivocation tolerance policy.
 
   Definition client_basic_equivocation
     : basic_equivocation (set message) V
-    := basic_observable_equivocation (set message) V message
-        _ happens_before full_node_client_state_validators full_node_client_state_validators_nodup.
+    := @basic_observable_equivocation (set message) V message
+        message_eq _ happens_before_dec full_node_client_observable_messages full_node_message_subject_of_observation full_node_client_observation_based_equivocation_evidence _ _ _  full_node_client_state_validators full_node_client_state_validators_nodup.
 
   Existing Instance client_basic_equivocation.
 
@@ -139,6 +151,16 @@ messages, implementing a limited equivocation tolerance policy.
     |}.
 
   Definition VLSM_full_client2 : VLSM message := mk_vlsm VLSM_full_client2_machine.
+
+  Program Instance full_node_client_vlsm_observable_messages
+    : vlsm_observable_events VLSM_full_client2 full_node_message_subject_of_observation.
+  Next Obligation.
+    replace s with (@nil message) in He by assumption.
+    inversion He.
+  Qed.
+  Next Obligation.
+    unfold vtransition in Ht. simpl in Ht. destruct o; congruence.
+  Qed.
 
   Section proper_sent_received.
   Context
@@ -260,55 +282,26 @@ messages, implementing a limited equivocation tolerance policy.
     :=
     fun s m => in_dec decide_eq m s.
 
-  Lemma has_been_sent_in_trace
-    (s : set message)
-    (m: message)
-    (is : set message)
-    (tr: list transition_item)
-    (Htr: finite_protocol_trace bvlsm is tr)
-    (item: transition_item)
-    (Hitem: In item tr)
-    (Hm: output item = Some m)
-    (Hs: last (map destination tr) is = s)
-    : False.
+  Lemma VLSM_full_client_has_been_sent_step_properties:
+    has_been_sent_stepwise_props client_has_been_sent.
   Proof.
-    apply in_split in Hitem.
-    destruct Hitem as [l1 [l2 Hitem]]. subst tr.
-    destruct Htr as [Htr Hinit].
-    pose (finite_protocol_trace_from_app_iff bvlsm is l1 (item :: l2)) as Htr_app.
-    simpl in Htr_app. destruct Htr_app as [_ Htr_app].
-    specialize (Htr_app Htr).
-    clear Htr. destruct Htr_app as [_ Htr].
-    inversion Htr. subst tl item. simpl in Hm. subst oom.
-    apply protocol_transition_inv_out in H3. contradiction H3.
+    unfold client_has_been_sent.
+    split.
+    - tauto.
+    - intros l s im s' om Hptrans msg.
+      assert (om <> Some msg).
+      {
+        destruct Hptrans as [_ Htrans].
+        cbn in Htrans.
+        destruct im;inversion Htrans;congruence.
+      }
+      tauto.
   Qed.
 
-  Lemma VLSM_full_client_proper_sent
-    (s : set message)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_been_sent_prop vlsm client_has_been_sent s m.
-  Proof.
-    unfold has_been_sent_prop. unfold all_traces_have_message_prop.
-    split;[contradiction|intro H].
-    - destruct Hs as [_om Hs].
-      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + exfalso.
-        assert (Htrs : finite_protocol_trace bvlsm s []).
-        { split; try assumption. constructor. exists _om. assumption. }
-        specialize (H s [] Htrs eq_refl).
-        apply Exists_exists in H. destruct H as [x [Hin _]]. inversion Hin.
-      + assert (Hlst : last (map destination tr) is = s).
-        { destruct tr as [|i tr]; inversion Hlsts.
-          apply last_map.
-        }
-        specialize (H is tr Htr Hlst).
-        apply Exists_exists in H.
-        destruct H as [item [Hitem Hm]].
-        exfalso.
-        apply has_been_sent_in_trace with s m is tr item; assumption.
-  Qed.
+  Definition VLSM_full_client_has_been_sent
+    : has_been_sent_capability VLSM_full_client2
+    := has_been_sent_capability_from_stepwise client_has_been_sent_dec
+                                              VLSM_full_client_has_been_sent_step_properties.
 
   Lemma has_been_received_in_trace
     (s : set message)
@@ -349,38 +342,6 @@ messages, implementing a limited equivocation tolerance policy.
     apply set_add_iff. left. reflexivity.
   Qed.
 
-  Definition client_has_not_been_sent
-    (s : set message)
-    (m : message)
-    : Prop
-    :=
-    ~ client_has_been_sent s m.
-
-  Lemma VLSM_full_client_proper_not_sent
-    (s : set message)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : has_not_been_sent_prop vlsm client_has_not_been_sent s m.
-  Proof.
-    unfold has_not_been_sent_prop. unfold no_traces_have_message_prop.
-    unfold client_has_not_been_sent. simpl.
-    split; intros;[|tauto].
-    unfold selected_message_exists_in_no_trace.
-    intros.
-    rewrite <- Forall_Exists_neg.
-    apply Forall_forall.
-    intros item Hitem Hm.
-    apply (has_been_sent_in_trace s m start tr Htr item Hitem Hm Hlast).
-  Qed.
-
-  Definition VLSM_full_client_has_been_sent
-    : has_been_sent_capability VLSM_full_client2
-    :=
-    {| has_been_sent := client_has_been_sent
-     ; proper_sent := VLSM_full_client_proper_sent
-     ; proper_not_sent := VLSM_full_client_proper_not_sent
-    |}.
-
   Lemma VLSM_full_client_proper_received
     (s : set message)
     (Hs : protocol_state_prop bvlsm s)
@@ -389,7 +350,7 @@ messages, implementing a limited equivocation tolerance policy.
   Proof.
     unfold has_been_received_prop. unfold all_traces_have_message_prop.
     unfold client_has_been_received.
-    unfold selected_message_exists_in_all_traces.
+    unfold selected_message_exists_in_all_preloaded_traces.
     unfold specialized_selected_message_exists_in_all_traces.
     split; intros.
     - apply Exists_exists.
@@ -451,7 +412,8 @@ messages, implementing a limited equivocation tolerance policy.
     unfold has_not_been_received_prop. unfold no_traces_have_message_prop.
     unfold client_has_not_been_received.
     unfold client_has_been_received.
-    unfold selected_message_exists_in_no_trace.
+    unfold selected_message_exists_in_no_preloaded_trace,
+       specialized_selected_message_exists_in_no_trace.
     split.
     - intros.
       rewrite <- Forall_Exists_neg.

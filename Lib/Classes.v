@@ -4,6 +4,7 @@ From Coq.Program Require Import Basics Syntax.
 
 Global Generalizable All Variables.
 
+
 (** * General typeclasses *)
 
 (** This typeclass hierarchy has been adapted mainly from the
@@ -85,6 +86,8 @@ Arguments trichotomyT {_} _ {_} _ _ : assert.
 Lemma Decision_iff : forall {P Q}, (P <-> Q) -> Decision P -> Decision Q.
 Proof. firstorder. Qed.
 Lemma Decision_and : forall {P Q}, Decision P -> Decision Q -> Decision (P /\ Q).
+Proof. firstorder. Qed.
+Lemma Decision_or : forall {P Q}, Decision P -> Decision Q -> Decision (P \/ Q).
 Proof. firstorder. Qed.
 Lemma Decision_not : forall {P}, Decision P -> Decision (~P).
 Proof. firstorder. Qed.
@@ -332,3 +335,49 @@ Proof.
   revert Hirr;apply Reflexive_reexpress_impl. apply complement_equivalence. assumption.
   revert Htrans;apply Transitive_reexpress_impl. assumption.
 Qed.
+
+Definition dec_sig {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)} : Type
+  := sig (fun a => bool_decide (P a) = true).
+
+Definition dec_exist {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)}
+  (a : A) (p : P a) : dec_sig P
+  := exist _ a (decide_True true false p).
+
+Definition dec_proj1_sig
+  `{P_dec : forall x : A, Decision (P x)}
+  (ap : dec_sig P) : A
+  := proj1_sig ap.
+
+Lemma dec_proj2_sig
+  `{P_dec : forall x: A, Decision (P x)}
+  (ap : dec_sig P) : P (dec_proj1_sig ap).
+Proof.
+  destruct ap;simpl.
+  apply bool_decide_eq_true in e.
+  assumption.
+Qed.
+
+Lemma dec_sig_eq_iff
+  `{P_dec : forall x: A, Decision (P x)}
+  (xp yp : dec_sig P)
+  : xp = yp <-> dec_proj1_sig xp = dec_proj1_sig yp.
+Proof.
+  apply eq_sig_hprop_iff.
+  intro x.
+  apply Eqdep_dec.UIP_dec.
+  apply Bool.bool_dec.
+Qed.
+
+Lemma dec_sig_eq_dec
+  `{P_dec : forall x: A, Decision (P x)}
+  (EqDecA : EqDecision A)
+  : EqDecision (dec_sig P).
+Proof.
+  intros x y.
+  apply (Decision_iff (iff_sym (dec_sig_eq_iff _ _))).
+  apply EqDecA.
+Qed.
+
+Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
+  (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
+Proof. firstorder. Qed.

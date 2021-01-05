@@ -239,6 +239,52 @@ Proof.
       * apply IHl; assumption.
 Qed.
 
+Lemma Exists_first
+  {A : Type}
+  (l : list A)
+  (P : A -> Prop)
+  (Pdec : forall a, Decision (P a))
+  (Hsomething : Exists P l)
+  : exists (prefix : list A)
+         (suffix : list A)
+         (first : A),
+         P first /\
+         l = prefix ++ [first] ++ suffix /\
+         ~Exists P prefix.
+
+Proof.
+  induction l;[solve[inversion Hsomething]|].
+  destruct (decide (P a)).
+  - exists nil, l, a.
+    rewrite Exists_nil.
+    tauto.
+  - apply Exists_cons in Hsomething.
+    destruct Hsomething;[exfalso;tauto|].
+    specialize (IHl H);clear H.
+    destruct IHl as [prefix [suffix [first [Hf [-> Hnone_before]]]]].
+    exists (a :: prefix), suffix, first.
+    rewrite Exists_cons.
+    tauto.
+Qed.
+
+Lemma existsb_Exists {A} (f : A -> bool):
+  forall l, existsb f l = true <-> Exists (fun x => f x = true) l.
+Proof.
+  intro l.
+  rewrite Exists_exists.
+  apply existsb_exists.
+Qed.
+
+Lemma existsb_forall {A} (f : A -> bool):
+  forall l, existsb f l = false <-> forall x, In x l -> f x = false.
+Proof.
+  intro l.
+  setoid_rewrite <- not_true_iff_false.
+  rewrite existsb_Exists, <- Forall_forall.
+  symmetry.
+  apply Forall_Exists_neg.
+Qed.
+
 Lemma existsb_first
   {A : Type}
   (l : list A)
@@ -250,40 +296,12 @@ Lemma existsb_first
          (f first = true) /\
          l = prefix ++ [first] ++ suffix /\
          (existsb f prefix = false).
-
 Proof.
-  generalize dependent l.
-  induction l.
-  - intros.
-    simpl in *.
-    discriminate Hsomething.
-  - intros.
-    unfold existsb in Hsomething.
-    destruct (f a) eqn : eq_a.
-    + simpl in Hsomething.
-      exists [].
-      exists l.
-      exists a.
-      split.
-      assumption.
-      simpl.
-      intuition.
-    + simpl in *.
-      specialize (IHl Hsomething).
-      destruct IHl as [prefix [suffix [first [Hf [Hconcat Hnone_before]]]]].
-      exists (a :: prefix).
-      exists suffix.
-      exists first.
-      split.
-      assumption.
-      split.
-      rewrite Hconcat.
-      auto.
-      unfold existsb.
-      rewrite eq_a.
-      simpl.
-      unfold existsb in Hnone_before.
-      assumption.
+  setoid_rewrite <-not_true_iff_false.
+  setoid_rewrite existsb_Exists.
+  apply Exists_first.
+  intro a;apply decide_eq.
+  apply existsb_Exists;assumption.
 Qed.
 
 Lemma in_not_in : forall A (x y : A) l,
@@ -356,19 +374,6 @@ Proof.
   apply in_map_iff in Hin.
   destruct Hin as [x [Heq Hin]].
   exists x. split; try assumption. apply Hincl. assumption.
-Qed.
-
-Lemma existsb_forall {A} (f : A -> bool):
-  forall l, existsb f l = false <-> forall x, In x l -> f x = false.
-Proof.
-  induction l; split; intros.
-  - inversion H0.
-  - reflexivity.
-  - inversion H. apply orb_false_iff in  H2. destruct H2 as [Hfa Hex]. rewrite Hfa.
-    rewrite Hex. simpl. destruct H0 as [Heq | Hin]; subst; try assumption.
-    apply IHl; try assumption.
-  - simpl. rewrite H; try (left; reflexivity). rewrite IHl; try reflexivity.
-    intros. apply H. right. assumption.
 Qed.
 
 Definition app_cons {A}
@@ -1240,6 +1245,17 @@ Lemma in_cat_option
 Proof.
   rewrite cat_option_map_option.
   apply in_map_option.
+Qed.
+
+Lemma map_option_incl
+  {A B : Type}
+  (f : A -> option B)
+  (l1 l2 : list A)
+  (Hincl : incl l1 l2)
+  : incl (map_option f l1) (map_option f l2).
+Proof.
+  intro b. repeat rewrite in_map_option.
+  firstorder.
 Qed.
 
 Lemma nth_error_eq

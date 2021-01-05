@@ -40,7 +40,7 @@ Section ConstrainedValidators.
     (finite_index : Listing indices)
     (FreeX := @VLSM_full_composed_free C V about_C about_V Hmeasurable Hrt Hestimator clients _ i0)
     (free_equivocation_evidence := @composed_equivocation_evidence
-      C V about_C about_V Hmeasurable Hrt Hestimator clients _ i0 indices)
+      C V about_C about_V Hmeasurable Hrt Hestimator clients indices)
     (free_basic_equivocation := @composed_basic_observable_equivocation
       C V about_C about_V Hmeasurable Hrt Hestimator clients _ i0 indices finite_index)
     .
@@ -73,18 +73,30 @@ Definition Full_composition_constraint
 Definition Full_constrained_composition : VLSM message
   := composite_vlsm IM_index i0 Full_composition_constraint.
 
+Existing Instance observable_messages.
+
 Lemma Full_composition_constraint_state_not_heavy
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
   : not_heavy s.
 Proof.
+  specialize
+    (@initial_state_not_heavy message V message _ 
+      _ (validator_message_preceeds_dec C V)
+      full_node_message_subject_of_observation
+      _ _ _ 
+      finite_index IM_index free_observable_messages_index _
+      free_composite_vlsm_observable_messaged_index
+      free_observation_based_equivocation_evidence_index
+      i0 Full_composition_constraint _ _ _ (composite_validators_nodup indices))
+    as Hinitial_not_heavy.
   destruct Hs as [_om Hs].
   inversion Hs; subst; simpl.
   - unfold s0.
-    apply initial_state_not_heavy; try apply free_composite_vlsm_observable_messages.
+    apply Hinitial_not_heavy.
     destruct is. assumption.
   - unfold s0.
-    apply initial_state_not_heavy; try apply free_composite_vlsm_observable_messages.
+    apply Hinitial_not_heavy.
     destruct Common.s0. assumption.
   - destruct Hv as [Hv Hctr].
     unfold Full_composition_constraint in Hctr.
@@ -693,9 +705,9 @@ Proof.
         apply state_union_iff;[exact finite_index|]. right. exists client.
         rewrite state_update_eq. assumption.
       }
-      apply not_heavy_incl with (state_union indices s); try assumption.
+      apply not_heavy_incl with (state_union indices s); [assumption| ..].
       * apply set_map_incl. assumption.
-      * intro v. simpl. apply filter_incl. assumption.
+      * intro m. simpl. apply Hincl'.
       * apply not_heavy_commute with finite_index. assumption.
     + unfold Full_composition_constraint.
       unfold vtransition. simpl.
@@ -704,97 +716,39 @@ Proof.
       intros [_ Hincl].
       simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
       destruct (in_dec decide_eq x (get_message_set (project s i)))
-      ; try (elim n; assumption).
+      ; [elim n; assumption|]. clear n0.
       rewrite map_app in Hincl. simpl in Hincl.
       rewrite last_last in Hincl.
       unfold receive_destination in Hincl.
-      unfold vtransition in Hincl. simpl in Hincl.
-      destruct i as [v | client]
-      ; unfold vtransition; simpl
-      ; match goal with
-          |- context[last ?l s ?ix] =>
-          match ix with
-          | (inl _) => destruct (last l s ix) as (msgs, final) eqn:Hmsgs
-          | (inr _) => remember (last l s ix) as msgs eqn:Hmsgs
-          end
-        end
-      ; apply not_heavy_incl with s; try assumption
-      ; unfold vtransition in Hincl; simpl in Hincl
-      ; try apply incl_refl
-      ; intro v0
-      .
-      * replace (last _ s (inl v)) with (msgs, final) in Hincl.
-        simpl in Hincl.
-        intros m Hm.
-        assert
-          (In m
-            (state_union (i0:=i0) indices
-              (state_update IM_index
-                 (last (map destination (receive_messages s (inl v) (rev ms))) s)
-                 (inl v) (set_add decide_eq x msgs, final)
-              )
-            )
-          ).
-        {
-          unfold state_union.
-          apply set_union_in_iterated.
-          apply Exists_exists.
-          exists (observable_events
-          (state_update IM_index
-             (last (map destination (receive_messages s (inl v) (rev ms))) s)
-             (inl v) (set_add decide_eq x msgs, final)) v0).
-          split; try assumption.
-          apply in_map_iff. exists v0. split; try reflexivity.
-          apply (proj2 (finite_validators indices finite_index)).
-        }
-        apply Hincl in H.
-        apply set_union_in_iterated in H. apply Exists_exists in H.
-        destruct H as [msgsv [Hmsgsv H]].
-        apply in_map_iff in Hmsgsv. destruct Hmsgsv as [v1 [Heq _]].
-        subst.
-        apply (observable_event_sender (i0:=i0)) in Hm. subst v0.
-        replace (sender m) with v1; try assumption.
-        symmetry. apply observable_event_sender in H. assumption.
-      * replace (last _ s (inr client)) with msgs in Hincl.
-        intros m Hm.
-        assert
-          (In m
-            (state_union (i0:=i0) indices
-              (state_update IM_index
-              (last (map destination (receive_messages s (inr client) (rev ms))) s)
-              (inr client) (set_add decide_eq x msgs))
-            )
-          ).
-        {
-          unfold state_union.
-          apply set_union_in_iterated.
-          apply Exists_exists.
-          exists (observable_events
-          (state_update IM_index
-             (last (map destination (receive_messages s (inr client) (rev ms))) s)
-             (inr client) (set_add decide_eq x msgs)) v0).
-          split; try assumption.
-          apply in_map_iff. exists v0. split; try reflexivity.
-          apply (proj2 (finite_validators indices finite_index)).
-        }
-        apply Hincl in H.
-        apply set_union_in_iterated in H. apply Exists_exists in H.
-        destruct H as [msgsv [Hmsgsv H]].
-        apply in_map_iff in Hmsgsv. destruct Hmsgsv as [v1 [Heq _]].
-        subst.
-        apply (observable_event_sender (i0:=i0)) in Hm. subst v0.
-        replace (sender m) with v1; try assumption.
-        symmetry. apply observable_event_sender in H. assumption.
+      unfold vtransition in Hincl. simpl in *.
+      match goal with
+          |- context[last ?l s] =>
+            remember (last l s) as lst eqn:Hlst
+      end.
+      destruct (receive_label lst i x) as (j, lj) eqn:Hrlabel.
+      match goal with
+          |- context[last ?l s] =>
+            replace (last l s) with lst by (subst;reflexivity)
+      end.
+      match type of Hincl with
+      | context [let (si', om') := ?v in _] => destruct v as (si', om') eqn:Ht
+      end.
+      simpl in Hincl.
+      apply not_heavy_incl with s; [assumption| | | assumption].
+      * apply set_map_incl. assumption.
+      * intros m Hm.
+       specialize (composite_has_been_observed_state_union _ finite_index) as Hunion.
+       apply Hunion. apply Hincl. apply Hunion. assumption.
     + unfold receive_destination.
       unfold vtransition. simpl.
       destruct i as [v | client]
-      ; unfold vtransition; simpl.
-      * match goal with |- context [last ?l s (inl v)] =>
+      ; [|reflexivity].
+      unfold vtransition. simpl.
+      match goal with |- context [last ?l s (inl v)] =>
                         destruct (last l s (inl v)) as (msgs, final) eqn:Hmsgs
-        end.
-        replace (last _ s (inl v)) with (msgs, final).
-        reflexivity.
-      * reflexivity.
+      end.
+      replace (last _ s (inl v)) with (msgs, final).
+      reflexivity.
 Qed.
 
 Fixpoint receive_messages_iterated
@@ -995,7 +949,7 @@ Lemma common_future_state
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
   : exists s', in_futures Full_constrained_composition s s'
-    /\ forall i i' : index, set_eq (get_message_set (project (i0:=i0) s' i)) (get_message_set (project (i0:=i0) s' i')).
+    /\ forall i i' : index, set_eq (get_message_set (project s' i)) (get_message_set (project s' i')).
 Proof.
   exists (union_state s).
   split.

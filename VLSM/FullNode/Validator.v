@@ -33,28 +33,17 @@ Section CompositeValidator.
   Existing Instance eq_V.
   Existing Instance message_preceeds_dec.
 
-  Definition full_node_validator_observable_events
-    (s : state C V)
-    (v : V)
-    : set message
-    :=
-    full_node_client_observable_events (get_message_set s) v.
+  Instance full_node_validator_observable_messages
+    : observable_events (state C V) message
+    := state_observable_events_instance (state C V) message _ get_message_set.
 
-  Program Definition full_node_validator_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (state C V) V message decide_eq _ message_preceeds_dec sender
-    :=
-    {|
-      observable_events := full_node_validator_observable_events
-    |}.
-  Next Obligation.
-  unfold full_node_validator_observable_events in He.
-  unfold full_node_client_observable_events in He.
-  apply filter_In in He.
-  destruct He as [_ He].
-  destruct (decide (sender e = v)); solve [intuition; discriminate He].
-  Qed.
+  Instance full_node_validator_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (state C V) V message _ decide_eq _ message_preceeds_dec full_node_message_subject_of_observation
+    := observable_events_equivocation_evidence _ _ _ _ get_message_set _ message_preceeds_dec full_node_message_subject_of_observation.
 
-  Existing Instance full_node_validator_observation_based_equivocation_evidence.
+  Instance full_node_validator_observation_based_equivocation_evidence_dec
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence)
+    := observable_events_equivocation_evidence_dec _ _ _ _ get_message_set _ _ message_preceeds_dec full_node_message_subject_of_observation.
 
   Definition full_node_validator_state_validators
     (s : state C V)
@@ -71,8 +60,8 @@ Section CompositeValidator.
 
   Definition validator_basic_equivocation
     : basic_equivocation (state C V) V
-    := basic_observable_equivocation (state C V) V message _
-        _ full_node_validator_state_validators full_node_validator_state_validators_nodup.
+    := @basic_observable_equivocation (state C V) V message
+        message_eq _ (validator_message_preceeds_dec C V) full_node_validator_observable_messages full_node_message_subject_of_observation full_node_validator_observation_based_equivocation_evidence _ _ _  full_node_validator_state_validators full_node_validator_state_validators_nodup.
 
   (** * Full-node validator VLSM instance
 
@@ -173,6 +162,25 @@ Section CompositeValidator.
   Definition VLSM_full_validator (v : V) : VLSM message :=
     mk_vlsm (VLSM_full_validator_machine v).
 
+  Existing Instance observable_messages.
+  
+  Definition full_node_validator_vlsm_observable_messages
+    (v : V)
+    : vlsm_observable_events (VLSM_full_validator v) full_node_message_subject_of_observation.
+  Proof.
+    split; intros.
+    - replace s with (@nil message, @None message) in He by assumption.
+      inversion He.
+    - destruct som as (s, om). destruct s as (msgs, final).
+      destruct l as [c|]; [|destruct om as [msg|]]; inversion Ht.
+      subst. clear Ht.
+      apply set_add_iff. 
+      destruct H as [Hmsg | Hj]; intuition.
+      right.
+      apply in_unmake_justification in Hj.
+      apply in_make_message_set.
+      destruct final; assumption.
+  Qed.
 
 Section proper_sent_received.
   Context
@@ -629,14 +637,15 @@ Section proper_sent_received.
     ; try assert (Hlst : last (List.map destination tr) is = s)
       by (destruct tr as [|i tr]; inversion Hdest; apply last_map)
     .
-    - destruct x as [m0 Hm0]. unfold selected_message_exists_in_some_traces in Hm0.
-      destruct Hm0 as [is [tr [Htr [Hlst Hex]]]]. simpl in *.
+    - destruct x as [m0 Hm0].
+      destruct Hm0 as [is [tr [Htr [Hlst Hex]]]];simpl in *.
       apply Exists_exists in Hex.
       destruct Hex as [item [Hitem Hout]].
       specialize (last_state_empty_trace is tr Htr Hlst item Hitem).
       intros [_ [Hnout _]].
+      simpl in Hout.
       rewrite Hnout in Hout. discriminate Hout.
-    - assert (Hm : selected_message_exists_in_some_traces vlsm output s m).
+    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm (field_selector output) s m).
       { exists is. exists tr. exists Htr. exists Hlst.
         apply Exists_exists.
         apply (has_been_sent_in_trace_rev s m H is tr Htr Hlst).
@@ -654,8 +663,8 @@ Section proper_sent_received.
     (s : vstate vlsm)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    : selected_message_exists_in_some_traces vlsm output s m <->
-    selected_message_exists_in_all_traces vlsm output s m.
+    : selected_message_exists_in_some_preloaded_traces vlsm (field_selector output) s m <->
+    selected_message_exists_in_all_preloaded_traces vlsm (field_selector output) s m.
   Proof.
     specialize (sent_messages_prop s Hs m) as Hin.
     split; intros.
@@ -667,7 +676,7 @@ Section proper_sent_received.
     - destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit output m) as Hsm.
+      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit (field_selector output) m) as Hsm.
         elim Hsm. assumption.
       + exists is. exists tr. exists Htr.
         assert (Hlst : last (List.map destination tr) is = s).
@@ -701,7 +710,7 @@ Section proper_sent_received.
     destruct Hs as [_om Hs].
     pose (protocol_is_trace bvlsm s _om Hs) as Htr.
     destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-    + elim (selected_message_exists_in_all_traces_initial_state vlsm s Hinit output m).
+    + elim (selected_message_exists_in_all_traces_initial_state vlsm s Hinit (field_selector output) m).
       assumption.
     + assert (Hlst : last (map destination tr) is = s).
       { destruct tr as [|i tr]; inversion Hlsts.
@@ -856,7 +865,7 @@ Section proper_sent_received.
     exists (sm : received_messages vlsm s), proj1_sig sm = m.
   Proof.
     split; intros.
-    - assert (Hm : selected_message_exists_in_some_traces vlsm input s m)
+    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm (field_selector input) s m)
       ; try (exists (exist _ m Hm); reflexivity).
       destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
@@ -878,8 +887,8 @@ Section proper_sent_received.
     (s : vstate vlsm)
     (Hs : protocol_state_prop bvlsm s)
     (m : message)
-    : selected_message_exists_in_some_traces vlsm input s m <->
-    selected_message_exists_in_all_traces vlsm input s m.
+    : selected_message_exists_in_some_preloaded_traces vlsm (field_selector input) s m <->
+    selected_message_exists_in_all_preloaded_traces vlsm (field_selector input) s m.
   Proof.
     specialize (received_messages_prop s Hs m) as Hin.
     split; intros.
@@ -891,7 +900,7 @@ Section proper_sent_received.
     - destruct Hs as [_om Hs].
       pose (protocol_is_trace bvlsm s _om Hs) as Htr.
       destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit input m) as Hsm.
+      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit (field_selector input) m) as Hsm.
         elim Hsm. assumption.
       + exists is. exists tr. exists Htr.
         assert (Hlst : last (List.map destination tr) is = s).
@@ -958,8 +967,8 @@ Section proper_sent_received.
     (tr : list transition_item)
     (Htr : finite_protocol_trace bvlsm s tr)
     (m1 m2 : message)
-    (Hm1 : Equivocation.trace_has_message vlsm output m1 tr)
-    (Hm2 : Equivocation.trace_has_message vlsm output m2 tr)
+    (Hm1 : Equivocation.trace_has_message vlsm (field_selector output) m1 tr)
+    (Hm2 : Equivocation.trace_has_message vlsm (field_selector output) m2 tr)
     : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
   Proof.
     unfold Equivocation.trace_has_message in *.
@@ -981,7 +990,7 @@ Section proper_sent_received.
           s tr Htr prefix2 suffix2 suffix1 item2 item1 Hitem1
           m2 m1 Hm2 Hm1
         ).
-    - left. subst. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
+    - left. subst. simpl in Hm1, Hm2. rewrite Hm1 in Hm2. inversion Hm2. reflexivity.
     - right. left.
       apply
         (VLSM_full_validator_sent_messages_comparable'
