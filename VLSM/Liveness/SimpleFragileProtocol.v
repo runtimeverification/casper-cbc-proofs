@@ -5,6 +5,7 @@ From CasperCBC
 Require Import
   Lib.Preamble
   Lib.Classes
+  Lib.ListSetExtras
   CBC.FullNode.Validator.State
   VLSM.Common
   VLSM.Liveness
@@ -16,76 +17,6 @@ Require Import
 This module defines a simple consensus protocol, and
 proves that it is live when there are no synchronization faults.
  *)
-
-  (* TODO: move this to ListSetExtras *)
-  Definition set_diff_filter `{EqDecision A} (l r : list A) :=
-    filter (fun a => if in_dec decide_eq a r then false else true) l.
-
-  Lemma set_diff_filter_iff `{EqDecision A} (a:A) l r:
-    In a (set_diff_filter l r) <-> (In a l /\ ~In a r).
-  Proof.
-    induction l;simpl.
-    - tauto.
-    - destruct (in_dec decide_eq a0 r) as [H|H];simpl;rewrite IHl;
-        clear -H;intuition congruence.
-  Qed.
-
-  Lemma set_diff_filter_nodup `{EqDecision A} (l r:list A):
-    NoDup l -> NoDup (set_diff_filter l r).
-  Proof (@NoDup_filter _ _ _).
-
-  Lemma len_set_diff_incl_le `{EqDecision A} (l a b: list A)
-        (H_incl: forall x, In x b -> In x a):
-    length (set_diff_filter l a) <= length (set_diff_filter l b).
-  Proof.
-    induction l;[reflexivity|].
-    simpl.
-    destruct (in_dec decide_eq a0 a);destruct (in_dec decide_eq a0 b).
-    - assumption.
-    - simpl. apply le_S. assumption.
-    - exfalso. apply n, H_incl, i.
-    - simpl. apply le_n_S. assumption.
-  Qed.
-
-  Lemma len_set_diff_decrease `{EqDecision A} (new:A) (l a b: list A)
-        (H_incl: forall x, In x b -> In x a)
-        (H_new_is_new: In new a /\ ~In new b)
-        (H_new_is_relevant: In new l):
-    length (set_diff_filter l a) < length (set_diff_filter l b).
-  Proof.
-    induction l;destruct H_new_is_relevant.
-    - subst a0.
-      simpl.
-      destruct (in_dec decide_eq new a);[|exfalso;tauto].
-      destruct (in_dec decide_eq new b);[exfalso;tauto|].
-      simpl. unfold lt. apply le_n_S.
-      apply len_set_diff_incl_le;assumption.
-    - specialize (IHl H);clear H.
-      simpl.
-      destruct (in_dec decide_eq a0 a);destruct (in_dec decide_eq a0 b).
-      + assumption.
-      + simpl. apply le_n_S. apply len_set_diff_incl_le;assumption.
-      + exfalso. apply n, H_incl, i.
-      + simpl. apply Lt.lt_n_S. assumption.
-  Qed.
-
-  Lemma len_set_diff_map_set_add `{EqDecision B} (new:B) `{EqDecision A} (f: B -> A)
-        (a: list B) (l: list A)
-        (H_new_is_new: ~In (f new) (map f a))
-        (H_new_is_relevant: In (f new) l):
-           length (set_diff_filter l (map f (set_add decide_eq new a)))
-           < length (set_diff_filter l (map f a)).
-  Proof.
-    apply len_set_diff_decrease with (f new).
-    - intro x. rewrite 2 in_map_iff.
-      intros [x0 [Hx0 Hin]]. exists x0.
-      rewrite set_add_iff. tauto.
-    - split;[|assumption].
-      apply in_map.
-      apply set_add_iff.
-      left. reflexivity.
-    - assumption.
-  Qed.
 
 (** * Validators
 
@@ -535,89 +466,6 @@ Arguments validator_message _ _ : clear implicits.
 Arguments validator_state _ _ : clear implicits.
 Arguments Validator {C V} {EqC EqV} _ _ _ _.
 
-(* TODO: move to definition of pre_loaded_with_all_messages_vlsm *)
-Lemma any_message_is_protocol_in_preloaded [message] (XV: VLSM message) (om: option message):
-  option_protocol_message_prop (pre_loaded_with_all_messages_vlsm XV) om.
-Proof.
-  destruct om.
-  - pose proof I : vinitial_message_prop (pre_loaded_with_all_messages_vlsm XV) m.
-    pose proof (protocol_initial_message (pre_loaded_with_all_messages_vlsm XV) (exist _ m H)).
-    eexists;eexact H0.
-  - apply option_protocol_message_None.
-Qed.
-
-(* TODO: move to definition of composite_vlsm *)
-Lemma protocol_state_project_preloaded
-      message `(EqDecision index) IM i0 constraint
-      (X:=@composite_vlsm message index _ IM i0 constraint)
-      (s: vstate X) i:
-  protocol_state_prop X s ->
-  protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
-Proof.
-  intro H.
-  apply ProjectionTraces.protocol_state_projection with (j:=i) in H.
-  destruct H.
-  exists x.
-  apply proj_pre_loaded_with_all_messages_protocol_prop in H.
-  assumption.
-Qed.
-
-Lemma protocol_transition_project_active
-      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
-      (X := composite_vlsm IM v0 constraint)
-      l s im s' om:
-  protocol_transition X l (s,im) (s',om) ->
-  protocol_transition (pre_loaded_with_all_messages_vlsm (IM (projT1 l))) (projT2 l)
-                      (s (projT1 l), im) (s' (projT1 l), om).
-Proof.
-  intro Hptrans.
-  destruct l as [j lj].
-  destruct Hptrans as [Hpvalid Htrans].
-  split.
-  - destruct Hpvalid as [Hproto_s [_ Hcvalid]].
-    split;[|split].
-    + revert Hproto_s.
-      apply protocol_state_project_preloaded.
-    + apply any_message_is_protocol_in_preloaded.
-    + destruct Hcvalid as [Hvalid Hconstraint].
-      exact Hvalid.
-  - simpl.
-    simpl in Htrans.
-    destruct (vtransition (IM j) lj (s j, im)).
-    inversion_clear Htrans.
-    f_equal.
-    rewrite state_update_eq.
-    reflexivity.
-Qed.
-
-Lemma protocol_transition_project_any {V} (i:V)
-      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
-      (X := composite_vlsm IM v0 constraint)
-      (l:vlabel X) s im s' om:
-  protocol_transition X l (s,im) (s',om) ->
-  (s i = s' i \/
-   exists li, (l = existT _ i li) /\
-   protocol_transition (pre_loaded_with_all_messages_vlsm (IM i))
-                       li
-                       (s i,im) (s' i,om)).
-Proof.
-  intro Hptrans.
-  destruct l as [j lj].
-  destruct (decide (i = j)).
-  - subst j.
-    right.
-    exists lj.
-    split;[reflexivity|].
-    revert Hptrans.
-    apply protocol_transition_project_active.
-  - left.
-    destruct Hptrans as [Hpvalid Htrans].
-    simpl in Htrans.
-    destruct (vtransition (IM j) lj (s j, im)).
-    inversion_clear Htrans.
-    rewrite state_update_neq by assumption.
-    reflexivity.
-Qed.
 
 (** * Composition and Proofs
 
@@ -751,122 +599,36 @@ Section Protocol_Proofs.
     forall i msg, validator_has_been_observed (s i) msg ->
     let j := message_sender msg in has_been_sent (IM j) (s j) msg.
 
-  (** Weaken the received_were_sent' statement to avoid
-      committing to which component sent the message.
-      This version can be proven to be an invariant from
-      the [no_equivocation] constraint without needing
-      to refer to the details of the components,
-      and should eventually be generalized to
-      apply to any composite VLSM.
-      After proving this is an invariant, a later
-      lemma will strengthen the conclusion to [recieved_were_sent]
-      by using [message_send_invariant].
-   *)
-  (* TODO: define a composite_has_been_observed_capability instance,
-     then extract this.
-   *)
-  Definition received_were_sent' s : Prop :=
-    forall i msg, validator_has_been_observed (s i) msg ->
-    (exists j, has_been_sent (IM j) (s j) msg).
-
-  Lemma received_were_sent'_preserved l s im s' om:
-    protocol_transition X l (s,im) (s',om) ->
-    received_were_sent' s ->
-    received_were_sent' s'.
-  Proof.
-    intros Hptrans Hprev i msg Hobs.
-    specialize (Hprev i msg).
-    assert ((im = Some msg \/ om = Some msg)\/ validator_has_been_observed (s i) msg).
-    {
-      apply (protocol_transition_project_any i) in Hptrans.
-      destruct Hptrans as [->|[li [-> Hptrans]]].
-      - right; assumption.
-      - rewrite <- validator_transition_updates_observed by eassumption.
-        assumption.
-    }
-    destruct H as [[|]|].
-    - (* by [no_equivocations], the incoming message [im] was previously sent *)
-      destruct (id Hptrans) as [Hpvalid Htrans].
-      destruct Hpvalid as [Hproto_s [Hproto_im Hcvalid]].
-      destruct Hcvalid as [Hcomponent_valid Hconstraint].
-      unfold constraint in Hconstraint.
-      unfold no_synch_faults_no_equivocation_constraint in Hconstraint.
-      destruct Hconstraint as [H_no_equivs Hconstraint].
-      rewrite H in H_no_equivs.
-      simpl in H_no_equivs.
-      unfold composite_has_been_sent in H_no_equivs.
-      destruct H_no_equivs as [j Hsent].
-      exists j.
-      revert Hsent.
-      pose proof (protocol_transition_project_any j _ _ _ _ _ Hptrans) as Hstep_how.
-      destruct Hstep_how as [?|[lj [-> ?]]].
-      + congruence.
-      + (* carry forward by the stepwise has_been_sent completeness thingy... *)
-        intro Hpre.
-        rewrite has_been_sent_step_update by eassumption.
-        right;assumption.
-    - (* It's the output message, conclusion is made true by
-         soundness of the has_been_sent predicate *)
-      destruct l as [j lj].
-      exists j.
-      apply protocol_transition_project_active in Hptrans;simpl in Hptrans.
-      (* use the stepwise has_been_sent completeness thingy... *)
-      rewrite has_been_sent_step_update by eassumption.
-      left;assumption.
-    - (* another component updated, use the induction hypothesis *)
-      specialize (Hprev H).
-      destruct Hprev as [j Hsent].
-      exists j.
-      revert Hsent.
-      pose proof (protocol_transition_project_any j _ _ _ _ _ Hptrans) as Hstep_how.
-      destruct Hstep_how as [?|[lj [-> ?]]].
-      + congruence.
-      + (* carry forward by the stepwise has_been_sent completeness thingy... *)
-        intro Hpre.
-        rewrite has_been_sent_step_update by eassumption.
-        right;assumption.
-  Qed.
-
-  Lemma received_were_sent'_initial s:
-    vinitial_state_prop X s ->
-    received_were_sent' s.
-  Proof.
-    intros Hinitial i msg Hsend.
-    contradict Hsend.
-    apply validator_initial_not_observed.
-    apply Hinitial.
-  Qed.
-
   Lemma received_were_sent_invariant s:
     protocol_state_prop X s ->
     received_were_sent s.
   Proof.
-    intro Hproto.
-    assert (received_were_sent' s).
+    intro H.
+    pose (composite_has_been_sent_capability _ _ _ validators_finite _
+         : has_been_sent_capability X) as Hhbs.
+    pose (composite_has_been_observed_capability _ _ _ validators_finite _
+         : has_been_observed_capability X) as Hhbo.
+    assert (observed_were_sent _ X _ _ s).
     {
-      apply protocol_state_has_trace in Hproto.
-      destruct Hproto as [is [tr [[Htr Hinit] Hlast]]].
-      rewrite <- Hlast; clear Hlast s.
-      apply received_were_sent'_initial in Hinit.
-      induction Htr.
-      - assumption.
-      - simpl map.
-        rewrite ListExtras.unroll_last.
-        apply IHHtr.
-        revert H Hinit.
-        apply received_were_sent'_preserved.
+      apply observed_were_sent_invariant;[|assumption].
+      clear.
+      intros l s om [_ [H _]].
+      exact H.
     }
-    intros i msg Hobs.
-    specialize (H i msg Hobs).
-    destruct H as [j Hsent].
-    cut (j = message_sender msg);
-      [intros ->;exact Hsent|].
-    apply protocol_state_project_preloaded with (i:=j) in Hproto.
-    apply message_send_invariant_preloaded in Hproto.
-    destruct Hproto as [Hsends _].
-    specialize (Hsends msg Hsent).
-    symmetry.
-    apply Hsends.
+    intros i msg Hi.
+    specialize (H0 msg (ex_intro _ i Hi)).
+    destruct H0 as [j Hj].
+    (* The [observed_were_sent_invariant] only says that
+       some component sent the message.
+       To finish, use the property from [message_send_invariant]
+       that the [message_sender] meaches the component ID.
+     *)
+    enough (message_sender msg = j) as <- by assumption.
+    apply protocol_state_project_preloaded with (i:=j) in H.
+    apply message_send_invariant_preloaded in H.
+    destruct H as [Hresp _].
+    specialize (Hresp msg Hj).
+    apply Hresp.
   Qed.
 
   Definition clock_limit_invariant (s: vstate X): Prop

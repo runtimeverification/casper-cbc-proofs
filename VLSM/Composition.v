@@ -695,6 +695,167 @@ for the [free_composite_vlsm].
 
 End VLSM_composition.
 
+(**
+   These basic projection lemmas relate
+   the [protocol_state_prop] and [protocol_transition] of
+   a composite VLSM back to those conditions holding
+   over projections to individual components of the state.
+
+   Because the composition may have validly produced
+   messages that are not protocol in an individual
+   component (by interaction between components),
+   We cannot just use properties [protocol_prop (IM i)]
+   or [protocol_transition (IM i)].
+   For simplicity these lemmas use
+   [pre_loaded_with_all_messages_vlsm (IM i)].
+
+   This does not precisely reflect the set of
+   messages and transitions that can actually be
+   seen in projections of transitions of the composite VLSM,
+   but seems to be the best we can do with a result
+   type that doesn't mention the other components or
+   the composition constraint of the composite.
+
+   Later in this file a
+   [composite_constrained_projection_vlsm] is defined
+   that shares the states of [IM i] which is more
+   precise.
+ *)
+
+Lemma protocol_state_project_preloaded_to_preloaded
+      message `(EqDecision index) IM i0 constraint
+      (X:=@composite_vlsm message index _ IM i0 constraint)
+      (s: vstate (pre_loaded_with_all_messages_vlsm X)) i:
+  protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s ->
+  protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
+Proof.
+  intros [om Hproto].
+  apply preloaded_protocol_state_prop_iff.
+  change (vstate _) with (state (VLSM_type:=(@type _ (pre_loaded_with_all_messages_vlsm X)))) in s.
+  set (som:=(s,om)) in Hproto.
+  change s with (fst som).
+  clearbody som;clear s om.
+  induction Hproto.
+  - apply preloaded_protocol_initial_state.
+    exact (proj2_sig is i).
+  - apply preloaded_protocol_initial_state.
+    exact (proj2_sig (vs0 (IM i))).
+  - destruct l as [j lj].
+    cbn.
+    rewrite (surjective_pairing (vtransition (IM j) lj (s j, om))).
+    simpl.
+    destruct (decide (i = j)).
+    + subst j.
+      rewrite state_update_eq.
+      apply preloaded_protocol_generated;[assumption|].
+      apply Hv.
+    + rewrite state_update_neq by assumption.
+      exact IHHproto1.
+Qed.
+
+Lemma protocol_state_project_preloaded
+      message `(EqDecision index) IM i0 constraint
+      (X:=@composite_vlsm message index _ IM i0 constraint)
+      (s: vstate X) i:
+  protocol_state_prop X s ->
+  protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
+Proof.
+  change (vstate X) with (vstate (pre_loaded_with_all_messages_vlsm X)) in s.
+  intros [om Hproto].
+  apply protocol_state_project_preloaded_to_preloaded.
+  exists om.
+  apply pre_loaded_with_all_messages_protocol_prop in Hproto.
+  assumption.
+Qed.
+
+Lemma protocol_transition_preloaded_project_active
+      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
+      (X := composite_vlsm IM v0 constraint)
+      l s im s' om:
+  protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s,im) (s',om) ->
+  protocol_transition (pre_loaded_with_all_messages_vlsm (IM (projT1 l))) (projT2 l)
+                      (s (projT1 l), im) (s' (projT1 l), om).
+Proof.
+  intro Hptrans.
+  destruct l as [j lj].
+  destruct Hptrans as [Hpvalid Htrans].
+  split.
+  - destruct Hpvalid as [Hproto_s [_ Hcvalid]].
+    split;[|split].
+    + revert Hproto_s.
+      apply protocol_state_project_preloaded_to_preloaded.
+    + apply any_message_is_protocol_in_preloaded.
+    + destruct Hcvalid as [Hvalid Hconstraint].
+      exact Hvalid.
+  - simpl.
+    cbn in Htrans.
+    destruct (vtransition (IM j) lj (s j, im)).
+    inversion_clear Htrans.
+    f_equal.
+    rewrite state_update_eq.
+    reflexivity.
+Qed.
+
+Lemma protocol_transition_project_active
+      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
+      (X := composite_vlsm IM v0 constraint)
+      l s im s' om:
+  protocol_transition X l (s,im) (s',om) ->
+  protocol_transition (pre_loaded_with_all_messages_vlsm (IM (projT1 l))) (projT2 l)
+                      (s (projT1 l), im) (s' (projT1 l), om).
+Proof.
+  intro Hptrans.
+  apply preloaded_weaken_protocol_transition in Hptrans.
+  revert Hptrans.
+  apply protocol_transition_preloaded_project_active.
+Qed.
+
+Lemma protocol_transition_preloaded_project_any {V} (i:V)
+      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
+      (X := composite_vlsm IM v0 constraint)
+      (l:vlabel X) s im s' om:
+  protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s,im) (s',om) ->
+  (s i = s' i \/
+   exists li, (l = existT _ i li) /\
+   protocol_transition (pre_loaded_with_all_messages_vlsm (IM i))
+                       li
+                       (s i,im) (s' i,om)).
+Proof.
+  intro Hptrans.
+  destruct l as [j lj].
+  destruct (decide (i = j)).
+  - subst j.
+    right.
+    exists lj.
+    split;[reflexivity|].
+    revert Hptrans.
+    apply protocol_transition_preloaded_project_active.
+  - left.
+    destruct Hptrans as [Hpvalid Htrans].
+    cbn in Htrans.
+    destruct (vtransition (IM j) lj (s j, im)).
+    inversion_clear Htrans.
+    rewrite state_update_neq by assumption.
+    reflexivity.
+Qed.
+
+Lemma protocol_transition_project_any {V} (i:V)
+      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
+      (X := composite_vlsm IM v0 constraint)
+      (l:vlabel X) s im s' om:
+  protocol_transition X l (s,im) (s',om) ->
+  (s i = s' i \/
+   exists li, (l = existT _ i li) /\
+   protocol_transition (pre_loaded_with_all_messages_vlsm (IM i))
+                       li
+                       (s i,im) (s' i,om)).
+Proof.
+  intro Hproto.
+  apply preloaded_weaken_protocol_transition in Hproto.
+  revert Hproto.
+  apply protocol_transition_preloaded_project_any.
+Qed.
+
 Section projections.
 (**
 * Composite VLSM projections
