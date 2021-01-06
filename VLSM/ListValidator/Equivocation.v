@@ -3379,18 +3379,29 @@ Context
     Definition complete_observations (s : state) : set lv_event :=
       fold_right (set_union decide_eq) [] (List.map (lv_observations s) index_listing).
     
+    Definition lv_has_been_observed (s : state) (e : lv_event) :=
+      In e (lv_observations s (get_event_subject e)).
+    
+    Program Instance lv_observable_events :
+      observable_events (@state index index_listing) lv_event := 
+      state_observable_events_instance 
+      (@state index index_listing)
+      lv_event
+      event_eq_dec
+      complete_observations.
+      
     Program Instance observable_full :
       (observation_based_equivocation_evidence
        (@state index index_listing)
        index
        lv_event
+       lv_observable_events
        decide_eq 
        lv_event_lt
        lv_event_lt_dec 
-       get_event_subject) := {|
-       observable_events := lv_observations;
-      |}.
-    Next Obligation.
+       (fun (e : lv_event) => Some (get_event_subject e))).
+    
+    (*
     destruct e as [te ie se].
     unfold lv_observations in He.
     apply set_union_elim in He.
@@ -3401,7 +3412,7 @@ Context
       destruct H.
       + apply in_lv_sent in H; intuition.
       + apply in_lv_received in H; intuition.
-   Defined.
+   Defined. *)
    
    Existing Instance observable_full.
 
@@ -3416,20 +3427,26 @@ Context
     apply Hfinite.
    Qed.
 
-  Definition lv_basic_equivocation : basic_equivocation state index :=
+  Program Definition lv_basic_equivocation : basic_equivocation state index :=
       @basic_observable_equivocation
       (@state index index_listing)
       index
       lv_event
-      get_event_subject
       decide_eq
       lv_event_lt
       lv_event_lt_dec
+      lv_observable_events
+      (fun (e : lv_event) => Some (get_event_subject e))
       observable_full
+      _
       Mindex
       Rindex
       get_validators
       get_validators_nodup.
+  Next Obligation.
+    apply observable_events_equivocation_evidence_dec.
+    apply idec.
+  Defined.
 
   Existing Instance lv_basic_equivocation.  
     

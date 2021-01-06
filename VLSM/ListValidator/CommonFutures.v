@@ -20,7 +20,6 @@ Require Import
   CBC.Equivocation.
 
 Section Composition.
-
 Context
   {index : Type}
   {i0 : index}
@@ -37,6 +36,7 @@ Context
   (X := composite_vlsm IM_index i0 (free_constraint IM_index))
   (preX := pre_loaded_with_all_messages_vlsm X)
   (complete_observations := @complete_observations index i0 index_listing decide_eq)
+  (Hevidence' := fun (i : index) => @lv_observable_events index i _ _)
   (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
   (Hbasic := fun (i : index) => @lv_basic_equivocation index i index_listing Hfinite idec Mindex Rindex)
   (ce := @composed_observation_based_equivocation_evidence
@@ -45,7 +45,7 @@ Context
     lv_event_lt
     lv_event_lt_dec
     get_event_subject
-    index index_listing IM_index Hevidence).
+    index index_listing Hfinite IM_index Hevidence').
   
   Check complete_observations.
   

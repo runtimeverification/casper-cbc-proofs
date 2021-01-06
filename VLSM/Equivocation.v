@@ -1629,7 +1629,7 @@ Section Composite.
         by (exists _omsi; assumption). 
         
       apply (@proper_sent _ (IM i) (has_been_sent_capabilities i) _ Hsi' m) in Hsent.
-      unfold selected_message_exists_in_all_traces in Hsent.
+      unfold selected_message_exists_in_all_preloaded_traces in Hsent.
       specialize (finite_ptrace_projection IM i0 constraint i is) as Hbs.
       destruct Htr as [Htr Hinit].
       spec Hbs.
@@ -1697,7 +1697,7 @@ Section Composite.
         by (exists _omsi; assumption).
         
       apply (@proper_received _ (IM i) (has_been_received_capabilities i) _ Hsi' m) in Hreceived.
-      unfold selected_message_exists_in_all_traces in Hreceived.
+      unfold selected_message_exists_in_all_preloaded_traces in Hreceived.
       specialize (finite_ptrace_projection IM i0 constraint i is) as Hbs.
       destruct Htr as [Htr Hinit].
       spec Hbs.

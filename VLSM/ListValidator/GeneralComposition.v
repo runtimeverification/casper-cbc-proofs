@@ -51,11 +51,13 @@ Context
     unfold protocol_state_prop.
     exists om.
     assumption.
-  Qed.  
+  Qed.
   
+  Check observation_based_equivocation_evidence.
+  (*
   Definition composed_eqv_evidence
   : observation_based_equivocation_evidence (vstate X) index lv_event 
-    decide_eq 
+    lv_observable_events
     lv_event_lt
     lv_event_lt_dec 
     get_event_subject
@@ -67,9 +69,9 @@ Context
     lv_event_lt_dec
     get_event_subject
     index index_listing IM_index Hevidence
-  ).
-
-  Existing Instance composed_eqv_evidence.
+  ). 
+ 
+  Existing Instance composed_eqv_evidence. *) 
   
   (*   
   
