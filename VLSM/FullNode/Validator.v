@@ -33,23 +33,68 @@ Section CompositeValidator.
   Existing Instance eq_V.
   Existing Instance message_preceeds_dec.
 
-  Instance full_node_validator_observable_messages
-    : observable_events (state C V) message
-    := state_observable_events_instance (state C V) message _ get_message_set.
-
-  Instance full_node_validator_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (state C V) V message _ decide_eq _ message_preceeds_dec full_node_message_subject_of_observation
-    := observable_events_equivocation_evidence _ _ _ _ get_message_set _ message_preceeds_dec full_node_message_subject_of_observation.
-
-  Instance full_node_validator_observation_based_equivocation_evidence_dec
-    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence)
-    := observable_events_equivocation_evidence_dec _ _ _ _ get_message_set _ _ message_preceeds_dec full_node_message_subject_of_observation.
-
-  Definition full_node_validator_state_validators
+ 
+  Definition full_node_validator_observable_messages_fn
+    (s : state C V)
+    (v : V)
+    : set message
+    :=
+    filter (fun m => bool_decide (sender m = v)) (get_message_set s).
+  
+    Definition full_node_validator_state_validators
     (s : state C V)
     : set V
     :=
     full_node_client_state_validators (get_message_set s).
+
+  Instance full_node_validator_observable_messages
+    : observable_events (state C V) message
+    :=
+    state_observable_events_instance (state C V) V message _ 
+      full_node_validator_observable_messages_fn full_node_validator_state_validators.
+
+  Lemma full_node_validator_has_been_observed_iff
+    (s : state C V)
+    (m : message)
+    : has_been_observed s m <-> In m (get_message_set s).
+  Proof.
+    simpl.
+    unfold observable_events_has_been_observed.
+    unfold state_observable_events_fn.
+    split; intro H.
+    - apply union_fold in H.
+      destruct H as [needle [Hm Hneedle]] .
+      apply in_map_iff in Hneedle.
+      destruct Hneedle as [v0 [Hneedle Hv0]].
+      subst needle.
+      apply filter_In in Hm.
+      destruct Hm as [Hm Hv0eq].
+      assumption.
+    - apply union_fold.
+      exists (full_node_validator_observable_messages_fn s (sender m)).
+      split.
+      * apply filter_In.
+        split; [assumption|].
+        apply bool_decide_eq_true. reflexivity.
+      * apply in_map_iff.
+        exists (sender m). split; [intuition|].
+        apply set_map_exists.
+        exists m. split; [assumption|reflexivity].
+  Qed.
+
+  Instance full_node_validator_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (state C V) V message _ decide_eq _ message_preceeds_dec full_node_message_subject_of_observation
+    :=
+    observable_events_equivocation_evidence _ _ _ _ 
+      full_node_validator_observable_messages_fn full_node_validator_state_validators
+      _ message_preceeds_dec full_node_message_subject_of_observation.
+
+  Instance full_node_validator_observation_based_equivocation_evidence_dec
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_validator_observation_based_equivocation_evidence)
+    :=
+    observable_events_equivocation_evidence_dec _ _ _ _
+      full_node_validator_observable_messages_fn full_node_validator_state_validators
+      _ _ message_preceeds_dec full_node_message_subject_of_observation.
 
   Lemma full_node_validator_state_validators_nodup
     (s : state C V)
@@ -174,11 +219,17 @@ Section CompositeValidator.
     - destruct som as (s, om). destruct s as (msgs, final).
       destruct l as [c|]; [|destruct om as [msg|]]; inversion Ht.
       subst. clear Ht.
-      apply set_add_iff. 
+      match type of H with
+      | context[Msg _ _ ?s] => remember s as j
+      end.
+      apply full_node_validator_has_been_observed_iff.
+      simpl.
+      apply set_add_iff.
       destruct H as [Hmsg | Hj]; intuition.
       right.
       apply in_unmake_justification in Hj.
       apply in_make_message_set.
+      subst.
       destruct final; assumption.
   Qed.
 

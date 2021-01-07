@@ -666,8 +666,12 @@ Proof.
   rewrite state_union_iff.
   split.
   - intros [i Hm].
-    destruct i as [v | c]; [left; exists v | right; exists c]; assumption.
-  - intros [[v Hm] | [c Hm]]; [exists (inl v) | exists (inr c)]; intuition.
+    destruct i as [v | c]; [left; exists v | right; exists c].
+    + apply full_node_validator_has_been_observed_iff. assumption.
+    + apply full_node_client_has_been_observed_iff. assumption.
+  - intros [[v Hm] | [c Hm]]; [exists (inl v) | exists (inr c)].
+    + apply full_node_validator_has_been_observed_iff. assumption.
+    + apply full_node_client_has_been_observed_iff. assumption.
 Qed.
 
 Program Instance composed_basic_observable_equivocation
@@ -746,7 +750,8 @@ Proof.
     unfold equivocation_evidence.
     intro H.
     destruct H as [m1 [Hm1 [Hv1 [m2 [Hm2 [Hv2 H12]]]]]].
-    unfold has_been_observed in Hm1, Hm2. simpl in Hm1, Hm2.
+    apply (proj1 (full_node_client_has_been_observed_iff (state_union s) m1)) in Hm1.
+    apply (proj1 (full_node_client_has_been_observed_iff (state_union s) m2)) in Hm2.
     apply composite_has_been_observed_state_union in Hm1.
     apply composite_has_been_observed_state_union in Hm2.
     exists m1; intuition; exists m2; intuition.
