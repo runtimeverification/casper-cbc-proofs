@@ -3098,7 +3098,15 @@ Context
     | Received.
     
     Instance event_type_eq_dec : EqDecision lv_event_type.
-    solve_decision.
+      solve_decision.
+    Defined. 
+    
+    Inductive simp_lv_event_type : Type :=
+    | State'
+    | Message'.
+    
+    Instance simp_event_type_eq_dec : EqDecision simp_lv_event_type.
+      solve_decision.
     Defined. 
     
     Inductive lv_event : Type :=
@@ -3382,6 +3390,10 @@ Context
     Definition lv_has_been_observed (s : state) (e : lv_event) :=
       In e (lv_observations s (get_event_subject e)).
     
+    Definition get_event_subject_some 
+      (e : lv_event) :=
+      Some (get_event_subject e).
+    
     Program Instance lv_observable_events :
       observable_events (@state index index_listing) lv_event := 
       state_observable_events_instance 
@@ -3399,7 +3411,7 @@ Context
        decide_eq 
        lv_event_lt
        lv_event_lt_dec 
-       (fun (e : lv_event) => Some (get_event_subject e))).
+       get_event_subject_some).
     
     (*
     destruct e as [te ie se].
