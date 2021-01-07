@@ -707,7 +707,10 @@ Proof.
       }
       apply not_heavy_incl with (state_union indices s); [assumption| ..].
       * apply set_map_incl. assumption.
-      * intro m. simpl. apply Hincl'.
+      * intros m Hm.
+        apply (proj1 (full_node_client_has_been_observed_iff _ m)) in Hm.
+        apply (full_node_client_has_been_observed_iff _ m).
+        apply Hincl'. assumption.
       * apply not_heavy_commute with finite_index. assumption.
     + unfold Full_composition_constraint.
       unfold vtransition. simpl.
