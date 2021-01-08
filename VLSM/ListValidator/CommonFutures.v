@@ -36,17 +36,11 @@ Context
   (X := composite_vlsm IM_index i0 (free_constraint IM_index))
   (preX := pre_loaded_with_all_messages_vlsm X)
   (complete_observations := @complete_observations index i0 index_listing decide_eq)
-  (Hevidence' := fun (i : index) => @lv_observable_events index i index_listing _)
-  (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
-  (Hbasic := fun (i : index) => @lv_basic_equivocation index i index_listing Hfinite idec Mindex Rindex).
-  (*
-  (ce := @composed_observation_based_equivocation_evidence
-    message index lv_event
-    decide_eq 
-    lv_event_lt
-    lv_event_lt_dec
-    get_event_subject_some
-    index index_listing Hfinite IM_index Hevidence'). *)
+  (Hstate_events' := fun (i : index) => @simp_lv_observable_events index i index_listing _)
+  (Hevidence := fun (i : index) => @simp_observable_full index i index_listing idec)
+  (Hstate_events_fn := fun (i : index) => (@simp_lv_observations index i index_listing _))
+  (Hstate_validators := fun (i : index) => (fun (s : vstate (IM_index i)) => index_listing))
+  (Hbasic := fun (i : index) => @simp_lv_basic_equivocation index i index_listing Hfinite idec Mindex Rindex).
         
     Definition others (i : index) := 
       set_remove idec i index_listing.
@@ -89,37 +83,64 @@ Context
   Definition component_list (s : vstate X) (li : list index) :=
     List.map s li.
   
-  Definition composed_complete_observations_witness_set (li : list index) (s : vstate X) : set lv_event :=
-    fold_right (set_union decide_eq) [] (List.map (complete_observations) (component_list s li)).
-  
-  Definition composed_complete_observations (s : vstate X) : set lv_event := 
-    composed_complete_observations_witness_set index_listing s.
-  
   Program Instance lv_composed_observable_events :
-     observable_events (vstate X) lv_event := 
-     state_observable_events_instance 
-     (vstate X)
-     lv_event
-     event_eq_dec
-     composed_complete_observations.
+     observable_events (vstate X) simp_lv_event := 
+     composite_state_observable_events_instance
+     index_listing
+     IM_index
+     Hstate_events_fn
+     Hstate_validators.
   
-  Check @observable_events_equivocation_evidence_dec.
+  Check @composite_observable_events_equivocation_evidence.
+  
+  Definition ce := 
+  @composite_observable_events_equivocation_evidence
+    message index simp_lv_event
+    decide_eq
+    index index_listing IM_index
+    Hstate_events_fn
+    Hstate_validators
+    decide_eq
+    simp_lv_event_lt
+    simp_lv_event_lt_dec
+    get_simp_event_subject_some.
+    
+  Check @composite_observable_events_equivocation_evidence_dec.
   
   Definition GH (s : vstate X) : set index := 
     List.filter (fun i : index => negb (
-    @bool_decide _ (@observable_events_equivocation_evidence_dec (vstate X) index (@lv_event index index_listing) _  composed_complete_observations idec lv_event_lt lv_event_lt_dec get_event_subject_some s i))) index_listing.
-  
+    @bool_decide _ (@composite_observable_events_equivocation_evidence_dec
+      message index simp_lv_event
+      decide_eq
+      index index_listing IM_index
+      Hstate_events_fn
+      Hstate_validators
+      decide_eq
+      simp_lv_event_lt
+      simp_lv_event_lt_dec
+      get_simp_event_subject_some s i))) index_listing.
+    
   Definition GE (s : vstate X) : set index := 
     List.filter (fun i : index => 
-    @bool_decide _ (@observable_events_equivocation_evidence_dec (vstate X) index (@lv_event index index_listing) _  composed_complete_observations idec lv_event_lt lv_event_lt_dec get_event_subject_some s i)) index_listing.
- 
+    @bool_decide _ (@composite_observable_events_equivocation_evidence_dec
+      message index simp_lv_event
+      decide_eq
+      index index_listing IM_index
+      Hstate_events_fn
+      Hstate_validators
+      decide_eq
+      simp_lv_event_lt
+      simp_lv_event_lt_dec
+      get_simp_event_subject_some s i)) index_listing.
+  
+  (*
   Definition ce' (s : vstate X) := @composed_witness_observation_based_equivocation_evidence
     message index lv_event
     decide_eq 
     lv_event_lt
     lv_event_lt_dec
     get_event_subject_some
-    index IM_index Hevidence' (GH s).
+    index IM_index _ (GH s).
  
   Definition LH (s : vstate X) : set index :=
     List.filter (fun i : index => negb (
@@ -139,7 +160,7 @@ Context
       (composed_complete_observations_witness_set (GH s)) 
       _ lv_event_lt lv_event_lt_dec 
       get_event_subject_some 
-      s i)) index_listing.
+      s i)) index_listing. *)
   
   Lemma GH_incl_all
     (s : vstate X) :
@@ -151,45 +172,34 @@ Context
     apply ((proj2 Hfinite) a).
   Qed.
   
-  Definition composed_observations
-    (s : vstate X)
-    (v : index) :=
-    let complete := composed_complete_observations s in
-    filter (fun (e : lv_event) => bool_decide (get_event_subject e = v)) complete.
+  Check @composite_state_events_fn.
   
-  Definition composed_observations'
-    (s : vstate X)
-    (v : index) :=
-    fold_right (set_union decide_eq) [] (List.map (flip (@lv_observations index v _ _) v) (component_list s index_listing)).
-  
-  Lemma composed_observations_from_union
-    (s : vstate X)
-    (v : index) :
-    composed_observations s v = 
-    composed_observations' s v.
-  Proof.
-  Admitted.
-  
-  Definition cobs := composed_observations.
+  Definition cobs := (composite_state_events_fn index_listing IM_index Hstate_events_fn).
   
   Definition obs 
-    (i : index) := (@lv_observations index i index_listing _).
+    (i : index) 
+    := (@lv_observations index i index_listing _).
   
   Definition cequiv_evidence
-    := (@equivocation_evidence (vstate X) index lv_event _ decide_eq lv_event_lt lv_event_lt_dec get_event_subject_some).
+    := (@equivocation_evidence 
+    (vstate X) index simp_lv_event 
+    _ decide_eq 
+    simp_lv_event_lt simp_lv_event_lt_dec 
+    get_simp_event_subject_some ce).
+    
+  Check cequiv_evidence.
   
   Lemma unique_state_observation 
     (s : vstate X)
     (i : index)
-    (e : lv_event)
-    (H : get_event_type e = State) 
+    (e : simp_lv_event)
+    (H : get_simp_event_type e = State') 
     (Hin : In e (cobs s i)) : 
-    e = Obs State i (s i).
+    e = SimpObs State' i (s i).
   Proof.
     unfold cobs in Hin.
     (* rewrite composed_observations_from_union in Hin. *)
-    unfold composed_observations in Hin; simpl in Hin.
-    unfold composed_complete_observations in Hin.
+    unfold composite_state_events_fn in Hin; simpl in Hin.
 
     apply set_union_in_iterated in Hin.
     rewrite Exists_exists in Hin.
@@ -197,25 +207,16 @@ Context
     rewrite in_map_iff in Hinle.
     destruct Hinle as [j [Hobs Hx]].
     rewrite <- Hobs in Hine.
-    unfold observable_events in Hine; simpl in Hine.
-    unfold lv_observations in Hine.
+    unfold Hstate_events_fn in Hine; simpl in Hine.
+    unfold simp_lv_observations in Hine.
     apply set_union_iff in Hine.
     destruct Hine.
     - unfold lv_state_observations in H0.
-      destruct (decide (i = j)).
-      + simpl in H0.
-        rewrite e0.
-        intuition.
-      + intuition.
-    - unfold lv_message_observations in H0.
-      apply set_union_iff in H0.
-      destruct H0.
-      + apply in_lv_sent in H0.
-        destruct H0 as [H0 _].
-        rewrite H0 in H; congruence.
-      + apply in_lv_received in H0.
-        destruct H0 as [H0 _].
-        rewrite H0 in H; congruence.
+      destruct (decide (i = j));
+        (apply in_simp_lv_message_observations in H0;
+        destruct H0 as [H0 _];
+        congruence).
+    - unfold simp_lv_message_observations in H0.
   Qed.
   
   Lemma GE_direct 
@@ -254,15 +255,6 @@ Context
     unfold equivocation_evidence in *.
     destruct Hev as [e1 [Hine1 Hrem]].
     destruct Hrem as [e2 [Hine2 Hcomp]].
-    destruct (inb decide_eq e1 (observable_events s a)) eqn : eq_1;
-    destruct (inb decide_eq e2 (observable_events s a)) eqn : eq_2.
-    - rewrite <- in_correct in eq_1, eq_2.
-      exists e1.
-      split. 
-      + assumption.
-      + exists e2. 
-        split. assumption.
-        assumption.
   Admitted.
   
   Lemma forall_and_commute
@@ -282,6 +274,7 @@ Context
     unfold set_eq. unfold incl. apply forall_and_commute.
   Qed.
   
+  (*
   Lemma cobs_update_different
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -297,8 +290,9 @@ Context
     rewrite set_eq_extract_forall.
     intros e.
     unfold cobs.
-    unfold observable_events; simpl in *.
-    unfold composed_witness_observable_events.
+    unfold composite_state_events_fn.
+    unfold Hstate_events_fn; simpl in *.
+    (* unfold lv_observations. *)
     destruct Hhave as [l Hprojl].
     split; intros.
     - rewrite set_union_in_iterated in H.
@@ -308,7 +302,7 @@ Context
       destruct Hle as [ii [Hobs Hred]].
       destruct (decide (ii = i)).
       + rewrite <- Hobs in Ha.
-        unfold observable_events in Ha; simpl in Ha.
+        unfold lv_observations in Ha; simpl in Ha.
         assert (set_eq (@lv_observations _ ii _ _ (s' ii) j) 
         (set_union decide_eq (@lv_observations _ ii _ _ (s ii) j) (@lv_observations _ l _ _ so j))). {
           admit.
@@ -335,7 +329,7 @@ Context
           split. intuition.
           apply ((proj2 Hfinite) l).
           unfold obs.
-          unfold observable_events. simpl.
+          unfold lv_observations. simpl.
           admit.
       + assert (Hsame : s' ii = s ii). {
           unfold s'.
@@ -509,7 +503,7 @@ Context
       exists e2.
       split; [intuition|].
       assumption.
-  Admitted.
+  Admitted. *)
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with

@@ -32,7 +32,7 @@ Context
   {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
   (X := composite_vlsm IM_index i0 constraint)
   (preX := pre_loaded_with_all_messages_vlsm X)
-  (Hevidence := fun (i : index) => @observable_full index i index_listing idec)
+  (Hevidence := fun (i : index) => @simp_observable_full index i index_listing idec)
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}
   .

@@ -3101,14 +3101,6 @@ Context
       solve_decision.
     Defined. 
     
-    Inductive simp_lv_event_type : Type :=
-    | State'
-    | Message'.
-    
-    Instance simp_event_type_eq_dec : EqDecision simp_lv_event_type.
-      solve_decision.
-    Defined. 
-    
     Inductive lv_event : Type :=
       Obs: lv_event_type -> index -> (@state index index_listing) -> lv_event.
     
@@ -3242,6 +3234,116 @@ Context
       - right. auto.
     Qed.
     
+    Inductive simp_lv_event_type : Type :=
+    | State'
+    | Message'.
+    
+    Instance simp_event_type_eq_dec : EqDecision simp_lv_event_type.
+      solve_decision.
+    Defined. 
+    
+    Inductive simp_lv_event : Type :=
+      SimpObs: simp_lv_event_type -> index -> (@state index index_listing) -> simp_lv_event.
+    
+    Global Instance simp_event_eq_dec : EqDecision simp_lv_event.
+      solve_decision.
+    Defined. 
+    
+    Definition get_simp_event_subject (e : simp_lv_event) : index :=
+    match e with 
+      SimpObs type subject state => subject
+    end.
+    
+    Definition get_simp_event_type (e : simp_lv_event) :=
+      match e with
+       SimpObs type subject state => type
+      end.
+      
+    Definition get_simp_event_state (e : simp_lv_event) :=
+      match e with
+        SimpObs type subject state => state
+      end.
+      
+    Definition simp_lv_event_comp_eq 
+      (e : simp_lv_event) :
+      e = SimpObs (get_simp_event_type e) (get_simp_event_subject e) (get_simp_event_state e).
+    Proof.
+      destruct e.
+      simpl.
+      reflexivity.
+    Qed.
+    
+    Definition simp_lv_event_lt (e1 e2 : simp_lv_event) : Prop :=
+    match e1, e2 with
+      SimpObs type1 subject1 state1, SimpObs type2 subject2 state2 =>
+        match decide_eq subject1 subject2 with
+        | right _ => False
+        | _ => match type1, type2 with
+               | State', Message' => False
+               | _, _ => state_lt' subject1 state1 state2
+               end  
+        end
+    end.
+    
+    Lemma simp_lv_event_trans
+      (e1 e2 e3 : simp_lv_event)
+      (Hlt : simp_lv_event_lt e1 e2 /\ simp_lv_event_lt e2 e3) :
+      simp_lv_event_lt e1 e3.
+    Proof.
+      destruct Hlt as [Hlt1 Hlt2].
+      unfold simp_lv_event_lt in Hlt1, Hlt2.
+      destruct e1 as [et1 ev1 es1].
+      destruct e2 as [et2 ev2 es2].
+      destruct e3 as [et3 ev3 es3].
+      assert (ev1 = ev2) by (destruct(decide(ev1 = ev2)); intuition).
+      assert (ev2 = ev3) by (destruct(decide(ev2 = ev3)); intuition).
+      rewrite decide_True in Hlt1 by intuition. (* weird behaviour when using ,*)
+      rewrite decide_True in Hlt2 by intuition.
+      
+      assert (ev1 = ev3). {
+        apply eq_trans with (y := ev2); intuition.
+      }
+      (*
+      (* TODO : Remove duplication *)
+      destruct et1 eqn : eq_et1.
+      - intuition.
+      - destruct et2 eqn : eq_et2.
+        + intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition.
+      - destruct et2 eqn : eq_et2.
+        + intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition.
+        + unfold lv_event_lt.
+          rewrite decide_True by intuition.
+          apply state_lt'_trans with (s2 := es2).
+          rewrite <- H in Hlt2. intuition. *)
+    Admitted.
+    
+    Lemma simp_lv_event_lt_dec : RelDecision simp_lv_event_lt.
+    Proof.
+      unfold RelDecision. intros.
+      unfold Decision.
+      unfold simp_lv_event_lt.
+      destruct x as [type1 subject1 state1]; destruct y as [type2 subject2 state2].
+      destruct (decide (subject1 = subject2)).
+      - destruct type1 eqn : eq1; destruct type2 eqn : eq2.
+        + exact (state_lt'_dec subject1 state1 state2).
+        + right; auto.
+        + exact (state_lt'_dec subject1 state1 state2).
+        + exact (state_lt'_dec subject1 state1 state2).
+      - right. auto.
+    Qed.
+    
     Definition lv_sent_states (s : state) (target : index) : set (@state index index_listing) :=
       match decide_eq target index_self with
       | left _ => get_history s index_self
@@ -3302,6 +3404,12 @@ Context
       | left _ => [Obs State index_self s]
       | right _ => []
       end.
+      
+    Definition simp_lv_state_observations (s : state) (target : index) : set simp_lv_event :=
+      match decide_eq target index_self with
+      | left _ => [SimpObs State' index_self s]
+      | right _ => []
+      end.
     
     Lemma in_lv_state 
       (s : state)
@@ -3325,6 +3433,25 @@ Context
       
     Definition lv_observations (s : state) (target : index) : set lv_event :=
       set_union decide_eq (lv_state_observations s target) (lv_message_observations s target).
+    
+    Definition simp_lv_message_observations (s : state) (target : index) : set simp_lv_event :=
+      List.map (SimpObs Message' target) (get_raw_observations s target).
+    
+    Definition simp_lv_observations (s : state) (target : index) : set simp_lv_event :=
+      set_union decide_eq (simp_lv_message_observations s target) (simp_lv_state_observations s target).
+    
+    Lemma in_simp_lv_message_observations
+      (s : state)
+      (target : index)
+      (e : simp_lv_event)
+      (Hin : In e (simp_lv_message_observations s target)) :
+      get_simp_event_type e = Message' /\ get_simp_event_subject e = target.
+    Proof.
+      unfold simp_lv_message_observations in *.
+      apply in_map_iff in Hin.
+      destruct Hin as [x [Heqx Hinx]].
+      rewrite <- Heqx; intuition.
+    Qed.
     
     Lemma get_event_state_nb
       (s s': state)
@@ -3394,24 +3521,32 @@ Context
       (e : lv_event) :=
       Some (get_event_subject e).
     
-    Program Instance lv_observable_events :
-      observable_events (@state index index_listing) lv_event := 
+    Definition get_simp_event_subject_some 
+      (e : simp_lv_event) :=
+      Some (get_simp_event_subject e).
+      
+    Check state_observable_events_instance.
+    
+    Program Instance simp_lv_observable_events :
+      observable_events (@state index index_listing) simp_lv_event := 
       state_observable_events_instance 
       (@state index index_listing)
-      lv_event
-      event_eq_dec
-      complete_observations.
+      index
+      simp_lv_event
+      decide_eq
+      simp_lv_observations
+      (fun (s : state) => index_listing).
       
-    Program Instance observable_full :
+    Program Instance simp_observable_full :
       (observation_based_equivocation_evidence
        (@state index index_listing)
        index
-       lv_event
-       lv_observable_events
+       simp_lv_event
+       simp_lv_observable_events
        decide_eq 
-       lv_event_lt
-       lv_event_lt_dec 
-       get_event_subject_some).
+       simp_lv_event_lt
+       simp_lv_event_lt_dec 
+       get_simp_event_subject_some).
     
     (*
     destruct e as [te ie se].
@@ -3426,7 +3561,7 @@ Context
       + apply in_lv_received in H; intuition.
    Defined. *)
    
-   Existing Instance observable_full.
+   Existing Instance simp_observable_full.
 
    Definition get_validators {State : Type} (s : State) : list index := index_listing.
 
@@ -3439,17 +3574,17 @@ Context
     apply Hfinite.
    Qed.
 
-  Program Definition lv_basic_equivocation : basic_equivocation state index :=
+  Program Definition simp_lv_basic_equivocation : basic_equivocation state index :=
       @basic_observable_equivocation
       (@state index index_listing)
       index
-      lv_event
+      simp_lv_event
       decide_eq
-      lv_event_lt
-      lv_event_lt_dec
-      lv_observable_events
-      (fun (e : lv_event) => Some (get_event_subject e))
-      observable_full
+      simp_lv_event_lt
+      simp_lv_event_lt_dec
+      simp_lv_observable_events
+      (fun (e : simp_lv_event) => Some (get_simp_event_subject e))
+      simp_observable_full
       _
       Mindex
       Rindex
@@ -3460,7 +3595,7 @@ Context
     apply idec.
   Defined.
 
-  Existing Instance lv_basic_equivocation.  
+  Existing Instance simp_lv_basic_equivocation.  
     
   Lemma unfold_raw_observations
       (s s': state)
