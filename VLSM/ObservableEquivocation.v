@@ -65,11 +65,18 @@ Section observable_events_fn.
 Context
   (state validator event : Type)
   (event_eq : EqDecision event)
-  (observable_events_fn : state -> set event)
+  (observable_events_fn : state -> validator -> set event)
+  (validators : state -> set validator)
   .
 
+Definition state_observable_events_fn
+  (s : state)
+  : set event
+  :=
+  fold_right (set_union decide_eq) [] (map (fun v => observable_events_fn s v) (validators s)).
+
 Definition observable_events_has_been_observed (s : state) (e : event) : Prop :=
-  In e (observable_events_fn s).
+  In e (state_observable_events_fn s).
 
 Lemma observable_events_has_been_observed_dec : RelDecision observable_events_has_been_observed.
 Proof.
@@ -879,6 +886,66 @@ Qed.
 
 
 End vlsm_observable_events.
+
+Section observable_events_fn_in_composition.
+
+Context
+  {message validator event : Type}
+  `{EqDecision event}
+  {index : Type}
+  `{EqDecision index}
+  (index_listing : list index)
+  (finite_index : Listing index_listing)
+  (IM : index -> VLSM message)
+  (Hstate_events_fn : forall (i : index), vstate (IM i) -> validator -> set event)
+  (Hstate_validators : forall (i : index), vstate (IM i) -> set validator)
+  (Hstate_events : forall (i : index), observable_events (vstate (IM i)) event
+    := fun i => state_observable_events_instance state validator event _ (Hstate_events_fn i) (Hstate_validators i)
+  )
+  `{EqDecision validator}
+  .
+
+Definition composite_state_events_fn
+  (s : composite_state IM)
+  (v : validator)
+  : set event
+  :=
+  fold_right (set_union decide_eq) [] (map (fun i => Hstate_events_fn i (s i) v) index_listing).
+
+Definition composite_validators
+  (s : composite_state IM)
+  : set validator
+  :=
+  fold_right (set_union decide_eq) [] (map (fun i => Hstate_validators i (s i)) index_listing).
+
+Definition composite_state_observable_events_instance
+  : observable_events (composite_state IM) event
+  :=
+  state_observable_events_instance (composite_state IM) validator event _ composite_state_events_fn composite_validators.
+
+Context
+  (happens_before : event -> event -> Prop)
+  (happens_before_dec : RelDecision happens_before)
+  (subject_of_observation : event -> option validator)
+  .
+
+Definition composite_observable_events_equivocation_evidence
+  : observation_based_equivocation_evidence _ validator _
+    composite_state_observable_events_instance _ _ happens_before_dec subject_of_observation
+  :=
+  observable_events_equivocation_evidence (composite_state IM) validator event _ composite_state_events_fn composite_validators
+    happens_before happens_before_dec subject_of_observation.
+
+Existing Instance composite_observable_events_equivocation_evidence.
+
+Definition composite_observable_events_equivocation_evidence_dec
+  : RelDecision equivocation_evidence
+  :=
+  observable_events_equivocation_evidence_dec (composite_state IM) validator event _ composite_state_events_fn composite_validators _
+    happens_before happens_before_dec subject_of_observation.
+
+End observable_events_fn_in_composition.
+
 
 Section observable_equivocation_in_composition.
 

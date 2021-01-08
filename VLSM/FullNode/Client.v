@@ -52,33 +52,76 @@ messages, implementing a limited equivocation tolerance policy.
     : option V
     := Some (sender m).
 
- Program Instance observable_messages
-   : observable_events message message
-   := {
-     has_been_observed (m e :message) := m = e \/ In e (get_message_set (unmake_justification (get_justification m))) 
-   }.
- Next Obligation.
-   intros m e. apply Decision_or; [| apply in_dec]; apply message_eq.
- Defined.
-
-
-  Instance full_node_client_observable_messages
-    : observable_events (set message) message
-    := state_observable_events_instance (set message) message _ (fun s => s).
-
-  Instance full_node_client_observation_based_equivocation_evidence
-    : observation_based_equivocation_evidence (set message) V message _ decide_eq _ happens_before_dec full_node_message_subject_of_observation
-    := observable_events_equivocation_evidence _ _ _ _ (fun s => s) _ happens_before_dec full_node_message_subject_of_observation.
-
-  Instance full_node_client_observation_based_equivocation_evidence_dec
-    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence)
-    := observable_events_equivocation_evidence_dec _ _ _ _ (fun s => s) _ _ happens_before_dec full_node_message_subject_of_observation.
-
+  Program Instance observable_messages
+    : observable_events message message
+    := {
+      has_been_observed (m e :message) := m = e \/ In e (get_message_set (unmake_justification (get_justification m))) 
+    }.
+  Next Obligation.
+    intros m e. apply Decision_or; [| apply in_dec]; apply message_eq.
+  Defined.
+ 
+  Definition full_node_client_observable_messages_fn
+    (s : set message)
+    (v : V)
+    : set message
+    :=
+    filter (fun m => bool_decide (sender m = v)) s.
+  
   Definition full_node_client_state_validators
     (s : set message)
     : set V
     :=
     set_map decide_eq sender s.
+
+  Instance full_node_client_observable_messages
+    : observable_events (set message) message
+    :=
+    state_observable_events_instance (set message) V message _ 
+      full_node_client_observable_messages_fn full_node_client_state_validators.
+
+  Lemma full_node_client_has_been_observed_iff
+    (s : set message)
+    (m : message)
+    : has_been_observed s m <-> In m s.
+  Proof.
+    simpl.
+    unfold observable_events_has_been_observed.
+    unfold state_observable_events_fn.
+    split; intro H.
+    - apply union_fold in H.
+      destruct H as [needle [Hm Hneedle]] .
+      apply in_map_iff in Hneedle.
+      destruct Hneedle as [v0 [Hneedle Hv0]].
+      subst needle.
+      apply filter_In in Hm.
+      destruct Hm as [Hm Hv0eq].
+      assumption.
+    - apply union_fold.
+      exists (full_node_client_observable_messages_fn s (sender m)).
+      split.
+      * apply filter_In.
+        split; [assumption|].
+        apply bool_decide_eq_true. reflexivity.
+      * apply in_map_iff.
+        exists (sender m). split; [intuition|].
+        apply set_map_exists.
+        exists m. split; [assumption|reflexivity].
+  Qed.
+
+  Instance full_node_client_observation_based_equivocation_evidence
+    : observation_based_equivocation_evidence (set message) V message _ decide_eq _ happens_before_dec full_node_message_subject_of_observation
+    :=
+    observable_events_equivocation_evidence _ _ _ _ 
+      full_node_client_observable_messages_fn full_node_client_state_validators
+      _ happens_before_dec full_node_message_subject_of_observation.
+
+  Instance full_node_client_observation_based_equivocation_evidence_dec
+    : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ full_node_client_observation_based_equivocation_evidence)
+    :=
+    observable_events_equivocation_evidence_dec _ _ _ _
+      full_node_client_observable_messages_fn full_node_client_state_validators
+      _ _ happens_before_dec full_node_message_subject_of_observation.
 
   Lemma full_node_client_state_validators_nodup
     (s : set message)
