@@ -3453,6 +3453,56 @@ Context
       rewrite <- Heqx; intuition.
     Qed.
     
+    Lemma in_simp_lv_state_observations
+      (s : state)
+      (target : index)
+      (e : simp_lv_event)
+      (Hin : In e (simp_lv_state_observations s target)) :
+      get_simp_event_type e = State' /\ get_simp_event_subject e = target.
+    Proof.
+      unfold simp_lv_state_observations in *.
+      destruct (decide (target = index_self)).
+      - simpl in Hin.
+        destruct Hin.
+        rewrite <- H.
+        all : intuition.
+      - intuition.
+    Qed.
+       
+   Lemma in_and_message
+    (s : state)
+    (target : index)
+    (e : simp_lv_event)
+    (Hin : In e (simp_lv_observations s target))
+    (Hm : get_simp_event_type e = Message') :
+    In e (simp_lv_message_observations s target).
+  Proof.
+    unfold simp_lv_observations in Hin.
+    apply set_union_iff in Hin.
+    destruct Hin.
+    - intuition.
+    - apply in_simp_lv_state_observations in H.
+      destruct H as [H _].
+      congruence. 
+  Qed.
+  
+  Lemma in_and_state
+    (s : state)
+    (target : index)
+    (e : simp_lv_event)
+    (Hin : In e (simp_lv_observations s target))
+    (Hm : get_simp_event_type e = State') :
+    In e (simp_lv_state_observations s target).
+  Proof.
+    unfold simp_lv_observations in Hin.
+    apply set_union_iff in Hin.
+    destruct Hin.
+    - apply in_simp_lv_message_observations in H.
+      destruct H as [H _].
+      congruence.
+    - intuition. 
+  Qed.
+    
     Lemma get_event_state_nb
       (s s': state)
       (i : index)
@@ -3501,15 +3551,19 @@ Context
       (Hdif : target <> index_self) :
       lv_observations s target = lv_received_observations s target.
     Proof.
-      unfold lv_observations.
-      unfold lv_state_observations.
-      unfold lv_message_observations.
-      unfold lv_sent_observations.
-      rewrite decide_False.
-      rewrite decide_False.
-      unfold set_union.
-      simpl.
     Admitted.
+    
+    Lemma simp_lv_observations_other 
+      (s : state)
+      (target : index)
+      (Hdif : target <> index_self) :
+      simp_lv_observations s target = simp_lv_message_observations s target.
+    Proof.
+      unfold simp_lv_observations.
+      unfold simp_lv_state_observations.
+      rewrite decide_False by intuition.
+      simpl; reflexivity.
+    Qed.
            
     Definition complete_observations (s : state) : set lv_event :=
       fold_right (set_union decide_eq) [] (List.map (lv_observations s) index_listing).
@@ -3547,19 +3601,6 @@ Context
        simp_lv_event_lt
        simp_lv_event_lt_dec 
        get_simp_event_subject_some).
-    
-    (*
-    destruct e as [te ie se].
-    unfold lv_observations in He.
-    apply set_union_elim in He.
-    destruct He.
-    - apply in_lv_state in H; intuition.
-    - unfold lv_message_observations in H.
-      apply set_union_elim in H.
-      destruct H.
-      + apply in_lv_sent in H; intuition.
-      + apply in_lv_received in H; intuition.
-   Defined. *)
    
    Existing Instance simp_observable_full.
 
@@ -3708,6 +3749,22 @@ Context
         intuition.
     Qed.
     
+    Lemma raw_message
+      (s s' : state)
+      (target : index)
+      (Hdif : target <> index_self) :
+      In (SimpObs Message' target s') (simp_lv_message_observations s target) <-> In s' (get_raw_observations s target).
+    Proof.
+      split; intros; unfold simp_lv_message_observations in *. 
+      - apply in_map_iff in H.
+        destruct H as [x [Heqx Hinx]].
+        inversion Heqx.
+        rewrite <- H0; intuition.
+      - apply in_map_iff.
+        exists s'.
+        intuition.
+    Qed.
+    
     Lemma unfold_lv_observations
       (s : state)
       (target : index)
@@ -3761,6 +3818,75 @@ Context
           intuition.
    Qed.
    
+   Lemma unfold_simp_lv_observations
+      (s : state)
+      (target : index)
+      (Hdif : target <> index_self)
+      (e : simp_lv_event) 
+      (Hnb : s <> Bottom /\ (get_simp_event_state e) <> Bottom) :
+      In e (simp_lv_observations s target) <->
+      (e = SimpObs Message' target (project s target)) \/
+      (exists (i : index), (In e (simp_lv_observations (project s i) target))).
+   Proof.
+      rewrite simp_lv_observations_other by intuition.
+      destruct e as [et ev es].
+      split; intros.
+      - apply in_simp_lv_message_observations in H as H'.
+        assert (et = Message') by intuition.
+        assert (ev = target) by intuition.
+        subst et. subst ev.
+        apply raw_message in H as Hraw. 2 : intuition.
+        apply unfold_raw_observations in Hraw. 2 : intuition.
+        destruct Hraw.
+        + left. rewrite H0. intuition.
+        + right.
+          destruct H0 as [i Hini].
+          exists i.
+          apply raw_message in Hini.
+          rewrite simp_lv_observations_other.
+          all : intuition.
+      - assert (et = Message' /\ ev = target). {
+          destruct H.
+          - inversion H.
+            intuition.
+          - destruct H as [i Hini].
+            rewrite simp_lv_observations_other in Hini by intuition.
+            apply in_simp_lv_message_observations in Hini.
+            intuition.
+        }
+        destruct H0 as [Het Hev].
+        subst et; subst ev.
+        
+        apply raw_message. intuition.
+        apply unfold_raw_observations. intuition.
+        
+        destruct H.
+        + left. inversion H. intuition.
+        + right. 
+          destruct H as [i Hini].
+          exists i.
+          apply raw_message. intuition.
+          rewrite simp_lv_observations_other in Hini by intuition.
+          intuition.
+   Qed.
+   
+  Lemma forall_and_commute
+  {A : Type}
+  (P Q : A -> Prop)
+  : (forall a, P a) /\ (forall a, Q a) <-> forall a, P a /\ Q a.
+  Proof.
+    clear.
+    firstorder.
+  Qed.
+
+  Lemma set_eq_extract_forall
+  {A : Type}
+  (l1 l2 : set A)
+  : set_eq l1 l2 <-> forall a, (In a l1 -> In a l2) /\ (In a l2 -> In a l1).
+  Proof.
+    unfold set_eq. unfold incl. apply forall_and_commute.
+  Qed.
+  
   Lemma some_update_j
     (s so : state)
     (Hnb : s <> Bottom)
@@ -3769,8 +3895,40 @@ Context
     (Hfull : project s j = project so j)
     (b : bool)
     (s' := (update_consensus (update_state s so index_self) b)) :
-    set_eq (lv_observations s' j) (set_union decide_eq (lv_observations s j) (lv_observations so j)).
+    set_eq (simp_lv_observations s' j) (set_union decide_eq (simp_lv_observations s j) (simp_lv_observations so j)).
   Proof.
+    rewrite set_eq_extract_forall.
+    intros. 
+    split; intros.
+    - apply set_union_iff.
+      unfold s' in H.
+      apply unfold_simp_lv_observations in H.
+      2 : intuition.
+      2 : {
+        admit.
+      }
+      destruct H.
+      + rewrite <- update_consensus_clean with (value := b) in H.
+        rewrite (@project_different index index_listing Hfinite) in H by intuition.
+        left.
+        apply unfold_simp_lv_observations. intuition.
+        split. intuition. admit.
+        left. intuition.
+      + destruct H as [idx Hina].
+        rewrite <- update_consensus_clean in Hina.
+        destruct (decide (idx = index_self)).
+        * rewrite e in Hina.
+          rewrite (@project_same index index_listing Hfinite) in Hina by intuition.
+          right. intuition.
+        * left.
+          apply unfold_simp_lv_observations. intuition.
+          split. intuition. admit.
+          right.
+          exists idx.
+          rewrite (@project_different index index_listing Hfinite) in Hina by intuition.
+          intuition.
+      - apply set_union_iff in H.
+        
   Admitted.
     
   Lemma self_update_j

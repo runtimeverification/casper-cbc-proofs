@@ -198,9 +198,7 @@ Context
     e = SimpObs State' i (s i).
   Proof.
     unfold cobs in Hin.
-    (* rewrite composed_observations_from_union in Hin. *)
     unfold composite_state_events_fn in Hin; simpl in Hin.
-
     apply set_union_in_iterated in Hin.
     rewrite Exists_exists in Hin.
     destruct Hin as [le [Hinle Hine]].
@@ -212,11 +210,17 @@ Context
     apply set_union_iff in Hine.
     destruct Hine.
     - unfold lv_state_observations in H0.
-      destruct (decide (i = j));
-        (apply in_simp_lv_message_observations in H0;
-        destruct H0 as [H0 _];
-        congruence).
-    - unfold simp_lv_message_observations in H0.
+      apply in_simp_lv_message_observations in H0.
+      destruct H0 as [H0 _].
+      congruence.
+    - unfold simp_lv_state_observations in H0.
+      destruct (decide (i = j)).
+      + simpl in H0.
+        destruct H0.
+        rewrite <- H0.
+        rewrite e0. intuition.
+        intuition.
+      + intuition.
   Qed.
   
   Lemma GE_direct 
@@ -239,6 +243,7 @@ Context
       intuition.
   Qed.
   
+  (*
   Lemma GE_existing_update
     (s : vstate X)
     (so : state)
@@ -255,26 +260,8 @@ Context
     unfold equivocation_evidence in *.
     destruct Hev as [e1 [Hine1 Hrem]].
     destruct Hrem as [e2 [Hine2 Hcomp]].
-  Admitted.
+  Admitted. *)
   
-  Lemma forall_and_commute
-  {A : Type}
-  (P Q : A -> Prop)
-  : (forall a, P a) /\ (forall a, Q a) <-> forall a, P a /\ Q a.
-  Proof.
-    clear.
-    firstorder.
-  Qed.
-
-  Lemma set_eq_extract_forall
-  {A : Type}
-  (l1 l2 : set A)
-  : set_eq l1 l2 <-> forall a, (In a l1 -> In a l2) /\ (In a l2 -> In a l1).
-  Proof.
-    unfold set_eq. unfold incl. apply forall_and_commute.
-  Qed.
-  
-  (*
   Lemma cobs_update_different
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
