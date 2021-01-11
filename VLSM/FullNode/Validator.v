@@ -216,6 +216,7 @@ Section CompositeValidator.
     split; intros.
     - replace s with (@nil message, @None message) in He by assumption.
       inversion He.
+    - inversion His.
     - destruct som as (s, om). destruct s as (msgs, final).
       destruct l as [c|]; [|destruct om as [msg|]]; inversion Ht.
       subst. clear Ht.

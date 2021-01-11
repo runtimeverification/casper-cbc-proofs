@@ -608,7 +608,7 @@ Section Protocol_Proofs.
          : has_been_sent_capability X) as Hhbs.
     pose (composite_has_been_observed_capability _ _ _ validators_finite _
          : has_been_observed_capability X) as Hhbo.
-    assert (observed_were_sent _ X _ _ s).
+    assert (observed_were_sent_or_initial _ X _ _ s).
     {
       apply observed_were_sent_invariant;[|assumption].
       clear.
@@ -617,6 +617,7 @@ Section Protocol_Proofs.
     }
     intros i msg Hi.
     specialize (H0 msg (ex_intro _ i Hi)).
+    destruct H0 as [H0 | [k [[mk Hmk] H0]]]; [|inversion Hmk].
     destruct H0 as [j Hj].
     (* The [observed_were_sent_invariant] only says that
        some component sent the message.
@@ -864,7 +865,9 @@ Section Protocol_Proofs.
       apply Plus.plus_lt_compat_r.
 
       rename Hvalid into Hcomposite_valid.
-      destruct (id Hcomposite_valid) as [Hproto [_ [Hvalidator_valid [[ix Hsent] _]]]].
+      destruct (id Hcomposite_valid)
+        as [Hproto [_ [Hvalidator_valid [[[ix Hsent]| [k [[mk Hmk] _]]] _]]]]
+        ; [| inversion Hmk].
       simpl in Hvalidator_valid.
       (* The validity condition ensures that the exact
          message has not been received before, but to

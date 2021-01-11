@@ -998,7 +998,6 @@ Proof.
     as Hepref_free.
   specialize (finite_ptrace_last_pstate _ _ _ Hepref_free) as Hlast_free.
   destruct (input eitem) as [m|] eqn:Hinput; [|exact I].
-  apply specialized_proper_sent; [assumption|].
   apply finite_ptrace_first_valid_transition in Hesuf as Hitem.
   destruct Hitem as [[Hs [Hinp [_ Heqv] ]] _].
   rewrite Hleitem in Heqv. clear Hleitem.
@@ -1006,6 +1005,8 @@ Proof.
   unfold equivocators_no_equivocations_constraint at 1.
   unfold no_equivocations in Heqv.
   rewrite Hinput in Heqv.
+  destruct Heqv as [Heqv | Hinitial]; [| right; assumption].
+  left. apply specialized_proper_sent; [assumption|].
   apply specialized_proper_sent_rev in Heqv
   ; [|
      destruct Hs as [_om Hs]; apply constraint_free_protocol_prop in Hs; exists _om; assumption

@@ -45,18 +45,6 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
   unfold machine in Ht; unfold projT2 in Ht;
   unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
 
-Context
-  (Hno_initial : forall (m : message) (eqv : equiv_index), ~vinitial_message_prop (IM (eqv)) m)
-  .
-
-Lemma equivocators_no_equivocations_vlsm_no_initial_message
-  (m : message)
-  : ~vinitial_message_prop equivocators_no_equivocations_vlsm m.
-Proof.
-  intros [eqv [[mi Hmi] Hi]]. simpl in Hi. subst mi.
-  elim (Hno_initial m eqv). assumption.
-Qed.
-
 Lemma equivocators_trace_project_skip_full_replay_trace_init'
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
   (eqv_choice: equivocators_choice)
@@ -576,25 +564,25 @@ Proof.
         simpl in Hv. destruct Hv as [Hv _].
         assumption.
       - unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
-        apply specialized_proper_sent.
-        {
-          specialize (finite_ptrace_last_pstate equivocators_no_equivocations_vlsm _ _ Happ)
-            as Hlst.
-          destruct Hlst as [_om Hlst].
-          exists _om.
-          apply (constraint_subsumption_protocol_prop equivocator_IM i0 _ (free_constraint equivocator_IM))
-            in Hlst; [|intro; intros; exact I].
-          rewrite map_app in Hlst.
-          rewrite last_app in Hlst. simpl in Hlst.
-          rewrite Heqv_state_final in Hlst.
-          subst.
-          assumption.
-        }
         destruct (null_dec (transitions eqv_msg_run)).
-        + elim (equivocators_no_equivocations_vlsm_no_initial_message m).
+        + right.
           apply (vlsm_run_no_transitions_output equivocators_no_equivocations_vlsm)
             with (run := eqv_msg_run); assumption.
-        + specialize
+        + left. apply specialized_proper_sent.
+          {
+            specialize (finite_ptrace_last_pstate equivocators_no_equivocations_vlsm _ _ Happ)
+              as Hlst.
+            destruct Hlst as [_om Hlst].
+            exists _om.
+            apply (constraint_subsumption_protocol_prop equivocator_IM i0 _ (free_constraint equivocator_IM))
+              in Hlst; [|intro; intros; exact I].
+            rewrite map_app in Hlst.
+            rewrite last_app in Hlst. simpl in Hlst.
+            rewrite Heqv_state_final in Hlst.
+            subst.
+            assumption.
+          }
+          specialize
             (vlsm_run_last_final equivocators_no_equivocations_vlsm (exist _ _ Heqv_msg_run))
             as Hfinal.
           simpl in Hfinal.

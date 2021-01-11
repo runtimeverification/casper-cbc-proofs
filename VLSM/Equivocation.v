@@ -424,14 +424,6 @@ Section Simple.
   (** It is now straightforward to define a [no_equivocations] composition constraint.
       An equivocating transition can be detected by calling the [has_been_sent]
       oracle on its arguments and we simply forbid them **)
-
-      Definition equivocation
-      {Hbs : has_been_sent_capability}
-      (m : message)
-      (s : state)
-      : Prop
-      :=
-      has_not_been_sent s m.
    
      Definition no_equivocations
        {Hbs : has_been_sent_capability}
@@ -442,7 +434,7 @@ Section Simple.
        let (s, om) := som in
        match om with
        | None => True
-       | Some m => has_been_sent s m
+       | Some m => has_been_sent s m \/ vinitial_message_prop vlsm m
        end.
    
     Class has_been_received_capability := {
@@ -1160,6 +1152,114 @@ Proof.
   assumption.
 Qed.
 
+Section sent_received_observed_capabilities.
+
+Context
+  {message : Type}
+  (vlsm : VLSM message)
+  {Hbr : has_been_received_capability vlsm}
+  {Hbs : has_been_sent_capability vlsm}
+  .
+
+Lemma has_been_observed_sent_received_iff
+  {Hbo : has_been_observed_capability vlsm}
+  (s : state)
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm vlsm) s)
+  (m : message)
+  : has_been_observed vlsm s m <-> has_been_received vlsm s m \/ has_been_sent vlsm s m.
+Proof.
+  specialize
+    (prove_all_have_message_from_stepwise message vlsm  item_sends_or_receives
+    (has_been_observed vlsm) has_been_observed_stepwise_props _ Hs m) as Hall.
+  split; [intro H | intros [H | H]].
+  - apply proj1 in Hall. specialize (Hall H).
+    apply consistency_from_protocol_proj2 in Hall; [|assumption].
+    destruct Hall as [is [tr [Htr [Hlst Hexists]]]].
+    apply Exists_or_inv in Hexists.
+    destruct Hexists as [Hsent | Hreceived].
+    + left. specialize (has_been_received_consistency vlsm _ Hs m) as Hcons.
+      apply proper_received; [assumption|].
+      apply Hcons. exists is, tr, Htr, Hlst. assumption.
+    + right. specialize (has_been_sent_consistency vlsm _ Hs m) as Hcons.
+      apply proper_sent; [assumption|].
+      apply Hcons. exists is, tr, Htr, Hlst. assumption.
+  - apply Hall.
+    intro is; intros.
+    apply proper_received in H; [|assumption]. specialize (H is tr Htr Hlast).
+    apply Exists_or. left. assumption.
+  - apply Hall.
+    intro is; intros.
+    apply proper_sent in H; [|assumption]. specialize (H is tr Htr Hlast).
+    apply Exists_or. right. assumption.
+Qed.
+
+Definition has_been_observed_from_sent_received
+  (s : vstate vlsm)
+  (m : message)
+  : Prop
+  := has_been_sent vlsm s m \/ has_been_received vlsm s m.
+
+Lemma has_been_observed_from_sent_received_dec
+  : RelDecision has_been_observed_from_sent_received.
+Proof.
+  intros s m.
+  apply Decision_or.
+  - apply has_been_sent_dec.
+  - apply has_been_received_dec.
+Qed.
+
+Lemma has_been_observed_from_sent_received_stepwise_props
+  : oracle_stepwise_props item_sends_or_receives has_been_observed_from_sent_received.
+Proof.
+  apply stepwise_props_from_trace; [apply has_been_observed_from_sent_received_dec|..]
+  ; intros; split; intros.
+  - intro; intros.
+    destruct H as [H | H].
+    + apply proper_sent in H; [|apply Hs]. specialize (H _ _ Htr Hlast).
+      apply Exists_or. right. assumption.
+    + apply proper_received in H; [|apply Hs]. specialize (H _ _ Htr Hlast).
+      apply Exists_or. left. assumption.
+  - apply consistency_from_protocol_proj2 in H; [|assumption].
+    destruct H as [is [tr [Htr [Hlst Hexists]]]].
+    apply Exists_or_inv in Hexists.
+    destruct Hexists as [Hsent | Hreceived].
+    + right. apply proper_received; [assumption|].
+      apply has_been_received_consistency; [assumption|assumption|].
+      exists is, tr, Htr, Hlst. assumption.
+    + left. apply proper_sent; [assumption|].
+      apply has_been_sent_consistency; [assumption|assumption|].
+      exists is, tr, Htr, Hlst. assumption.
+  - intro; intros. intro Hexists. elim H.
+    apply Exists_or_inv in Hexists.
+    destruct Hexists as [Hexists| Hexists].
+    + right. apply proper_received; [assumption|].
+      apply has_been_received_consistency; [assumption|assumption|].
+      exists start, tr, Htr, Hlast. assumption.
+    + left. apply proper_sent; [assumption|].
+      apply has_been_sent_consistency; [assumption|assumption|].
+      exists start, tr, Htr, Hlast. assumption.
+  - intros [Hobs | Hobs].
+    + apply proper_sent in Hobs; [|assumption].
+      apply has_been_sent_consistency in Hobs; [|assumption|assumption].
+      destruct Hobs as [is [tr [Htr [Hlst Hexists]]]].
+      specialize (H _ _ Htr Hlst). elim H. apply Exists_or. right. assumption.
+    + apply proper_received in Hobs; [|assumption].
+      apply has_been_received_consistency in Hobs; [|assumption|assumption].
+      destruct Hobs as [is [tr [Htr [Hlst Hexists]]]].
+      specialize (H _ _ Htr Hlst). elim H. apply Exists_or. left. assumption.
+Qed.
+
+Local Program Instance has_been_observed_capability_from_sent_received
+  : has_been_observed_capability vlsm
+  :=
+  { has_been_observed := has_been_observed_from_sent_received;
+    has_been_observed_dec := has_been_observed_from_sent_received_dec;
+
+    has_been_observed_stepwise_props := has_been_observed_from_sent_received_stepwise_props
+  }.
+
+End sent_received_observed_capabilities.
+
 (**
 *** No-Equivocation Invariants
 
@@ -1178,12 +1278,12 @@ Section NoEquivocationInvariants.
     (Henforced: forall l s om, vvalid X l (s,om) -> no_equivocations X l (s,om))
   .
 
-  Definition observed_were_sent (s: state) : Prop :=
-    forall msg, has_been_observed X s msg -> has_been_sent X s msg.
+  Definition observed_were_sent_or_initial (s: state) : Prop :=
+    forall msg, has_been_observed X s msg -> has_been_sent X s msg \/ vinitial_message_prop X msg.
 
   Lemma observed_were_sent_initial s:
     vinitial_state_prop X s ->
-    observed_were_sent s.
+    observed_were_sent_or_initial s.
   Proof.
     intros Hinitial msg Hsend.
     contradict Hsend.
@@ -1193,30 +1293,32 @@ Section NoEquivocationInvariants.
 
   Lemma observed_were_sent_preserved l s im s' om:
     protocol_transition X l (s,im) (s',om) ->
-    observed_were_sent s ->
-    observed_were_sent s'.
+    observed_were_sent_or_initial s ->
+    observed_were_sent_or_initial s'.
   Proof.
     intros Hptrans Hprev msg Hobs.
     specialize (Hprev msg).
     apply preloaded_weaken_protocol_transition in Hptrans.
     apply (oracle_step_update has_been_observed_stepwise_props _ _ _ _ _ Hptrans) in Hobs.
     simpl in Hobs.
-    apply (oracle_step_update (has_been_sent_stepwise_from_trace Hhbs) _ _ _ _ _ Hptrans);simpl.
+    specialize (Henforced l s (Some msg)).
+    rewrite (oracle_step_update (has_been_sent_stepwise_from_trace Hhbs) _ _ _ _ _ Hptrans).
+    destruct Hptrans as [[_ [_  Hv]] _].
     destruct Hobs as [[|]|].
     - (* by [no_equivocations], the incoming message [im] was previously sent *)
-      right.
-      apply (Henforced l s (Some msg)).
-      rewrite H in Hptrans.
-      apply Hptrans.
-    - left;assumption.
-    - right.
-      apply Hprev.
-      assumption.
+      rewrite H in Hv.
+      specialize (Henforced Hv).
+      destruct Henforced; [|right; assumption].
+      left. right. assumption.
+    - left. left. assumption.
+    - specialize (Hprev H).
+      destruct Hprev as [Hprev|Hprev]; [|right; assumption].
+      left. right. assumption.
   Qed.
 
   Lemma observed_were_sent_invariant s:
     protocol_state_prop X s ->
-    observed_were_sent s.
+    observed_were_sent_or_initial s.
   Proof.
     intro Hproto.
     induction Hproto using protocol_state_prop_ind.
@@ -1228,18 +1330,19 @@ Section NoEquivocationInvariants.
       specialize (IHHproto msg).
       apply preloaded_weaken_protocol_transition in Ht.
       apply (oracle_step_update has_been_observed_stepwise_props _ _ _ _ _ Ht) in Hobs.
-      apply (oracle_step_update (has_been_sent_stepwise_from_trace Hhbs) _ _ _ _ _ Ht).
+      specialize (Henforced l s (Some msg)).
+      rewrite (oracle_step_update (has_been_sent_stepwise_from_trace Hhbs) _ _ _ _ _ Ht).
+      destruct Ht as [[_ [_  Hv]] _].
       simpl in Hobs |- *.
       destruct Hobs as [[|]|].
       + (* by [no_equivocations], the incoming message [im] was previously sent *)
-        right.
-        apply (Henforced l s (Some msg)).
-        rewrite H in Ht.
-        apply Ht.
-      + left;assumption.
-      + right.
-        apply IHHproto.
-        assumption.
+        rewrite H in Hv.
+        spec Henforced Hv.
+        destruct Henforced as [Hbs | Hinitial]; [|right; assumption].
+        left. right. assumption.
+      + left. left. assumption.
+      + spec IHHproto H. destruct IHHproto; [|right; assumption].
+        left. right. assumption.
   Qed.
 End NoEquivocationInvariants.
 
@@ -1373,7 +1476,54 @@ Section Composite.
       composite_has_been_sent_dec
       composite_has_been_sent_stepwise_props.
 
-  (** A message 'has_been_sent' for a composite state if it 'has_been_sent' for any of
+  Section composite_has_been_received.
+  
+  Context
+        (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
+        .
+
+  (** A message 'has_been_received' for a composite state if it 'has_been_received' for any of
+  its components.*)
+  Definition composite_has_been_received
+    (s : vstate X)
+    (m : message)
+    : Prop
+    := exists (i : index), has_been_received (IM i) (s i) m.
+
+  (** 'composite_has_been_received' is decidable. *)
+  Lemma composite_has_been_received_dec : RelDecision composite_has_been_received.
+  Proof.
+    intros s m.
+    apply (Decision_iff (P:=List.Exists (fun i => has_been_received (IM i) (s i) m) index_listing)).
+    - rewrite <- exists_finite by (apply finite_index). reflexivity.
+    - apply Exists_dec.
+  Qed.
+
+  Lemma composite_has_been_received_stepwise_props :
+    has_been_received_stepwise_props composite_has_been_received.
+  Proof.
+    unfold has_been_received_stepwise_props.
+    pose proof (composite_stepwise_props
+                  (fun i => has_been_received_stepwise_from_trace
+                              (has_been_received_capabilities i)))
+         as [Hinits Hstep].
+    split;[exact Hinits|].
+    (* <<exact Hstep>> doesn't work because [composite_message_selector]
+       pattern matches on the label l, so we instantiate and destruct
+       to let that simplify *)
+    intros l;specialize (Hstep l);destruct l.
+    exact Hstep.
+  Qed.
+
+  Global Instance composite_has_been_received_capability : has_been_received_capability X :=
+    has_been_received_capability_from_stepwise
+      composite_has_been_received_dec
+      composite_has_been_received_stepwise_props.
+  
+  End composite_has_been_received.
+
+
+  (** A message 'has_been_observed' for a composite state if it 'has_been_observed' for any of
   its components.*)
   Definition composite_has_been_observed
     (s : vstate X)
@@ -1381,7 +1531,7 @@ Section Composite.
     : Prop
     := exists (i : index), has_been_observed (IM i) (s i) m.
 
-  (** 'composite_has_been_sent' is decidable. *)
+  (** 'composite_has_been_observed' is decidable. *)
   Lemma composite_has_been_observed_dec : RelDecision composite_has_been_observed.
   Proof.
     intros s m.
@@ -1462,6 +1612,7 @@ Section Composite.
   Context
         (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
         .
+
    (** We say that a validator <v> (with associated component <i>) is equivocating wrt.
    to another component <j>, if there exists a message which [has_been_received] by
    <j> but [has_not_been_sent] by <i> **)
@@ -1575,3 +1726,44 @@ Section Composite.
     not_heavy s'.
 
 End Composite.
+
+Section full_node_constraint.
+
+  Context {message : Type}
+          {index : Type}
+          {IndEqDec : EqDecision index}
+          (IM : index -> VLSM message)
+          (i0 : index)
+          (X := free_composite_vlsm IM i0)
+          (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
+          (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
+          {index_listing : list index}
+          (finite_index : Listing index_listing)
+          (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM i0 (free_constraint IM) finite_index has_been_sent_capabilities)
+          (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM i0 (free_constraint IM) finite_index has_been_received_capabilities)
+          (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
+          (admissible_index : composite_state IM -> index -> Prop)
+          .
+
+  Existing Instance X_has_been_observed_capability.
+  Existing Instance X_has_been_sent_capability.
+
+  Definition full_node_admissible_equivocation_constraint
+    (l : composite_label IM)
+    (som : composite_state IM * option message)
+    : Prop
+    :=
+    match som with
+    | (s, Some m) =>
+      has_been_sent X s m \/
+      exists (i : index), admissible_index s i /\
+        exists (si : vstate (IM i)),
+          protocol_prop (pre_loaded_with_all_messages_vlsm (IM i)) (si, Some m) /\
+          forall (m' : message),
+            has_been_received (IM i) si m' ->
+            has_not_been_sent (IM i) si m' ->
+            has_been_observed X s m'
+    |  _ => True
+    end.
+
+End full_node_constraint.

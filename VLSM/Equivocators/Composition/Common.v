@@ -75,6 +75,14 @@ Context
   (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM i0 (free_constraint equivocator_IM) finite_index equivocator_Hbs)
   .
 
+Existing Instance is_equivocating_state_dec.
+
+Definition equivocating_indices
+  (s : composite_state equivocator_IM)
+  : list index
+  :=
+  filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
+
 Existing Instance equivocators_free_Hbs.
 
 Definition equivocators_no_equivocations_constraint

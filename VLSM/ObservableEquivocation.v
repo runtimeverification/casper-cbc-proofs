@@ -223,11 +223,22 @@ To simplify the presentation, we assume that the events which can be observed
 in initial states have no subject, thus they cannot contribute to any
 evidence of equivocation.
 *)
-    no_events_in_initial_state
+    no_event_subject_in_initial_state
       (s : state)
       (His : vinitial_state_prop X s)
       (e : event)
       (He : has_been_observed s e)
+      : subject_of_observation e = None;
+(**
+Similarly, we assume that the events which can be observed
+in initial messages have no subject, thus they cannot contribute to any
+evidence of equivocation.
+*)
+    no_event_subject_in_initial_message
+      (m : message)
+      (His : vinitial_message_prop X m)
+      (e : event)
+      (He : has_been_observed m e)
       : subject_of_observation e = None;
 
 (**
@@ -256,13 +267,6 @@ Context
   (subject_of_observation : event -> option validator)
   {vlsm_events : vlsm_observable_events X subject_of_observation}
   .
-
-Definition preloaded_vlsm_observable_events
-  : vlsm_observable_events (pre_loaded_with_all_messages_vlsm X) subject_of_observation.
-Proof.
-  destruct vlsm_events.
-  split; assumption.
-Qed.
 
 (**
 An useful result, corollary of the abstract [existsb_first] says that if
@@ -487,7 +491,7 @@ Lemma not_equivocating_in_trace_last_initial
   : ~ equivocating_in_trace_last s [] v.
 Proof.
   intro contra. destruct contra as [e [Hv [He Hne]]].
-  specialize (no_events_in_initial_state (last (map destination []) s) Hs) as Hno.
+  specialize (no_event_subject_in_initial_state (last (map destination []) s) Hs) as Hno.
   spec Hno e He. congruence.
 Qed.
 
@@ -594,12 +598,14 @@ Lemma event_equivocation_implies_message_equivocation
   (Htr : finite_protocol_trace X is tr)
   (v : validator)
   (Heqv : equivocating_in_trace_last is tr v)
-  : exists (m : message), VLSM.Equivocation.equivocation_in_trace X m tr.
+  : exists (m : message),
+    VLSM.Equivocation.equivocation_in_trace X m tr
+    /\ ~vinitial_message_prop X m.
 Proof.
   destruct Heqv as [e [Hv [He Hne]]].
   unfold trace_generated_event in Hne.
   assert (Hcon : ~ has_been_observed is e).
-  { intro contra. apply no_events_in_initial_state in contra; [|apply (proj2 Htr)].
+  { intro contra. apply no_event_subject_in_initial_state in contra; [|apply (proj2 Htr)].
     congruence.
   }
   assert (He' := He).
@@ -635,23 +641,28 @@ Proof.
   destruct Hng as [Hng | Hng]; [elim Hnpre; assumption|].
   destruct iom as [m|]; [|inversion Hng].
   exists m.
-  exists pre. exists suf. exists {| l := l; input := Some m; destination := s; output := oom |}.
-  rewrite <- app_assoc. repeat (split; [reflexivity|]).
-  intro contra.
-  apply in_map_iff in contra.
-  destruct contra as [item' [Hout Hitem']].
-  specialize (Hpre item' Hitem').
-  elim Hpre.
-  apply in_split in Hitem'.
-  destruct Hitem' as [pre' [suf' Hitem']].
-  subst pre.
-  apply finite_protocol_trace_from_app_iff in Htr.
-  destruct Htr as [_ Htr]. inversion Htr.
-  subst s' item' tl. simpl in Hout. subst oom0.
-  simpl.
-  destruct H4 as [Hvalid Ht].
-  apply (message_observable_consistency  _ _ _ _ Ht) in Hng.
-  assumption.
+  split.
+  - exists pre. exists suf. exists {| l := l; input := Some m; destination := s; output := oom |}.
+    rewrite <- app_assoc. repeat (split; [reflexivity|]).
+    intro contra.
+    apply in_map_iff in contra.
+    destruct contra as [item' [Hout Hitem']].
+    specialize (Hpre item' Hitem').
+    elim Hpre.
+    apply in_split in Hitem'.
+    destruct Hitem' as [pre' [suf' Hitem']].
+    subst pre.
+    apply finite_protocol_trace_from_app_iff in Htr.
+    destruct Htr as [_ Htr]. inversion Htr.
+    subst s' item' tl. simpl in Hout. subst oom0.
+    simpl.
+    destruct H4 as [Hvalid Ht].
+    apply (message_observable_consistency  _ _ _ _ Ht) in Hng.
+    assumption.
+  - intro contra.
+    simpl in Hng.
+    specialize (no_event_subject_in_initial_message _ contra e Hng) as contra1.
+    congruence.
 Qed.
 
 (**
@@ -670,7 +681,7 @@ Lemma event_equivocation_implies_message_equivocation_converse
 Proof.
   intro contra.
   apply event_equivocation_implies_message_equivocation in contra; try assumption.
-  destruct contra as [m contra].
+  destruct contra as [m [contra Hnoinitial]].
   elim (Hneqv m). assumption.
 Qed.
 
@@ -805,7 +816,8 @@ Proof.
   intro is; intros. simpl in Hlast.
   intro contra.
   apply event_equivocation_implies_message_equivocation in contra; try assumption.
-  destruct contra as [m [pre [suf [item [Heq [Hinput contra]]]]]].
+  destruct contra as [m [contra Hnoinitial]].
+  destruct contra as [pre [suf [item [Heq [Hinput contra]]]]].
   subst tr.
   destruct Htr as [Htr Hinit].
   apply finite_protocol_trace_from_app_iff in Htr.
@@ -821,6 +833,7 @@ Proof.
     apply (pre_loaded_with_all_messages_protocol_prop X).
     assumption.
   }
+  destruct Hv as [Hv | Hinitial]; [|contradiction].
   apply (@proper_sent _ _ Xhbs _ Hpps) in Hv.
   spec Hv is pre.
   assert (Hincl : VLSM_incl X Pre)
@@ -880,10 +893,9 @@ Proof.
   { split; try assumption. constructor. assumption. }
   specialize (contra eq_refl).
   destruct contra as [e [Hv [He _]]]. simpl in He.
-  specialize (no_events_in_initial_state is Hs) as Heis.
+  specialize (no_event_subject_in_initial_state is Hs) as Heis.
   spec Heis e He. congruence.
 Qed.
-
 
 End vlsm_observable_events.
 
@@ -945,7 +957,6 @@ Definition composite_observable_events_equivocation_evidence_dec
     happens_before happens_before_dec subject_of_observation.
 
 End observable_events_fn_in_composition.
-
 
 Section observable_equivocation_in_composition.
 
@@ -1072,6 +1083,9 @@ Proof.
     spec His i.
     spec Hevents i. destruct Hevents.
     firstorder.
+  - intros. destruct His as [i [[mi Hmi] His]].
+    simpl in His. subst mi.
+    spec Hevents i. destruct Hevents. firstorder.
   - intros. destruct l as (i, li). destruct som as (s, om).
     unfold vtransition in Ht. simpl in Ht.
     spec Hevents i. destruct Hevents.
@@ -1128,7 +1142,7 @@ Proof.
   apply filter_nil. rewrite Forall_forall. intros v Hv.
   apply bool_decide_eq_false.
   intros [e1 [He1 [Hv1 H]]].
-  specialize (no_events_in_initial_state is Hs _ He1) as Hno.
+  specialize (no_event_subject_in_initial_state is Hs _ He1) as Hno.
   congruence.
 Qed.
 
