@@ -2432,6 +2432,18 @@ Byzantine fault tolerance analysis. *)
       apply (protocol_initial_message pre_loaded_with_all_messages_vlsm (exist _ m Him)).
     - apply (protocol_generated pre_loaded_with_all_messages_vlsm) with _om _s; assumption.
   Qed.
+  
+  Lemma pre_loaded_with_all_messages_protocol_state_prop
+    (s : state)
+    (Hps : protocol_state_prop X s)
+    : protocol_state_prop pre_loaded_with_all_messages_vlsm s.
+  Proof.
+    unfold protocol_state_prop in *.
+    destruct Hps as [om Hprs].
+    exists om.
+    apply pre_loaded_with_all_messages_protocol_prop.
+    intuition.
+  Qed.
 
   Lemma pre_loaded_with_all_messages_can_emit
     (m : message)
