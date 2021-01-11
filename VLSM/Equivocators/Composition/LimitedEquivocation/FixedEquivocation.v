@@ -103,9 +103,9 @@ Definition sent_by_non_equivocating
     (Hi : ~In i equivocating),
     has_been_sent (IM i) (s i) m.
 
-Definition non_equivocating_seeded_free_equivocators_composition
-  (s : composite_state IM)
-  := vlsm_add_initial_messages free_equivocating_vlsm_composition (sent_by_non_equivocating s).
+Definition seeded_free_equivocators_composition
+  (messageSet : message -> Prop)
+  := vlsm_add_initial_messages free_equivocating_vlsm_composition messageSet.
 
   Context
     {validator : Type}
@@ -129,7 +129,7 @@ Definition fixed_equivocation_constraint
     | Some v =>
       let i := A v in
       if index_equivocating_prop_dec i
-      then protocol_message_prop (non_equivocating_seeded_free_equivocators_composition s) m
+      then protocol_message_prop (seeded_free_equivocators_composition (sent_by_non_equivocating s)) m
       else has_been_sent (IM i) (s i) m
     end
   end.
