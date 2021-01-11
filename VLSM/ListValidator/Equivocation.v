@@ -834,6 +834,23 @@ Context
         left.
         reflexivity.
     Qed.
+    
+    Lemma non_empty_history_nb_project
+      (s so : state)
+      (i : index)
+      (Hin : In so (get_history' s i)) :
+      project s i <> Bottom.
+    Proof.
+      unfold get_history' in Hin.
+      destruct s.
+      - intuition.
+      - unfold last_recorded in Hin.
+        unfold rec_history in Hin.
+        unfold project.
+        destruct (project_indexed index_listing is i).
+        + simpl in Hin. intuition.
+        + congruence.
+    Qed.
 
     Lemma message_gets_recorded
       (s : (@state index index_listing))
@@ -3469,6 +3486,20 @@ Context
         all : intuition.
       - intuition.
     Qed.
+    
+    Lemma in_simp_lv_observations
+      (s : state)
+      (target : index)
+      (e : simp_lv_event)
+      (Hin : In e (simp_lv_observations s target)) :
+      get_simp_event_subject e = target.
+    Proof.
+      unfold simp_lv_observations in Hin.
+      apply set_union_iff in Hin.
+      destruct Hin.
+      - apply in_simp_lv_message_observations in H. intuition.
+      - apply in_simp_lv_state_observations in H. intuition.
+    Qed.
        
    Lemma in_and_message
     (s : state)
@@ -3641,13 +3672,12 @@ Context
     
   Lemma unfold_raw_observations
       (s s': state)
-      (Hnb : s <> Bottom /\ s' <> Bottom)
+      (Hnb : s <> Bottom)
       (target : index) :
-      In s' (get_raw_observations s target) <->
+      In s' (get_raw_observations s target) ->
       (project s target = s') \/
       (exists (i : index), (In s' (get_raw_observations (project s i) target))).
   Proof.
-      split.
       - intros.
         unfold get_raw_observations in H.
         destruct s.
@@ -3681,6 +3711,15 @@ Context
         + simpl in H.
           left.
           intuition.
+   Qed.
+   
+     Lemma refold_raw_observations1
+      (s s': state)
+      (Hnb : s <> Bottom /\ s' <> Bottom)
+      (target : index) :
+      (project s target = s') ->
+      In s' (get_raw_observations s target).
+    Proof.
       - intros.
         destruct H.
         unfold get_raw_observations.
@@ -3695,6 +3734,16 @@ Context
         simpl.
         intuition.
         intuition.
+     Qed.
+     
+     Lemma refold_raw_observations2
+      (s s': state)
+      (Hnb : s <> Bottom)
+      (target : index) :
+      (exists (i : index), (In s' (get_raw_observations (project s i) target))) ->
+      In s' (get_raw_observations s target).
+     Proof.
+        intros.
         unfold get_raw_observations.
         destruct s.
         intuition.
@@ -3723,7 +3772,23 @@ Context
         split.
         reflexivity.
         apply ((proj2 Hfinite) i).
-        all : intuition.
+        intuition.
+        destruct H as [i Hini].
+        apply no_bottom_in_observations in Hini.
+        intuition.
+    Qed.
+    
+    Lemma raw_observations_in_project
+      (s : state)
+      (Hsnb : s <> Bottom)
+      (target i : index)
+      : incl (get_raw_observations (project s i) target) (get_raw_observations s target).
+    Proof.
+      unfold incl. intros e H.
+      apply refold_raw_observations2.
+      intuition.
+      exists i.
+      intuition.
     Qed.
     
     Lemma raw_received
@@ -3806,11 +3871,12 @@ Context
         subst et; subst ev.
         
         apply raw_received. intuition.
-        apply unfold_raw_observations. intuition.
-        
         destruct H.
-        + left. inversion H. intuition.
-        + right. 
+        + apply refold_raw_observations1.
+          intuition.
+          inversion H.
+          intuition. 
+        + apply refold_raw_observations2. intuition.
           destruct H as [i Hini].
           exists i.
           apply raw_received. intuition.
@@ -3878,41 +3944,13 @@ Context
     (Hin : In e (simp_lv_message_observations s target)) :
     get_simp_event_state e <> Bottom.
     Proof.
-    Admitted.
-    (*
-      assert (Hse : get_event_state e = s'). {
-        destruct He; rewrite H; intuition.
-      }
-      unfold lv_observations in Hin.
-      apply set_union_elim in Hin.
-      destruct Hin.
-      - apply in_lv_state in H.
-        destruct He as [He|He]; rewrite He in H; simpl in H; destruct H; congruence.
-      - unfold lv_message_observations in H.
-        apply set_union_elim in H.
-        destruct H.
-        + unfold lv_sent_observations in H.
-          destruct (decide (i = index_self)).
-          * unfold lv_sent_states in H.
-            rewrite decide_True in H.
-            apply in_map_iff in H.
-            destruct H as [x [Hobs Hinx]].
-            apply no_bottom_in_history in Hinx.
-            rewrite <- Hobs in Hse; simpl in Hse.
-            rewrite <- Hse.
-            all : intuition.
-          * simpl in H; intuition.
-        + unfold lv_received_observations in H.
-          destruct (decide (i = index_self)).
-          * simpl in H; intuition.
-          * apply in_map_iff in H.
-          destruct H as [x [Hobs Hinx]].
-          apply set_remove_list_1 in Hinx.
-          apply no_bottom_in_observations in Hinx.
-          rewrite <- Hobs in Hse; simpl in Hse.
-          rewrite <- Hse.
-          intuition.
-    Qed. *)
+      unfold simp_lv_message_observations in Hin.
+      apply in_map_iff in Hin.
+      destruct Hin as [es [Hes Hines]].
+      apply no_bottom_in_observations in Hines.
+      rewrite <- Hes.
+      intuition.
+    Qed.
    
    Lemma unfold_simp_lv_observations
       (s : state)
@@ -3933,8 +3971,6 @@ Context
       apply unfold_raw_observations in Hraw.
       2 : {
         intuition.
-        apply no_bottom_in_observations in Hraw.
-        congruence.
       }
       destruct Hraw.
         - left. rewrite H0. intuition.
@@ -3960,7 +3996,7 @@ Context
       exists (project s target).
       rewrite H.
       intuition.
-      apply unfold_raw_observations.
+      apply refold_raw_observations1.
       all : intuition.
     Qed.
     
@@ -3980,11 +4016,9 @@ Context
      destruct Hine as [x Hinx].
      exists x.
      intuition.
-     apply unfold_raw_observations.
+     apply refold_raw_observations2.
      intuition.
-     apply no_bottom_in_observations in H0.
-     congruence.
-     right.
+
      exists i; intuition.
    Qed.
    
@@ -4039,39 +4073,47 @@ Context
     unfold s'.
     destruct (decide(i = j)).
     - subst i.
-      rewrite unfold_raw_observations by intuition.
       apply unfold_raw_observations in Hines' as Hraw'.
       2 : intuition.
       destruct Hraw'.
-      + right. exists j.
+      + apply refold_raw_observations2.
+        intuition.
+        exists j.
         rewrite (@project_same index index_listing Hfinite) by intuition.
-        rewrite unfold_raw_observations by intuition.
-        left. rewrite <- Hfull. intuition.
+        apply refold_raw_observations1.
+        intuition.
+        rewrite <- Hfull.
+        intuition.
       + destruct H as [k Hink].
-        right. exists k.
+        apply refold_raw_observations2.
+        intuition.
+        exists k.
         destruct (decide (k = j)).
         * subst k.
           rewrite (@project_same index index_listing Hfinite) by intuition.
-          rewrite unfold_raw_observations by intuition.
-          right.
+          apply refold_raw_observations2.
+          intuition.
           exists j.
           rewrite <- Hfull.
           intuition.
         * rewrite (@project_different index index_listing Hfinite) by intuition.
           intuition.
-    - rewrite unfold_raw_observations by intuition.
-      rewrite unfold_raw_observations in Hines' by intuition.
-      rewrite (@project_different index index_listing Hfinite) by intuition.
+    - apply unfold_raw_observations in Hines'.
+      2 : intuition.
       destruct Hines'.
-      + left. intuition.
-      + right. 
-        destruct H as [k Hink]. 
+      + apply refold_raw_observations1.
+        intuition.
+        rewrite (@project_different index index_listing) by intuition.
+        intuition.
+      + destruct H as [k Hink].
+        apply refold_raw_observations2.
+        intuition.
         destruct (decide (k = i)).
         * subst k.
           exists i.
           rewrite (@project_same index index_listing) by intuition.
-          rewrite unfold_raw_observations by intuition.
-          right.
+          apply refold_raw_observations2.
+          intuition.
           exists i.
           rewrite <- Hfull.
           intuition.
@@ -4109,61 +4151,171 @@ Context
     apply in_map_iff.
     exists es'. 
     split; [intuition|].
-    rewrite unfold_raw_observations by intuition.
-    right.
+    apply refold_raw_observations2.
+    intuition.
     exists i.
     rewrite (@project_same index index_listing Hfinite) by intuition.
     intuition.
    Qed.
    
-   (* 
-   Lemma received_incl_new
+   Lemma new_incl_rest
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
     (i j : index)
     (Hfull : project s i = project so i)
     (s' := (update_state s so i)) :
     let s1 := simp_lv_message_observations s j in
-    let s2 := set_union _ s1 simp_lv_message_observations so j in
-    incl (simp_lv_message_observations s' j).
-    
-    rewrite set_eq_extract_forall.
-    intros. 
-    split; intros.
-    - apply set_union_iff.
-      unfold s' in H.
-      apply unfold_simp_lv_observations in H.
-      2 : {
-        unfold update_consensus.
-        unfold update_state.
-        destruct s; congruence.
-      }
-      
-      destruct H.
-      + rewrite <- update_consensus_clean with (value := b) in H.
-        destruct (decide (index_self = j)).
-        * rewrite e in H.
-          rewrite (@project_same index index_listing Hfinite) in H.
-        rewrite (@project_different index index_listing Hfinite) in H by intuition.
+    let s2 := set_union decide_eq s1 (simp_lv_message_observations so j) in
+    let all := set_union decide_eq s2 [SimpObs Message' j so] in
+    incl (simp_lv_message_observations s' j) all.
+   Proof.
+    unfold incl. intros e H.
+    unfold s' in H.
+    apply in_message_observations_nb in H as Hesnb.
+    apply unfold_simp_lv_observations in H as Hraw.
+    2 : {
+      unfold update_state; destruct s; intuition congruence.
+    }
+    apply set_union_iff.
+    destruct Hraw.
+    - destruct (decide (i = j)).
+      + subst j.
+        rewrite (@project_same index index_listing Hfinite) in H0 by intuition.
+        right. rewrite H0. intuition.
+      + rewrite (@project_different index index_listing Hfinite) in H0 by intuition.
         left.
-        apply unfold_simp_lv_observations. intuition.
-        split. intuition. admit.
-        left. intuition.
-      + destruct H as [idx Hina].
-        rewrite <- update_consensus_clean in Hina.
-        destruct (decide (idx = index_self)).
-        * rewrite e in Hina.
-          rewrite (@project_same index index_listing Hfinite) in Hina by intuition.
-          right. intuition.
-        * left.
-          apply unfold_simp_lv_observations. intuition.
-          split. intuition. admit.
+        apply set_union_iff.
+        left.
+        apply refold_simp_lv_observations1;[intuition|..].
+        rewrite H0 in Hesnb; simpl in Hesnb.
+        all : intuition.
+    - destruct H0 as [k Hink].
+       destruct (decide (k = i)).
+       + subst k.
+          rewrite (@project_same index index_listing Hfinite) in Hink by intuition.
+          left.
+          apply set_union_iff. 
           right.
-          exists idx.
-          rewrite (@project_different index index_listing Hfinite) in Hina by intuition.
           intuition.
-      - apply set_union_iff in H.
-  Admitted. *)
+       + rewrite (@project_different index index_listing Hfinite) in Hink by intuition.
+          left.
+          apply set_union_iff.
+          left.
+          apply refold_simp_lv_observations2;[intuition|..].
+          exists k. intuition.
+  Qed.
+  
+  Lemma state_obs_stuff
+    (s so : state)
+    (Hnb : s <> Bottom /\ so <> Bottom)
+    (i : index)
+    (Hfull : project s i = project so i)
+    (s' := (update_state s so i))
+    (s_obs := (SimpObs State' index_self s))
+    (s'_obs := (SimpObs State' index_self s')) 
+    (e : simp_lv_event)
+    (Hns : get_simp_event_type e <> State') 
+    (Hsubj : get_simp_event_subject e = index_self)
+    (Hcomp: comparable simp_lv_event_lt e s_obs) :
+    comparable simp_lv_event_lt e s'_obs.
+  Proof.
+    simpl in *.
+    unfold s' in *.
+    unfold s'_obs in *.
+    unfold s_obs in *.
+    destruct e as [et ev es].
+    unfold comparable in *.
+    destruct Hcomp.
+    - simpl in *.
+      inversion H.
+      congruence.
+    - right.
+      destruct H.
+      + left.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns. congruence. 
+        * unfold state_lt' in *.
+          destruct (decide (i = ev)).
+          -- subst i.
+             rewrite unfold_history_cons; rewrite (@project_same index index_listing Hfinite) by intuition.
+             rewrite <- eq_history_eq_project in Hfull.
+             rewrite <- Hfull.
+             simpl. right. intuition.
+             intuition.
+          -- rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
+             rewrite unfold_history_cons in H.
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+      + right.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns.
+          congruence.
+        * intuition. 
+  Qed.
+  
+  (*
+  Lemma state_obs_stuff'
+    (s so : state)
+    (Hnb : s <> Bottom /\ so <> Bottom)
+    (i : index)
+    (Hfull : project s i = project so i)
+    (s' := (update_state s so i))
+    (st : simp_lv_event_type)
+    (s_obs := (SimpObs st index_self s))
+    (s'_obs := (SimpObs st index_self s')) 
+    (e : simp_lv_event)
+    (Hns : get_simp_event_type e <> State') 
+    (Hsubj : get_simp_event_subject e = index_self)
+    (Hcomp: comparable simp_lv_event_lt e s_obs) :
+    comparable simp_lv_event_lt e s'_obs.
+  Proof.
+    simpl in *.
+    unfold s' in *.
+    unfold s'_obs in *.
+    unfold s_obs in *.
+    destruct e as [et ev es].
+    unfold comparable in *.
+    destruct Hcomp.
+    - simpl in *.
+      inversion H.
+      congruence.
+    - right.
+      destruct H.
+      + left.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns. congruence. 
+        * unfold state_lt' in *.
+          destruct (decide (i = ev)).
+          -- subst i.
+             rewrite unfold_history_cons; rewrite (@project_same index index_listing Hfinite) by intuition.
+             rewrite <- eq_history_eq_project in Hfull.
+             rewrite <- Hfull.
+             simpl. right. intuition.
+             intuition.
+          -- rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
+             rewrite unfold_history_cons in H.
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+      + right.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns.
+          congruence.
+        * intuition. 
+  Qed. *)
     
   Lemma self_update_j
     (s : state)
@@ -4283,16 +4435,7 @@ Context
       intuition.
   Qed.
       
-  Lemma raw_observations_in_project
-      (s : state)
-      (Hsnb : s <> Bottom)
-      (target i : index)
-      : incl (get_raw_observations (project s i) target) (get_raw_observations s target).
-  Proof.
-    unfold incl. intros e H.
-    rewrite unfold_raw_observations by intuition.
-    
-  Admitted.
+
   (*
     unfold incl.
     intros.
@@ -4380,7 +4523,7 @@ Context
         reflexivity.
     Qed. *)
   
-    (* 
+    (*
     Lemma observations_update_eq
       (s s' : vstate X)
       (Hsnot : s <> Bottom)
@@ -4388,17 +4531,14 @@ Context
       (target : index)
       (Hvalid : project s' target = project s target)
       : set_eq
-        (lv_observations (update_state s s' target) target)
+        (get_raw_observations (update_state s s' target) target)
         (set_add decide_eq s'
           (set_union decide_eq
-            (lv_observations s target)
-            (lv_observations s' target)
+            (get_raw_observations s target)
+            (get_raw_observations s' target)
           )
         ).
     Proof.
-    Admitted. *)
-    
-    (*
      unfold set_eq.
      split; unfold incl; intros.
      - destruct (decide (a = s')).
@@ -4413,7 +4553,7 @@ Context
          * destruct (depth (Something b is)) eqn : eq_d.
            apply depth_zero_bottom in eq_d.
            discriminate eq_d.
-           apply set_remove_1 in H.
+           (* apply set_remove_1 in H. *)
            assert (project (Something b is) target = s'). {
              rewrite <- eq_up.
              specialize (@project_same index index_listing Hfinite decide_eq s s' target).
