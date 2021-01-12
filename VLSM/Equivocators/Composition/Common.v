@@ -44,8 +44,8 @@ Context {message : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (i0 : index)
-  (X := free_composite_vlsm IM i0)
+  {i0 : Inhabited index}
+  (X := free_composite_vlsm IM)
   .
 
 Definition equivocator_IM
@@ -66,13 +66,13 @@ Definition equivocators_constrained_vlsm
   (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
   : VLSM message
   :=
-  composite_vlsm equivocator_IM i0 constraint.
+  composite_vlsm equivocator_IM constraint.
 
 Context
   (index_listing : list index)
   (finite_index : Listing index_listing)
   (equivocators_free_vlsm := equivocators_constrained_vlsm (free_constraint equivocator_IM))
-  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM i0 (free_constraint equivocator_IM) finite_index equivocator_Hbs)
+  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index equivocator_Hbs)
   .
 
 Existing Instance is_equivocating_state_dec.

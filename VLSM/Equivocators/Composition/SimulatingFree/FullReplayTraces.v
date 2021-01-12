@@ -24,17 +24,17 @@ Context {message : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (i0 : index)
-  (X := free_composite_vlsm IM i0)
+  {i0 : Inhabited index}
+  (X := free_composite_vlsm IM)
   (equivocators_choice := equivocators_choice IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs i0 index_listing finite_index)
-  (equivocators_state_project := equivocators_state_project IM i0)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs index_listing finite_index)
+  (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocators_choice_update := equivocators_choice_update IM)
-  (proper_equivocators_choice := proper_equivocators_choice IM i0)
-  (equivocators_trace_project := equivocators_trace_project IM Hbs i0)
+  (proper_equivocators_choice := proper_equivocators_choice IM)
+  (equivocators_trace_project := equivocators_trace_project IM Hbs)
   .
 
 Local Tactic Notation "unfold_transition"  hyp(Ht) :=
@@ -87,10 +87,10 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
   (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
   (Hconstraint_subsumption :
     constraint_subsumption equivocator_IM
-      (equivocators_no_equivocations_constraint IM Hbs i0 _ finite_index)
+      (equivocators_no_equivocations_constraint IM Hbs _ finite_index)
       constraint
   )
-  : vvalid (equivocators_constrained_vlsm IM i0 constraint)
+  : vvalid (equivocators_constrained_vlsm IM constraint)
       (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
         (vl0 (IM (eqv)), NewMachine _ sn))
       (snd (apply_plan equivocators_no_equivocations_vlsm s a), None).
@@ -290,7 +290,7 @@ Proof.
     rewrite apply_plan_full_replay_state_initial_state.
     destruct (full_replay_state (eqv)) as (neqv, seqv).
     unfold equivocator_state_extend. simpl.
-    specialize (equivocators_initial_state_size IM Hbs i0 _ _ is His eqv) as His_size.
+    specialize (equivocators_initial_state_size IM Hbs _ _ is His eqv) as His_size.
     split; [rewrite His_size; reflexivity|].
     split; [congruence|].
     split.
@@ -719,7 +719,7 @@ Lemma replay_trace_from_state_correspondence
     projT2 (full_replay_state (eqv)) (of_nat_lt Hid) .
 Proof.
   split.
-  - set (eqv0 := i0).
+  - set (eqv0 := @inhabitant index _).
     destruct
       (replay_trace_from_state_correspondence'
         full_replay_state _ His tr eqv0
@@ -793,7 +793,7 @@ Lemma replay_trace_from_protocol
   (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
   (Hconstraint_subsumption :
     constraint_subsumption equivocator_IM
-      (equivocators_no_equivocations_constraint IM Hbs i0 _ finite_index)
+      (equivocators_no_equivocations_constraint IM Hbs _ finite_index)
       constraint
   )
   (Hconstraint :
@@ -817,22 +817,22 @@ Lemma replay_trace_from_protocol
         (last
            (map Common.destination
               (fst
-                 (apply_plan (equivocators_constrained_vlsm IM i0 constraint)
+                 (apply_plan (equivocators_constrained_vlsm IM constraint)
                     full_replay_state
                     (spawn_initial_state is ++
                      map
                        (update_euivocators_transition_item_descriptor full_replay_state)
                        epref)))) full_replay_state, input eitem)
   )
-  : finite_protocol_trace_from (equivocators_constrained_vlsm IM i0 constraint)
+  : finite_protocol_trace_from (equivocators_constrained_vlsm IM constraint)
       full_replay_state (replay_trace_from full_replay_state is tr).
 Proof.
-  assert (Hfull_replay_state' : protocol_state_prop (equivocators_constrained_vlsm IM i0 constraint) full_replay_state).
+  assert (Hfull_replay_state' : protocol_state_prop (equivocators_constrained_vlsm IM constraint) full_replay_state).
   { destruct Hfull_replay_state as [om Hfull_replay_state]. exists om.
-    apply (constraint_subsumption_protocol_prop equivocator_IM i0 _ _ Hconstraint_subsumption).
+    apply (constraint_subsumption_protocol_prop equivocator_IM _ _ Hconstraint_subsumption).
     assumption.
   }
-  apply (finite_protocol_plan_iff  (equivocators_constrained_vlsm IM i0 constraint)).
+  apply (finite_protocol_plan_iff  (equivocators_constrained_vlsm IM constraint)).
   split; [assumption|].
   specialize
     (finite_protocol_trace_from_to_plan equivocators_no_equivocations_vlsm _ _ (proj1 Htr))
@@ -857,9 +857,9 @@ Proof.
         subst l. reflexivity.
       }
       simpl in Hinputs. subst a.
-      assert (Hinputs' : option_protocol_message_prop (equivocators_constrained_vlsm IM i0 constraint) input).
+      assert (Hinputs' : option_protocol_message_prop (equivocators_constrained_vlsm IM constraint) input).
       { destruct Hinputs as [_s Hinputs]. exists _s.
-        apply (constraint_subsumption_protocol_prop equivocator_IM i0 _ _ Hconstraint_subsumption).
+        apply (constraint_subsumption_protocol_prop equivocator_IM _ _ Hconstraint_subsumption).
         assumption.
       }
       destruct v. destruct m; assumption.
@@ -968,7 +968,7 @@ Lemma replay_trace_from_protocol_free
   (is : vstate equivocators_no_equivocations_vlsm)
   (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
   (Htr : finite_protocol_trace equivocators_no_equivocations_vlsm is tr)
-  : finite_protocol_trace_from (free_composite_vlsm equivocator_IM i0)
+  : finite_protocol_trace_from (free_composite_vlsm equivocator_IM)
       full_replay_state (replay_trace_from full_replay_state is tr).
 Proof.
   apply replay_trace_from_protocol.
@@ -1021,7 +1021,7 @@ Proof.
   }
   specialize (Heqv eq_refl).
   apply
-    (specialized_selected_message_exists_in_some_traces_from (free_composite_vlsm equivocator_IM i0)
+    (specialized_selected_message_exists_in_some_traces_from (free_composite_vlsm equivocator_IM)
       (field_selector output)
     ) with full_replay_state (replay_trace_from full_replay_state is epref)
   ; [assumption|reflexivity|].

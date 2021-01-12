@@ -164,12 +164,12 @@ The next few results describe several properties of the [state_update] operation
 
 ** The signature of a composite VLSM
 
-Assume an non-empty <<index>> type (let <<i0>> be an index) and let <<IT>> be
+Assume an non-empty <<index>> type and let <<IT>> be
 an <<index>>ed family of [VLSM_type]s, and for each index <<i>>, let <<IS i>> be
 a [VLSM_sign]ature of type <<IT i>>.
 *)
 
-    Context (i0 : index).
+    Context `{i0: Inhabited index}.
 
 (**
 A [composite_state] has the [initial_state_prop]erty if all of its component
@@ -199,10 +199,10 @@ iff it has the [initial_message_prop]erty in any of the component signatures.
         exists (n : index) (mi : vinitial_message (IM n)), proj1_sig mi = m.
 
     (* An explicit argument for the initial state witness is no longer required: *)
-    Definition composite_m0 : message := vm0 (IM i0).
+    Definition composite_m0 : message := vm0 (IM inhabitant).
 
     Definition composite_l0 : composite_label
-      := existT _ i0 (vl0 (IM i0)) .
+      := existT _ inhabitant (vl0 (IM inhabitant)) .
 
     Definition composite_sig
       : VLSM_sign composite_type
@@ -256,13 +256,13 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
 
 ** Constrained VLSM composition
 
-Assume an non-empty <<index>> type (let <<i0>> be an index), let
+Assume an non-empty <<index>> type, let
 <<IT>> be an <<index>>ed family of [VLSM_type]s, and for each index <<i>>, let
 <<IS i>> be a [VLSM_sign]ature of type <<IT i>> and <<IM i>> be a VLSM of
 signature <<IS i>>.
 *)
 
-    Context (i0 : index).
+    Context `{i0 : Inhabited index}.
 
 (**
 The [transition] function for the [composite_vlsm] is defined as follows
@@ -312,7 +312,7 @@ the [free_composite_valid]ity.
 
     Definition composite_vlsm_machine
       (constraint : composite_label -> composite_state * option message -> Prop)
-      : VLSM_class (composite_sig i0)
+      : VLSM_class composite_sig
       :=
       {|  transition := composite_transition
        ;  valid := constrained_composite_valid constraint
@@ -723,8 +723,8 @@ End VLSM_composition.
  *)
 
 Lemma protocol_state_project_preloaded_to_preloaded
-      message `(EqDecision index) IM i0 constraint
-      (X:=@composite_vlsm message index _ IM i0 constraint)
+      message `{EqDecision index} `{Inhabited index} (IM : index -> VLSM message) constraint
+      (X:=composite_vlsm IM constraint)
       (s: vstate (pre_loaded_with_all_messages_vlsm X)) i:
   protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s ->
   protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
@@ -754,8 +754,8 @@ Proof.
 Qed.
 
 Lemma protocol_state_project_preloaded
-      message `(EqDecision index) IM i0 constraint
-      (X:=@composite_vlsm message index _ IM i0 constraint)
+      message `{EqDecision index} `{Inhabited index} (IM : index -> VLSM message) constraint
+      (X:=composite_vlsm IM constraint)
       (s: vstate X) i:
   protocol_state_prop X s ->
   protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i).
@@ -769,8 +769,8 @@ Proof.
 Qed.
 
 Lemma protocol_transition_preloaded_project_active
-      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
-      (X := composite_vlsm IM v0 constraint)
+      {message} `{EqDecision V} `{Inhabited V} {IM: V -> VLSM message} {constraint}
+      (X := composite_vlsm IM constraint)
       l s im s' om:
   protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s,im) (s',om) ->
   protocol_transition (pre_loaded_with_all_messages_vlsm (IM (projT1 l))) (projT2 l)
@@ -797,8 +797,8 @@ Proof.
 Qed.
 
 Lemma protocol_transition_project_active
-      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
-      (X := composite_vlsm IM v0 constraint)
+      {message} `{EqDecision V} `{Inhabited V} {IM: V -> VLSM message} {constraint}
+      (X := composite_vlsm IM constraint)
       l s im s' om:
   protocol_transition X l (s,im) (s',om) ->
   protocol_transition (pre_loaded_with_all_messages_vlsm (IM (projT1 l))) (projT2 l)
@@ -811,8 +811,8 @@ Proof.
 Qed.
 
 Lemma protocol_transition_preloaded_project_any {V} (i:V)
-      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
-      (X := composite_vlsm IM v0 constraint)
+      {message} `{EqDecision V} `{Inhabited V} {IM: V -> VLSM message} {constraint}
+      (X := composite_vlsm IM constraint)
       (l:vlabel X) s im s' om:
   protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s,im) (s',om) ->
   (s i = s' i \/
@@ -840,8 +840,8 @@ Proof.
 Qed.
 
 Lemma protocol_transition_project_any {V} (i:V)
-      {message} `{EqDecision V} {IM: V -> VLSM message} {v0:V} {constraint}
-      (X := composite_vlsm IM v0 constraint)
+      {message} `{EqDecision V} `{Inhabited V} {IM: V -> VLSM message} {constraint}
+      (X := composite_vlsm IM constraint)
       (l:vlabel X) s im s' om:
   protocol_transition X l (s,im) (s',om) ->
   (s i = s' i \/
@@ -868,10 +868,10 @@ Let us fix an indexed set of VLSMs <<IM>> and their composition <<X>> using <<co
           {index : Type}
           {IndEqDec : EqDecision index}
           (IM : index -> VLSM message)
-          (i0 : index)
+          `{i0 : Inhabited index}
           (T := composite_type IM)
           (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-          (X := composite_vlsm IM i0 constraint)
+          (X := composite_vlsm IM constraint)
           .
 
 (**
@@ -1321,15 +1321,15 @@ All results from regular projections carry to these "free" projections.
           {index : Type}
           {IndEqDec : EqDecision index}
           (IM :index -> VLSM message)
-          (i0 : index)
-          (X := free_composite_vlsm IM i0)
+          {i0 : Inhabited index}
+          (X := free_composite_vlsm IM)
           .
 
   Definition composite_vlsm_free_projection
     (i : index)
     : VLSM message
     :=
-    composite_vlsm_constrained_projection IM i0 (free_constraint IM) i.
+    composite_vlsm_constrained_projection IM (free_constraint IM) i.
 
   Lemma preloaded_composed_protocol_state
     (s : vstate X)
@@ -1462,6 +1462,9 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
   Definition second : binary_index := false.
 
   Global Instance binary_index_dec :  EqDecision binary_index := _.
+  Global Instance binary_index_inhabited : Inhabited binary_index
+    :=
+    populate first.
 
   Definition binary_IM
     (i : binary_index)
@@ -1474,12 +1477,12 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
 
   Definition binary_free_composition
     : VLSM message
-    := free_composite_vlsm binary_IM first.
+    := free_composite_vlsm binary_IM.
 
   Definition binary_free_composition_fst
-    := composite_vlsm_free_projection binary_IM first first.
+    := composite_vlsm_free_projection binary_IM first.
 
   Definition binary_free_composition_snd
-    := composite_vlsm_free_projection binary_IM first second.
+    := composite_vlsm_free_projection binary_IM second.
 
 End binary_free_composition.

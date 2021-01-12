@@ -21,7 +21,7 @@ Section Composition.
 
 Context
   {index : Type}
-  {i0 : index}
+  {i0 : Inhabited index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
   {idec : EqDecision index}
@@ -30,7 +30,7 @@ Context
   (est : state -> bool -> Prop)
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec est)
   {constraint : composite_label IM_index -> (composite_state IM_index) * option message -> Prop}
-  (X := composite_vlsm IM_index i0 constraint)
+  (X := composite_vlsm IM_index constraint)
   (preX := pre_loaded_with_all_messages_vlsm X)
   (* (Hevidence := fun (i : index) => @observable_full index index_listing Hfinite idec) *)
   {Mindex : Measurable index}

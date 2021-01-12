@@ -31,9 +31,9 @@ Section Liveness.
     {index : Type}
     {Heqd : EqDecision index}
     (IM : index -> VLSM message)
-    (Hi : index)
+    {Hi : Inhabited index}
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-    (X := composite_vlsm IM Hi constraint)
+    (X := composite_vlsm IM constraint)
     (ID : forall i : index, vdecision (IM i)).
 
 Definition live : Prop :=
@@ -84,8 +84,8 @@ Section Clocks.
       the transition where the message is sent.
    *)
   Record MessageTimeProp
-        `(IM: index -> VLSM message) `{EqDecision index} Hi constraint
-        (X := composite_vlsm IM Hi constraint)
+        `(IM: index -> VLSM message) `{EqDecision index} `{Inhabited index} constraint
+        (X := composite_vlsm IM constraint)
         (clocks : ClocksFor IM)
         (message_time : message -> nat)
     : Type := {
@@ -152,12 +152,11 @@ Section StrongSynchrony.
   Context
     {message : Type}
     {index : Type}
-    (i0 : index)
     {index_listing : list index}
     (finite_index : Listing index_listing)
     {Heqd : EqDecision index}
     (IM : index -> VLSM message)
-    (Hi : index)
+    {Hi : Inhabited index}
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
     {Hsents : forall i, has_been_sent_capability (IM i)}
     {Hobserveds: forall i, has_been_observed_capability (IM i)}
@@ -208,8 +207,8 @@ Section StrongSynchrony.
          -> all_earlier_messages_received i s.
 
   Context
-    (Free := free_composite_vlsm IM i0)
-    (composite_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM i0 (free_constraint IM) finite_index Hsents)
+    (Free := free_composite_vlsm IM)
+    (composite_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hsents)
     .
 
   Existing Instance composite_has_been_sent_capability.

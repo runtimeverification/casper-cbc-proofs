@@ -22,7 +22,7 @@ Context
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (i0 : index)
+  {i0 : Inhabited index}
   (equivocator_IM := equivocator_IM IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
@@ -34,13 +34,13 @@ Definition equivocators_fixed_equivocations_constraint
   (som : composite_state equivocator_IM * option message)
   (som' := composite_transition equivocator_IM l som)
   : Prop
-  := equivocators_no_equivocations_constraint IM Hbs i0 index_listing finite_index l som
+  := equivocators_no_equivocations_constraint IM Hbs index_listing finite_index l som
   /\ incl (equivocating_indices IM index_listing (fst som')) equivocating.
 
 Definition equivocators_fixed_equivocations_vlsm
   : VLSM message
   :=
-  equivocators_constrained_vlsm IM i0 equivocators_fixed_equivocations_constraint.
+  equivocators_constrained_vlsm IM equivocators_fixed_equivocations_constraint.
 
 End equivocators_fixed_equivocations_vlsm.
 
@@ -51,18 +51,17 @@ Context {message : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (i0 : index)
-  (X := free_composite_vlsm IM i0)
+  {i0 : Inhabited index}
+  (X := free_composite_vlsm IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
   (equivocators_choice := equivocators_choice IM)
-  (equivocators_state_project := equivocators_state_project IM i0)
+  (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocators_choice_update := equivocators_choice_update IM)
-  (proper_equivocators_choice := proper_equivocators_choice IM i0)
+  (proper_equivocators_choice := proper_equivocators_choice IM)
   (equivocating : set index)
-  (i0_equiv : index)
-  (Hi0_equiv : In i0_equiv equivocating)
+  (Hi0_equiv : equivocating <> [])
   .
 
 Definition index_equivocating_prop (i : index) : Prop := In i equivocating.
@@ -77,8 +76,14 @@ Qed.
 Definition equivocating_index : Type
   := dec_sig index_equivocating_prop.
 
-Definition equivocating_i0 : equivocating_index
-  := (@dec_exist _ _ index_equivocating_prop_dec _ Hi0_equiv).
+Local Instance equivocating_i0 : Inhabited equivocating_index.
+Proof.
+  split.
+  destruct (destruct_list equivocating) as [[x [tl Hequivocating]]| n]
+  ; [|elim Hi0_equiv; assumption].
+  exists x. apply bool_decide_eq_true.
+  unfold index_equivocating_prop. subst equivocating. left. reflexivity.
+Qed.
 
 Local Instance equivocating_index_eq_dec : EqDecision equivocating_index.
 Proof.
@@ -91,7 +96,7 @@ Definition equivocating_IM
   := IM (proj1_sig ei).
 
 Definition free_equivocating_vlsm_composition : VLSM message
-  := free_composite_vlsm equivocating_IM equivocating_i0.
+  := free_composite_vlsm equivocating_IM.
 
 Definition sent_by_non_equivocating
   (s : composite_state IM)
@@ -111,7 +116,7 @@ Definition seeded_free_equivocators_composition
     {validator : Type}
     (A : validator -> index)
     (sender : message -> option validator)
-    (Hsender_safety : Prop := sender_safety_prop IM i0 (free_constraint IM) A sender)
+    (Hsender_safety : Prop := sender_safety_prop IM (free_constraint IM) A sender)
     .
 
 Definition fixed_equivocation_constraint
@@ -135,6 +140,6 @@ Definition fixed_equivocation_constraint
   end.
 
 Definition fixed_equivocation_vlsm_composition : VLSM message
-  := composite_vlsm IM i0 fixed_equivocation_constraint.
+  := composite_vlsm IM fixed_equivocation_constraint.
 
 End fixed_equivocation_without_fullnode.

@@ -487,14 +487,14 @@ Section Protocol_Proofs.
     (estimator: list (validator_message C V) -> C -> Prop)
     (validator_list: list V)
     (validators_finite: FinFun.Listing validator_list)
-    (v0:V)
+    {v0: Inhabited V}
   .
 
   Definition IM : V -> VLSM (validator_message C V) :=
     fun v => Validator c0 plan estimator v.
 
   Definition simple_liveness_VLSM :=
-    (Composition.composite_vlsm IM v0).
+    (Composition.composite_vlsm IM).
 
   (** *** Constructing a variant to show that
       a component's clock eventually ticks.
@@ -547,10 +547,10 @@ Section Protocol_Proofs.
 
   Context
     (constraint : composite_label IM -> composite_state IM * option (validator_message C V) -> Prop
-       := no_synch_faults_no_equivocation_constraint v0 validators_finite IM
+       := no_synch_faults_no_equivocation_constraint validators_finite IM
                  (validator_clock c0 plan estimator)
              message_time)
-    (X: VLSM (validator_message C V) := composite_vlsm IM v0 constraint)
+    (X: VLSM (validator_message C V) := composite_vlsm IM constraint)
   .
 
   (** The overall variant used to show a given component eventually
@@ -604,9 +604,9 @@ Section Protocol_Proofs.
     received_were_sent s.
   Proof.
     intro H.
-    pose (composite_has_been_sent_capability _ _ _ validators_finite _
+    pose (composite_has_been_sent_capability _ _ validators_finite _
          : has_been_sent_capability X) as Hhbs.
-    pose (composite_has_been_observed_capability _ _ _ validators_finite _
+    pose (composite_has_been_observed_capability _ _ validators_finite _
          : has_been_observed_capability X) as Hhbo.
     assert (observed_were_sent_or_initial _ X _ _ s).
     {

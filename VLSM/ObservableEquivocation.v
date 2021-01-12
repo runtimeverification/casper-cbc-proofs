@@ -984,9 +984,9 @@ Context
     observation_based_equivocation_evidence
         (vstate (IM i)) validator event (Hstate_events i) decide_eq happens_before happens_before_dec subject_of_observation
   )
-  (i0 : index)
+  {i0 : Inhabited index}
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-  (X := composite_vlsm IM i0 constraint)
+  (X := composite_vlsm IM constraint)
   (PreX := pre_loaded_with_all_messages_vlsm X)
   .
 
@@ -1171,10 +1171,10 @@ Context
     observation_based_equivocation_evidence
         (vstate (IM i)) validator event (Hstate_events i) decide_eq happens_before happens_before_dec subject_of_observation
   )
-  (i0 : index)
+  {i0 : Inhabited index}
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
   (A : validator -> index)
-  (X := composite_vlsm IM i0 constraint)
+  (X := composite_vlsm IM constraint)
   (PreX := pre_loaded_with_all_messages_vlsm X)
 .
 

@@ -1368,9 +1368,9 @@ Section Composite.
           {index : Type}
           {IndEqDec : EqDecision index}
           (IM : index -> VLSM message)
-          (i0 : index)
+          {i0 : Inhabited index}
           (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
-          (X := composite_vlsm IM i0 constraint)
+          (X := composite_vlsm IM constraint)
           {index_listing : list index}
           (finite_index : Listing index_listing)
           (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
@@ -1579,10 +1579,10 @@ Section Composite.
     (v : validator)
     (Hid : A v = i)
     (Hsender : sender m = Some v),
-    can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m /\
+    can_emit (composite_vlsm_constrained_projection IM constraint i) m /\
     forall (j : index)
            (Hdif : i <> j),
-           ~can_emit (composite_vlsm_constrained_projection IM i0 constraint j) m.
+           ~can_emit (composite_vlsm_constrained_projection IM constraint j) m.
 
    (** An alternative, possibly friendlier, formulation. Note that it is
        slightly weaker, in that it does not require that the sender
@@ -1594,19 +1594,19 @@ Section Composite.
     (m : message)
     (v : validator)
     (Hsender : sender m = Some v),
-    can_emit (composite_vlsm_constrained_projection IM i0 constraint i) m ->
+    can_emit (composite_vlsm_constrained_projection IM constraint i) m ->
     A v = i.
 
   Definition sender_weak_nontriviality_prop : Prop :=
     forall (v : validator),
     exists (m : message),
-    can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m /\
+    can_emit (composite_vlsm_constrained_projection IM constraint (A v)) m /\
     sender m = Some v.
 
   Definition sender_strong_nontriviality_prop : Prop :=
     forall (v : validator),
     forall (m : message),
-    can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m ->
+    can_emit (composite_vlsm_constrained_projection IM constraint (A v)) m ->
     sender m = Some v.
 
   Definition no_sender_for_initial_message_prop : Prop :=
@@ -1738,14 +1738,14 @@ Section full_node_constraint.
           {index : Type}
           {IndEqDec : EqDecision index}
           (IM : index -> VLSM message)
-          (i0 : index)
-          (X := free_composite_vlsm IM i0)
+          {i0 : Inhabited index}
+          (X := free_composite_vlsm IM)
           (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
           (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
           {index_listing : list index}
           (finite_index : Listing index_listing)
-          (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM i0 (free_constraint IM) finite_index has_been_sent_capabilities)
-          (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM i0 (free_constraint IM) finite_index has_been_received_capabilities)
+          (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index has_been_sent_capabilities)
+          (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index has_been_received_capabilities)
           (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
           (admissible_index : composite_state IM -> index -> Prop)
           .

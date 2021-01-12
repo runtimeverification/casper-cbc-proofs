@@ -97,9 +97,9 @@ Section CommuteIndexed.
     {index : Type}
     {Heqd : EqDecision index}
     (IM : index -> VLSM message)
-    (Hi : index)
+    {Hi : Inhabited index}
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-    (X := composite_vlsm IM Hi constraint)
+    (X := composite_vlsm IM constraint)
     (ID : forall i : index, vdecision (IM i)).
 
   (* ** Decision consistency
@@ -190,11 +190,11 @@ Section CommuteIndexed.
   Lemma final_and_consistent_implies_final
       (Hcons : final_and_consistent)
       (i : index)
-      (Hfr : finite_projection_friendly IM Hi constraint i)
-      : final (composite_vlsm_constrained_projection IM Hi constraint i) (ID i).
+      (Hfr : finite_projection_friendly IM constraint i)
+      : final (composite_vlsm_constrained_projection IM constraint i) (ID i).
   Proof.
     intros s1 s2 c1 c2 Hfuturesi HD1 HD2.
-    specialize (projection_friendly_in_futures IM Hi constraint i Hfr s1 s2 Hfuturesi)
+    specialize (projection_friendly_in_futures IM constraint i Hfr s1 s2 Hfuturesi)
     ; intros [sX1 [sX2 [Hs1 [Hs2 HfuturesX]]]].
     subst.
     apply (Hcons sX1 sX2 HfuturesX i i c1 c2 HD1 HD2).
@@ -322,15 +322,15 @@ Section composite_estimators.
     {index : Type}
     {Heqd : EqDecision index}
     (IM : index -> VLSM message)
-    (Hi : index)
+    {Hi : Inhabited index}
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-    (X := composite_vlsm IM Hi constraint)
+    (X := composite_vlsm IM constraint)
     (ID : forall i : index, vdecision (IM i))
     (IE : forall i : index, Estimator (vstate (IM i)) C).
 
   Definition composite_projection_decision_estimator_property
     (i : index)
-    (Xi := composite_vlsm_constrained_projection IM Hi constraint i)
+    (Xi := composite_vlsm_constrained_projection IM constraint i)
     := decision_estimator_property Xi (ID i) (IE i).
 
 End composite_estimators.
