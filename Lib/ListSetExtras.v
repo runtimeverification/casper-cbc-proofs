@@ -751,20 +751,25 @@ Proof.
         intuition.
       * intuition.
   - apply set_union_iff in H.
-    destruct H.
-    + apply set_union_in_iterated in H.
-      rewrite Exists_exists in H.
-      destruct H as [fs [Hins Hina]].
-      apply set_union_in_iterated.
-      rewrite Exists_exists.
-      apply in_map_iff in Hins.
-      destruct Hins as [s [Heqs Hins]].
-      exists (set_union decide_eq fs (g s)).
-      split.
-      * specialize (Hsplit s Hins).
-        rewrite <- Heqs.
-        setoid_rewrite <- Hsplit.
-      
+    destruct H;
+     (apply set_union_in_iterated in H;
+      rewrite Exists_exists in H;
+      destruct H as [fs [Hins Hina]];
+      apply set_union_in_iterated;
+      rewrite Exists_exists;
+      apply in_map_iff in Hins;
+      destruct Hins as [s [Heqs Hins]];
+      exists s;
+      split;[intuition|];
+      specialize (Hsplit s Hins);
+      rewrite <- Heqs in Hina;
+      unfold set_eq in Hsplit;
+      destruct Hsplit as [_ Hsplit];
+      unfold incl in Hsplit;
+      specialize (Hsplit a);
+      apply Hsplit;
+      apply set_union_iff;
+      intuition).
 Qed.
 
 Unset Implicit Arguments.

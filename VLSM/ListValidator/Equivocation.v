@@ -3458,6 +3458,9 @@ Context
     Definition simp_lv_observations (s : state) (target : index) : set simp_lv_event :=
       set_union decide_eq (simp_lv_message_observations s target) (simp_lv_state_observations s target).
     
+    Definition simp_lv_message_observations_f (s : state) (target : index) : set simp_lv_event :=
+      filter (fun (e : simp_lv_event) => bool_decide (get_simp_event_type e = Message')) (simp_lv_observations s target).
+      
     Lemma in_simp_lv_message_observations
       (s : state)
       (target : index)
@@ -3534,6 +3537,19 @@ Context
       congruence.
     - intuition. 
   Qed.
+  
+  Lemma message_f
+    (s : vstate X)
+    (target : index)  :
+    set_eq (simp_lv_message_observations s target) (simp_lv_message_observations_f s target).
+  Proof.
+    unfold simp_lv_message_observations_f.
+    unfold set_eq.
+    unfold incl.
+    split; intros.
+    - apply filter_In.
+      split. 
+  Admitted.
     
     Lemma get_event_state_nb
       (s s': state)
@@ -4210,7 +4226,8 @@ Context
     (Hnb : s <> Bottom /\ so <> Bottom)
     (i : index)
     (Hfull : project s i = project so i)
-    (s' := (update_state s so i))
+    (b : bool)
+    (s' := update_consensus (update_state s so i) b)
     (s_obs := (SimpObs State' index_self s))
     (s'_obs := (SimpObs State' index_self s')) 
     (e : simp_lv_event)
@@ -4239,12 +4256,14 @@ Context
         * unfold state_lt' in *.
           destruct (decide (i = ev)).
           -- subst i.
+             rewrite history_disregards_cv.
              rewrite unfold_history_cons; rewrite (@project_same index index_listing Hfinite) by intuition.
              rewrite <- eq_history_eq_project in Hfull.
              rewrite <- Hfull.
              simpl. right. intuition.
              intuition.
-          -- rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
+          -- rewrite history_disregards_cv.
+             rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
              rewrite unfold_history_cons in H.
              intuition.
              apply non_empty_history_nb_project with (so := es).
