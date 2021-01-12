@@ -1609,6 +1609,11 @@ Section Composite.
     can_emit (composite_vlsm_constrained_projection IM i0 constraint (A v)) m ->
     sender m = Some v.
 
+  Definition no_sender_for_initial_message_prop : Prop :=
+    forall (m : message),
+    vinitial_message_prop X m ->
+    sender m = None.
+
   Context
         (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
         .
@@ -1753,17 +1758,15 @@ Section full_node_constraint.
     (som : composite_state IM * option message)
     : Prop
     :=
-    match som with
-    | (s, Some m) =>
-      has_been_sent X s m \/
+    no_equivocations X l som \/
+    let (s, om) := som in
+      exists m, om = Some m /\
       exists (i : index), admissible_index s i /\
-        exists (si : vstate (IM i)),
+      exists (si : vstate (IM i)),
           protocol_prop (pre_loaded_with_all_messages_vlsm (IM i)) (si, Some m) /\
           forall (m' : message),
             has_been_received (IM i) si m' ->
             has_not_been_sent (IM i) si m' ->
-            has_been_observed X s m'
-    |  _ => True
-    end.
+            has_been_observed X s m'.
 
 End full_node_constraint.
