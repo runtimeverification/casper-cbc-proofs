@@ -1767,6 +1767,6 @@ Section full_node_constraint.
           forall (m' : message),
             has_been_received (IM i) si m' ->
             has_not_been_sent (IM i) si m' ->
-            has_been_observed X s m'.
+            has_been_observed X s m' \/ vinitial_message_prop X m'.
 
 End full_node_constraint.
