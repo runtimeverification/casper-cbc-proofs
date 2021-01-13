@@ -2930,6 +2930,26 @@ Context
       
     Definition get_raw_observations (s : state) (target : index) : set state :=
       get_observations target (depth s) s.
+      
+    Lemma raw_observations_consensus 
+      (s : state)
+      (b : bool)
+      (target : index) :
+      get_raw_observations s target = get_raw_observations (update_consensus s b) target.
+    Proof.
+      unfold get_raw_observations.
+      assert (depth s = depth (update_consensus s b)). {
+        destruct s.
+        - intuition.
+        - unfold update_consensus.
+          unfold depth.
+          intuition.
+      }
+      rewrite <- H.
+      unfold get_observations.
+      destruct (depth s); destruct s; intuition.
+    Qed.
+ 
 
     Definition shallow_observations (s : state) (target : index) :=
       get_observations target 1 s.
@@ -3460,7 +3480,18 @@ Context
     
     Definition simp_lv_message_observations_f (s : state) (target : index) : set simp_lv_event :=
       filter (fun (e : simp_lv_event) => bool_decide (get_simp_event_type e = Message')) (simp_lv_observations s target).
-      
+    
+    Lemma cons_clean_message_obs 
+      (s : state)
+      (target : index)
+      (b : bool) : 
+      simp_lv_message_observations s target = simp_lv_message_observations (update_consensus s b) target.
+    Proof.
+      unfold simp_lv_message_observations.
+      rewrite raw_observations_consensus with (b := b).
+      intuition.
+    Qed.
+    
     Lemma in_simp_lv_message_observations
       (s : state)
       (target : index)
@@ -3804,6 +3835,87 @@ Context
       apply refold_raw_observations2.
       intuition.
       exists i.
+      intuition.
+    Qed.
+    
+    Lemma something_in_obs_nb 
+      (s s' : state)
+      (i : index)
+      (Hin : In s' (get_raw_observations s i)) :
+      s <> Bottom.
+    Proof.
+      unfold get_raw_observations in Hin.
+      unfold get_observations in Hin.
+      destruct s.
+      - simpl in Hin. intuition.
+      - congruence.
+    Qed.
+    
+    Lemma cross_observations
+      (s s1 s2: state)
+      (i j : index)
+      (Hin1 : In s1 (get_raw_observations s i))
+      (Hin2 : In s2 (get_raw_observations s1 j)) :
+      In s2 (get_raw_observations s j).
+    Proof.
+      remember (depth s) as dpth.
+      generalize dependent s.
+      generalize dependent s1.
+      generalize dependent s2.
+      induction dpth using (well_founded_induction lt_wf).
+      intros.
+      assert (Hsnb : s <> Bottom). {
+        apply something_in_obs_nb in Hin1.
+        intuition.
+      }
+      apply unfold_raw_observations in Hin1.
+      2 : intuition.
+
+      destruct Hin1 as [Hin1 | Hin1].
+      - rewrite <- Hin1 in Hin2.
+        apply raw_observations_in_project in Hin2.
+        all : intuition.
+      - destruct Hin1 as [k Hink].
+        specialize (H (depth (project s k))) as Hproj.
+        spec Hproj. {
+          unfold project.
+          rewrite Heqdpth.
+          destruct s; [intuition|].
+          apply (@depth_parent_child index index_listing).
+          intuition.
+        }
+        
+        specialize (Hproj s2 s1 Hin2 (project s k) Hink eq_refl).
+        apply raw_observations_in_project in Hproj.
+        intuition.
+        intuition.
+    Qed.
+    
+    Lemma message_cross_observations
+      (s : state)
+      (e1 e2 : simp_lv_event)
+      (i j : index)
+      (Hin1 : In e1 (simp_lv_message_observations s i))
+      (Hin2 : In e2 (simp_lv_message_observations (get_simp_event_state e1) j)) :
+      In e2 (simp_lv_message_observations s j).
+    Proof.
+      destruct e1 as [et1 ev1 es1].
+      destruct e2 as [et2 ev2 es2].
+      unfold simp_lv_message_observations in *.
+      apply in_map_iff in Hin1.
+      destruct Hin1 as [s1 [Heq1 Hraw1]].
+      apply in_map_iff in Hin2.
+      destruct Hin2 as [s2 [Heq2 Hraw2]].
+      inversion Heq1.
+      inversion Heq2.
+      subst et1. subst ev1. subst es1.
+      subst et2. subst ev2. subst es2.
+      simpl in *.
+      apply in_map_iff.
+      exists s2.
+      split;[intuition|]. 
+      apply cross_observations with (s1 := s1) (i := i).
+      intuition.
       intuition.
     Qed.
     
@@ -4453,60 +4565,6 @@ Context
       rewrite Hproj_self.
       intuition.
   Qed.
-      
-
-  (*
-    unfold incl.
-    intros.
-    unfold get_raw_observations.
-    destruct (decide (target = index_self)).
-    contradict e; assumption.
-    destruct s eqn : eq_s.
-    - unfold get_raw_observations in H.
-      unfold get_observations in H.
-      rewrite decide_False in H.
-      simpl in *.
-      assumption.
-      assumption.
-    - destruct (depth (Something b is)) eqn : eq_depth.
-      + apply depth_zero_bottom in eq_depth.
-        discriminate eq_depth.
-      + specialize (@set_union_in_iterated (@state index index_listing) state_eq_dec).
-        intros.
-        specialize (H0 (map (get_observations target n) (map (project (Something b is)) index_listing))).
-        specialize (H0 a).
-        destruct H0 as [_ Hneed].
-        assert (a <> Bottom). {
-          specialize (no_bottom_in_observations (project (Something b is) i) a target).
-          intros.
-          apply H0.
-          unfold lv_observations in H.
-          assumption.
-        }
-        apply set_remove_3.
-        apply set_union_intro1.
-        apply Hneed.
-        rewrite Exists_exists.
-        exists (get_observations target n (project (Something b is) i)).
-        split.
-        rewrite in_map_iff.
-        exists (project (Something b is) i).
-        split.
-        reflexivity.
-        rewrite in_map_iff.
-        exists i.
-        split.
-        reflexivity.
-        apply ((proj2 Hfinite) i).
-        unfold lv_observations in H.
-        rewrite get_observations_depth_redundancy.
-        assumption.
-        specialize (@depth_parent_child index index_listing Hfinite idec is b i).
-        intros.
-        unfold project.
-        lia.
-        assumption.
-  Qed. *) 
   
     (* 
     Lemma observations_disregards_cv

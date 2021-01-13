@@ -391,6 +391,15 @@ Definition comparable
   : Prop
   :=
   a = b \/ R a b \/ R b a.
+  
+Lemma comparable_commutative
+   {A : Type}
+   (R : A -> A -> Prop)
+   (a b : A) :
+   comparable R a b <-> comparable R b a.
+Proof.
+  firstorder.
+Qed.
 
 Definition comparableb
   `{EqDecision A}

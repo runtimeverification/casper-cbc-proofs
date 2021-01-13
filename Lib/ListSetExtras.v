@@ -717,6 +717,20 @@ Add Parametric Morphism A : (@In A)
   with signature @eq A ==> @incl A ==> Basics.impl as In_incl.
 Proof. firstorder. Qed.
 
+Lemma set_union_iterated_preserves_prop
+  `{EqDecision A}
+  (ss : list (set A))
+  (P : A -> Prop)
+  (Hp : forall (s : set A), forall (a : A), (In s ss /\ In a s) -> P a) :
+  forall (a : A), In a (fold_right (set_union decide_eq) nil ss) -> P a.
+Proof.
+  intros.
+  apply set_union_in_iterated in H. rewrite Exists_exists in H.
+  destruct H as [s [Hins Hina]].
+  apply Hp with (s := s).
+  intuition.
+Qed.
+
 Lemma set_union_iterated_part
   `{EqDecision A}
   (ss : list (set A))
