@@ -4286,6 +4286,84 @@ Context
     intuition.
    Qed.
    
+   Lemma new_incl_rest_diff
+    (s so : state)
+    (Hnb : s <> Bottom /\ so <> Bottom)
+    (i j : index)
+    (Hdif : i <> j)
+    (Hfull : project s i = project so i)
+    (s' := (update_state s so i)) :
+    let s1 := simp_lv_message_observations s j in
+    let all := set_union decide_eq s1 (simp_lv_message_observations so j) in
+    incl (simp_lv_message_observations s' j) all.
+   Proof.
+    unfold incl. intros e H.
+    unfold s' in H.
+    apply in_message_observations_nb in H as Hesnb.
+    apply unfold_simp_lv_observations in H as Hraw.
+    2 : {
+      unfold update_state; destruct s; intuition congruence.
+    }
+    apply set_union_iff.
+    destruct Hraw.
+    - destruct (decide (i = j)).
+      + congruence.
+      + rewrite (@project_different index index_listing Hfinite) in H0 by intuition.
+        left.
+        apply refold_simp_lv_observations1;[intuition|..].
+        rewrite H0 in Hesnb; simpl in Hesnb.
+        all : intuition.
+    - destruct H0 as [k Hink].
+       destruct (decide (k = i)).
+       + subst k.
+          rewrite (@project_same index index_listing Hfinite) in Hink by intuition.
+          right.
+          intuition.
+       +  rewrite (@project_different index index_listing Hfinite) in Hink by intuition.
+          left.
+          apply refold_simp_lv_observations2;[intuition|..].
+          exists k. 
+          intuition.
+   Qed.
+  
+  Lemma new_incl_rest_same
+    (s so : state)
+    (Hnb : s <> Bottom /\ so <> Bottom)
+    (i : index)
+    (Hfull : project s i = project so i)
+    (s' := (update_state s so i)) :
+    let s1 := simp_lv_message_observations s i in
+    let s2 := set_union decide_eq s1 (simp_lv_message_observations so i) in
+    let all := set_union decide_eq s2 [SimpObs Message' i so] in
+    incl (simp_lv_message_observations s' i) all.
+   Proof.
+    unfold incl. intros e H.
+    unfold s' in H.
+    apply in_message_observations_nb in H as Hesnb.
+    apply unfold_simp_lv_observations in H as Hraw.
+    2 : {
+      unfold update_state; destruct s; intuition congruence.
+    }
+    apply set_union_iff.
+    destruct Hraw.
+    - rewrite (@project_same index index_listing Hfinite) in H0 by intuition.
+      right. rewrite H0. intuition.
+    - destruct H0 as [k Hink].
+       destruct (decide (k = i)).
+       + subst k.
+          rewrite (@project_same index index_listing Hfinite) in Hink by intuition.
+          left.
+          apply set_union_iff.
+          right. intuition.
+       +  rewrite (@project_different index index_listing Hfinite) in Hink by intuition.
+          left.
+          apply set_union_iff.
+          left.
+          apply refold_simp_lv_observations2;[intuition|..].
+          exists k. 
+          intuition.
+  Qed. 
+   
    Lemma new_incl_rest
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)

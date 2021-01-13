@@ -427,16 +427,17 @@ Context
       + intuition.
   Qed.
   
-  Lemma cobs_message_existing_other1
+  Lemma cobs_message_existing_other_lf
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (so : state)
     (b : bool)
     (i j target : index)
+    (Hdif : i <> j)
     (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
     (Hfull : project (s i) j = project so j)
-    (Hhave : (so = (s i) /\ i = j) \/ In (SimpObs Message' j so) (cobs s j)) :
-    incl (cobs_messages s' target) (set_union decide_eq (cobs_messages s target) [SimpObs Message' target so]).
+    (Hhave : In (SimpObs Message' j so) (cobs s j)) :
+    incl (cobs_messages s' target) (cobs_messages s target).
   Proof.
     assert (Hsnb : forall (k : index), (s k) <> Bottom). {
       intros k.
@@ -444,14 +445,10 @@ Context
     }
     
     assert (Hsonb : so <> Bottom). {
-      destruct Hhave.
-      - destruct H as [H _].
-        rewrite H.
-        apply Hsnb.
-      - apply in_cobs_and_message in H.
-        apply cobs_single in H.
-        destruct H as [k H].
-        apply (@in_message_observations_nb index index_listing Hfinite) in H.
+        apply in_cobs_and_message in Hhave.
+        apply cobs_single in Hhave.
+        destruct Hhave as [k Hhave].
+        apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
         all : intuition.
     }
     unfold incl.
@@ -464,59 +461,258 @@ Context
       unfold s' in Hink.
       rewrite state_update_eq in Hink.
       rewrite <- cons_clean_message_obs with (b0 := b) in Hink.
-      apply (@new_incl_rest index index_listing) in Hink.
-      2 : intuition.
-      2 : {
-        split. apply Hsnb; intuition. intuition.
-      }
-      2 : intuition. 
+      destruct (decide (j = target)).
+      + subst target.
+        apply (@new_incl_rest_same index index_listing Hfinite) in Hink.
+        2 : {
+          split. apply Hsnb; intuition. intuition.
+        }
+        2 : intuition. 
+       
+        apply set_union_iff in Hink.
+        destruct Hink as [Hink|Hink].
+        * apply set_union_iff in Hink.
+          destruct Hink as [Hink|Hink].
+          -- apply cobs_single.
+             exists i. intuition.
+          -- apply in_cobs_and_message in Hhave.
+             apply cobs_single in Hhave. 
+             destruct Hhave as [l Hhave].
+             apply cobs_single.
+             exists l.
+             apply (@message_cross_observations index index_listing Hfinite) with (e1 := (SimpObs Message' j so)) (i := j).
+             all : intuition.
+       * destruct Hink;[|intuition].
+         rewrite <- H.
+         apply in_cobs_and_message in Hhave.
+         all : intuition.
+   
+      + apply (@new_incl_rest_diff index index_listing Hfinite) in Hink.
+        2 : {
+          split. apply Hsnb; intuition. intuition.
+        }
+        2 : intuition. 
         
-      apply set_union_iff in Hink.
-      apply set_union_iff.
-      destruct Hink as [Hink|Hink];[|right;intuition].
-      apply set_union_iff in Hink.
-      destruct Hink as [Hink|Hink].
-      + left.
+        apply set_union_iff in Hink.
+        destruct Hink as [Hink|Hink]. 
         apply cobs_single.
         exists i.
         intuition.
-      + left.
-        destruct Hhave as [Hhave|Hhave].
-        * destruct Hhave as [Hhave_s Hij].
-          subst j.
-          rewrite Hhave_s in Hink.
-          apply cobs_single. 
-          exists i; intuition.
-        * apply in_cobs_and_message in Hhave.
-          2 : intuition.  
-          apply cobs_single in Hhave.
-          destruct Hhave as [l Hhave].
-          apply cobs_single.
-          exists l.
-          apply (@message_cross_observations index index_listing Hfinite) with (e1 := (SimpObs Message' j so)) (i := j).
-          intuition.
-          simpl.
-          intuition.
+        apply in_cobs_and_message in Hhave.
+        2 : intuition.  
+        apply cobs_single in Hhave.
+        destruct Hhave as [l Hhave].
+        apply cobs_single.
+        exists l.
+        apply (@message_cross_observations index index_listing Hfinite) with (e1 := (SimpObs Message' j so)) (i := j).
+        intuition.
+        simpl.
+        intuition.
+        intuition.
     - unfold s' in Hink.
       rewrite state_update_neq in Hink by intuition.
-      apply set_union_iff.
-      left.
       apply cobs_single.
       exists k.
       intuition.
   Qed.
   
-  Lemma cobs_message_existing2
+  Lemma cobs_message_existing_other_rt
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (so : state)
     (b : bool)
     (i j target : index)
+    (Hdif : i <> j)
     (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
     (Hfull : project (s i) j = project so j)
-    (Hhave : (so = (s i) /\ i = j) \/ In (SimpObs Message' j so) (cobs s j)) :
-    incl (cobs_messages s' target) (set_union decide_eq (cobs_messages s target) [SimpObs Message' target so]).
-     
+    (Hhave : In (SimpObs Message' j so) (cobs s j)) :
+    incl (cobs_messages s target) (cobs_messages s' target).
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    
+    assert (Hsonb : so <> Bottom). {
+        apply in_cobs_and_message in Hhave.
+        apply cobs_single in Hhave.
+        destruct Hhave as [k Hhave].
+        apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
+        all : intuition.
+    }
+  
+    unfold incl.
+    intros.
+    apply cobs_single in H.
+    destruct H as [k H].
+    destruct (decide (i = k)).
+    - subst k.
+      apply cobs_single.
+      exists i.
+      apply (@old_incl_new index index_listing Hfinite) with (so := so) (i := j) in H.
+      rewrite cons_clean_message_obs with (b0 := b) in H.
+      unfold s'.
+      rewrite state_update_eq.
+      intuition.
+      split. apply Hsnb. intuition.
+      intuition.
+   - apply cobs_single.
+     exists k.
+     unfold s'.
+     rewrite state_update_neq.
+     all : intuition.
+  Qed.
+  
+  Lemma cobs_message_existing_other
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (so : state)
+    (b : bool)
+    (i j target : index)
+    (Hdif : i <> j)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
+    (Hfull : project (s i) j = project so j)
+    (Hhave : In (SimpObs Message' j so) (cobs s j)) :
+    set_eq (cobs_messages s target) (cobs_messages s' target).
+  Proof.
+    unfold set_eq.
+    split.
+    - apply cobs_message_existing_other_rt.
+      all : intuition.
+    - apply cobs_message_existing_other_lf.
+      all : intuition.
+  Qed.
+  
+  Lemma cobs_message_existing_same1
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (b : bool)
+    (i target : index)
+    (Hdif : i <> target)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
+    set_eq (cobs_messages s' target) (cobs_messages s target).
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    
+    apply set_eq_extract_forall.
+    intros e.
+    split; intros H.
+    - apply cobs_single in H.
+      destruct H as [k H].
+      destruct (decide (k = i)).
+      + subst k.
+        unfold s' in H.
+        rewrite state_update_eq in H.
+        rewrite <- cons_clean_message_obs in H.
+        apply (@new_incl_rest_diff index index_listing Hfinite) in H.
+        apply set_union_iff in H.
+        destruct H; (apply cobs_single; exists i; intuition).
+        split; apply Hsnb.
+        all :intuition.
+      + unfold s' in H.
+        rewrite state_update_neq in H.
+        apply cobs_single.
+        exists k. all : intuition.
+    - apply cobs_single in H.
+      destruct H as [k H].
+      destruct (decide (k = i)).
+      + subst k.
+        apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H. 
+        apply cobs_single.
+        exists i.
+        unfold s'.
+        rewrite state_update_eq.
+        rewrite cons_clean_message_obs with (b0 := b) in H.
+        intuition.
+        split; apply Hsnb.
+        intuition.
+      + apply cobs_single.
+        exists k.
+        unfold s'.
+        rewrite state_update_neq.
+        all : intuition.
+  Qed.
+  
+  Lemma cobs_message_existing_same2
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (b : bool)
+    (i : index)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
+    set_eq (cobs_messages s' i) (set_union decide_eq (cobs_messages s i) [SimpObs Message' i (s i)]).
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+  
+    apply set_eq_extract_forall.
+    intros e.
+    split; intros H.
+    - apply cobs_single in H.
+      apply set_union_iff.
+      destruct H as [k H].
+      destruct (decide (i = k)).
+      + subst k.
+        unfold s' in H.
+        rewrite state_update_eq in H by intuition.
+        rewrite <- cons_clean_message_obs with (b0 := b) in H.
+        apply (@new_incl_rest_same index index_listing Hfinite) in H.
+        apply set_union_iff in H.
+        destruct H as [H|H];[|right;intuition].
+        apply set_union_iff in H.
+        destruct H; left; apply cobs_single; exists i; intuition.
+        split; apply Hsnb.
+        intuition.
+      + left.
+        unfold s' in H.
+        rewrite state_update_neq in H by intuition.
+        apply cobs_single. exists k. intuition.
+    - apply set_union_iff in H.
+      destruct H as [H | H].
+      + apply cobs_single in H.
+        destruct H as [k H].
+        destruct (decide (i = k)).
+        * subst k. 
+          apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H.
+          apply cobs_single.
+          exists i.
+          unfold s'.
+          rewrite state_update_eq.
+          rewrite cons_clean_message_obs with (b0 := b) in H.
+          intuition.
+          split; apply Hsnb.
+          intuition.
+        * apply cobs_single.
+          exists k.
+          unfold s'.
+          rewrite state_update_neq.
+          all : intuition.
+      + apply cobs_single.
+        exists i.
+        unfold s'.
+        rewrite state_update_eq by intuition.
+        destruct H;[|intuition].
+        rewrite <- cons_clean_message_obs with (b0 := b).
+        assert (project (update_state (s i) (s i) i) i = s i). {
+          rewrite (@project_same index index_listing).
+          intuition.
+          intuition.
+          apply Hsnb.
+        } 
+        apply refold_simp_lv_observations1.
+        unfold update_state.
+        destruct (s i) eqn : eq_si.
+        specialize (Hsnb i). congruence.
+        congruence.
+        rewrite H0.
+        apply Hsnb.
+        rewrite H0.
+        intuition.
+  Qed.
   
   Lemma GE_existing_true
     (s : vstate X)
