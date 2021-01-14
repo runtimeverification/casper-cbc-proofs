@@ -109,6 +109,20 @@ Section apply_plans.
     rewrite Ha' in Hadd.
     rewrite Hadd. rewrite rev_app_distr. reflexivity.
   Qed.
+  
+  Lemma apply_plan_cons
+    (start : vstate X)
+    (ai : vplan_item X)
+    (a' : vplan X)
+    : apply_plan start (ai :: a') =
+      let (aitems, afinal) := apply_plan start [ai] in
+      let (a'items, a'final) := apply_plan afinal a' in
+       (aitems ++ a'items, a'final).
+  Proof.
+    replace (ai :: a') with ([ai] ++ a').
+    apply apply_plan_app.
+    intuition.
+  Qed.
 
   Definition finite_protocol_plan_from
     (s : vstate X)
