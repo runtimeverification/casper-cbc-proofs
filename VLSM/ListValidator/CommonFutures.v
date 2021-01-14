@@ -431,10 +431,9 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (so : state)
-    (b : bool)
     (i j target : index)
     (Hdif : i <> j)
-    (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
+    (s' := state_update IM_index s i (update_state (s i) so j))
     (Hfull : project (s i) j = project so j)
     (Hhave : In (SimpObs Message' j so) (cobs s j)) :
     incl (cobs_messages s' target) (cobs_messages s target).
@@ -460,7 +459,6 @@ Context
     - subst k.
       unfold s' in Hink.
       rewrite state_update_eq in Hink.
-      rewrite <- cons_clean_message_obs with (b0 := b) in Hink.
       destruct (decide (j = target)).
       + subst target.
         apply (@new_incl_rest_same index index_listing Hfinite) in Hink.
@@ -520,10 +518,9 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (so : state)
-    (b : bool)
     (i j target : index)
     (Hdif : i <> j)
-    (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
+    (s' := state_update IM_index s i (update_state (s i) so j))
     (Hfull : project (s i) j = project so j)
     (Hhave : In (SimpObs Message' j so) (cobs s j)) :
     incl (cobs_messages s target) (cobs_messages s' target).
@@ -550,7 +547,6 @@ Context
       apply cobs_single.
       exists i.
       apply (@old_incl_new index index_listing Hfinite) with (so := so) (i := j) in H.
-      rewrite cons_clean_message_obs with (b0 := b) in H.
       unfold s'.
       rewrite state_update_eq.
       intuition.
@@ -567,10 +563,9 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (so : state)
-    (b : bool)
     (i j target : index)
     (Hdif : i <> j)
-    (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
+    (s' := state_update IM_index s i (update_state (s i) so j))
     (Hfull : project (s i) j = project so j)
     (Hhave : In (SimpObs Message' j so) (cobs s j)) :
     set_eq (cobs_messages s target) (cobs_messages s' target).
@@ -1027,10 +1022,9 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (so : state)
-    (b : bool)
-    (i j target : index)
+    (i j : index)
     (Hdif : i <> j)
-    (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
+    (s' := state_update IM_index s i (update_state (s i) so j))
     (Hfull : project (s i) j = project so j)
     (Hhave : In (SimpObs Message' j so) (cobs s j)) :
     incl (GE s') (GE s).
@@ -1106,7 +1100,7 @@ Context
           split;[apply in_cobs_states'; apply state_obs_present|].
           split;[intuition|].
           intros contra.
-          apply (@state_obs_stuff index i index_listing Hfinite) with (so := so) (i0 := j) (b := b) in contra.
+          apply (@state_obs_stuff_no_cons index i index_listing Hfinite) with (so := so) (i0 := j) in contra.
           unfold s' in Hcomp.
           apply comparable_commutative in contra.
           rewrite state_update_eq in Hcomp by intuition.
@@ -1147,7 +1141,7 @@ Context
           split;[apply in_cobs_states'; apply state_obs_present|].
           split;[intuition|].
           intros contra.
-          apply (@state_obs_stuff index i index_listing Hfinite) with (so := so) (i0 := j) (b := b) in contra.
+          apply (@state_obs_stuff_no_cons index i index_listing Hfinite) with (so := so) (i0 := j) in contra.
           unfold s' in Hcomp.
           rewrite state_update_eq in Hcomp by intuition.
           intuition.
@@ -1931,7 +1925,22 @@ Context
           rewrite H2 in Iha3.
           intuition.
         * rewrite H1.
-          specialize (GE_existing_different s Hpr sa).
+          specialize (GE_existing_different s Hpr sa to from Hdif Hecs) as Hexisting.
+          
+          
+          assert (s0 = (state_update IM_index s to (update_state (s to) sa from))). {
+            destruct H as [_ H].
+            unfold transition in H.
+            simpl in H. unfold vtransition in H. unfold transition in H. simpl in H.
+            inversion Hh.
+            rewrite <- H4 in H.
+            inversion H.
+            intuition.
+          }
+          
+          rewrite H3.
+          apply Hexisting.
+          
     Admitted.
    
     Definition get_candidates 

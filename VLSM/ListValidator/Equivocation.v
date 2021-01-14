@@ -4469,6 +4469,61 @@ Context
         * intuition. 
   Qed.
   
+  Lemma state_obs_stuff_no_cons
+    (s so : state)
+    (Hnb : s <> Bottom /\ so <> Bottom)
+    (i : index)
+    (Hfull : project s i = project so i)
+    (s' := update_state s so i)
+    (s_obs := (SimpObs State' index_self s))
+    (s'_obs := (SimpObs State' index_self s')) 
+    (e : simp_lv_event)
+    (Hns : get_simp_event_type e <> State') 
+    (Hsubj : get_simp_event_subject e = index_self)
+    (Hcomp: comparable simp_lv_event_lt e s_obs) :
+    comparable simp_lv_event_lt e s'_obs.
+  Proof.
+    simpl in *.
+    unfold s' in *.
+    unfold s'_obs in *.
+    unfold s_obs in *.
+    destruct e as [et ev es].
+    unfold comparable in *.
+    destruct Hcomp.
+    - simpl in *.
+      inversion H.
+      congruence.
+    - right.
+      destruct H.
+      + left.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns. congruence. 
+        * unfold state_lt' in *.
+          destruct (decide (i = ev)).
+          -- subst i.
+             rewrite unfold_history_cons; rewrite (@project_same index index_listing Hfinite) by intuition.
+             rewrite <- eq_history_eq_project in Hfull.
+             rewrite <- Hfull.
+             simpl. right. intuition.
+             intuition.
+          -- rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
+             rewrite unfold_history_cons in H.
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+      + right.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns.
+          congruence.
+        * intuition. 
+  Qed.
+  
   (*
   Lemma state_obs_stuff'
     (s so : state)
