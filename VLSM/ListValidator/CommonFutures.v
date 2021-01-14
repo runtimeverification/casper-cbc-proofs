@@ -1023,6 +1023,103 @@ Context
           intuition.
   Qed.
   
+  Lemma GE_existing_different
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (so : state)
+    (b : bool)
+    (i j target : index)
+    (Hdif : i <> j)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) so j) b))
+    (Hfull : project (s i) j = project so j)
+    (Hhave : In (SimpObs Message' j so) (cobs s j)) :
+    incl (GE s') (GE s).
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    
+    assert (Hsonb : so <> Bottom). {
+        apply in_cobs_and_message in Hhave.
+        apply cobs_single in Hhave.
+        destruct Hhave as [k Hhave].
+        apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
+        all : intuition.
+    }
+  
+    unfold incl; intros v H.
+    apply GE_direct in H as Hev.
+    apply GE_direct.
+    unfold cequiv_evidence in *.
+    unfold equivocation_evidence in *.
+    destruct Hev as [e1 [Hine1 [He1subj Hrem]]].
+    destruct Hrem as [e2 [Hine2 [He2subj Hcomp]]].
+    destruct e1 as [et1 ev1 es1] eqn : eq_e1. 
+    destruct e2 as [et2 ev2 es2] eqn : eq_e2.
+    apply hbo_cobs in Hine1. 
+    apply hbo_cobs in Hine2.
+    
+    setoid_rewrite hbo_cobs.
+    unfold get_simp_event_subject_some.
+    
+    assert (Hv : ev1 = v /\ ev2 = v). {
+      rewrite <- He2subj in He1subj.
+      unfold get_simp_event_subject_some in He1subj.
+      inversion He1subj.
+      unfold get_simp_event_subject_some in He2subj.
+      inversion He2subj.
+      intuition.
+    }
+    
+    destruct Hv as [Hv1 Hv2].
+    subst ev1. subst ev2.
+    
+    setoid_rewrite cobs_messages_states in Hine1.
+    setoid_rewrite cobs_messages_states in Hine2.
+    apply set_union_iff in Hine1.
+    apply set_union_iff in Hine2.
+    
+    destruct Hine1 as [Hine1|Hine1].
+    - apply in_cobs_states in Hine1 as Het1.
+      simpl in Het1. subst et1.
+      apply unique_state_observation in Hine1. simpl in Hine1.
+      inversion Hine1. subst es1.
+      destruct Hine2 as [Hine2|Hine2].
+      + apply in_cobs_states in Hine2 as Het2.
+        simpl in Het2. subst et2.
+        apply unique_state_observation in Hine2. simpl in Hine2.
+        inversion Hine2. subst es2.
+        contradict Hcomp.
+        unfold comparable. left. intuition.
+      + apply in_cobs_messages in Hine2 as Het2.
+        simpl in Het2. subst et2. simpl in Hine2.
+        unfold s' in Hine2.
+        setoid_rewrite <- cobs_message_existing_other in Hine2.
+        2, 3, 4, 5: intuition.
+        exists e2. subst e2. simpl.
+        split;[apply in_cobs_messages';intuition|].
+        split;[intuition|].
+        exists (SimpObs State' v (s v)). simpl.
+        split;[apply in_cobs_states'; apply state_obs_present|].
+        split;[intuition|].
+        intros contra.
+        apply (@state_obs_stuff index v index_listing Hfinite) with (so := so) (i := i) (b := b) in contra.
+        unfold s' in Hcomp.
+        apply comparable_commutative in contra.
+        destruct (decide (i = v)).
+        * subst v.
+          rewrite state_update_eq in Hcomp.
+          intuition.
+        unfold comparable in contra.
+        destruct contra as [contra|contra];[congruence|].
+        destruct contra.
+        * apply state_obs_stuff in H0.
+        
+    
+    
+  Qed.
+  
   Lemma GE_existing_true
     (s : vstate X)
     (Hprs : protocol_state_prop X s)
