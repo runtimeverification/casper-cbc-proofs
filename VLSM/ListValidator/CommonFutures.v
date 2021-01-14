@@ -1827,9 +1827,40 @@ Context
             apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
             assumption.
         }
+        assert (Hs0 : s0 = (state_update IM_index s to (update_state (s to) sa from))). {
+            destruct H as [_ H].
+            unfold transition in H.
+            simpl in H. unfold vtransition in H. unfold transition in H. simpl in H.
+            inversion Hh.
+            rewrite <- H2 in H.
+            inversion H.
+            intuition.
+          }
         
+      assert (Hneed : s0 inter = s inter). {
+        rewrite Hs0.
+        destruct (decide(to = inter)).
+        - subst inter.
+          rewrite Hhist in eq_cs'.
+          clear -eq_cs'.
+          remember (length (get_history (s' to) from)) as len.
+          assert (length (get_history (s' to) from) = length ((rev tls ++ [sa]) ++ get_history (s' to) from)). {
+            rewrite <- eq_cs'.
+            intuition.
+          }
+          rewrite <- Heqlen in H.
+          rewrite app_length in H.
+          rewrite <- Heqlen in H.
+          rewrite app_length in H.
+          simpl in H.
+          lia.
+        - rewrite state_update_neq.
+          all : intuition.
+      }
+      
       spec IHa. {
-        admit.
+        rewrite Hneed.
+        intuition.
       }
         
       spec IHa. {
@@ -1951,7 +1982,7 @@ Context
           apply cobs_single.
           exists inter.
           intuition.
-    Admitted.
+    Qed.
    
     Definition get_candidates 
       (s : vstate X) :
@@ -2389,10 +2420,10 @@ Context
              simpl.
              apply incl_tran with (m := (GE res_short)).
              admit.
-             replace res_short with (snd (apply_plan X s (get_matching_plan s from a))) by intuition.
+             replace res_short with (snd (apply_plan X s (get_matching_plan s from a))).
              admit.
-             
-    Qed.
+             admit.
+    Admitted.
     
     Definition is_receive_plan
       (a : vplan X) : Prop := 
@@ -2866,14 +2897,14 @@ Context
       (Hprs : protocol_state_prop X s) :
       let res := snd (apply_plan X s (get_receives_all s lfrom)) in 
       finite_protocol_plan_from X s (get_receives_all s lfrom) /\
-      forall (f i : index), In f lfrom -> i <> f -> project (res i) f = project (get_matching_state s i f) f.
+      forall (f i : index), In f lfrom -> i <> f -> project (res i) f = project (get_matching_state s i f) f /\
+      incl (GE res) (GE s).
     Proof.
       induction lfrom using rev_ind; unfold get_receives_all.
       - split; simpl. 
         + apply finite_protocol_plan_empty. assumption.
         + intuition.
       - simpl.
-      
         apply NoDup_rev in Hnodup.
         rewrite rev_unit in Hnodup.
         apply NoDup_cons_iff in Hnodup.
@@ -3012,36 +3043,42 @@ Context
             intuition.
           * rewrite H0 in Hfinite_short.
             apply Hfinite_short.
-        + intros.
-          destruct (decide (f = x)).
-          * rewrite H.
-            destruct Hrel as [_ Hrel].
-            specialize (Hrel i).
-            rewrite e.
-            rewrite Hrel.
-            apply get_receives_for_correct.
-            assumption.
-            apply NoDup_others.
-            apply others_correct.
-            apply others_correct2.
-            rewrite e in H2.
-            assumption.
-          * apply in_app_iff in H1.
-            simpl in H1.
-            destruct H1.
-            specialize (IHproject f i H1).
-            rewrite <- IHproject.
-            unfold get_receives_all.
-            replace (snd (apply_plan X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom)))) with res_long.
-            rewrite H.
-            apply receives_neq.
-            assumption.
-            assumption.
-            assumption.
-            rewrite message_providers_receive.
-            intros contra.
-            simpl in contra.
-            all : intuition.
+        + split.
+          *  intros.
+             destruct (decide (f = x)).
+              -- rewrite H.
+                destruct Hrel as [_ Hrel].
+                specialize (Hrel i).
+                rewrite e.
+                rewrite Hrel.
+                apply get_receives_for_correct.
+                assumption.
+                apply NoDup_others.
+                apply others_correct.
+                apply others_correct2.
+                rewrite e in H2.
+                assumption.
+              -- apply in_app_iff in H1.
+                simpl in H1.
+                destruct H1.
+                specialize (IHproject f i H1).
+                spec IHproject. {
+                  intuition.
+                }
+                destruct IHproject as [IHproject _].
+                rewrite <- IHproject.
+                unfold get_receives_all.
+                replace (snd (apply_plan X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom)))) with res_long.
+                rewrite H.
+                apply receives_neq.
+                assumption.
+                assumption.
+                assumption.
+                rewrite message_providers_receive.
+                intros contra.
+                simpl in contra.
+                all : intuition.
+          *  admit.
     Admitted.
     
     Definition phase_two (s : vstate X) := snd (apply_plan X s (get_receives_all s index_listing)).
