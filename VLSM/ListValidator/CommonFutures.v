@@ -1651,11 +1651,13 @@ Context
                  Some rem_plan
     end.
     
+    
+    (* TODO : check this double argument stuff *)
    Lemma one_sender_receive_protocol
     (s s': vstate X)
     (Hpr : protocol_state_prop X s)
     (Hpr' : protocol_state_prop X s')
-    (to inter from :index)
+    (to inter from : index)
     (Hdif : to <> from)
     (a : vplan X)
     (Hsync : sync s (s' inter) to from = Some a) :

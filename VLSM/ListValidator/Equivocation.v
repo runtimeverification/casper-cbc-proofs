@@ -4167,6 +4167,47 @@ Context
     unfold set_eq. unfold incl. apply forall_and_commute.
   Qed.
   
+  Lemma in_history_in_observations
+    (s es : state)
+    (target : index)
+    (Hin : In es (get_history' s target)) :
+    In (SimpObs Message' target es) (simp_lv_message_observations s target).
+  Proof.
+    remember (get_history' s target) as l.
+    generalize dependent s.
+    induction l.
+    - intros. intuition.
+    - intros.
+      
+      assert (Hnb : s <> Bottom /\ (project s target) <> Bottom). {
+        rewrite Heql in Hin.
+        split.
+        - destruct s; simpl in Hin;[intuition|congruence].
+        - destruct (project s target) eqn : eq.
+          + unfold get_history' in Hin. destruct s. intuition. unfold last_recorded in Hin.
+          unfold project in eq. rewrite eq in Hin. intuition.
+          + congruence.
+      }
+    
+      rewrite unfold_history_cons in Heql by intuition.
+      inversion Heql.
+      simpl in Hin.
+      destruct Hin as [Hin|Hin].
+      + subst a.
+        subst es.
+        apply in_map_iff.
+        exists (project s target).
+        split.
+        * intuition.
+        * apply refold_raw_observations1.
+          all : intuition.
+      + specialize (IHl Hin (project s target) H1).
+         apply refold_simp_lv_observations2.
+         intuition.
+         exists target.
+         intuition.
+  Qed.
+  
   Lemma old_incl_new
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
