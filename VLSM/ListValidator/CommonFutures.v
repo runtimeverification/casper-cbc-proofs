@@ -1650,14 +1650,13 @@ Context
     | Some ss => let rem_plan := sync_plan to from (rev ss) in
                  Some rem_plan
     end.
-    
-    
-    (* TODO : check this double argument stuff *)
+   
    Lemma one_sender_receive_protocol
     (s s': vstate X)
     (Hpr : protocol_state_prop X s)
     (Hpr' : protocol_state_prop X s')
     (to inter from : index)
+    (Hhist : get_history (s inter) from = get_history (s' inter) from) 
     (Hdif : to <> from)
     (a : vplan X)
     (Hsync : sync s (s' inter) to from = Some a) :
@@ -1830,6 +1829,10 @@ Context
         }
         
       spec IHa. {
+        admit.
+      }
+        
+      spec IHa. {
         unfold sync.
         destruct (complete_suffix (get_history (s' inter) from) (get_history (s0 to) from)) eqn : eq_cs2.
         f_equal.
@@ -1942,7 +1945,12 @@ Context
           
           rewrite H3.
           apply Hexisting.
-          
+          rewrite <- Hhist in Hinsa.
+          apply (@in_history_in_observations index index_listing Hfinite) in Hinsa.
+          apply in_cobs_messages'.
+          apply cobs_single.
+          exists inter.
+          intuition.
     Admitted.
    
     Definition get_candidates 
@@ -2030,7 +2038,7 @@ Context
       (Hmatch : get_matching_state s to from = s') :
       let res := snd (apply_plan X s (get_matching_plan s from to)) in
       finite_protocol_plan_from X s (get_matching_plan s from to) /\
-      project (res to) from = project s' from.
+      project (res to) from = project s' from /\ incl (GE res) (GE s).
     Proof.
       simpl.
       unfold get_matching_plan.
@@ -2057,7 +2065,7 @@ Context
           apply in_map_iff in eq_find.
           destruct eq_find as [inter [Hinter _]].
           
-          specialize (Hone inter from).
+          specialize (Hone inter from eq_refl).
           spec Hone. {
             intuition.
           }
@@ -2258,7 +2266,8 @@ Context
         }
         split. 
         + intuition.
-        + intros.
+        + split.
+          intros.
           unfold res.
           unfold get_receives_for.
           simpl.
@@ -2313,6 +2322,7 @@ Context
            spec IHli. { intuition. }
            destruct IHli as [left IHli].
            specialize (IHli i H1).
+           destruct IHli as [IHli _].
            rewrite <- IHli.
            assert (forall (i : index), In i li -> res0 i = s i). {
             intros.
@@ -2366,6 +2376,22 @@ Context
            }
            apply Hrel.
            rewrite eq_second; intuition.
+           * clear Hrel.
+             unfold res.
+             unfold get_receives_for.
+             rewrite map_cons.
+             rewrite concat_cons.
+             rewrite apply_plan_app.
+             destruct (apply_plan X s (get_matching_plan s from a)) as (tr_short, res_short) eqn : eq_short.
+             match goal with
+             |- context[apply_plan X res_short ?a] =>
+                destruct (apply_plan X res_short a) as (tr_long, res_long) eqn : eq_long end.
+             simpl.
+             apply incl_tran with (m := (GE res_short)).
+             admit.
+             replace res_short with (snd (apply_plan X s (get_matching_plan s from a))) by intuition.
+             admit.
+             
     Qed.
     
     Definition is_receive_plan
