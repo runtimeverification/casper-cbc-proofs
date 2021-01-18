@@ -37,7 +37,7 @@ Section ClientsAndValidators.
     {clients : Type}
     {clients_eq_dec : EqDecision clients}
     (index : Type := (V + clients)%type)
-    {i0 : index}
+    {i0 : Inhabited index}
     .
 
 Existing Instance clients_eq_dec.
@@ -78,7 +78,7 @@ Definition IM_index
   end.
 
 Definition VLSM_full_composed_free : VLSM message
-  := free_composite_vlsm IM_index i0.
+  := free_composite_vlsm IM_index.
 
 Definition project
   (s : composite_state IM_index)
@@ -151,7 +151,7 @@ Lemma VLSM_full_protocol_state_nodup
   (i : index)
   : NoDup (get_message_set (project s i)).
 Proof.
-  pose (preloaded_composed_protocol_state IM_index i0 s Hs i) as Hi.
+  pose (preloaded_composed_protocol_state IM_index s Hs i) as Hi.
   destruct i as [v | client]; simpl.
   - apply (validator_protocol_state_nodup v). assumption.
   - apply client_protocol_state_nodup. assumption.
@@ -463,7 +463,7 @@ Proof.
       (last (map destination middle) s0 (inl (State.sender m1)))
     ); try assumption.
   specialize
-    (pre_loaded_with_all_messages_projection_in_futures IM_index i0 s0 (last (map destination middle) s0))
+    (pre_loaded_with_all_messages_projection_in_futures IM_index s0 (last (map destination middle) s0))
     as Hproj.
   spec Hproj; try (specialize (Hproj (inl (State.sender m1))); apply Hproj).
   exists middle.
@@ -565,8 +565,8 @@ Proof.
 Defined.
 
 Instance free_composite_vlsm_observable_messages
-  : vlsm_observable_events (free_composite_vlsm IM_index i0) full_node_message_subject_of_observation
-  := composite_vlsm_observable _ finite_index IM_index free_observable_messages_index  _ free_composite_vlsm_observable_messaged_index free_observation_based_equivocation_evidence_index i0 (free_constraint IM_index).
+  : vlsm_observable_events (free_composite_vlsm IM_index) full_node_message_subject_of_observation
+  := composite_vlsm_observable _ finite_index IM_index free_observable_messages_index  _ free_composite_vlsm_observable_messaged_index free_observation_based_equivocation_evidence_index (free_constraint IM_index).
 
 Existing Instance message_eq.
 Existing Instance message_preceeds_dec.
@@ -594,7 +594,7 @@ Proof.
   intros msgsi Hmsgsi.
   apply in_map_iff in Hmsgsi.
   destruct Hmsgsi as [i [Hmsgsv _]]. subst.
-  pose proof (preloaded_composed_protocol_state IM_index i0 s Hs i) as Hi.
+  pose proof (preloaded_composed_protocol_state IM_index s Hs i) as Hi.
   destruct i; simpl.
   + apply validator_protocol_state_nodup with v. assumption.
   + apply client_protocol_state_nodup. assumption.

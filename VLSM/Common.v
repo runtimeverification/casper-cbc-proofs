@@ -2425,6 +2425,88 @@ Byzantine fault tolerance analysis. *)
 
   (* end hide *)
 
+  Lemma any_message_is_protocol_in_preloaded (om: option message):
+    option_protocol_message_prop pre_loaded_with_all_messages_vlsm om.
+  Proof.
+    eexists.
+    apply pre_loaded_with_all_messages_message_protocol_prop.
+  Qed.
+
+  Inductive preloaded_protocol_state_prop : state -> Prop :=
+  | preloaded_protocol_initial_state
+      (s:state)
+      (Hs: initial_state_prop (VLSM_sign:=pre_loaded_with_all_messages_vlsm_sig) s):
+         preloaded_protocol_state_prop s
+  | preloaded_protocol_generated
+      (l : label)
+      (s : state)
+      (Hps : preloaded_protocol_state_prop s)
+      (om : option message)
+      (Hv : valid (VLSM_class:=pre_loaded_with_all_messages_vlsm_machine) l (s, om))
+    : preloaded_protocol_state_prop
+        (fst (transition (VLSM_class:=pre_loaded_with_all_messages_vlsm_machine) l (s, om))).
+
+  Lemma preloaded_protocol_state_prop_iff s:
+    protocol_state_prop pre_loaded_with_all_messages_vlsm s
+    <-> preloaded_protocol_state_prop s.
+  Proof.
+    split.
+    - intros [om Hproto].
+      change s with (fst (s,om)).
+      set (som:=(s,om)) in Hproto |- *.
+      clearbody som;clear s om.
+      induction Hproto.
+      + apply preloaded_protocol_initial_state.
+        apply proj2_sig.
+      + apply preloaded_protocol_initial_state.
+        apply proj2_sig.
+      + apply preloaded_protocol_generated;assumption.
+    - induction 1.
+      + exists None.
+        pose (is := exist _ s Hs : vinitial_state pre_loaded_with_all_messages_vlsm).
+        change s with (proj1_sig is).
+        apply protocol_initial_state.
+      + pose (som' := vtransition pre_loaded_with_all_messages_vlsm l1
+                                  (s:vstate pre_loaded_with_all_messages_vlsm, om)).
+        change (transition l1 (s,om)) with som'.
+        exists (snd som').
+        rewrite <- surjective_pairing.
+        destruct IHpreloaded_protocol_state_prop as [_om IHs].
+        pose proof (any_message_is_protocol_in_preloaded om) as [_s Hom].
+        eapply protocol_generated;eassumption.
+  Qed.
+
+  Lemma preloaded_weaken_protocol_prop som:
+    protocol_prop X som ->
+    protocol_prop pre_loaded_with_all_messages_vlsm som.
+  Proof.
+    induction 1.
+    - exact (protocol_initial_state pre_loaded_with_all_messages_vlsm is).
+    - exact (protocol_initial_message pre_loaded_with_all_messages_vlsm
+                                           (exist _ (proj1_sig im) I)).
+    - exact (protocol_generated pre_loaded_with_all_messages_vlsm l1
+                                _ _ IHprotocol_prop1
+                                _ _ IHprotocol_prop2 Hv).
+  Qed.
+
+  Lemma preloaded_weaken_protocol_transition
+        l s om s' om':
+    protocol_transition X l (s,om) (s',om') ->
+    protocol_transition pre_loaded_with_all_messages_vlsm l (s,om) (s',om').
+  Proof.
+    unfold protocol_transition.
+    intros [[[_om Hproto_s] [_ Hpvalid]] Htrans].
+    split;[clear Htrans|assumption].
+    split.
+    - exists _om.
+      apply preloaded_weaken_protocol_prop.
+      assumption.
+    - clear _om Hproto_s.
+      split.
+      + apply any_message_is_protocol_in_preloaded.
+      + assumption.
+  Qed.
+
   Lemma vlsm_incl_pre_loaded_with_all_messages_vlsm
     : VLSM_incl X pre_loaded_with_all_messages_vlsm.
   Proof.

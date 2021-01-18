@@ -15,11 +15,11 @@ Context
   {index : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
-  (i0 : index)
+  {i0 : Inhabited index}
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-  (X := composite_vlsm IM i0 constraint)
+  (X := composite_vlsm IM constraint)
   (j : index)
-  (Xj := composite_vlsm_constrained_projection IM i0 constraint j)
+  (Xj := composite_vlsm_constrained_projection IM constraint j)
   .
 
 Fixpoint finite_trace_projection_list
@@ -256,7 +256,7 @@ Proof.
         replace (@pair (@state message (@type message Xj)) (option message) si' oom)
           with (vtransition (IM j) lx (s' j, iom)).
         destruct Psj as [os'j Psj].
-        specialize (protocol_message_projection IM i0 constraint j _ Piom); intros [sj HPjiom].
+        specialize (protocol_message_projection IM constraint j _ Piom); intros [sj HPjiom].
         apply (protocol_generated Xj lx (s' j) os'j Psj sj iom HPjiom).
         unfold valid; simpl.
         exists s'.
@@ -271,7 +271,7 @@ Proof.
             = lx
           ) by reflexivity.
         rewrite Heqlx.
-        specialize (protocol_message_projection IM i0 constraint j _ Piom); intros HPjiom.
+        specialize (protocol_message_projection IM constraint j _ Piom); intros HPjiom.
         repeat split; try assumption.
         exists s'.
         repeat split; assumption.
@@ -556,7 +556,7 @@ Proof.
   - apply ptrace_from_projection; try assumption.
     apply protocol_state_prop_iff.
     left.
-    apply (initial_state_projection IM i0 constraint j) in Hinit.
+    apply (initial_state_projection IM constraint j) in Hinit.
     exists (exist _ _ Hinit).
     reflexivity.
   - rewrite trace_projection_initial_state.
@@ -838,9 +838,9 @@ Context
   {index : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
-  (i0 : index)
+  {i0 : Inhabited index}
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-  (X := composite_vlsm IM i0 constraint)
+  (X := composite_vlsm IM constraint)
   .
 
 Lemma finite_trace_projection_list_in
@@ -848,7 +848,7 @@ Lemma finite_trace_projection_list_in
   (itemX : vtransition_item X)
   (HitemX : In itemX tr)
   (j := projT1 (l itemX))
-  : In (@Build_transition_item _ (type (IM j)) (projT2 (l itemX)) (input itemX) (destination itemX j) (output itemX)) (finite_trace_projection_list IM i0 constraint j tr).
+  : In (@Build_transition_item _ (type (IM j)) (projT2 (l itemX)) (input itemX) (destination itemX j) (output itemX)) (finite_trace_projection_list IM constraint j tr).
 Proof.
   induction tr; [inversion HitemX|].
   destruct HitemX as [HitemX | HitemX].
@@ -874,7 +874,7 @@ Lemma finite_trace_projection_list_in_rev
   (tr : list (vtransition_item X))
   (j : index)
   (itemj : vtransition_item (IM j))
-  (Hitemj : In itemj  (finite_trace_projection_list IM i0 constraint j tr))
+  (Hitemj : In itemj  (finite_trace_projection_list IM constraint j tr))
   : exists
     (itemX : vtransition_item X)
     (Houtput : output itemX = output itemj)

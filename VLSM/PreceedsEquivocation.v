@@ -292,12 +292,12 @@ Section composite_preceeds_equivocation.
     `{Eqv : message_equivocation_evidence message validator}
     `{EqDecision index}
     (IM : index -> VLSM message)
-    (i0 : index)
+    {i0 : Inhabited index}
     (constraint1 : composite_label IM -> composite_state IM * option message -> Prop)
     (constraint2 : composite_label IM -> composite_state IM * option message -> Prop)
     (Hsubsumption : constraint_subsumption IM constraint1 constraint2)
-    (X1 := composite_vlsm IM i0 constraint1)
-    (X2 := composite_vlsm IM i0 constraint2)
+    (X1 := composite_vlsm IM constraint1)
+    (X2 := composite_vlsm IM constraint2)
     .
 
   Lemma preceeds_equivocation_constrained
@@ -313,7 +313,7 @@ Section composite_preceeds_equivocation.
       ].
     specialize
       (constraint_subsumption_byzantine_message_prop
-        IM i0 constraint1 constraint2 Hsubsumption
+        IM constraint1 constraint2 Hsubsumption
       ); intro Hem.
     repeat split.
     - intros [m1 Hem1].
@@ -342,7 +342,7 @@ Section composite_preceeds_equivocation.
         by (apply constraint_subsumption_byzantine_message_prop with constraint1; assumption).
       assert (Hm2': byzantine_message_prop X2 m2)
         by (apply constraint_subsumption_byzantine_message_prop with constraint1; assumption).
-      specialize (constraint_subsumption_pre_loaded_with_all_messages_incl IM i0 constraint1 constraint2 Hsubsumption (@Finite _ (type X1) s tr) Htr)
+      specialize (constraint_subsumption_pre_loaded_with_all_messages_incl IM constraint1 constraint2 Hsubsumption (@Finite _ (type X1) s tr) Htr)
         as Htrace'.
       simpl in Htrace'.
       specialize (Heqv (exist _ _ Hm1') (exist _ _ Hm2')). simpl in Heqv.

@@ -17,11 +17,11 @@ Context
     {index : Type}
     {IndEqDec : EqDecision index}
     (IM : index -> VLSM message)
-    (i0 : index)
+    {i0 : Inhabited index}
     (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-    (X := composite_vlsm IM i0 constraint)
+    (X := composite_vlsm IM constraint)
     (i : index)
-    (Xi := composite_vlsm_constrained_projection IM i0 constraint i)
+    (Xi := composite_vlsm_constrained_projection IM constraint i)
     .
 
 (**

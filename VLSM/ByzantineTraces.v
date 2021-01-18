@@ -63,7 +63,6 @@ Proof.
     apply
         (proj_pre_loaded_with_all_messages_incl
             (binary_IM M M')
-            first
             (free_constraint _)
             first
             tr
@@ -405,12 +404,12 @@ Section composite_validating_byzantine_traces.
             {index : Type}
             {IndEqDec : EqDecision index}
             (IM : index -> VLSM message)
-            (i0 : index)
+            {i0 : Inhabited index}
             (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
-            (X := composite_vlsm IM i0 constraint)
+            (X := composite_vlsm IM constraint)
             (PreLoadedX := pre_loaded_with_all_messages_vlsm X)
-            (FreeX := free_composite_vlsm IM i0)
-            (Hvalidating: forall i : index, validating_projection_prop IM i0 constraint i)
+            (FreeX := free_composite_vlsm IM)
+            (Hvalidating: forall i : index, validating_projection_prop IM constraint i)
             .
 
 (**
@@ -436,7 +435,7 @@ First let us show that each [valid] <<PreloadedX>> message is a
         destruct l as (i, li).
         destruct Hv as [Hv Hconstraint].
         specialize (Hvalidating i li (s i, om) Hv).
-        specialize (constraint_subsumption_protocol_prop IM i0 constraint (free_constraint IM))
+        specialize (constraint_subsumption_protocol_prop IM constraint (free_constraint IM))
         ; intro Hprotocol.
         assert (Hsubsum : constraint_subsumption IM constraint (free_constraint IM))
           by (intro; intros; exact I).
