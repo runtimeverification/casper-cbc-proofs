@@ -2172,8 +2172,7 @@ Context
         (Hnf : ~ In from li) :
         let res := snd (apply_plan X s (get_receives_for s li from)) in
         finite_protocol_plan_from X s (get_receives_for s li from) /\
-        forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from /\
-        incl (GE res) (GE s). 
+        forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from.
     Proof.
       induction li; intros.
       - unfold get_receives_for. simpl.
@@ -2297,8 +2296,7 @@ Context
         }
         split. 
         + intuition.
-        + split.
-          intros.
+        + intros.
           unfold res.
           unfold get_receives_for.
           simpl.
@@ -2353,7 +2351,6 @@ Context
            spec IHli. { intuition. }
            destruct IHli as [left IHli].
            specialize (IHli i H1).
-           destruct IHli as [IHli _].
            rewrite <- IHli.
            assert (forall (i : index), In i li -> res0 i = s i). {
             intros.
@@ -2407,23 +2404,52 @@ Context
            }
            apply Hrel.
            rewrite eq_second; intuition.
-           * clear Hrel.
-             unfold res.
-             unfold get_receives_for.
-             rewrite map_cons.
-             rewrite concat_cons.
-             rewrite apply_plan_app.
-             destruct (apply_plan X s (get_matching_plan s from a)) as (tr_short, res_short) eqn : eq_short.
-             match goal with
-             |- context[apply_plan X res_short ?a] =>
-                destruct (apply_plan X res_short a) as (tr_long, res_long) eqn : eq_long end.
-             simpl.
-             apply incl_tran with (m := (GE res_short)).
-             admit.
-             replace res_short with (snd (apply_plan X s (get_matching_plan s from a))).
-             admit.
-             admit.
-    Admitted.
+    Qed.
+    
+    Lemma get_receives_for_correct_GE
+        (s : vstate X)
+        (Hpr : protocol_state_prop X s)
+        (li : list index)
+        (from : index)
+        (Hnodup : NoDup li)
+        (Hnf : ~ In from li) :
+        let res := snd (apply_plan X s (get_receives_for s li from)) in
+        incl (GE res) (GE s).
+    Proof.
+      generalize dependent s.
+      induction li; intros.
+      - simpl in res.
+        unfold res.
+        apply incl_refl.
+      - simpl in Hnf.
+        apply NoDup_cons_iff in Hnodup.
+        destruct Hnodup as [Hna Hnodup].
+        specialize (IHli Hnodup).
+        
+        spec IHli. intuition.
+        
+        unfold get_receives_for in res. simpl in res.
+        remember (get_matching_plan s from a) as short_plan.
+        remember (concat (map (get_matching_plan s from) li)) as long_plan.
+        unfold res.
+        rewrite apply_plan_app.
+        
+        destruct (apply_plan X s short_plan) as (tr_short, res_short) eqn : eq_short.
+        destruct (apply_plan X res_short long_plan) as (tr_long, res_long) eqn : eq_long.
+        
+        simpl.
+        
+        specialize (IHli res_short).
+        spec IHli. {
+          admit.
+        }
+        
+        apply incl_tran with (m := GE res_short).
+        replace res_long with (snd (apply_plan X res_short long_plan)) by (rewrite eq_long;intuition).
+        simpl in IHli.
+        rewrite Heqlong_plan.
+        unfold get_receives_for in IHli.
+    Qed. 
     
     Definition is_receive_plan
       (a : vplan X) : Prop := 
@@ -3078,7 +3104,7 @@ Context
                 intros contra.
                 simpl in contra.
                 all : intuition.
-          *  admit.
+          * 
     Admitted.
     
     Definition phase_two (s : vstate X) := snd (apply_plan X s (get_receives_all s index_listing)).
