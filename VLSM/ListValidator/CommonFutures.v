@@ -163,16 +163,6 @@ Context
       get_event_subject_some 
       s i)) index_listing. *)
   
-  Lemma GH_incl_all
-    (s : vstate X) :
-    incl (GH s) index_listing.
-  Proof.
-    unfold incl.
-    simpl.
-    intros.
-    apply ((proj2 Hfinite) a).
-  Qed.
-  
   Check @composite_state_events_fn.
   
   Definition cobs := (composite_state_events_fn index_listing IM_index Hstate_events_fn).
@@ -1172,16 +1162,6 @@ Context
         split;[intuition|]. 
         intuition.
   Qed.
-  
-  (* 
-  Lemma GE_consensus_clean
-    (s : vstate X)
-    (i : index)
-    (b : bool)
-    (s' := (state_update IM_index s i (update_consensus (s i) b))) :
-    GE s = GE s'.
-  Proof.
-  Qed. *)
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
