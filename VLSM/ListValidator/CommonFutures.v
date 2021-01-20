@@ -2033,7 +2033,7 @@ Context
                  Some rem_plan
     end.
    
-   Lemma one_sender_receive_protocol
+  Lemma one_sender_receive_protocol
     (s s': vstate X)
     (Hpr : protocol_state_prop X s)
     (Hpr' : protocol_state_prop X s')
@@ -2044,7 +2044,7 @@ Context
     (Hsync : sync s (s' inter) to from = Some a) :
     let res := snd (apply_plan X s a) in
     finite_protocol_plan_from X s a /\
-    (project (res to) from = project (s' inter) from) /\ incl (GE res) (GE s).
+    (project (res to) from = project (s' inter) from) /\ set_eq (GE res) (GE s).
    Proof. 
     generalize dependent s.
     induction a.
@@ -2077,7 +2077,8 @@ Context
           symmetry in eq_cs.
           apply (@eq_history_eq_project index index_listing Hfinite) in eq_cs.
           assumption.
-        + intuition. 
+        + intuition.
+        + unfold res. intuition. 
     - intros. simpl in *.
       
       replace (a :: a0) with ([a] ++ a0). 2: auto.
@@ -2274,7 +2275,7 @@ Context
           discriminate eq_cs2.
       }
     
-      repeat split.
+      split. split. 
       + unfold finite_protocol_plan_from.
         unfold apply_plan. simpl in *.
         rewrite eq_vtrans. simpl.
@@ -2286,7 +2287,8 @@ Context
       + unfold apply_plan. simpl.
         rewrite eq_vtrans. simpl.
         apply IHa.
-      + destruct IHa as [_ IHa].
+      + split.
+        destruct IHa as [_ IHa].
         destruct IHa as [IHa _].
         rewrite <- IHa.
         f_equal.
@@ -2307,7 +2309,7 @@ Context
         end.
         rewrite Hadd.
         reflexivity.
-      + destruct IHa as [Iha1 [Iha2 Iha3]].
+        destruct IHa as [Iha1 [Iha2 Iha3]].
         replace ({| label_a := label_a; input_a := Some (from, sa) |} :: a0) with
                 ([{| label_a := label_a; input_a := Some (from, sa) |}] ++ a0) by intuition.
         rewrite apply_plan_cons.
@@ -2338,13 +2340,13 @@ Context
           intuition.
         }
         
-        apply incl_tran with (m := GE res_short).
+        apply set_eq_tran with (s2 := GE res_short).
         * rewrite <- H1 in Iha3 at 2.
           rewrite H2 in Iha3.
           intuition.
         * rewrite H1.
           specialize (GE_existing_different s Hpr sa to from Hdif Hecs) as Hexisting.
-          
+          specialize (GE_existing_different_rev s Hpr sa to from Hdif Hecs) as Hexisting'.
           
           assert (s0 = (state_update IM_index s to (update_state (s to) sa from))). {
             destruct H as [_ H].
@@ -2356,14 +2358,18 @@ Context
             intuition.
           }
           
+          assert (In (SimpObs Message' from sa) (cobs s from)). {
+             rewrite <- Hhist in Hinsa.
+             apply (@in_history_in_observations index index_listing Hfinite) in Hinsa.
+             apply in_cobs_messages'.
+             apply cobs_single.
+             exists inter.
+             intuition.
+          }
+          
           rewrite H3.
-          apply Hexisting.
-          rewrite <- Hhist in Hinsa.
-          apply (@in_history_in_observations index index_listing Hfinite) in Hinsa.
-          apply in_cobs_messages'.
-          apply cobs_single.
-          exists inter.
-          intuition.
+          unfold set_eq.
+          split;[apply Hexisting; intuition| apply Hexisting'; intuition].
     Qed.
    
     Definition get_candidates 
@@ -2451,7 +2457,7 @@ Context
       (Hmatch : get_matching_state s to from = s') :
       let res := snd (apply_plan X s (get_matching_plan s from to)) in
       finite_protocol_plan_from X s (get_matching_plan s from to) /\
-      project (res to) from = project s' from /\ incl (GE res) (GE s).
+      project (res to) from = project s' from /\ set_eq (GE res) (GE s).
     Proof.
       simpl.
       unfold get_matching_plan.
@@ -2787,7 +2793,6 @@ Context
            apply Hrel.
            rewrite eq_second; intuition.
     Qed.
-    
     
     Lemma get_receives_for_correct_GE
         (s : vstate X)
@@ -3320,7 +3325,11 @@ Context
       (Hprs : protocol_state_prop X s) :
       let res := snd (apply_plan X s (get_receives_all s lfrom)) in 
       finite_protocol_plan_from X s (get_receives_all s lfrom) /\
-      forall (f i : index), In f lfrom -> i <> f -> project (res i) f = project (get_matching_state s i f) f /\
+      forall (f i : index), 
+      In f lfrom -> 
+      i <> f -> 
+      In i (GH s) -> 
+      project (res i) f = project (get_matching_state s i f) f /\
       incl (GE res) (GE s).
     Proof.
       induction lfrom using rev_ind; unfold get_receives_all.
@@ -3462,9 +3471,10 @@ Context
                 assumption.
                 apply NoDup_others.
                 apply others_correct.
-                apply others_correct2.
-                rewrite e in H2.
-                assumption.
+                unfold others.
+                apply set_remove_3.
+                intuition.
+                subst f. intuition.
               -- apply in_app_iff in H1.
                 simpl in H1.
                 destruct H1.
@@ -3472,10 +3482,14 @@ Context
                 spec IHproject. {
                   intuition.
                 }
+                spec IHproject. {
+                  intuition.
+                }
+                
                 destruct IHproject as [IHproject _].
                 rewrite <- IHproject.
                 unfold get_receives_all.
-                replace (snd (apply_plan X s (concat (map (fun i : index => get_receives_for s (others i) i) lfrom)))) with res_long.
+                replace (snd (apply_plan X s (concat (map (fun i1 : index => get_receives_for s (others i1 s) i1) lfrom)))) with res_long.
                 rewrite H.
                 apply receives_neq.
                 assumption.
