@@ -42,40 +42,6 @@ Context
   (Hstate_events_fn := fun (i : index) => (@simp_lv_observations index i index_listing _))
   (Hstate_validators := fun (i : index) => (fun (s : vstate (IM_index i)) => index_listing))
   (Hbasic := fun (i : index) => @simp_lv_basic_equivocation index i index_listing Hfinite idec Mindex Rindex).
-        
-    Definition others (i : index) := 
-      set_remove idec i index_listing.
-      
-    Lemma NoDup_others
-      (i : index) :
-      NoDup (others i).
-    Proof.
-      unfold others.
-      apply set_remove_nodup.
-      apply (proj1 Hfinite).
-    Qed.
-    
-    Lemma others_correct
-      (i : index) :
-      ~ In i (others i).
-    Proof.
-      unfold others.
-      intros contra.
-      assert (NoDup index_listing) by (apply (proj1 Hfinite)).
-      apply set_remove_2 in contra.
-      all : intuition.
-    Qed.
-    
-    Lemma others_correct2
-      (i j : index)
-      (Hdif : j <> i) :
-      In j (others i).
-    Proof.
-      unfold others.
-      apply set_remove_3.
-      apply Hfinite.
-      assumption.
-    Qed.
   
   Definition get_message_providers_from_plan
    (a : vplan X) : list index :=
@@ -1162,6 +1128,370 @@ Context
         split;[intuition|]. 
         intuition.
   Qed.
+  
+  Lemma GE_existing_same_rev
+    (s : vstate X)
+    (Hprs : protocol_state_prop X s)
+    (b : bool)
+    (i : index)
+    (Hhonest : ~ In i (GE s))
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
+    incl (GE s) (GE s').
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+  
+    unfold incl; intros v H.
+    apply GE_direct in H as Hev.
+    apply GE_direct.
+    unfold cequiv_evidence in *.
+    unfold equivocation_evidence in *.
+    destruct Hev as [e1 [Hine1 [He1subj Hrem]]].
+    destruct Hrem as [e2 [Hine2 [He2subj Hcomp]]].
+    destruct e1 as [et1 ev1 es1] eqn : eq_e1. 
+    destruct e2 as [et2 ev2 es2] eqn : eq_e2.
+    apply hbo_cobs in Hine1. 
+    apply hbo_cobs in Hine2.
+    
+    setoid_rewrite hbo_cobs.
+    unfold get_simp_event_subject_some.
+    
+    assert (Hv : ev1 = v /\ ev2 = v). {
+      rewrite <- He2subj in He1subj.
+      unfold get_simp_event_subject_some in He1subj.
+      inversion He1subj.
+      unfold get_simp_event_subject_some in He2subj.
+      inversion He2subj.
+      intuition.
+    }
+    
+    destruct Hv as [Hv1 Hv2].
+    subst ev1. subst ev2.
+    
+    setoid_rewrite cobs_messages_states in Hine1.
+    setoid_rewrite cobs_messages_states in Hine2.
+    apply set_union_iff in Hine1.
+    apply set_union_iff in Hine2.
+    
+    destruct Hine1 as [Hine1|Hine1].
+    - apply in_cobs_states in Hine1 as Het1.
+      simpl in Het1.
+      subst et1.
+      apply unique_state_observation in Hine1.
+      simpl in Hine1.
+      inversion Hine1.
+      subst es1.
+      destruct Hine2 as [Hine2|Hine2]. 
+      + (* State and state : immediate contradiction *)
+        apply in_cobs_states in Hine2 as Het2.
+        simpl in Het2.
+        subst et2.
+        apply unique_state_observation in Hine2.
+        simpl in Hine2.
+        inversion Hine2.
+        subst es2.
+        unfold comparable in Hcomp.
+        contradict Hcomp.
+        left. intuition.
+      + apply in_cobs_messages in Hine2 as Het2.
+        simpl in Het2.
+        subst et2.
+        destruct (decide (i = v)).
+        * subst v.
+          intuition.
+        * exists (SimpObs State' v (s' v)).
+          split;[apply in_cobs_states';apply state_obs_present|].
+          split;[intuition|].
+          exists e2. subst e2.
+          simpl in *.
+          unfold s'.
+          rewrite state_update_neq by intuition.
+          split.
+          -- apply in_cobs_messages'.
+             setoid_rewrite cobs_message_existing_same1.
+             all : intuition.
+          -- split;intuition.
+     - apply in_cobs_messages in Hine1 as Het1.
+       simpl in Het1. subst et1.
+       destruct Hine2 as [Hine2|Hine2].
+       + apply in_cobs_states in Hine2 as Het2.
+         simpl in Het2. subst et2.
+         apply unique_state_observation in Hine2.
+         simpl in Hine2.
+         inversion Hine2. subst es2.
+         destruct (decide (i = v)).
+        * subst v.
+          intuition.
+        * exists (SimpObs State' v (s' v)).
+          split;[apply in_cobs_states';apply state_obs_present|].
+          split;[intuition|].
+          exists e1. subst e1.
+          simpl in *.
+          unfold s'.
+          rewrite state_update_neq by intuition.
+          split.
+          -- apply in_cobs_messages'.
+             setoid_rewrite cobs_message_existing_same1.
+             all : intuition.
+          -- split;[intuition|].
+             intros contra.
+             apply comparable_commutative in contra.
+             intuition.
+       + apply in_cobs_messages in Hine2 as Het2.
+         simpl in Het2.
+         subst et2.
+         
+         destruct (decide (i = v)); [subst v;intuition|].
+         
+         exists e1. subst e1. simpl in *.
+         split.
+         * apply in_cobs_messages'.
+           unfold s'.
+           setoid_rewrite cobs_message_existing_same1.
+           all : intuition.
+         * split;[intuition|].
+           exists e2. subst e2. simpl in *.
+           split.
+           -- apply in_cobs_messages'.
+              unfold s'.
+              setoid_rewrite cobs_message_existing_same1.
+              all : intuition.
+           -- intuition.
+  Qed.
+  
+  Lemma GE_existing_different_rev
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (so : state)
+    (i j : index)
+    (Hdif : i <> j)
+    (s' := state_update IM_index s i (update_state (s i) so j))
+    (Hfull : project (s i) j = project so j)
+    (Hhave : In (SimpObs Message' j so) (cobs s j)) :
+    incl (GE s) (GE s').
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    
+    assert (Hsonb : so <> Bottom). {
+        apply in_cobs_and_message in Hhave.
+        apply cobs_single in Hhave.
+        destruct Hhave as [k Hhave].
+        apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
+        all : intuition.
+    }
+  
+    unfold incl; intros v H.
+    apply GE_direct in H as Hev.
+    apply GE_direct.
+    unfold cequiv_evidence in *.
+    unfold equivocation_evidence in *.
+    destruct Hev as [e1 [Hine1 [He1subj Hrem]]].
+    destruct Hrem as [e2 [Hine2 [He2subj Hcomp]]].
+    destruct e1 as [et1 ev1 es1] eqn : eq_e1. 
+    destruct e2 as [et2 ev2 es2] eqn : eq_e2.
+    apply hbo_cobs in Hine1. 
+    apply hbo_cobs in Hine2.
+    
+    setoid_rewrite hbo_cobs.
+    unfold get_simp_event_subject_some.
+    
+    assert (Hv : ev1 = v /\ ev2 = v). {
+      rewrite <- He2subj in He1subj.
+      unfold get_simp_event_subject_some in He1subj.
+      inversion He1subj.
+      unfold get_simp_event_subject_some in He2subj.
+      inversion He2subj.
+      intuition.
+    }
+    
+    destruct Hv as [Hv1 Hv2].
+    subst ev1. subst ev2.
+    
+    setoid_rewrite cobs_messages_states in Hine1.
+    setoid_rewrite cobs_messages_states in Hine2.
+    apply set_union_iff in Hine1.
+    apply set_union_iff in Hine2.
+    
+    destruct Hine1 as [Hine1|Hine1].
+    - apply in_cobs_states in Hine1 as Het1.
+      simpl in Het1. subst et1.
+      apply unique_state_observation in Hine1. simpl in Hine1.
+      inversion Hine1. subst es1.
+      destruct Hine2 as [Hine2|Hine2].
+      + apply in_cobs_states in Hine2 as Het2.
+        simpl in Het2. subst et2.
+        apply unique_state_observation in Hine2. simpl in Hine2.
+        inversion Hine2. subst es2.
+        contradict Hcomp.
+        unfold comparable. left. intuition.
+      + apply in_cobs_messages in Hine2 as Het2.
+        simpl in Het2. subst et2. simpl in Hine2.
+        
+        exists (SimpObs State' v (s' v)). simpl.
+        split;[apply in_cobs_states';apply state_obs_present|].
+        split;[intuition|].
+        exists e2. subst e2. simpl in *.
+        split.
+        * apply in_cobs_messages'.
+          unfold s'.
+          setoid_rewrite <- cobs_message_existing_other.
+          all :intuition.
+        * split;[intuition|].
+          unfold s'.
+          destruct (decide (i = v)).
+          -- subst v.
+             rewrite state_update_eq.
+             intros contra.
+             unfold comparable in contra.
+             destruct contra as [contra|contra];[congruence|].
+             unfold simp_lv_event_lt in contra.
+             rewrite decide_True in contra by intuition.
+             destruct contra as [contra|contra];[intuition|].
+             rewrite decide_True in contra by intuition.
+             unfold state_lt' in contra.
+             
+             contradict Hcomp.
+             unfold comparable.
+             right.
+             right.
+             unfold simp_lv_event_lt.
+             rewrite decide_True by intuition.
+             unfold state_lt'.
+             
+             assert (get_history (update_state (s i) so j) i = get_history (s i) i). {
+              apply (@eq_history_eq_project index index_listing Hfinite).
+              rewrite (@project_different index index_listing Hfinite).
+              intuition.
+              intuition.
+              apply Hsnb.
+             } 
+             
+             rewrite <- H0.
+             intuition.
+          -- rewrite state_update_neq by intuition.
+             intuition.
+    - apply in_cobs_messages in Hine1 as Het1.
+      simpl in Het1. subst et1. simpl in Hine1.
+      
+      destruct Hine2 as [Hine2|Hine2].
+      + apply in_cobs_states in Hine2 as Het2.
+        simpl in Het2. subst et2.
+        apply unique_state_observation in Hine2. simpl in Hine2.
+        inversion Hine2. subst es2.
+        
+        exists (SimpObs State' v (s' v)). simpl.
+        split;[apply in_cobs_states';apply state_obs_present|].
+        split;[intuition|].
+        exists e1. subst e1. simpl in *.
+        split.
+        * apply in_cobs_messages'.
+          unfold s'.
+          setoid_rewrite <- cobs_message_existing_other.
+          all :intuition.
+        * split;[intuition|].
+          unfold s'.
+          destruct (decide (i = v)).
+          -- subst v.
+             rewrite state_update_eq.
+             intros contra.
+             unfold comparable in contra.
+             destruct contra as [contra|contra];[congruence|].
+             unfold simp_lv_event_lt in contra.
+             rewrite decide_True in contra by intuition.
+             destruct contra as [contra|contra];[intuition|].
+             rewrite decide_True in contra by intuition.
+             unfold state_lt' in contra.
+             
+             contradict Hcomp.
+             unfold comparable.
+             right.
+             left.
+             unfold simp_lv_event_lt.
+             rewrite decide_True by intuition.
+             unfold state_lt'.
+             
+             assert (get_history (update_state (s i) so j) i = get_history (s i) i). {
+              apply (@eq_history_eq_project index index_listing Hfinite).
+              rewrite (@project_different index index_listing Hfinite).
+              intuition.
+              intuition.
+              apply Hsnb.
+             } 
+             
+             rewrite <- H0.
+             intuition.
+          -- rewrite state_update_neq by intuition.
+             intros contra.
+             apply comparable_commutative in contra.
+             intuition.
+      + apply in_cobs_messages in Hine2 as Het2.
+        simpl in Het2. subst et2. simpl in Hine2.
+        
+        exists e1. subst e1. simpl in *.
+        split.
+        * apply in_cobs_messages'.
+          unfold s'.
+          setoid_rewrite <- cobs_message_existing_other.
+          all :intuition.
+        * split;[intuition|].
+          exists e2. subst e2. simpl in *.
+          split.
+          -- apply in_cobs_messages'.
+             unfold s'.
+             setoid_rewrite <- cobs_message_existing_other. 
+             all : intuition.
+          -- split;[intuition|].
+             intuition.
+  Qed.
+  
+  Lemma GH_NoDup  
+    (s : vstate X) :
+    NoDup (GH s).
+  Proof.
+    unfold GH.
+    apply NoDup_filter.
+    apply (proj1 Hfinite).
+  Qed.
+  
+  Definition others (i : index) (s : vstate X) := 
+    set_remove idec i (GH s).
+      
+  Lemma NoDup_others
+    (i : index) (s : vstate X) :
+    NoDup (others i s).
+  Proof.
+    unfold others.
+    apply set_remove_nodup.
+    apply GH_NoDup.
+  Qed.
+    
+  Lemma others_correct
+    (i : index)
+    (s : vstate X) :
+     ~ In i (others i s).
+  Proof.
+    unfold others.
+    intros contra.
+    apply set_remove_2 in contra.
+    intuition.
+    apply GH_NoDup.
+  Qed.
+    (* 
+  Lemma others_correct2
+    (i j : index)
+    (Hdif : j <> i) :
+    In j (others i).
+  Proof.
+    unfold others.
+    apply set_remove_3.
+    apply Hfinite.
+    assumption.
+  Qed. *)
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
@@ -1478,15 +1808,6 @@ Context
           apply incl_tran with (m := (GE res_short)).
           assumption.
           assumption.
-  Qed.
-  
-  Lemma GH_NoDup  
-    (s : vstate X) :
-    NoDup (GH s).
-  Proof.
-    unfold GH.
-    apply NoDup_filter.
-    apply (proj1 Hfinite).
   Qed.
   
   Lemma phase_one_protocol
@@ -2471,7 +2792,7 @@ Context
     Lemma message_providers_receive
       (s : vstate X)
       (i : index) :
-      get_message_providers_from_plan (get_receives_for s (others i) i) = [i].
+      get_message_providers_from_plan (get_receives_for s (others i s) i) = [i].
     Proof.
     Admitted.
     
@@ -2914,18 +3235,10 @@ Context
              all : intuition.
     Qed.
     
-    Definition get_receives_all'
-      (s : vstate X)
-      (lfrom : set index) : vplan X :=
-      let lis := (List.map others lfrom) in
-      let receive_fors := zip_apply (List.map (get_receives_for s) lis) lfrom in
-      List.concat receive_fors.
-    
     Definition get_receives_all
       (s : vstate X)
       (lfrom : set index) : vplan X :=
-      let lis := (List.map others lfrom) in
-      let receive_fors := List.map (fun (i : index) => get_receives_for s (others i) i) lfrom in
+      let receive_fors := List.map (fun (i : index) => get_receives_for s (others i s) i) lfrom in
       List.concat receive_fors.
     
     Lemma get_receives_all_protocol
@@ -2955,15 +3268,7 @@ Context
         
         destruct IHlfrom as [IHprotocol IHproject].
         rewrite map_app.
-        rewrite map_app.
-        rewrite zip_apply_app; simpl.
-        
-        2 : {
-          repeat rewrite map_length.
-          intuition.
-        }
-        
-        rewrite concat_app; simpl.
+        rewrite concat_app.
         rewrite apply_plan_app; simpl.
         
         match goal with
@@ -2979,12 +3284,12 @@ Context
         rewrite app_nil_r in *.
         simpl.
         
-        assert (res_short = snd (apply_plan X res_long (get_receives_for s (others x) x))). {
+        assert (res_short = snd (apply_plan X res_long (get_receives_for s (others x s) x))). {
           rewrite eq_short.
           intuition.
         }
         
-        assert (res_long = snd (apply_plan X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom)))). {
+        assert (res_long = snd (apply_plan X s (concat (map (fun i : index => get_receives_for s (others i s) i) lfrom)))). {
           match goal with
           |- context[apply_plan X s ?a] =>
              replace (apply_plan X s a) with (tr_long, res_long)
@@ -2992,11 +3297,11 @@ Context
           intuition.
         }
         
-        assert (Hrec_long : is_receive_plan (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom))). {
+        assert (Hrec_long : is_receive_plan (concat (map (fun i : index => get_receives_for s (others i s) i) lfrom))). {
           admit.
         }
         
-        assert (Hrec_short : is_receive_plan (get_receives_for s (others x) x)). {
+        assert (Hrec_short : is_receive_plan (get_receives_for s (others x s) x)). {
           apply receive_for_is_receive_plan.
         }
         
@@ -3010,7 +3315,7 @@ Context
         assert (Hx_after_long : forall (i : index), project (res_long i) x = project (s i) x). {
           intros.
           replace res_long with 
-            (snd (apply_plan X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom)))).
+            (snd (apply_plan X s (concat (map (fun i : index => get_receives_for s (others i s) i) lfrom)))).
           apply receives_neq.
           assumption.
           assumption.
@@ -3028,27 +3333,19 @@ Context
           destruct Hinom as [ai [Hinput Hinconcat]].
           rewrite in_concat in Hinconcat.
           destruct Hinconcat as [a [Hina Hina2]].
-          apply in_zip_apply_if2 in Hina.
-          destruct Hina as [f [a0 [n Heq]]].
-          destruct Heq as [H1 [H2 H3]].
-          apply nth_error_In in H1.
-          apply nth_error_In in H2.
-          rewrite in_map_iff in H1.
-          destruct H1 as [li [Hrec Hinx]].
-          rewrite in_map_iff in Hinx.
-          destruct Hinx as [idx [Hothers Hidxfrom]].
-          rewrite <- Hrec in H3.
+          apply in_map_iff in Hina.
+          destruct Hina as [i [Heq_rec Heqfrom]].
           admit.
         }
         
-        assert (Hsource: finite_protocol_plan_from X s (get_receives_for s (others x) x)). {
+        assert (Hsource: finite_protocol_plan_from X s (get_receives_for s (others x s) x)). {
           apply get_receives_for_correct.
           assumption.
           apply NoDup_others.
           apply others_correct.
         }
         
-        specialize (relevant_components_lv s res_long Hprs Hprs_long (get_receives_for s (others x) x)) as Hrel.
+        specialize (relevant_components_lv s res_long Hprs Hprs_long (get_receives_for s (others x s) x)) as Hrel.
         specialize (Hrel Hrec_short Hsource x).
         
         spec Hrel. {
@@ -3065,7 +3362,7 @@ Context
         
         simpl in Hrel.
         
-        assert (Hfinite_short : finite_protocol_plan_from X res_long (get_receives_for s (others x) x)). {
+        assert (Hfinite_short : finite_protocol_plan_from X res_long (get_receives_for s (others x s) x)). {
           intuition.
         }
         
@@ -3076,7 +3373,7 @@ Context
             replace tr_long with (fst (apply_plan X s (get_receives_all s lfrom))).
             assumption.
             unfold get_receives_all.
-            replace (apply_plan X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom))) with
+            replace (apply_plan X s (concat (map (fun i : index => get_receives_for s (others i s) i) lfrom))) with
             (tr_long, res_long). 
             intuition.
           * rewrite H0 in Hfinite_short.
@@ -3106,7 +3403,7 @@ Context
                 destruct IHproject as [IHproject _].
                 rewrite <- IHproject.
                 unfold get_receives_all.
-                replace (snd (apply_plan X s (concat (zip_apply (map (get_receives_for s) (map others lfrom)) lfrom)))) with res_long.
+                replace (snd (apply_plan X s (concat (map (fun i : index => get_receives_for s (others i) i) lfrom)))) with res_long.
                 rewrite H.
                 apply receives_neq.
                 assumption.
@@ -3116,7 +3413,7 @@ Context
                 intros contra.
                 simpl in contra.
                 all : intuition.
-          * 
+          * admit. 
     Admitted.
     
     Definition phase_two (s : vstate X) := snd (apply_plan X s (get_receives_all s index_listing)).
