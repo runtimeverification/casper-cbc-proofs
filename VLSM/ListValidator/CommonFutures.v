@@ -1481,17 +1481,51 @@ Context
     intuition.
     apply GH_NoDup.
   Qed.
-    (* 
-  Lemma others_correct2
-    (i j : index)
-    (Hdif : j <> i) :
-    In j (others i).
+
+  Lemma GH_GE'
+    (s : vstate X)
+    (i : index) :
+    In i (GH s) <-> ~ In i (GE s).
   Proof.
-    unfold others.
-    apply set_remove_3.
-    apply Hfinite.
-    assumption.
-  Qed. *)
+    unfold GH.
+    unfold GE.
+    split; intros.
+    - apply filter_In in H.
+      intros contra.
+      apply filter_In in contra.
+      destruct H as [_ H].
+      destruct contra as [_ contra].
+      rewrite contra in H.
+      unfold negb in H. congruence.
+    - apply filter_In.
+      split; [apply (proj2 Hfinite)|].
+      rewrite negb_true_iff.
+      match goal with
+      |- ?e = _ =>
+         destruct e eqn : eq_d end.
+      + contradict H.
+        apply filter_In.
+        split; [apply (proj2 Hfinite)|].
+        intuition.
+      + intuition.
+  Qed.
+  
+  Lemma GH_GE
+    (s : vstate X) :
+    set_eq (GH s) (set_diff decide_eq index_listing (GE s)).
+  Proof.
+    apply set_eq_extract_forall.
+    intros i.
+    split; intros H.
+    - apply set_diff_intro.
+      apply (proj2 Hfinite i).
+      apply GH_GE' in H.
+      intuition.
+    - apply set_diff_iff in H.
+      destruct H as [_ H].
+      apply GH_GE'.
+      intuition. 
+  Qed.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
@@ -1606,16 +1640,17 @@ Context
     intuition.
   Qed.
   
-  Lemma chain_updates_protocol 
+  Lemma chain_updates_protocol
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
     (li : list index)
     (Hnodup : NoDup li)
+    (Hhonest : incl li (GH s))
     (Hnf : no_component_fully_equivocating s li) :
     let res := snd (apply_plan X s (chain_updates li s)) in
     finite_protocol_plan_from _ s (chain_updates li s) /\
     (forall (i : index), In i li -> project (res i) i = s i) /\ 
-    incl (GE res) (GE s).
+    set_eq (GE res) (GE s).
   Proof.
     unfold no_component_fully_equivocating in Hnf.
     generalize dependent s.
@@ -1625,7 +1660,9 @@ Context
       split.
       + apply finite_ptrace_empty.
         assumption.
-      + intuition.
+      + split; [intuition|].
+        simpl in res.
+        unfold res. intuition.
     - intros.
       remember (feasible_update_composite s i) as a.
       specialize (Hnf i) as Hnfi.
@@ -1677,7 +1714,31 @@ Context
         rewrite contra in H0.
         intuition.
       }
-        
+      
+      assert (HGEs' : set_eq (GE s') (GE s)). {
+        unfold set_eq.
+        simpl in Heqs'.
+        rewrite Heqs'.
+        split.
+        - apply GE_existing_same.
+          intuition.
+        - apply GE_existing_same_rev.
+          intuition.
+          rewrite <- GH_GE'.
+          apply Hhonest. intuition.
+      }
+      
+      spec IHli. {
+        unfold incl in *.
+        intros idx Hidx.
+        apply GH_GE'.
+        specialize (Hhonest idx).
+        setoid_rewrite HGEs'.
+        apply GH_GE'.
+        apply Hhonest.
+        intuition.
+      }
+    
       spec IHli. {
         intros.
         destruct (decide (i1 = i)).
@@ -1776,7 +1837,7 @@ Context
              unfold chain_updates.
              reflexivity.
         * simpl.
-          assert (Hge_short : incl (GE res_short) (GE s)). {
+          assert (Hge_short : set_eq (GE res_short) (GE s)). {
             remember (update_consensus (update_state (s i) (s i) i) (feasible_update_value (s i) i)) as new_si.
             remember (state_update IM_index s i new_si) as new_s.
             assert (Hu: res_short = new_s). {
@@ -1788,15 +1849,24 @@ Context
               reflexivity.
             }
             specialize (GE_existing_same s Hprs (feasible_update_value (s i) i) i) as Hexist.
-            simpl in Hexist.
+            specialize (GE_existing_same_rev s Hprs (feasible_update_value (s i) i) i) as Hexist'.
+            
+            spec Hexist'. {
+              apply GH_GE'.
+              intuition.
+            }
+            simpl in Hexist, Hexist'.
             
             rewrite Hu.
             rewrite Heqnew_s.
             rewrite Heqnew_si.
-            apply Hexist.
+            unfold set_eq.
+            split.
+            - apply Hexist.
+            - apply Hexist'. 
           }
           
-          assert (Hge_long : incl (GE res_long) (GE res_short)). {
+          assert (Hge_long : set_eq (GE res_long) (GE res_short)). {
             destruct IHli as [_ [_ IHli]].
             unfold chain_updates in IHli.
             rewrite <- Hchain in IHli.
@@ -1805,7 +1875,8 @@ Context
             rewrite H1.
             apply IHli.
           }
-          apply incl_tran with (m := (GE res_short)).
+          
+          apply set_eq_tran with (s2 := (GE res_short)).
           assumption.
           assumption.
   Qed.
@@ -1820,6 +1891,7 @@ Context
     apply chain_updates_protocol.
     assumption.
     apply GH_NoDup.
+    intuition.
     intuition.
   Qed.
   
