@@ -36,8 +36,8 @@ Context {message : Type}
 
 Definition equivocators_transition_item_project
   (eqv_choice : equivocators_choice)
-  (item : vtransition_item equivocators_no_equivocations_vlsm)
-  : option (option (vtransition_item X) * equivocators_choice)
+  (item : composite_transition_item equivocator_IM)
+  : option (option (composite_transition_item IM) * equivocators_choice)
   :=
   match item with {| l := el; input := iom; output := oom; destination := s |} =>
     let sx := equivocators_state_project eqv_choice s in
@@ -62,7 +62,7 @@ Definition equivocators_transition_item_project
 
 Lemma equivocators_transition_item_project_proper
   (eqv_choice : equivocators_choice)
-  (item : vtransition_item equivocators_no_equivocations_vlsm)
+  (item : composite_transition_item equivocator_IM)
   (Hproper : proper_equivocators_choice eqv_choice (destination item))
   : equivocators_transition_item_project eqv_choice item <> None.
 Proof.
@@ -85,10 +85,350 @@ Proof.
   destruct p. destruct o; congruence.
 Qed.
 
+Local Tactic Notation "unfold_transition"  hyp(Ht) :=
+  ( unfold transition in Ht; unfold equivocator_IM in Ht; unfold Common.equivocator_IM in Ht;
+  unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
+  unfold machine in Ht; unfold projT2 in Ht;
+  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
+
+Lemma equivocators_transition_item_project_proper_characterization
+  (eqv_choice : equivocators_choice)
+  (item : composite_transition_item equivocator_IM)
+  (Hproper : proper_equivocators_choice eqv_choice (destination item))
+  : exists oitem eqv_choice',
+    equivocators_transition_item_project eqv_choice item = Some (oitem, eqv_choice')
+    /\ forall
+      (s : composite_state equivocator_IM)
+      (Hv : free_composite_valid equivocator_IM (l item) (s, input item))
+      (Ht : composite_transition equivocator_IM (l item) (s, input item) = (destination item, output item)),
+      proper_equivocators_choice eqv_choice' s /\
+      match oitem with
+      | Some itemx =>
+        existT _ (projT1 (l item)) (fst (projT2 (l item))) = l itemx /\  input item = input itemx /\ output item = output itemx /\
+        (equivocators_state_project eqv_choice (destination item) = destination itemx) /\
+        forall (sx : composite_state IM)
+          (Hsx : sx = equivocators_state_project eqv_choice' s),
+          free_composite_valid IM (l itemx) (sx, input itemx) /\
+          composite_transition IM (l itemx) (sx, input itemx) = (destination itemx, output itemx)
+      | None => 
+        equivocators_state_project eqv_choice (destination item) = equivocators_state_project eqv_choice' s
+      end.
+Proof.
+  destruct item. simpl.
+  destruct l as [i v].
+  specialize (Hproper i) as Hi. simpl in Hi.
+  unfold equivocator_vlsm_transition_item_project.
+  destruct (eqv_choice i) eqn:Heqvi.
+  - exists None. eexists _. split; [reflexivity|].
+    intros.
+    apply and_comm. split.
+    { unfold equivocators_choice_update.
+      rewrite equivocators_choice_update_id; [|assumption].
+      apply
+        (new_machine_reflects_equivocators_state_project IM (existT _ i v) s input destination output Ht _ _ Heqvi).
+    }
+    intro eqv.
+    unfold equivocators_choice_update.
+    destruct (decide (eqv = i)).
+    + subst i. 
+      rewrite equivocators_choice_update_eq. assumption.
+    + rewrite equivocators_choice_update_neq; [|assumption].
+      specialize (Hproper eqv). simpl in Hproper.
+      destruct (vtransition (equivocator_IM i) v (s i, input)) as (si', om').
+      inversion Ht. subst. clear Ht.
+      rewrite state_update_neq in Hproper; assumption.
+  - destruct v as (li, eqvi).
+    simpl in Hproper.
+    destruct (destination i) as (ni, bsi) eqn:Hdesti.
+    simpl in Hi.
+    destruct (le_lt_dec (S ni) n); [lia|].
+    destruct eqvi as [nsi | ieqvi feqvi].
+    + destruct (nat_eq_dec (S n) (S ni)).
+      * exists None. eexists _. split; [reflexivity|].
+        intros.
+        apply and_comm.
+        split.
+        { specialize
+          (new_machine_label_equivocators_state_project_last IM  (existT _ i ((li, NewMachine (IM i) nsi))) s input destination output Ht nsi eq_refl eqv_choice b)
+          as Hnew.
+          spec Hnew.
+          { simpl. rewrite Hdesti, Heqvi. simpl. inversion e. reflexivity. }
+          assumption.
+        }
+        intro eqv.
+        destruct Hv as [Heqv Hv].
+        unfold equivocators_choice_update.
+        destruct (decide (eqv = i)).
+        -- subst i. 
+          rewrite equivocators_choice_update_eq. assumption.
+        -- rewrite equivocators_choice_update_neq; [|assumption].
+          specialize (Hproper eqv). simpl in Hproper.
+          simpl in Ht. inversion Ht. subst. clear Ht.
+          rewrite state_update_neq in Hproper; assumption.
+      * exists None. eexists _. split; [reflexivity|]. 
+        intros.
+        apply and_comm.
+        split.
+        { specialize
+          (new_machine_label_equivocators_state_project_not_last IM  (existT _ i ((li, NewMachine (IM i) nsi))) s input destination output Ht nsi eq_refl
+            eqv_choice _ _ Heqvi)
+          as Hnew.
+          spec Hnew.
+          { simpl. rewrite Hdesti. simpl. lia. }
+          apply Hnew.
+        }
+        intro eqv.
+        destruct Hv as [Heqv Hv].
+        unfold equivocators_choice_update.
+        destruct (decide (eqv = i)).
+        -- subst i. 
+          rewrite equivocators_choice_update_eq. simpl.
+          simpl in Ht. inversion Ht. subst. clear Ht.
+          rewrite state_update_eq in Hdesti.
+          destruct (s eqv) as (neqv, seqv). simpl in *.
+          inversion Hdesti. subst ni. lia.
+        -- rewrite equivocators_choice_update_neq; [|assumption].
+          specialize (Hproper eqv). simpl in Hproper.
+          simpl in Ht. inversion Ht. subst. clear Ht.
+          rewrite state_update_neq in Hproper; assumption.
+    + destruct feqvi; [destruct (nat_eq_dec (S n) (S ni))|destruct (nat_eq_dec ieqvi n)].
+      * inversion e. subst ni. clear e.
+        simpl. eexists _. eexists _. split; [reflexivity|].
+        intros.
+        destruct Hv as [Heqv Hv].
+        unfold equivocators_choice_update.
+        split.
+        -- intros eqv.
+          destruct (decide (eqv = i)).
+          ++ subst i. 
+            rewrite equivocators_choice_update_eq. simpl. assumption.
+          ++ rewrite equivocators_choice_update_neq; [|assumption].
+            specialize (Hproper eqv). simpl in Hproper.
+            destruct (vtransition (equivocator_IM i) (li, Existing (IM i) ieqvi true) (s i, input))
+              as (si', om').
+            inversion Ht. subst. clear Ht.
+            rewrite state_update_neq in Hproper; assumption.
+        -- intros.
+          simpl. repeat (split; [reflexivity|]).
+          intros.
+          unfold equivocators_state_project in Hsx.
+          destruct (vtransition (equivocator_IM i) (li, Existing (IM i) ieqvi true) (s i, input))
+            as (si', om') eqn:Ht'.
+          inversion Ht. subst om' destination. clear Ht.
+          rewrite state_update_eq in Hdesti.
+          unfold fst in Hv.
+          unfold vvalid in Hv.
+          unfold vtransition in Ht'.
+          unfold_transition Ht'. unfold snd in Ht'.
+          destruct (le_lt_dec (S (projT1 (s i))) ieqvi); [lia|].
+          replace (of_nat_lt l0) with (of_nat_lt Heqv) in * by apply of_nat_ext.
+          clear l0.
+          assert (Hsxi : sx i = projT2 (s i) (Fin2Restrict.n2f Heqv)).
+          { subst. unfold Common.equivocators_state_project.
+            rewrite equivocators_choice_update_eq.
+            destruct (s i) as (nsi, si). unfold projT2.
+            simpl in Heqv.
+            destruct (le_lt_dec (S nsi) ieqvi); [lia|].
+            f_equal. apply of_nat_ext.
+          }
+          rewrite Hsxi. split; [assumption|].
+          simpl in *.
+          destruct (vtransition (IM i) li (projT2 (s i) (Fin2Restrict.n2f Heqv), input))
+            as (si'', om') eqn:Ht''.
+          inversion Ht'.
+          f_equal.
+          unfold equivocators_state_project.
+          unfold equivocator_IM.
+          rewrite equivocators_state_project_state_update_eqv.
+          rewrite Heqvi.
+          apply functional_extensionality_dep.
+          intro eqv.
+          destruct (decide (eqv = i)).
+          ++ subst eqv. repeat rewrite state_update_eq.
+            rewrite H0. clear Ht'.
+            specialize (Hproper i). rewrite Heqvi in Hproper.
+            simpl in Hproper. rewrite state_update_eq in Hproper.
+            destruct (le_lt_dec (S (projT1 si')) n); [lia|].
+            revert l0.
+            rewrite <- H0. intro l0.
+            assert (Hn : n  = S (projT1 (s i))).
+            {
+              rewrite Hdesti in H0.
+              destruct (s i) as (nsi, si) eqn:Hsi.
+              simpl.
+              unfold equivocator_state_extend in H0.
+              inversion H0. reflexivity.
+            }
+            subst n.
+            specialize
+              (equivocator_state_extend_project_last (IM i) (s i) si'').
+            revert l0.
+            rewrite H0. clear H0. subst si'. simpl. intros.
+            symmetry. apply H.
+          ++ repeat (rewrite state_update_neq; [|assumption]).
+            subst sx.
+            unfold Common.equivocators_state_project at 1.
+            rewrite equivocators_choice_update_neq; [|assumption].
+            reflexivity.
+      * simpl. eexists _. eexists _. split; [reflexivity|].
+        intros.
+        apply and_comm.
+        split.
+        { specialize
+            (existing_true_label_equivocators_state_project_not_last IM  (existT _ i ((li, Existing (IM i) ieqvi true))) s input destination output Ht _ eq_refl )
+            as Hex.
+          destruct Hv as [Hieqvi Hv].
+          specialize (Hex Hieqvi eqv_choice _ _ Heqvi).
+          spec Hex.
+          { simpl. rewrite Hdesti. simpl. lia. }
+          apply Hex.
+        }
+        intro eqv.
+        destruct Hv as [Heqv Hv].
+        unfold equivocators_choice_update.
+        destruct (decide (eqv = i)).
+        -- subst i. 
+          rewrite equivocators_choice_update_eq. simpl.
+          destruct (vtransition (equivocator_IM eqv) (li, Existing (IM eqv) ieqvi true) (s eqv, input))
+            as (si', om') eqn:Ht'.
+          inversion Ht. subst. clear Ht.
+          rewrite state_update_eq in Hdesti.
+          subst si'.
+          simpl in Ht'. unfold vtransition in Ht'.
+          unfold transition in Ht'. unfold equivocator_IM in Ht'.  unfold Common.equivocator_IM in Ht'.
+          unfold equivocator_vlsm in Ht'. unfold mk_vlsm in Ht'.
+          unfold machine in Ht'. unfold projT2 in Ht'.
+          unfold equivocator_vlsm_machine in Ht'. unfold equivocator_transition in Ht'.
+          unfold snd in Ht'.
+          destruct (le_lt_dec (S (projT1 (s eqv))) ieqvi); [lia|].
+          destruct (vtransition (IM eqv) (fst (li, Existing (IM eqv) ieqvi true))
+          (projT2 (s eqv) (Fin2Restrict.n2f l0), input))
+            as (si', om').
+          inversion Ht'. subst.
+          destruct (s eqv) as (neqv, seqv). simpl in *.
+          inversion H0. subst ni. lia.
+        -- rewrite equivocators_choice_update_neq; [|assumption].
+          specialize (Hproper eqv). simpl in Hproper.
+          destruct (vtransition (equivocator_IM i) (li, Existing (IM i) ieqvi true) (s i, input))
+            as (si', om').
+          inversion Ht. subst. clear Ht.
+          rewrite state_update_neq in Hproper; assumption.
+      * subst ieqvi.
+        simpl. eexists _. eexists _. split; [reflexivity|].
+        intros.
+        destruct Hv as [Heqv Hv].
+        unfold equivocators_choice_update.
+        split.
+        -- intro eqv. destruct (decide (eqv = i)).
+          ++ subst i. 
+            rewrite equivocators_choice_update_eq. simpl. assumption.
+          ++ rewrite equivocators_choice_update_neq; [|assumption].
+            specialize (Hproper eqv). simpl in Hproper.
+            destruct (vtransition (equivocator_IM i) (li, Existing (IM i) n false) (s i, input))
+              as (si', om').
+            inversion Ht. subst. clear Ht.
+            rewrite state_update_neq in Hproper; assumption.
+        -- intros.
+          simpl. repeat (split; [reflexivity|]).
+          intros.
+          unfold equivocators_state_project in Hsx.
+          destruct (vtransition (equivocator_IM i) (li, Existing (IM i) n false)
+          (s i, input))
+            as (si', om') eqn:Ht'.
+          inversion Ht. subst om' destination. clear Ht.
+          rewrite state_update_eq in Hdesti.
+          subst si'.
+          unfold fst in Hv.
+          unfold vvalid in Hv.
+          unfold vtransition in Ht'.
+          unfold_transition Ht'. unfold snd in Ht'.
+          destruct (le_lt_dec (S (projT1 (s i))) n); [lia|].
+          replace (of_nat_lt l0) with (of_nat_lt Heqv) in * by apply of_nat_ext.
+          clear l0.
+          assert (Hsxi : sx i = projT2 (s i) (Fin2Restrict.n2f Heqv)).
+          { subst. unfold Common.equivocators_state_project.
+            rewrite equivocators_choice_update_eq.
+            destruct (s i) as (nsi, si). unfold projT2.
+            simpl in Heqv.
+            destruct (le_lt_dec (S nsi) n); [lia|].
+            f_equal. apply of_nat_ext.
+          }
+          rewrite Hsxi. split; [assumption|].
+          simpl in *.
+          destruct (vtransition (IM i) li (projT2 (s i) (Fin2Restrict.n2f Heqv), input))
+            as (si'', om') eqn:Ht''.
+          inversion Ht'. clear Ht'. subst ni.
+          simpl_existT. subst bsi.
+          f_equal.
+          unfold equivocators_state_project.
+          unfold equivocator_IM.
+          rewrite equivocators_state_project_state_update_eqv.
+          rewrite Heqvi.
+          unfold projT1 at 1. unfold projT2.
+          destruct (le_lt_dec (S (projT1 (s i))) n); [lia|].
+          apply functional_extensionality_dep.
+          intro eqv.
+          destruct (decide (eqv = i)).
+          ++  subst eqv. repeat rewrite state_update_eq.
+            rewrite eq_dec_if_true; [reflexivity|].
+            apply of_nat_ext.
+          ++ repeat (rewrite state_update_neq; [|assumption]).
+            subst sx.
+            unfold Common.equivocators_state_project at 1.
+            rewrite equivocators_choice_update_neq; [|assumption].
+            reflexivity.
+      * simpl. eexists _. eexists _. split; [reflexivity|].
+        intros.
+        apply and_comm.
+        split.
+        { specialize
+            (existing_false_label_equivocators_state_project_not_same IM  (existT _ i ((li, Existing (IM i) ieqvi false))) s input destination output Ht _ eq_refl )
+            as Hex.
+          destruct Hv as [Hieqvi Hv].
+          specialize (Hex Hieqvi eqv_choice _ _ Heqvi).
+          spec Hex.
+          { simpl. rewrite Hdesti. simpl. lia. }
+          apply Hex. assumption.
+        }
+        intro eqv.
+        destruct Hv as [Heqv Hv].
+        unfold equivocators_choice_update.
+        destruct (decide (eqv = i)).
+        -- subst i. 
+          rewrite equivocators_choice_update_eq. simpl.
+          destruct (vtransition (equivocator_IM eqv) (li, Existing (IM eqv) ieqvi false)
+          (s eqv, input))
+            as (si', om') eqn:Ht'.
+          inversion Ht. subst. clear Ht.
+          rewrite state_update_eq in Hdesti.
+          subst si'.
+          simpl in Ht'. unfold vtransition in Ht'.
+          unfold transition in Ht'. unfold equivocator_IM in Ht'.  unfold Common.equivocator_IM in Ht'.
+          unfold equivocator_vlsm in Ht'. unfold mk_vlsm in Ht'.
+          unfold machine in Ht'. unfold projT2 in Ht'.
+          unfold equivocator_vlsm_machine in Ht'. unfold equivocator_transition in Ht'.
+          unfold snd in Ht'.
+          destruct (le_lt_dec (S (projT1 (s eqv))) ieqvi); [lia|].
+          destruct (vtransition (IM eqv) (fst (li, Existing (IM eqv) ieqvi false))
+          (projT2 (s eqv) (Fin2Restrict.n2f l0), input))
+            as (si', om').
+          apply pair_equal_spec in Ht'. destruct Ht' as [Hseqv Hom'].
+          unfold equivocator_state_update in Hseqv.
+          inversion Hseqv.
+          lia.
+        -- rewrite equivocators_choice_update_neq; [|assumption].
+          specialize (Hproper eqv). simpl in Hproper.
+          destruct (vtransition (equivocator_IM i) (li, Existing (IM i) ieqvi false)
+          (s i, input))
+            as (si', om').
+          inversion Ht. subst. clear Ht.
+          rewrite state_update_neq in Hproper; assumption.
+Qed.
+
 Definition equivocators_trace_project_folder
-  (item : vtransition_item equivocators_no_equivocations_vlsm)
-  (result: option (list (vtransition_item X) * equivocators_choice))
-  : option (list (vtransition_item X) * equivocators_choice)
+  (item : composite_transition_item equivocator_IM)
+  (result: option (list (composite_transition_item IM) * equivocators_choice))
+  : option (list (composite_transition_item IM) * equivocators_choice)
   :=
   match result with
   | None => None
@@ -101,15 +441,15 @@ Definition equivocators_trace_project_folder
   end.
 
 Lemma equivocators_trace_project_fold_None
-  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
+  (tr : list (composite_transition_item equivocator_IM))
   : fold_right equivocators_trace_project_folder None tr = None.
 Proof.
   induction tr; [reflexivity|]. simpl. rewrite IHtr. reflexivity.
 Qed.
 
 Lemma equivocators_trace_project_folder_additive
-  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
-  (itrX trX : list (vtransition_item X))
+  (tr : list (composite_transition_item equivocator_IM))
+  (itrX trX : list (composite_transition_item IM))
   (ieqv_choice eqv_choice : equivocators_choice)
   (Htr : fold_right equivocators_trace_project_folder (Some ([], ieqv_choice)) tr
     = Some (trX, eqv_choice))
@@ -143,8 +483,8 @@ trace from right to left guided by the descriptors produced by
 *)
 Definition equivocators_trace_project
   (eqv_choice : equivocators_choice)
-  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
-  : option (list (vtransition_item X) * equivocators_choice)
+  (tr : list (composite_transition_item equivocator_IM))
+  : option (list (composite_transition_item IM) * equivocators_choice)
   :=
   fold_right
     equivocators_trace_project_folder
@@ -160,12 +500,12 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
 Lemma equivocators_protocol_trace_project
   (final_choice : equivocators_choice)
   (is : vstate equivocators_no_equivocations_vlsm)
-  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
+  (tr : list (composite_transition_item equivocator_IM))
   (final_state := last (map destination tr) is)
   (Hproper : proper_equivocators_choice final_choice final_state)
   (Htr : finite_protocol_trace_from equivocators_no_equivocations_vlsm is tr)
   : exists
-    (trX : list (vtransition_item X))
+    (trX : list (composite_transition_item IM))
     (initial_choice : equivocators_choice)
     (isX := equivocators_state_project initial_choice is)
     (Hproject: equivocators_trace_project final_choice tr = Some (trX, initial_choice))
@@ -176,672 +516,77 @@ Lemma equivocators_protocol_trace_project
 Proof.
   generalize dependent final_choice.
   generalize dependent is.
-  induction tr; intros.
+  induction tr using rev_ind; intros.
   - exists []. simpl. exists final_choice.
     exists eq_refl. exists eq_refl. exists Hproper.
     constructor.
     inversion Htr. subst. destruct H as [_om His].
     apply (proj2 (equivocators_protocol_state_project IM Hbs _ _ _ _ His) final_choice Hproper).
-  - unfold equivocators_trace_project. simpl.
-    inversion Htr. subst s' tl.
-    specialize (IHtr _ H2).
+  - apply finite_protocol_trace_from_app_iff in Htr.
+    destruct Htr as [Htr Hinit].
+    specialize (IHtr _ Htr).
+    specialize (equivocators_transition_item_project_proper_characterization final_choice x) as Hproperx.
     unfold final_state in Hproper.
-    rewrite map_cons in Hproper.
-    rewrite unroll_last in Hproper.
-    rewrite <- H in Hproper. simpl in Hproper.
-    specialize (IHtr _ Hproper).
-    destruct IHtr as [trX' [initial_choice' [Hproject [Hfinal [Hproper' HtrX']]]]].
-    unfold equivocators_trace_project in Hproject.
-    rewrite Hproject.
-    unfold equivocators_trace_project_folder.
-    destruct H3 as [[His [Hiom [Hv _]]] Ht].
-    simpl in Hv. simpl in Ht.
-    destruct l as (eqv, li).
-    destruct (vtransition (Common.equivocator_IM IM eqv) li (is eqv, iom)) as (si', om')
-      eqn:Ht'.
-    inversion Ht. subst s oom. clear Ht.
-    unfold final_state. rewrite map_cons. rewrite unroll_last. subst a.
-    clear final_state.
-    destruct His as [_omis His]. apply equivocators_protocol_state_project in His. destruct His as [_ His].
-    destruct Hiom as [_siom Hiom]. apply equivocators_protocol_state_project in Hiom.
-    destruct Hiom as [Hiom _].
-    simpl in *.
-    destruct (initial_choice' eqv) as [seqv | ieqv feqv] eqn:Heqv.
-    * eexists _. eexists _. exists eq_refl.
-      repeat split.
-      -- replace
-          (equivocators_state_project
-          (equivocators_choice_update initial_choice' eqv
-             (NewMachine (IM (eqv)) seqv)) is)
-          with
-            (equivocators_state_project initial_choice'
-            (state_update (Common.equivocator_IM IM) is (eqv) si'))
-          ;[assumption|].
-        assert
-          (Hinitial_choice' : equivocators_choice_update initial_choice' eqv
-          (NewMachine (IM (eqv)) seqv) = initial_choice').
-        { apply functional_extensionality_dep_good.
-          intro eqv'.  unfold equivocators_choice_update.
-          destruct (decide (eqv' = eqv)).
-          - subst eqv'.
-            rewrite equivocators_choice_update_eq. symmetry. assumption.
-          - rewrite equivocators_choice_update_neq by assumption. reflexivity.
-        }
-        rewrite Hinitial_choice'.
-        unfold equivocators_state_project.
-        rewrite equivocators_state_project_state_update_eqv.
-        rewrite Heqv.
-        apply functional_extensionality_dep_good.
-        intros eqv'.
-        destruct (decide (eqv = eqv')).
-        ** subst eqv'. rewrite state_update_eq. simpl.
-          unfold Common.equivocators_state_project.
-          rewrite Heqv. reflexivity.
-        ** rewrite state_update_neq; congruence.
-      -- intro eqv'.
-        destruct (decide (eqv' = eqv)).
-        ++ subst. unfold equivocators_choice_update. rewrite equivocators_choice_update_eq.
-          spec Hproper' eqv. rewrite Heqv in Hproper'. assumption.
-        ++ unfold equivocators_choice_update.
-          rewrite equivocators_choice_update_neq by assumption.
-          spec Hproper' eqv'.
-          rewrite state_update_neq in Hproper'; [assumption|]. congruence.
-      -- replace
-          (equivocators_state_project
-          (equivocators_choice_update initial_choice' eqv
-             (NewMachine (IM (eqv)) seqv)) is)
-          with
-            (equivocators_state_project initial_choice'
-            (state_update (Common.equivocator_IM IM) is (eqv) si'))
-        ; [assumption|].
-        rewrite (equivocators_state_project_state_update_eqv IM).
-        apply functional_extensionality_dep_good.
-        intro i'. destruct (decide (i' = (eqv))).
-        ++ subst. rewrite state_update_eq. rewrite Heqv.
-          unfold equivocators_state_project.
-          unfold Common.equivocators_state_project.
-          unfold equivocators_choice_update.
-          rewrite equivocators_choice_update_eq. reflexivity.
-        ++ rewrite state_update_neq by assumption.
-          unfold equivocators_state_project.
-          unfold Common.equivocators_state_project.
-          unfold equivocators_choice_update.
-          rewrite equivocators_choice_update_neq; congruence.
-    * rewrite state_update_eq.
-      destruct li as (li, di).
-      destruct si' as (nsi', bsi').
-      specialize (Hproper' eqv) as Hproper_eqv.
-      rewrite state_update_eq in Hproper_eqv.
-      rewrite Heqv in Hproper_eqv.
-      simpl in Hproper_eqv.
-      unfold equivocator_vlsm_transition_item_project.
-      destruct (le_lt_dec (S nsi') ieqv); [lia|].
-      unfold vvalid in Hv. simpl in Hv.
-      unfold vtransition in Ht'.
-      unfold transition in Ht'. unfold Common.equivocator_IM in Ht'.
-      unfold equivocator_vlsm in Ht'. unfold mk_vlsm in Ht'.
-      unfold machine in Ht'. unfold projT2 in Ht'.
-      unfold equivocator_vlsm_machine in Ht'.
-      unfold equivocator_transition in Ht'.
-      unfold snd in Ht'.
-      destruct di as [sdi|idi fdi].
-      -- destruct Hv as [Hsdi _Hiom]. subst iom.
-        inversion Ht'. subst om'. clear Ht'.
-        unfold equivocator_state_extend in H0.
-        destruct (is (eqv)) as (is_eqv_n, is_eqv_s) eqn:His_eqv.
-        inversion H0. subst nsi'.
-        simpl_existT.
-        destruct (nat_eq_dec (S is_eqv_n) (S is_eqv_n)); [|lia].
-        destruct (nat_eq_dec (S ieqv) (S (S is_eqv_n))).
-        ++ inversion e0. subst ieqv. clear e e0.
-          eexists _. eexists _. exists eq_refl.
-          assert
-            (Hfinal' :
-            equivocators_state_project final_choice
-            (last (map destination tr)
-               (state_update (Common.equivocator_IM IM) is (eqv)
-                  (equivocator_state_extend (IM (eqv)) (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
-                  is_eqv_n is_eqv_s) sdi))) =
-            last (map destination trX')
-              (equivocators_state_project
-                 (equivocators_choice_update initial_choice' eqv
-                    (NewMachine (IM (eqv)) sdi)) is)
-            ).
-          { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM).
-            rewrite Heqv.
-            unfold projT1. unfold projT2.
-            destruct (le_lt_dec (S (S is_eqv_n)) (S is_eqv_n)); [lia|].
-            f_equal.
-            apply functional_extensionality_dep_good.
-            rewrite to_nat_of_nat.
-            destruct (nat_eq_dec (S is_eqv_n) (S is_eqv_n)); [|lia].
-            intro i'. destruct (decide (i' = (eqv))).
-            - subst. rewrite state_update_eq.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_eq.
-              reflexivity.
-            - rewrite state_update_neq by assumption.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_neq; congruence.
-          }
-          exists Hfinal'.
-          assert
-            (Hproper'' :
-              proper_equivocators_choice
-                (equivocators_choice_update initial_choice' eqv
-                  (NewMachine (IM (eqv)) sdi)) is).
-          {
-          intro eqv'. spec Hproper' eqv'.  unfold equivocators_choice_update.
-          destruct (decide (eqv' = eqv)).
-          - subst. rewrite equivocators_choice_update_eq. assumption.
-          - rewrite equivocators_choice_update_neq by assumption.
-            rewrite state_update_neq in Hproper'; congruence.
-          }
-          exists Hproper''.
-          replace
-            (equivocators_state_project
-            (equivocators_choice_update initial_choice' eqv
-               (NewMachine (IM (eqv)) sdi)) is)
-            with
-              (equivocators_state_project initial_choice'
-              (state_update (Common.equivocator_IM IM) is
-                 (eqv)
-                 (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
-                  (S is_eqv_n) bsi')))
-          ; [assumption|].
-          subst bsi'.
-          unfold equivocators_state_project.
-          rewrite equivocators_state_project_state_update_eqv.
-          rewrite Heqv. unfold projT1. unfold projT2.
-          destruct (le_lt_dec (S (S is_eqv_n)) (S is_eqv_n)); [lia |].
-          rewrite to_nat_of_nat.
-          destruct ( nat_eq_dec (S is_eqv_n) (S is_eqv_n) ); [|congruence].
-          replace (of_nat_lt l0) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-          clear l0.
-          replace (of_nat_lt l) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-          clear l.
-          apply functional_extensionality_dep_good.
-          intro i.
-          unfold Common.equivocators_state_project at 2.
-          unfold equivocators_choice_update.
-          destruct (decide (i = (eqv))).
-          ** subst. rewrite state_update_eq.
-            rewrite equivocators_choice_update_eq.
-            reflexivity.
-          ** repeat rewrite state_update_neq by assumption.
-            unfold Common.equivocators_state_project.
-            rewrite equivocators_choice_update_neq; congruence.
-        ++ eexists _. eexists _. exists eq_refl.
-          assert
-            (Hfinal' :
-              equivocators_state_project final_choice
-                (last (map destination tr)
-                   (state_update (Common.equivocator_IM IM) is
-                      (eqv)
-                      (equivocator_state_extend (IM (eqv))
-                         (existT (fun n0 : nat => t (S n0) -> vstate (IM (eqv)))
-                            is_eqv_n is_eqv_s) sdi))) =
-              last (map destination trX')
-                (equivocators_state_project
-                   (equivocators_choice_update initial_choice' eqv
-                      (Existing (IM (eqv)) ieqv false)) is)
-            ).
-          { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM).
-            rewrite Heqv.
-            unfold projT1. unfold projT2.
-            destruct (le_lt_dec (S (S is_eqv_n)) ieqv); [lia|].
-            f_equal.
-            apply functional_extensionality_dep_good.
-            rewrite to_nat_of_nat.
-            destruct (nat_eq_dec ieqv (S is_eqv_n)); [lia|].
-            intro i'. destruct (decide (i' = (eqv))).
-            - subst. rewrite state_update_eq.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_eq.
-              rewrite His_eqv.
-              destruct (le_lt_dec (S is_eqv_n) ieqv); [lia|].
-              f_equal. apply of_nat_ext.
-            - rewrite state_update_neq by assumption.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_neq; congruence.
-          }
-          exists Hfinal'.
-          assert
-            (Hproper'' :
-            proper_equivocators_choice
-            (equivocators_choice_update initial_choice' eqv
-               (Existing (IM (eqv)) ieqv false)) is).
-          {
-          intro eqv'. spec Hproper' eqv'.  unfold equivocators_choice_update.
-          destruct (decide (eqv' = eqv)).
-          - subst. rewrite equivocators_choice_update_eq.
-            simpl. rewrite His_eqv. simpl. lia.
-          - rewrite equivocators_choice_update_neq by assumption.
-            rewrite state_update_neq in Hproper'; congruence.
-          }
-          exists Hproper''.
-          replace
-            ((equivocators_state_project
-            (equivocators_choice_update initial_choice' eqv
-               (Existing (IM (eqv)) ieqv false)) is))
-            with
-              (equivocators_state_project initial_choice'
-              (state_update (Common.equivocator_IM IM) is
-                 (eqv)
-                 (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
-                  (S is_eqv_n) bsi')))
-          ; [assumption|].
-          unfold equivocators_state_project.
-          rewrite equivocators_state_project_state_update_eqv.
-          rewrite Heqv. unfold projT1. unfold projT2.
-          destruct (le_lt_dec (S (S is_eqv_n)) ieqv); [lia |].
-          replace (of_nat_lt l0) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-          clear l0.
-          replace (of_nat_lt l) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-          clear l.
-          apply functional_extensionality_dep_good.
-          intro i.
-          destruct (decide (i = (eqv))).
-          --- subst. rewrite state_update_eq.
-            unfold Common.equivocators_state_project.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_eq.
-            rewrite to_nat_of_nat. rewrite His_eqv.
-            destruct (le_lt_dec (S is_eqv_n) ieqv); [lia|].
-            destruct (nat_eq_dec ieqv (S is_eqv_n)); [congruence|].
-            f_equal. apply of_nat_ext.
-          --- rewrite state_update_neq by assumption.
-            unfold Common.equivocators_state_project.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_neq; congruence.
-    -- destruct Hv as [Hidi Hv].
-      destruct (le_lt_dec (S (projT1 (is (eqv)))) idi); [lia|].
-      replace (of_nat_lt l0) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-      clear l0.
-      unfold fst in Ht'.
-      destruct (is (eqv)) as (neqv, bseqv) eqn:Hiseqv.
-      unfold projT2 in Ht'.
-      destruct (vtransition (IM (eqv)) li (bseqv (of_nat_lt Hidi), iom))
-        as (si', siom') eqn:Ht''.
-      destruct fdi.
-      ++ inversion Ht'. subst.
-        simpl_existT.
-        destruct (nat_eq_dec (S ieqv) (S (S neqv))).
-        ** eexists _. eexists _. exists eq_refl.
-          inversion e. subst ieqv. clear e.
-          unfold Common.l.
-          rewrite map_cons. unfold destination at 5.
-          assert
-            (Hfinal' :
-              equivocators_state_project final_choice
-                (last (map destination tr)
-                   (state_update (Common.equivocator_IM IM) is
-                      (eqv)
-                      (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
-                         (S neqv) bsi'))) =
-              last
-                (equivocators_state_project initial_choice'
-                   (state_update (Common.equivocator_IM IM) is
-                      (eqv)
-                      (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
-                         (S neqv) bsi')) :: map destination trX')
-                (equivocators_state_project
-                   (equivocators_choice_update initial_choice' eqv
-                      (Existing (IM (eqv)) idi true)) is)
-            ).
-          { rewrite unroll_last. subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM).
-            rewrite Heqv.
-            unfold projT1. unfold projT2.
-            reflexivity.
-          }
-          exists Hfinal'.
-          assert
-            (Hproper'' :
-            proper_equivocators_choice
-            (equivocators_choice_update initial_choice' eqv
-               (Existing (IM (eqv)) idi true)) is).
-          { intro eqv'. spec Hproper' eqv'.
-            unfold equivocators_choice_update.
-            destruct (decide (eqv' = eqv)).
-            - subst. rewrite state_update_eq in Hproper'.
-              rewrite equivocators_choice_update_eq.
-              rewrite Heqv in Hproper'.
-              simpl in *.
-              rewrite Hiseqv. simpl. lia.
-            - rewrite state_update_neq in Hproper' by congruence.
-              rewrite equivocators_choice_update_neq; assumption.
-          }
-          exists Hproper''.
-          constructor; [assumption|].
-          repeat split; [apply His; assumption|assumption|..].
-          --- remember equivocators_state_project as esp. simpl.
-            simpl in Hv. subst esp. unfold equivocators_state_project.
-            unfold Common.equivocators_state_project.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_eq.
-            rewrite Hiseqv.
-            simpl in Hidi.
-            destruct (le_lt_dec (S neqv) idi); [lia|].
-            replace (of_nat_lt l0) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-            clear l0.
-            assumption.
-          --- unfold equivocators_state_project.
-            rewrite equivocators_state_project_state_update_eqv.
-            rewrite Heqv. unfold projT1. unfold projT2.
-            destruct (le_lt_dec (S (S neqv)) (S neqv)); [lia|].
-            replace (of_nat_lt l) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-            clear l.
-            replace (of_nat_lt l0) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-            clear l0.
-            remember Common.equivocators_state_project as esp.
-            remember (of_nat_lt Hproper_eqv) as onl.
-            simpl.
-            rewrite  Heqesp.
-            unfold Common.equivocators_state_project at 1.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_eq.
-            rewrite Hiseqv.
-            simpl in Hidi.
-            destruct (le_lt_dec (S neqv) idi); [lia|].
-            replace (of_nat_lt l) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-            clear l. clear Hproject. subst. rewrite to_nat_of_nat.
-            destruct (nat_eq_dec (S neqv) (S neqv)); [|congruence].
-            simpl in *. rewrite Ht''.
-            f_equal.
-            apply functional_extensionality_dep_good.
-            intro eqvi.
-            destruct (decide (eqvi = eqv)).
-            +++ subst. repeat rewrite state_update_eq. reflexivity.
-            +++ repeat rewrite state_update_neq by assumption.
-              unfold  Common.equivocators_state_project.
-              destruct (decide (eqvi = eqv)); [congruence|].
-              rewrite equivocators_choice_update_neq; congruence.
-        ** eexists _. eexists _. exists eq_refl.
-          assert
-            (Hfinal' :
-              equivocators_state_project final_choice
-                (last (map destination tr)
-                   (state_update (Common.equivocator_IM IM) is
-                      (eqv)
-                      (existT (fun n0 : nat => t (S n0) -> vstate (IM (eqv)))
-                         (S neqv) bsi'))) =
-              last (map destination trX')
-                (equivocators_state_project
-                   (equivocators_choice_update initial_choice' eqv
-                      (Existing (IM (eqv)) ieqv false)) is)
-            ).
-          { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM).
-            rewrite Heqv.
-            unfold projT1. unfold projT2.
-            f_equal.
-            apply functional_extensionality_dep_good.
-            destruct (le_lt_dec (S (S neqv)) ieqv); [lia|].
-            rewrite to_nat_of_nat.
-            destruct (nat_eq_dec ieqv (S neqv) ); [lia|].
-            intro i'. destruct (decide (i' = (eqv))).
-            - subst. rewrite state_update_eq.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_eq.
-              rewrite Hiseqv.
-              destruct (le_lt_dec (S neqv) ieqv); [lia|].
-              f_equal. apply of_nat_ext.
-            - rewrite state_update_neq by assumption.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_neq; congruence.
-          }
-          exists Hfinal'.
-          assert
-            (Hproper'' :
-            proper_equivocators_choice
-              (equivocators_choice_update initial_choice' eqv
-                 (Existing (IM (eqv)) ieqv false)) is).
-          { intro eqv'. spec Hproper' eqv'.
-            unfold equivocators_choice_update.
-            destruct (decide (eqv' = eqv)).
-            - subst. rewrite state_update_eq in Hproper'.
-              rewrite equivocators_choice_update_eq.
-              rewrite Heqv in Hproper'.
-              simpl in *.
-              rewrite Hiseqv. simpl. lia.
-            - rewrite state_update_neq in Hproper' by congruence.
-              rewrite equivocators_choice_update_neq; assumption.
-          }
-          exists Hproper''.
-          replace
-            (equivocators_state_project
-            (equivocators_choice_update initial_choice' eqv
-               (Existing (IM (eqv)) ieqv false)) is)
-            with
-            (equivocators_state_project initial_choice'
-            (state_update (Common.equivocator_IM IM) is
-               (eqv)
-               (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
-                  (S neqv) bsi')))
-          ; [assumption|].
-          unfold equivocators_state_project.
-          rewrite equivocators_state_project_state_update_eqv.
-          rewrite Heqv. unfold projT1. unfold projT2.
-          destruct (le_lt_dec (S (S neqv)) ieqv); [lia|].
-          replace (of_nat_lt l) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-          clear l.
-          replace (of_nat_lt l0) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-          clear l0.
-          apply functional_extensionality_dep_good.
-          intro i.
-          destruct (decide (i = eqv)).
-          --- subst. rewrite state_update_eq.
-            rewrite to_nat_of_nat.
-            destruct (nat_eq_dec ieqv (S neqv)); [congruence|].
-            unfold Common.equivocators_state_project.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_eq.
-            rewrite Hiseqv.
-            destruct (le_lt_dec (S neqv) ieqv); [lia|].
-            f_equal. apply of_nat_ext.
-          --- rewrite state_update_neq by assumption.
-            unfold  Common.equivocators_state_project.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_neq; congruence.
-      ++ inversion Ht'. subst. simpl_existT.
-        destruct (nat_eq_dec idi ieqv).
-        --- subst. simpl in Hidi.
-          replace (of_nat_lt l) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-          clear l.
-          replace (of_nat_lt Hproper_eqv) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-          clear Hproper_eqv.
-          rewrite eq_dec_if_true in * by reflexivity.
-          eexists _. eexists _. exists eq_refl.
-          rewrite map_cons. unfold destination at 5.
-          assert
-            (Hfinal' :
-              equivocators_state_project final_choice
-                (last (map destination tr)
-                   (state_update (Common.equivocator_IM IM) is
-                      (eqv)
-                      (existT (fun n : nat => t (S n) -> vstate (IM (eqv))) nsi'
-                         (fun j : t (S nsi') =>
-                          if eq_dec (of_nat_lt Hidi) j then si' else bseqv j)))) =
-              last
-                (equivocators_state_project initial_choice'
-                   (state_update (Common.equivocator_IM IM) is
-                      (eqv)
-                      (existT (fun n : nat => t (S n) -> vstate (IM (eqv))) nsi'
-                         (fun j : t (S nsi') =>
-                          if eq_dec (of_nat_lt Hidi) j then si' else bseqv j)))
-                 :: map destination trX')
-                (equivocators_state_project
-                   (equivocators_choice_update initial_choice' eqv
-                      (Existing (IM (eqv)) ieqv false)) is)
-            ).
-          { rewrite unroll_last. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM).
-            rewrite Heqv.
-            unfold projT1. unfold projT2.
-            reflexivity.
-          }
-          exists Hfinal'.
-          assert
-            (Hproper'' : proper_equivocators_choice
-            (equivocators_choice_update initial_choice' eqv
-               (Existing (IM (eqv)) ieqv false)) is).
-          { intro eqv'. spec Hproper' eqv'.
-            unfold equivocators_choice_update.
-            destruct (decide (eqv' = eqv)).
-            - subst. rewrite state_update_eq in Hproper'.
-              rewrite equivocators_choice_update_eq.
-              rewrite Heqv in Hproper'.
-              simpl in *.
-              rewrite Hiseqv. simpl. lia.
-            - rewrite state_update_neq in Hproper' by congruence.
-              rewrite equivocators_choice_update_neq; assumption.
-          }
-          exists Hproper''.
-          constructor; [assumption|].
-          repeat split; [apply His; assumption| assumption| |].
-          +++ remember equivocators_state_project as esp. simpl.
-            simpl in Hv. subst esp. unfold equivocators_state_project.
-            unfold Common.equivocators_state_project.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_eq.
-            rewrite Hiseqv.
-            simpl in Hidi.
-            destruct (le_lt_dec (S nsi') ieqv); [lia|].
-            replace (of_nat_lt l) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-            clear l.
-            assumption.
-          +++ unfold equivocators_state_project.
-            rewrite equivocators_state_project_state_update_eqv.
-            rewrite Heqv. unfold projT1. unfold projT2.
-            destruct (le_lt_dec (S nsi') ieqv); [lia|].
-            replace (of_nat_lt l) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-            clear l.
-            remember Common.equivocators_state_project as esp.
-            remember (of_nat_lt Hidi) as onl.
-            simpl.
-            rewrite  Heqesp.
-            unfold Common.equivocators_state_project at 1.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_eq.
-            rewrite Hiseqv.
-            destruct (le_lt_dec (S nsi') ieqv); [lia|].
-            replace (of_nat_lt l) with (of_nat_lt Hidi) in * by apply of_nat_ext.
-            clear l. clear Hproject. subst. rewrite eq_dec_if_true by reflexivity.
-            simpl in *. rewrite Ht''.
-            f_equal.
-            apply functional_extensionality_dep_good.
-            intro eqvi.
-            destruct (decide (eqvi = eqv)).
-            *** subst. repeat rewrite state_update_eq. reflexivity.
-            *** repeat rewrite state_update_neq by  assumption.
-              unfold  Common.equivocators_state_project.
-              destruct (decide (eqvi = eqv)); [congruence|].
-              rewrite equivocators_choice_update_neq; congruence.
-        --- eexists _. eexists _. exists eq_refl.
-          assert
-            (Hfinal' :
-              equivocators_state_project final_choice
-                (last (map destination tr)
-                   (state_update (Common.equivocator_IM IM) is
-                      (eqv)
-                      (existT (fun n0 : nat => t (S n0) -> vstate (IM (eqv)))
-                         nsi' bsi'))) =
-              last (map destination trX')
-                (equivocators_state_project
-                   (equivocators_choice_update initial_choice' eqv
-                      (Existing (IM (eqv)) ieqv false)) is)
-            ).
-          { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM).
-            rewrite Heqv.
-            unfold projT1. unfold projT2.
-            f_equal.
-            apply functional_extensionality_dep_good.
-            destruct (le_lt_dec (S nsi') ieqv); [lia|].
-            destruct (eq_dec (of_nat_lt Hidi) (of_nat_lt l0))
-            ; [apply (f_equal to_nat) in e; repeat rewrite to_nat_of_nat in e; congruence|].
-            intro i'. destruct (decide (i' = (eqv))).
-            - subst. rewrite state_update_eq.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_eq.
-              rewrite Hiseqv.
-              destruct (le_lt_dec (S nsi') ieqv); [lia|].
-              f_equal. apply of_nat_ext.
-            - rewrite state_update_neq by assumption.
-              unfold equivocators_state_project.
-              unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_neq; congruence.
-          }
-          exists Hfinal'.
-          assert
-            (Hproper'' :
-            proper_equivocators_choice
-              (equivocators_choice_update initial_choice' eqv
-                 (Existing (IM (eqv)) ieqv false)) is).
-          { intro eqv'. spec Hproper' eqv'.
-            unfold equivocators_choice_update.
-            destruct (decide (eqv' = eqv)).
-            - subst. rewrite state_update_eq in Hproper'.
-              rewrite equivocators_choice_update_eq.
-              rewrite Heqv in Hproper'.
-              simpl in *.
-              rewrite Hiseqv. simpl. lia.
-            - rewrite state_update_neq in Hproper' by congruence.
-              rewrite equivocators_choice_update_neq; assumption.
-          }
-          exists Hproper''.
-          replace
-            (equivocators_state_project
-            (equivocators_choice_update initial_choice' eqv
-               (Existing (IM (eqv)) ieqv false)) is)
-            with
-            (equivocators_state_project initial_choice'
-            (state_update (Common.equivocator_IM IM) is
-               (eqv)
-               (existT (fun n : nat => t (S n) -> vstate (IM (eqv)))
-                  nsi' bsi')))
-          ; [assumption|].
-          unfold equivocators_state_project.
-          rewrite equivocators_state_project_state_update_eqv.
-          rewrite Heqv. unfold projT1. unfold projT2.
-          destruct (le_lt_dec (S nsi') ieqv); [lia|].
-          replace (of_nat_lt l0) with (of_nat_lt Hproper_eqv) in * by apply of_nat_ext.
-          clear l0.
-          apply functional_extensionality_dep_good.
-          intro i.
-          destruct (decide (i = eqv)).
-          +++ subst. rewrite state_update_eq.
-            rewrite eq_dec_if_false.
-            *** unfold Common.equivocators_state_project.
-              unfold equivocators_choice_update.
-              rewrite equivocators_choice_update_eq.
-              rewrite Hiseqv.
-              destruct (le_lt_dec (S nsi') ieqv); [lia|].
-              f_equal. apply of_nat_ext.
-            *** intro contra. elim n. apply (f_equal to_nat) in contra.
-              repeat rewrite to_nat_of_nat in contra. inversion contra. reflexivity.
-          +++ rewrite state_update_neq by assumption.
-            unfold  Common.equivocators_state_project.
-            unfold equivocators_choice_update.
-            rewrite equivocators_choice_update_neq; congruence.
-Qed.
+    rewrite map_app in Hproper. simpl in Hproper. rewrite last_is_last in Hproper.
+    spec Hproperx Hproper.
+    destruct Hproperx as [oitem [final_choice' [Hprojectx Hproperx]]].
+    specialize (Hproperx (last (map destination tr) is)).
+    unfold equivocators_trace_project.
+    rewrite fold_right_app.
+    match goal with
+    |- context [fold_right _ ?fld _] => remember fld as foldx
+    end.
+    simpl in Heqfoldx.
+    rewrite Hprojectx in Heqfoldx.
+    inversion Hinit. subst tl s' x.
+    destruct H3 as [[Hs [Hiom [Hv _]]] Ht].
+    specialize (Hproperx Hv Ht). clear Hv Ht.
+    destruct Hproperx as [Hproper' Hx].
+    specialize (IHtr _ Hproper').
+    destruct IHtr as [trX' [initial_choice [Htr_project [Hstate_project [Hproper_initial HtrX']]]]].
+    destruct oitem as [item|].
+    + destruct Hx as [Hl [Hinput [Houtput [Hdestination Hx]]]].
+      simpl in Hl, Hinput, Houtput, Hdestination.
+      specialize (Hx _ eq_refl).
+      destruct Hx as [Hvx Htx].
+      exists (trX' ++ [item]), initial_choice. subst foldx.
+      rewrite equivocators_trace_project_folder_additive with (trX := trX') (eqv_choice := initial_choice)
+      ; [|assumption].
+      exists eq_refl.
+      rewrite map_app. simpl. rewrite last_is_last.
+      unfold final_state. rewrite map_app. simpl. rewrite last_is_last.
+      exists Hdestination.
+      exists Hproper_initial.
+      apply finite_protocol_trace_from_app_iff.
+      split; [assumption|].
+      change [item] with ([] ++ [item]).
+      match goal with
+      |- finite_protocol_trace_from _ ?l _ => remember l as lst
+      end.
+      destruct item.
+      assert (Hlst : protocol_state_prop X lst).
+      { apply finite_ptrace_last_pstate in HtrX'. subst. assumption. }
+      apply (extend_right_finite_trace_from X lst []); [constructor; assumption|].
+      simpl in Hl. subst. 
+      split.
+      * split; [assumption|].
+        unfold Common.input in Hiom.
+        destruct Hiom as [_s Hiom].
+        apply equivocators_protocol_state_project in Hiom.
+        destruct Hiom as [Hiom _].
+        split; [assumption|].
+        split; [|exact I].
+        clear -Hvx Hstate_project. simpl in Hvx. simpl in Hstate_project.
+        rewrite Hstate_project in Hvx.
+        simpl. assumption.
+      * simpl. simpl in Htx, Hstate_project.
+        rewrite Hstate_project in Htx.
+        assumption. 
+    + exists trX'. exists initial_choice. subst foldx. exists Htr_project.
+      repeat split; [| assumption | assumption].
+      clear -Hstate_project Hx. rewrite Hstate_project in Hx.
+      rewrite <- Hx. f_equal. unfold final_state.
+      rewrite map_app. simpl. rewrite last_is_last. reflexivity.
+Qed. 
 
 End equivocators_composition_projections.

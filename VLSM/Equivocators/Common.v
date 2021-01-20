@@ -181,6 +181,20 @@ Next Obligation.
   lia.
 Defined.
 
+Lemma equivocator_state_extend_project_last
+  (bs : equivocator_state)
+  (s : vstate X)
+  (ns := projT1 bs)
+  : let ext := equivocator_state_extend bs s in
+    forall (l : S ns < S (projT1 ext)), projT2 ext (of_nat_lt l) = s.
+Proof.
+  unfold ns. clear ns. 
+  destruct bs as (ns, sbs). simpl. intro l.
+  rewrite to_nat_of_nat.
+  destruct (nat_eq_dec (S ns) (S ns)); [|lia].
+  reflexivity.
+Qed.
+
 (** The original state index is present in any equivocator state*)
 Lemma Hzero (s : equivocator_state) : 0 < S (projT1 s).
 Proof. lia. Qed.

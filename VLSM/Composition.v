@@ -70,6 +70,7 @@ types <<[@label _ (IT n) | n <- index]>>.
 
     Definition composite_state := @state message composite_type.
     Definition composite_label := @label message composite_type.
+    Definition composite_transition_item : Type := @transition_item message composite_type.
 
 (**
 A very useful operation on [composite_state]s is updating the state corresponding
