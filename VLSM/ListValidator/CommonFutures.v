@@ -1238,7 +1238,7 @@ Context
     List.map (feasible_update_composite s) li.
   
   Definition phase_one_plan (s : vstate X) : vplan X :=
-    chain_updates index_listing s.
+    chain_updates (GH s) s.
  
   Definition phase_one (s : vstate X) : list (vtransition_item X) * vstate X :=
     apply_plan X s (phase_one_plan s).
@@ -1480,22 +1480,31 @@ Context
           assumption.
   Qed.
   
+  Lemma GH_NoDup  
+    (s : vstate X) :
+    NoDup (GH s).
+  Proof.
+    unfold GH.
+    apply NoDup_filter.
+    apply (proj1 Hfinite).
+  Qed.
+  
   Lemma phase_one_protocol
     (s : vstate X)
     (Hprs : protocol_state_prop X s)
-    (Hnf : no_component_fully_equivocating s index_listing) :
+    (Hnf : no_component_fully_equivocating s (GH s)) :
     finite_protocol_plan_from X s (phase_one_plan s).
   Proof.
     unfold phase_one_plan.
     apply chain_updates_protocol.
     assumption.
-    apply (proj1 Hfinite).
-    assumption.
+    apply GH_NoDup.
+    intuition.
   Qed.
   
   Lemma phase_one_future 
     (s : vstate X)
-    (Hnf : no_component_fully_equivocating s index_listing)
+    (Hnf : no_component_fully_equivocating s (GH s))
     (Hspr : protocol_state_prop _ s) :
     in_futures _ s (phase_one_res s).
   Proof.
@@ -1513,16 +1522,16 @@ Context
   Lemma phase_one_projections 
     (s : vstate X)
     (Hprss : protocol_state_prop _ s)
-    (Hnf : no_component_fully_equivocating s index_listing)
+    (Hnf : no_component_fully_equivocating s (GH s))
     (i : index)
+    (Hin : In i (GH s))
     (s' := phase_one_res s) :
     project (s' i) i = (s i).
   Proof.
     apply chain_updates_protocol.
     intuition.
-    apply (proj1 Hfinite).
-    intuition.
-    apply ((proj2 Hfinite) i).
+    apply GH_NoDup.
+    all : intuition.
   Qed. 
   
   (*
@@ -1968,7 +1977,7 @@ Context
       (s : vstate X) :
       list state 
       :=
-    component_list s index_listing.
+    component_list s (GH s).
     
     Definition get_topmost_candidates
       (s : vstate X)
@@ -2386,6 +2395,7 @@ Context
            rewrite eq_second; intuition.
     Qed.
     
+    
     Lemma get_receives_for_correct_GE
         (s : vstate X)
         (Hpr : protocol_state_prop X s)
@@ -2396,40 +2406,55 @@ Context
         let res := snd (apply_plan X s (get_receives_for s li from)) in
         incl (GE res) (GE s).
     Proof.
-      generalize dependent s.
-      induction li; intros.
+      induction li using rev_ind; intros.
       - simpl in res.
         unfold res.
         apply incl_refl.
       - simpl in Hnf.
+        (*
         apply NoDup_cons_iff in Hnodup.
         destruct Hnodup as [Hna Hnodup].
-        specialize (IHli Hnodup).
+        specialize (IHli Hnodup). *)
+        
+        assert (NoDup li). {
+          admit.
+        }
+        
+        assert (~ In from li). {
+          admit.
+        }
         
         spec IHli. intuition.
         
         unfold get_receives_for in res. simpl in res.
-        remember (get_matching_plan s from a) as short_plan.
-        remember (concat (map (get_matching_plan s from) li)) as long_plan.
+        (* remember (get_matching_plan s from a) as short_plan.
+        remember (concat (map (get_matching_plan s from) li)) as long_plan. *)
         unfold res.
+        rewrite map_app.
+        rewrite concat_app.
         rewrite apply_plan_app.
         
-        destruct (apply_plan X s short_plan) as (tr_short, res_short) eqn : eq_short.
-        destruct (apply_plan X res_short long_plan) as (tr_long, res_long) eqn : eq_long.
+        destruct (apply_plan X s (concat (map (get_matching_plan s from) li))) as (tr_long, res_long) eqn : eq_long.
+        destruct (apply_plan X res_long (concat (map (get_matching_plan s from) [x]))) as (tr_short, res_short) eqn : eq_short.
         
         simpl.
         
-        specialize (IHli res_short).
         spec IHli. {
-          admit.
+          intuition.
+        }
+        simpl in IHli.
+        apply incl_tran with (m := GE res_long). 
+        2 : {
+          replace res_long with (snd (apply_plan X s (concat (map (get_matching_plan s from) li)))) by (rewrite eq_long;intuition).
+          unfold get_receives_for in IHli.
+          intuition.
         }
         
-        apply incl_tran with (m := GE res_short).
-        replace res_long with (snd (apply_plan X res_short long_plan)) by (rewrite eq_long;intuition).
-        simpl in IHli.
-        rewrite Heqlong_plan.
-        unfold get_receives_for in IHli.
-    Qed. 
+        simpl in eq_short.
+        rewrite app_nil_r in eq_short.
+        replace res_short with (snd (apply_plan X res_long (get_matching_plan s from x))) by (rewrite eq_short; intuition).
+        admit.
+    Admitted.
     
     Definition is_receive_plan
       (a : vplan X) : Prop := 
@@ -2889,11 +2914,18 @@ Context
              all : intuition.
     Qed.
     
-    Definition get_receives_all
+    Definition get_receives_all'
       (s : vstate X)
       (lfrom : set index) : vplan X :=
       let lis := (List.map others lfrom) in
       let receive_fors := zip_apply (List.map (get_receives_for s) lis) lfrom in
+      List.concat receive_fors.
+    
+    Definition get_receives_all
+      (s : vstate X)
+      (lfrom : set index) : vplan X :=
+      let lis := (List.map others lfrom) in
+      let receive_fors := List.map (fun (i : index) => get_receives_for s (others i) i) lfrom in
       List.concat receive_fors.
     
     Lemma get_receives_all_protocol
