@@ -2520,6 +2520,81 @@ Context
         intuition. 
     Qed.
     
+    Lemma get_matching_plan_effect_GE
+      (s s2: vstate X)
+      (Hprs : protocol_state_prop X s)
+      (Hprs2 : protocol_state_prop X s2)
+      (Hf : in_futures X s s2)
+      (s' : state)
+      (from to : index)
+      (Hsame : (s2 to) = (s to))
+      (Hdif : from <> to)
+      (Hmatch : get_matching_state s to from = s') :
+      let res := snd (apply_plan X s2 (get_matching_plan s from to)) in
+      finite_protocol_plan_from X s2 (get_matching_plan s from to) /\
+      project (res to) from = project s' from /\ set_eq (GE res) (GE s2).
+    Proof.
+      simpl.
+      unfold get_matching_plan.
+      rewrite Hmatch.
+      destruct (sync s s' to from) eqn : eq_sync.
+      - unfold sync in eq_sync.
+        destruct (complete_suffix (get_history s' from) (get_history (s to) from)) eqn : eq_suf.
+        2 : discriminate eq_sync.
+        assert (eq_suf_original := eq_suf).
+        apply complete_suffix_correct in eq_suf.
+        inversion eq_sync.
+        specialize (one_sender_receive_protocol s2 s Hprs2 Hprs to) as Hone.
+        unfold get_matching_state in Hmatch.
+        destruct (find (fun s' : state => state_ltb' from (project (s to) from) s')
+             (get_topmost_candidates s from)) eqn : eq_find.
+        + apply find_some in eq_find.
+          destruct eq_find as [eq_find _].
+          unfold get_topmost_candidates in eq_find.
+          unfold get_maximal_elements in eq_find.
+          apply filter_In in eq_find.
+          destruct eq_find as [eq_find _].
+          unfold get_candidates in eq_find.
+          unfold component_list in eq_find.
+          apply in_map_iff in eq_find.
+          destruct eq_find as [inter [Hinter _]].
+          
+          specialize (Hone inter from eq_refl).
+          spec Hone. {
+            intuition.
+          }
+          
+          specialize (Hone (sync_plan to from (rev l))).
+          
+          spec Hone. {
+             unfold sync.
+             rewrite <- Hmatch in eq_suf_original.
+             rewrite <- Hinter in eq_suf_original.
+             rewrite eq_suf_original.
+             reflexivity.
+          }
+          simpl in Hone.
+          rewrite <- Hmatch.
+          rewrite <- Hinter.
+          intuition.
+        + rewrite <- Hmatch.
+          rewrite <- Hmatch in eq_suf.
+          assert (Hempty: l = []). {
+            replace (get_history (s to) from) with ([] ++ (get_history (s to) from)) in eq_suf at 1.
+            apply app_inv_tail in eq_suf.
+            all : intuition.
+          }
+          rewrite Hempty.
+          simpl.
+          unfold sync_plan; simpl.
+          intuition.
+          apply finite_protocol_plan_empty.
+          assumption.
+      - rewrite <- Hmatch in eq_sync.
+        apply sync_some in eq_sync.
+        intuition. 
+    Qed.
+    
     Lemma get_matching_plan_index
       (s : vstate X)
       (from to : index)
@@ -2550,249 +2625,6 @@ Context
       (from : index) : vplan X :=
       let matching_plans := List.map (get_matching_plan s from) li in
       List.concat matching_plans.
-    (*
-    Lemma get_receives_for_correct
-        (s : vstate X)
-        (Hpr : protocol_state_prop X s)
-        (li : list index)
-        (from : index)
-        (Hnodup : NoDup li)
-        (Hnf : ~ In from li) :
-        let res := snd (apply_plan X s (get_receives_for s li from)) in
-        finite_protocol_plan_from X s (get_receives_for s li from) /\
-        forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from.
-    Proof.
-      induction li; intros.
-      - unfold get_receives_for. simpl.
-        split.
-        apply finite_protocol_plan_empty.
-        assumption.
-        intuition.
-      - unfold get_receives_for.
-        rewrite map_cons. simpl.
-        unfold get_receives_for in IHli.
-        apply not_in_cons in Hnf.
-        destruct Hnf as [Hnfa Hnfli].
-        apply NoDup_cons_iff in Hnodup as Hnodup'.
-        
-        specialize (@plan_independence _ X (get_matching_plan s from a) (concat (map (get_matching_plan s from) li))) as Hind.
-        
-        remember (fun s' => forall (i : index), In i li -> (s' i) = (s i)) as Pb.
-        
-        specialize (Hind Pb s).
-        
-        spec Hind. {
-          assumption.
-        }
-        
-        assert (Hfrs : finite_protocol_plan_from X s (get_matching_plan s from a)). {
-          apply get_matching_plan_effect with (s' := (get_matching_state s a from)).
-          all : intuition.
-        }
-        
-        spec Hind. { 
-          auto.
-        }
-        
-        spec Hind. {
-          rewrite HeqPb. intros.
-          reflexivity.
-        }
-        
-        specialize (@relevant_components (@message index index_listing) index idec IM_index) as Hrel.
-        specialize (Hrel i0 s).
-        
-        assert (Hincl: incl
-               (map (projT1 (P:=fun n : index => vlabel (IM_index n)))
-               (map label_a (concat (map (get_matching_plan s from) li)))) li). {
-          unfold incl. intros.
-          rewrite in_map_iff in H.
-          destruct H as [x [Hproj Hinx]].
-          apply in_map_iff in Hinx.
-          destruct Hinx as [x0 [H_label Hincon]].
-          apply in_concat in Hincon.
-          destruct Hincon as [y [Hiny Hinx0]].
-          rewrite in_map_iff in Hiny.
-          destruct Hiny as [z [Hmatching Hindex]].
-          rewrite <- H_label in Hproj.
-          unfold free_composite_vlsm.
-          assert (a0 = z). {
-            rewrite <- Hproj.
-            apply get_matching_plan_index with (s := s) (from := from).
-            rewrite <- Hmatching in Hinx0.
-            assumption.
-          }
-          rewrite H.
-          assumption.
-       }
-        
-        (* ensures *)
-        
-        spec_save Hind. {
-          unfold ensures. intros.
-          rewrite HeqPb in H0.
-          apply Hrel with (li := li).
-          assumption.
-          assumption.
-          unfold incl. intros.
-          rewrite in_map_iff in H1.
-          destruct H1 as [x [Hproj Hinx]].
-          rewrite in_map_iff in Hinx.
-          destruct Hinx as [x0 [H_label Hincon]].
-          apply in_concat in Hincon.
-          destruct Hincon as [y [Hiny Hinx0]].
-          rewrite in_map_iff in Hiny.
-          destruct Hiny as [z [Hmatching Hindex]].
-          rewrite <- H_label in Hproj.
-          unfold free_composite_vlsm.
-          assert (a0 = z). {
-            rewrite <- Hproj.
-            apply get_matching_plan_index with (s := s) (from := from).
-            rewrite <- Hmatching in Hinx0.
-            assumption.
-          }
-          rewrite H1.
-          assumption.
-          apply IHli.
-          all : intuition.
-        }
-        
-        (* preserves *)
-        
-        spec_save Hind. {
-          rewrite HeqPb.
-          unfold preserves.
-          intros.
-          specialize (Hrel s0).
-          specialize (H0 i H3).
-          rewrite <- H0.
-          apply irrelevant_components.
-          intros contra.
-          rewrite in_map_iff in contra.
-          destruct contra as [x [Hproj Hinx]].
-          rewrite in_map_iff in Hinx.
-          destruct Hinx as [x0 [Hlabel Hinx0]].
-          apply get_matching_plan_index in Hinx0.
-          rewrite <- Hlabel in Hproj.
-          assert (a = i). {
-            rewrite <- Hproj.
-            rewrite <- Hinx0.
-            intuition.
-          }
-          rewrite <- H4 in H3.
-          intuition.
-        }
-        split. 
-        + intuition.
-        + intros.
-          unfold res.
-          unfold get_receives_for.
-          simpl.
-          rewrite apply_plan_app.
-          destruct (apply_plan X s (get_matching_plan s from a)) as (tr0, res0) eqn : eq_first.
-          destruct (apply_plan X res0 (concat (map (get_matching_plan s from) li))) as (tr, res') eqn : eq_second.
-          simpl.
-          destruct H1.
-          rewrite <- H1.
-          * assert (project (res0 a) from = project (get_matching_state s a from) from). {
-              specialize (get_matching_plan_effect s Hpr (get_matching_state s a from) from a) as Heff.
-              spec Heff. {
-                intuition.
-              }
-              spec Heff. {
-                intuition.
-              }
-              simpl in Heff.
-              replace res0 with (snd (apply_plan X s (get_matching_plan s from a))).
-              apply Heff.
-              rewrite eq_first; intuition.
-            }
-            rewrite <- H2.
-            
-            assert ((res' a) = (res0 a)). {
-              replace res' with (snd (apply_plan X res0 (concat (map (get_matching_plan s from) li)))).
-              apply irrelevant_components.
-              intros contra.
-              rewrite in_map_iff in contra.
-              destruct contra as [x [Hproj Hinx]].
-              rewrite in_map_iff in Hinx.
-              destruct Hinx as [x0 [Hl Hinx0]].
-              apply in_concat in Hinx0.
-              destruct Hinx0 as [x' [Hinx' Hinx0']].
-              rewrite in_map_iff in Hinx'.
-              destruct Hinx' as [j [Hmatch Hli]].
-              rewrite <- Hl in Hproj.
-              rewrite <- Hmatch in Hinx0'.
-              apply get_matching_plan_index in Hinx0'.
-              replace (@projT1 index (fun n : index => @vlabel (@message index index_listing) (IM_index n))
-              (@label_a (@message index index_listing) (@type (@message index index_listing) X)
-                 x0)) with a in Hinx0'.
-              rewrite <- Hinx0' in Hli.
-              intuition.
-              rewrite eq_second.
-              intuition.
-            }
-            rewrite H3; intuition.
-         * clear Hind.
-           replace res' with (snd (apply_plan X res0 (concat (map (get_matching_plan s from) li)))).
-           spec IHli. { intuition. }
-           spec IHli. { intuition. }
-           destruct IHli as [left IHli].
-           specialize (IHli i H1).
-           rewrite <- IHli.
-           assert (forall (i : index), In i li -> res0 i = s i). {
-            intros.
-            replace res0 with (snd (apply_plan X s (get_matching_plan s from a))).
-            apply irrelevant_components.
-            intros contra. 
-            apply in_map_iff in contra.
-            destruct contra as [x [y contra]].
-            apply in_map_iff in contra.
-            destruct contra as [x0 [Hl Hinx0]].
-            apply get_matching_plan_index in Hinx0.
-            rewrite <- Hl in y.
-            replace (@projT1 index (fun n : index => @vlabel (@message index index_listing) (IM_index n))
-             (@label_a (@message index index_listing) (@type (@message index index_listing) X) x0))
-             with i1 in Hinx0.
-             rewrite Hinx0 in H2.
-             intuition.
-             rewrite eq_first; intuition.
-           }
-           
-           f_equal.
-           specialize (Hrel res0).
-           spec Hrel. {
-             replace res0 with (snd (apply_plan X s (get_matching_plan s from a))).
-             apply apply_plan_last_protocol.
-             assumption.
-             assumption.
-             rewrite eq_first; intuition.
-           }
-           
-           specialize (Hrel (concat (map (get_matching_plan s from) li))).
-           simpl in Hrel.
-           specialize (Hrel li).
-           spec Hrel. {
-             assumption.
-           }
-           
-           spec Hrel. {
-            assumption.
-           }
-           
-           spec Hrel. {
-            assumption.
-           }
-           
-           simpl in Hrel.
-           destruct Hrel as [_ Hrel].
-           specialize (Hrel i).
-           spec Hrel. {
-            intuition.
-           }
-           apply Hrel.
-           rewrite eq_second; intuition.
-    Qed. *)
     
     Lemma get_receives_for_correct
         (s : vstate X)
@@ -2942,7 +2774,7 @@ Context
         specialize (Heff eq_refl).
         
         simpl in Heff.
-        destruct Heff as [Heff [Heff2 _]].
+        destruct Heff as [Heff [Heff2 Heff_GE]].
         
         apply relevant_components with (s' := res_long) (li0 := [x]) in Heff.
         
