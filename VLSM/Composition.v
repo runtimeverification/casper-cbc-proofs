@@ -1364,7 +1364,6 @@ All results from regular projections carry to these "free" projections.
     reflexivity.
     assumption.
   Qed.
-  
     
   Lemma irrelevant_components
     (s : state)

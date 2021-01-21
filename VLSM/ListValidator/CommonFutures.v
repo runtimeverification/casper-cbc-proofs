@@ -2550,7 +2550,7 @@ Context
       (from : index) : vplan X :=
       let matching_plans := List.map (get_matching_plan s from) li in
       List.concat matching_plans.
-      
+    (*
     Lemma get_receives_for_correct
         (s : vstate X)
         (Hpr : protocol_state_prop X s)
@@ -2792,6 +2792,195 @@ Context
            }
            apply Hrel.
            rewrite eq_second; intuition.
+    Qed. *)
+    
+    Lemma get_receives_for_correct
+        (s : vstate X)
+        (Hpr : protocol_state_prop X s)
+        (li : list index)
+        (from : index)
+        (Hnodup : NoDup li)
+        (Hnf : ~ In from li) :
+        let res := snd (apply_plan X s (get_receives_for s li from)) in
+        finite_protocol_plan_from X s (get_receives_for s li from) /\
+        forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from.
+        (* set_eq (GH res) (GH s). *)
+    Proof.
+      induction li using rev_ind; intros.
+      - unfold get_receives_for. simpl.
+        split.
+        apply finite_protocol_plan_empty.
+        assumption.
+        intuition.
+      - unfold res.
+        unfold get_receives_for.
+        rewrite map_app.
+        rewrite concat_app. simpl in *.
+        rewrite app_nil_r.
+        
+        rewrite apply_plan_app.
+       
+        destruct (apply_plan X s (concat (map (get_matching_plan s from) li))) as (tr_long, res_long) eqn : eq_long.
+        destruct (apply_plan X res_long (get_matching_plan s from x)) as (tr_short, res_short) eqn : eq_short.
+        simpl.
+        
+        assert (Hres_long : res_long = snd (apply_plan X s (concat (map (get_matching_plan s from) li)))). {
+          rewrite eq_long. intuition.
+        }
+        
+        assert (Hres_short : res_short = snd ((apply_plan X res_long (get_matching_plan s from x)))). {
+          rewrite eq_short. intuition.
+        }
+        
+        assert (Hnodup_li : NoDup li). {
+          apply NoDup_rev in Hnodup.
+          rewrite rev_app_distr in Hnodup.
+          simpl in Hnodup.
+          apply NoDup_cons_iff in Hnodup.
+          destruct Hnodup as [_ Hnodup].
+          apply NoDup_rev in Hnodup.
+          rewrite rev_involutive in Hnodup.
+          intuition.
+        }
+        
+        assert (Hnf_li : ~In from li). {
+          intros contra.
+          contradict Hnf.
+          apply in_app_iff.
+          left. intuition.
+        }
+        
+        assert (Hnxf : x <> from). {
+          intros contra.
+          rewrite contra in Hnf.
+          intuition.
+        }
+        
+        assert (Hnx_li : ~In x li). {
+          intros contra.
+          apply in_split in contra.
+          destruct contra as [lf [rt Heq]].
+          rewrite Heq in Hnodup.
+          apply NoDup_remove_2 in Hnodup.
+          contradict Hnodup.
+          rewrite app_nil_r.
+          apply in_app_iff.
+          right. intuition.
+        }
+        
+        specialize (IHli Hnodup_li Hnf_li).
+        
+        assert (Hrem : forall (i : index), ~In i li -> res_long i = s i). {
+          intros.
+          rewrite Hres_long.
+          apply irrelevant_components.
+          intros contra.
+          apply in_map_iff in contra.
+          destruct contra as [some [Hproj Hinsome]].
+          
+          apply in_map_iff in Hinsome.
+          destruct Hinsome as [pi [Hlabel Inpi]].
+          apply in_concat in Inpi.
+          destruct Inpi as [lpi [Hlpi Hinlpi]].
+          apply in_map_iff in Hlpi.
+          destruct Hlpi as [j [Hmatch Hwhat]].
+          rewrite <- Hmatch in Hinlpi.
+          apply get_matching_plan_index in Hinlpi.
+          rewrite <- Hlabel in Hproj.
+          assert (i = j). {
+            rewrite <- Hproj. rewrite <- Hinlpi.
+            intuition.
+          }
+          clear Hproj. clear Hinlpi.
+          subst i.
+          intuition.
+        }
+        
+        destruct IHli as [IHli_proto IHli_proj].
+        
+        assert (Hpr_long : protocol_state_prop X res_long). {
+          apply apply_plan_last_protocol in IHli_proto.
+          subst res_long.
+          all : intuition.
+        }
+        
+        assert (Hmatch_idx : incl (map (projT1 (P:=fun n : index => vlabel (IM_index n)))
+               (map label_a (get_matching_plan s from x))) [x]). {
+           unfold incl.
+           intros.
+           apply in_map_iff in H.
+           destruct H as [smth [Hproj Hinsmth]].
+           apply in_map_iff in Hinsmth.
+           destruct Hinsmth as [pi [Hlabel Hinpi]].
+           apply get_matching_plan_index in Hinpi.
+           rewrite <- Hlabel in Hproj.
+           subst a. subst x.
+           intuition.
+        }
+        
+        assert (Hrem2 : forall (i : index), In i li -> res_long i = res_short i). {
+          intros.
+          assert (~In i [x]). {
+            intros contra.
+            destruct contra; [|intuition]. subst i.
+            intuition.
+          }
+          subst res_long. subst res_short.
+          symmetry.
+          apply irrelevant_components.
+          intros contra.
+          assert (In i [x]). {
+            unfold incl in Hmatch_idx.
+            specialize (Hmatch_idx i contra).
+            intuition.
+          }
+          intuition.
+        }
+        
+        specialize (get_matching_plan_effect s Hpr (get_matching_state s x from) from x) as Heff.
+        spec Heff. intuition.
+        specialize (Heff eq_refl).
+        
+        simpl in Heff.
+        destruct Heff as [Heff [Heff2 _]].
+        
+        apply relevant_components with (s' := res_long) (li0 := [x]) in Heff.
+        
+        2, 4 : intuition.
+        2 : {
+          intros.
+          simpl in H. destruct H;[|intuition].
+          subst i.
+          specialize (Hrem x Hnx_li). intuition.
+        }
+        
+        rewrite Hres_long in Heff.
+        destruct Heff as [Heff_proto Heff_proj].
+        
+        split.
+        + apply finite_protocol_plan_from_app_iff.
+          split. 
+          * unfold get_receives_for in IHli_proto. intuition.
+          * intuition.
+        + intros.
+          apply in_app_iff in H.
+          destruct H as [H|H].
+          * specialize (IHli_proj i H).
+            rewrite <- IHli_proj.
+            specialize (Hrem2 i H).
+            rewrite <- Hrem2.
+            rewrite Hres_long.
+            intuition.
+          * simpl in H. destruct H; [|intuition].
+            subst i.
+            subst res_short. subst res_long.
+            specialize (Heff_proj x). 
+            spec Heff_proj. intuition. simpl in Heff_proj.
+            unfold free_composite_vlsm in Heff_proj.
+            rewrite <- Heff2.
+            unfold X. unfold X in Heff_proj.
+            rewrite Heff_proj.
+            intuition.
     Qed.
     
     Lemma get_receives_for_correct_GE
