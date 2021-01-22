@@ -3029,47 +3029,55 @@ Context
     
     Definition is_receive_plan
       (a : vplan X) : Prop := 
-      forall (ai : 
-      let labels_a := List.map label_a a in
-      let label_types := List.map (fun (l : vlabel X) => let (i, li) := l in li) labels_a in
-      forall (l : label_list), In l label_types -> l = receive.
+      forall (ai : vplan_item X),
+        In ai a -> projT2 (label_a ai) = receive.
     
     Definition is_receive_plan_app
       (a b : vplan X) :
-      is_receive_plan (a ++ b) <-> is_receive_plan a /\ is_receive_plan b.
+      is_receive_plan a /\ is_receive_plan b <-> is_receive_plan (a ++ b).
     Proof.
-    Admitted.
+      unfold is_receive_plan.
+      split; intros.
+      - destruct H as [Hl Hr].
+        apply in_app_iff in H0.
+        destruct H0.
+        + specialize (Hl ai). intuition.
+        + specialize (Hr ai). intuition.
+      - split; intros.
+        + specialize (H ai).
+          spec H. apply in_app_iff. left. intuition.
+          intuition.
+        + specialize (H ai).
+          spec H. apply in_app_iff. right. intuition.
+          intuition.
+    Qed.
     
     Lemma message_providers_receive
       (s : vstate X)
       (i : index) :
-      get_message_providers_from_plan (get_receives_for s (others i s) i) = [i].
+      incl (get_message_providers_from_plan (get_receives_for s (others i s) i)) [i].
     Proof.
-    Admitted.
-    
-    Lemma get_matching_plan_is_receive_plan
-      (s : vstate X)
-      (from to : index) :
-      is_receive_plan (get_matching_plan s from to).
-    Proof.
-      unfold is_receive_plan; intros.
+      unfold incl. intros.
+      unfold get_message_providers_from_plan in H.
+      unfold messages_a in H.
       apply in_map_iff in H.
-      destruct H as [x [Hlabel Hinx]].
-      destruct x as [i x].
-      apply in_map_iff in Hinx.
-      destruct Hinx as [x0 [Hlabel_a Hinx0]].
-      destruct x0 as [lable_x0 input_x0] eqn : eq_x0.
+      destruct H as [psi [Heq Hinpsi]].
+      apply in_cat_option in Hinpsi.
+      destruct Hinpsi as [opsi [Hinopsi Heq_opsi]].
+      apply in_map_iff in Hinopsi.
+      destruct Hinopsi as [ai [Heq_ai Hinai]].
+      apply get_receives_for_info in Hinai.
       
-      unfold get_matching_plan in Hinx0.
-      destruct (sync s (get_matching_state s to from) to from) eqn : eq_sync.
-      - unfold sync in eq_sync.
-        destruct (complete_suffix (get_history (get_matching_state s to from) from) (get_history (s to) from)) eqn : eq_c.
-        + inversion eq_sync.
-          admit.
-       + discriminate eq_sync.
-    - simpl in Hinx0.
+      destruct Hinai as [_ [_ Hinai]].
+      destruct Hinai as [so [Heq_so Hinso]].
+      rewrite Heq_ai in Heq_so.
+      rewrite Heq_opsi in Heq_so.
+      inversion Heq_so.
+      rewrite H0 in Heq.
+      simpl in Heq.
+      subst a.
       intuition.
-    Admitted.
+    Qed.
     
     Lemma receive_for_is_receive_plan 
       (s : vstate X)
@@ -3077,22 +3085,10 @@ Context
       (li : list index) :
       is_receive_plan (get_receives_for s li from).
     Proof.
-      unfold is_receive_plan.
-      unfold get_receives_for.
-      intros.
-      rewrite in_map_iff in H.
-      destruct H as [x [Hlabel Hinx]].
-      rewrite in_map_iff in Hinx.
-      destruct Hinx as [x0 [Heqlabel Hinx0]].
-      destruct x0.
-      destruct x.
-      apply in_concat in Hinx0.
-      destruct Hinx0 as [x1 [Hinx1 Hinx1']].
-      rewrite in_map_iff in Hinx1.
-      destruct Hinx1 as [x2 [Heqmatch Hinx2]].
-      
-      unfold get_matching_plan in Heqmatch.
-    Admitted.
+      unfold is_receive_plan. intros.
+      apply get_receives_for_info in H.
+      intuition.
+    Qed.
     
     Lemma receives_neq
       (s : vstate X)
@@ -3164,15 +3160,12 @@ Context
         
         destruct li eqn : eq_li.
         + unfold is_receive_plan in Hreceive_short.
-          specialize (Hreceive_short li).
-          spec Hreceive_short. {
-            apply in_map_iff.
-            exists label_a'. simpl. intuition.
-            rewrite Heqlabel_a'.
-            intuition.
-          }
-          rewrite eq_li in Hreceive_short.
-          discriminate Hreceive_short.
+          specialize (Hreceive_short {| label_a := label_a'; input_a := input_a |}).
+          move Hreceive_short at bottom.
+          simpl in Hreceive_short.
+          spec Hreceive_short. intuition.
+          subst label_a'. simpl in Hreceive_short.
+          congruence.
         + destruct input_a eqn : eq_input.
           * rewrite Heqlabel_a' in eq_trans.
             inversion eq_trans.
@@ -3283,13 +3276,8 @@ Context
         destruct (apply_plan X res_long' [x]) as (tr_short', res_short') eqn : eq_short'.
         simpl.
         
-        spec IHa. {
-          assumption.
-        }
-        
-        spec IHa. {
-          assumption.
-        }
+        spec IHa. intuition.
+        spec IHa. intuition.
         
         spec IHa. {
           clear -Hli.
@@ -3338,9 +3326,9 @@ Context
         
         unfold apply_plan.
         unfold apply_plan_folder.
+        specialize (Hrec_short x).
         destruct x as [label_x input_x].
         simpl.
-       
         
         assert (Hprs_long : protocol_state_prop X res_long). {
           rewrite H.
@@ -3381,14 +3369,10 @@ Context
         destruct label_x eqn : eq_label.
         { 
           clear -Hrec_short eq_label.
-            unfold is_receive_plan in Hrec_short.
-            simpl in Hrec_short.
-            specialize (Hrec_short label_x).
-            spec Hrec_short. {
-              intuition.
-            }
-          rewrite eq_label in Hrec_short.
-          discriminate Hrec_short.
+          unfold is_receive_plan in Hrec_short.
+          simpl in Hrec_short.
+          spec Hrec_short. intuition.
+          congruence.
        }
        
         destruct input_x eqn : eq_input.
@@ -3578,27 +3562,8 @@ Context
         
         assert (Hrec_long':  is_receive_plan (get_receives_all s lfrom)). {
           unfold is_receive_plan. intros.
-          
-        }
-        
-        assert (Hrec_long : is_receive_plan (concat (map (fun i : index => get_receives_for s (others i s) i) lfrom))). {
-          unfold get_receives_all in Hrec_long'. apply Hrec_long'.
-          unfold is_receive_plan.
-          intros.
-          apply in_map_iff in H1.
-          destruct H1 as [vl [Heq1 Hinvl]].
-          apply in_map_iff in Hinvl.
-          destruct Hinvl as [pi [Hl Hinpi]].
-          
-          apply in_concat in Hinpi.
-          destruct Hinpi as [smaller [Hinsmaller Hinpi]].
-          apply in_map_iff in Hinsmaller.
-          destruct Hinsmaller as [k [Heqrec Hink]].
-          rewrite <- Heqrec in Hinpi.
-          apply get_receives_for_info in Hinpi.
-          rewrite Hl in Hinpi.
-          rewrite <- Heq1.
-          apply Hinpi.
+          apply get_receives_all_info in H1.
+          intuition.
         }
         
         assert (Hrec_short : is_receive_plan (get_receives_for s (others x s) x)). {
@@ -3622,7 +3587,7 @@ Context
           assumption.
           
           intros contra.
-          clear -contra.
+          
           unfold get_message_providers_from_plan in contra.
           rewrite in_map_iff in contra.
           destruct contra as [m [Hfs Hinm]].
@@ -3634,8 +3599,18 @@ Context
           rewrite in_concat in Hinconcat.
           destruct Hinconcat as [a [Hina Hina2]].
           apply in_map_iff in Hina.
-          destruct Hina as [i [Heq_rec Heqfrom]].
-          admit.
+          destruct Hina as [j [Heq_rec Heqfrom]].
+          rewrite <- Heq_rec in Hina2.
+          apply get_receives_for_info in Hina2.
+          destruct Hina2 as [_ [Hina2 Hina2']].
+          destruct Hina2' as [so [Hm Hso]].
+          rewrite Hinput in Hm.
+          rewrite Hsome in Hm.
+          inversion Hm.
+          rewrite H2 in Hfs. simpl in Hfs.
+          subst j. 
+          apply in_rev in Heqfrom.
+          intuition.
         }
         
         assert (Hsource: finite_protocol_plan_from X s (get_receives_for s (others x s) x)). {
@@ -3648,10 +3623,7 @@ Context
         specialize (relevant_components_lv s res_long Hprs Hprs_long (get_receives_for s (others x s) x)) as Hrel.
         specialize (Hrel Hrec_short Hsource x).
         
-        spec Hrel. {
-          rewrite message_providers_receive.
-          intuition.
-        }
+        spec Hrel. apply message_providers_receive.
         
         spec Hrel. {
           intros.
@@ -3716,7 +3688,7 @@ Context
                 intros contra.
                 simpl in contra.
                 all : intuition.
-    Admitted.
+    Qed.
     
     Definition phase_two (s : vstate X) := snd (apply_plan X s (get_receives_all s index_listing)).
     Definition common_future (s : vstate X) := phase_two (phase_one_res s).
