@@ -35,13 +35,27 @@ Definition equivocators_fixed_equivocations_constraint
   (som : composite_state equivocator_IM * option message)
   (som' := composite_transition equivocator_IM l som)
   : Prop
-  := equivocators_no_equivocations_constraint IM Hbs index_listing finite_index l som
+  := equivocators_no_equivocations_constraint IM Hbs finite_index l som
   /\ incl (equivocating_indices IM index_listing (fst som')) equivocating.
 
 Definition equivocators_fixed_equivocations_vlsm
   : VLSM message
   :=
   equivocators_constrained_vlsm IM equivocators_fixed_equivocations_constraint.
+
+Lemma equivocators_fixed_equivocations_vlsm_incl_free
+  : VLSM_incl equivocators_fixed_equivocations_vlsm (free_composite_vlsm equivocator_IM).
+Proof.
+  apply constraint_subsumption_incl.
+  intros l som H. exact I.
+Qed.
+
+Lemma equivocators_fixed_equivocations_vlsm_incl_no_equivocations
+  : VLSM_incl equivocators_fixed_equivocations_vlsm (equivocators_no_equivocations_vlsm IM Hbs finite_index).
+Proof.
+  apply constraint_subsumption_incl.
+  intros l som H. apply H.
+Qed.
 
 End equivocators_fixed_equivocations_vlsm.
 
@@ -223,6 +237,7 @@ Section from_equivocators_to_nodes.
 
 Context
   {message : Type}
+  `{EqDecision message}
   (index : Type)
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
@@ -235,7 +250,11 @@ Context
   (XE : VLSM message := equivocators_fixed_equivocations_vlsm IM Hbs finite_index equivocating)
   (Hi0_equiv : equivocating <> [])
   (X : VLSM message := fixed_equivocation_vlsm_composition IM Hbs Hbr finite_index equivocating Hi0_equiv)
+  (equivocators_free_Hbs := composite_has_been_sent_capability (equivocator_IM IM) (free_constraint (equivocator_IM IM)) finite_index (equivocator_Hbs IM Hbs))
+  (FreeE : VLSM message := free_composite_vlsm (equivocator_IM IM))
   .
+
+Existing Instance equivocators_free_Hbs.
 
 Lemma fixed_equivocators_initial_state_project
   (es : vstate XE)
@@ -313,7 +332,126 @@ Proof.
     apply finite_protocol_trace_from_app_iff in Htr.
     destruct Htr as [Htr Hlst].
     specialize (H' tr' (conj Htr Hinit) eq_refl).
-    
-Admitted.  
+    specialize (equivocators_transition_item_project_proper_characterization IM final_choice lst) as Hproperx.
+    unfold final_state in Hproper. rewrite Htr_lst in Hproper.
+    rewrite map_app in Hproper. simpl in Hproper. rewrite last_is_last in Hproper.
+    spec Hproperx Hproper.
+    destruct Hproperx as [oitem [final_choice' [Hprojectx Hproperx]]].
+    specialize (Hproperx (last (map destination tr') is)).
+    unfold equivocators_trace_project.
+    rewrite fold_right_app.
+    match goal with
+    |- context [fold_right _ ?fld _] => remember fld as foldx
+    end.
+    simpl in Heqfoldx.
+    rewrite Hprojectx in Heqfoldx.
+    inversion Hlst. subst tl s' lst.
+    destruct H4 as [[Hs [Hiom [Hv Hc]]] Ht].
+    specialize (Hproperx Hv Ht). clear Hv Ht.
+    destruct Hproperx as [Hproper' Hx].
+    specialize (H' _ Hproper').
+    destruct H' as [trX' [initial_choice [Hproper_initial [Htr_project [Hstate_project HtrX']]]]].
+    destruct oitem as [item|].
+    +  destruct Hx as [Hl [Hinput [Houtput [Hdestination Hx]]]].
+      simpl in Hl, Hinput, Houtput, Hdestination.
+      specialize (Hx _ eq_refl).
+      destruct Hx as [Hvx Htx].
+      exists (trX' ++ [item]), initial_choice. subst foldx.
+      rewrite equivocators_trace_project_folder_additive with (trX := trX') (eqv_choice := initial_choice)
+      ; [|assumption].
+      split; [assumption|].
+      split; [reflexivity|].
+      rewrite map_app. simpl. rewrite last_is_last.
+      unfold final_state. subst tr. rewrite map_app. simpl. rewrite last_is_last.
+      split; [assumption|].
+      destruct HtrX' as [HtrX' His].
+      split; [|assumption].
+      apply finite_protocol_trace_from_app_iff.
+      split; [assumption|].
+      change [item] with ([] ++ [item]).
+      match goal with
+      |- finite_protocol_trace_from _ ?l _ => remember l as lst
+      end.
+      destruct item.
+      assert (Hplst : protocol_state_prop X lst).
+      { apply finite_ptrace_last_pstate in HtrX'. subst. assumption. }
+      apply (extend_right_finite_trace_from X lst []); [constructor; assumption|].
+      simpl in Hl. subst. 
+      simpl in Hc.
+      destruct Hc as [Hno_equiv Hfixed].
+      simpl in Htx,Hvx,Hstate_project.
+      rewrite Hstate_project in Hvx, Htx.
+      repeat split; [assumption| |assumption| |assumption].
+      * destruct input as [input|]; [|apply option_protocol_message_None].
+        apply option_protocol_message_Some.
+        clear Hiom Hplst Hdestination Hvx Htx Hprojectx final_choice Hproper final_state
+          Hlst H3.
+        simpl in Hno_equiv.
+        apply or_comm in Hno_equiv.
+        destruct Hno_equiv as [Hinit_input | Hno_equiv].
+        { apply fixed_equivocators_initial_message in Hinit_input.
+          apply protocol_message_prop_iff. left. exists (exist _ _ Hinit_input).
+          reflexivity.
+        }
+        assert
+          (Hs_free : protocol_state_prop FreeE (last (map Common.destination tr') is)).
+        {
+        destruct Hs as [_om Hs].
+        apply (constraint_subsumption_protocol_prop (equivocator_IM IM))
+          with (constraint2 := free_constraint (equivocator_IM IM))
+          in Hs as Hs_free
+          ; [|intro x; intros; exact I].
+        exists _om. assumption.
+        }
+        specialize
+          (specialized_proper_sent_rev FreeE _ Hs_free _ Hno_equiv) as Hall.
+        specialize (Hall is tr').
+        spec Hall.
+        {  split; [|assumption].
+          apply VLSM_incl_finite_trace; [apply equivocators_fixed_equivocations_vlsm_incl_free|].
+          assumption.
+        }
+        specialize (Hall eq_refl).
+        apply exists_first in Hall; [|intro y; apply decide_eq].
+        destruct Hall as [pre [suf [item [Hitem [Htr_item _]]]]].
+        specialize (H (length (pre ++ [item]))).
+        spec H. { subst. repeat rewrite app_length. simpl. lia. }
+        specialize (H (pre ++ [item])).
+        simpl in H.
+        subst tr'.
+        rewrite app_assoc in Htr.
+        apply (finite_protocol_trace_from_app_iff XE) in Htr.
+        destruct Htr as [Hpre Hsuf].
+        specialize (H (conj Hpre Hinit) eq_refl).
+        match type of H with
+        | context [equivocators_state_project _ _ ?l] => remember l as lst
+        end.
+(*        
+        specialize
+          (equivocators_protocol_trace_project IM Hbs finite_index
+            final_choice' lst suf
+          ) as Hsuf_pr.
+        simpl in Hsuf_pr.
+        spec Hsuf_pr.
+        { subst. clear -Hproper'. rewrite app_assoc,map_app, last_app in Hproper'.
+          assumption.
+        }
+        spec Hsuf_pr.
+        { subst. clear -Hsuf.
+          apply (VLSM_incl_finite_trace _ _ (equivocators_fixed_equivocations_vlsm_incl_no_equivocations IM Hbs finite_index equivocating)).
+          assumption.
+        }
+        destruct Hsuf_pr as [_ [item_choice [_ [_ [Hproper_item _]]]]].
+        specialize (H _ Hproper_item).
+*)        
+        admit.
+      * admit.
+    + exists trX'. exists initial_choice. subst foldx. split; [assumption|].
+      split; [apply Htr_project|]. split; [|assumption].
+      subst tr. clear -Hstate_project Hx.
+      rewrite Hstate_project in Hx.
+      rewrite <- Hx. f_equal. unfold final_state. 
+      rewrite map_app. simpl. rewrite last_is_last. reflexivity.
+Admitted. 
 
 End from_equivocators_to_nodes.

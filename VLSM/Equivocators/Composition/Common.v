@@ -74,20 +74,21 @@ Definition equivocators_constrained_vlsm
   :=
   composite_vlsm equivocator_IM constraint.
 
-Context
-  (index_listing : list index)
-  (finite_index : Listing index_listing)
-  (equivocators_free_vlsm := equivocators_constrained_vlsm (free_constraint equivocator_IM))
-  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index equivocator_Hbs)
-  .
-
 Existing Instance is_equivocating_state_dec.
 
 Definition equivocating_indices
+  (index_listing : list index)
   (s : composite_state equivocator_IM)
   : list index
   :=
   filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
+
+Context
+  {index_listing : list index}
+  (finite_index : Listing index_listing)
+  (equivocators_free_vlsm := equivocators_constrained_vlsm (free_constraint equivocator_IM))
+  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index equivocator_Hbs)
+  .
 
 Existing Instance equivocators_free_Hbs.
 

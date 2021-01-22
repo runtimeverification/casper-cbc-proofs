@@ -70,8 +70,8 @@ Lemma equivocator_vlsm_trace_project_output_reflecting
   (j i : MachineDescriptor)
   (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
   (m : message)
-  (Hjbs: Exists (fun elem : vtransition_item X => output elem = Some m) trX)
-  : Exists (fun elem : transition_item => output elem = Some m) tr.
+  (Hjbs: Exists (field_selector output m) trX)
+  : Exists (field_selector output m) tr.
 Proof.
   generalize dependent i. generalize dependent trX.
   induction tr; intros.
@@ -86,7 +86,7 @@ Proof.
     + apply equivocator_transition_item_project_inv_messages in Hitem'.
       destruct Hitem' as [_ [_ [_ [_ Ha]]]].
       inversion Hjbs; subst.
-      * left. rewrite Ha. assumption.
+      * left. unfold field_selector. rewrite Ha. assumption.
       * specialize (IHtr H0 i' eq_refl). right. assumption.
     + specialize (IHtr Hjbs i' eq_refl). right. assumption.
 Qed.
@@ -232,13 +232,13 @@ Lemma equivocator_vlsm_trace_project_output_reflecting_inv
   (tr: list (vtransition_item equivocator_vlsm))
   (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr)
   (m : message)
-  (Hbbs : Exists (fun elem : transition_item => output elem = Some m) tr)
+  (Hbbs : Exists (field_selector output m) tr)
   : exists
     (j i : MachineDescriptor)
     (trX: list (vtransition_item X))
     (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
     ,
-    Exists (fun elem : vtransition_item X => output elem = Some m) trX.
+    Exists (field_selector output m) trX.
 Proof.
   apply Exists_exists in Hbbs.
   destruct Hbbs as [item [Hin Houtput]].

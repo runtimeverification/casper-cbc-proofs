@@ -29,7 +29,7 @@ Context {message : Type}
   (equivocators_choice := equivocators_choice IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs index_listing finite_index)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocators_choice_update := equivocators_choice_update IM)
@@ -87,7 +87,7 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
   (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
   (Hconstraint_subsumption :
     constraint_subsumption equivocator_IM
-      (equivocators_no_equivocations_constraint IM Hbs _ finite_index)
+      (equivocators_no_equivocations_constraint IM Hbs finite_index)
       constraint
   )
   : vvalid (equivocators_constrained_vlsm IM constraint)
@@ -293,7 +293,7 @@ Proof.
     rewrite apply_plan_full_replay_state_initial_state.
     destruct (full_replay_state (eqv)) as (neqv, seqv).
     unfold equivocator_state_extend. simpl.
-    specialize (equivocators_initial_state_size IM Hbs _ _ is His eqv) as His_size.
+    specialize (equivocators_initial_state_size IM Hbs _ is His eqv) as His_size.
     split; [rewrite His_size; reflexivity|].
     split; [congruence|].
     split.
@@ -796,7 +796,7 @@ Lemma replay_trace_from_protocol
   (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
   (Hconstraint_subsumption :
     constraint_subsumption equivocator_IM
-      (equivocators_no_equivocations_constraint IM Hbs _ finite_index)
+      (equivocators_no_equivocations_constraint IM Hbs finite_index)
       constraint
   )
   (Hconstraint :

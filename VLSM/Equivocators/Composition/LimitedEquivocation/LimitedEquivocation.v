@@ -41,7 +41,7 @@ Definition equivocators_limited_equivocations_constraint
   (som : composite_state equivocator_IM * option message)
   (som' := composite_transition equivocator_IM l som)
   : Prop
-  := equivocators_no_equivocations_constraint IM Hbs index_listing finite_index l som
+  := equivocators_no_equivocations_constraint IM Hbs finite_index l som
   /\ (sum_weights (equivocating_indices IM index_listing (fst som'))
       <= proj1_sig threshold)%R.
 

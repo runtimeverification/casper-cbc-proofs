@@ -30,7 +30,7 @@ Context {message : Type}
   (equivocators_choice := equivocators_choice IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs index_listing finite_index)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocators_choice_update := equivocators_choice_update IM)
@@ -53,8 +53,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init'
   (eqvs : list equiv_index)
   : let app_tr :=
      apply_plan
-        (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-           finite_index) full_replay_state
+        (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) full_replay_state
         (map (initial_new_machine_transition_item IM Hbs index_listing finite_index is) eqvs)
   in fold_right
     (equivocators_trace_project_folder IM)
@@ -127,8 +126,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init
   (is : vstate equivocators_no_equivocations_vlsm)
   : let app_tr :=
      apply_plan
-        (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-           finite_index) full_replay_state
+        (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) full_replay_state
         (spawn_initial_state IM Hbs index_listing finite_index is)
   in fold_right
     (equivocators_trace_project_folder IM)
@@ -313,14 +311,12 @@ Proof.
   rewrite apply_plan_app.
   destruct
     (apply_plan
-      (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-        finite_index) full_replay_state
+      (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) full_replay_state
       (spawn_initial_state IM Hbs index_listing finite_index is))
     as (is_items, is_final) eqn:His.
   destruct
     (apply_plan
-      (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-          finite_index) is_final
+      (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) is_final
       (map
           (update_euivocators_transition_item_descriptor IM Hbs
             index_listing finite_index full_replay_state) tr)
@@ -370,7 +366,7 @@ Lemma equivocators_protocol_vlsm_run_project
     equivocators_state_project (zero_choice _) (start run) = start runX.
 Proof.
   induction HrunX.
-  - specialize (lift_initial_to_equivocators_state IM Hbs index_listing finite_index is His) as Hs.
+  - specialize (lift_initial_to_equivocators_state IM Hbs finite_index is His) as Hs.
     remember (lift_to_equivocators_state IM is) as s.
     exists (@mk_proto_run _ (type equivocators_no_equivocations_vlsm) s [] (s, None)).
     split; [constructor; assumption|].
