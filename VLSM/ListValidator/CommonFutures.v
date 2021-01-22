@@ -100,38 +100,50 @@ Context
       simp_lv_event_lt_dec
       get_simp_event_subject_some s i)) index_listing.
   
-  (*
-  Definition ce' (s : vstate X) := @composed_witness_observation_based_equivocation_evidence
-    message index lv_event
-    decide_eq 
-    lv_event_lt
-    lv_event_lt_dec
-    get_event_subject_some
-    index IM_index _ (GH s).
+    Definition ce' 
+      (s : vstate X) := 
+    @composite_observable_events_equivocation_evidence
+      message index simp_lv_event
+      decide_eq
+      index (GH s) IM_index
+      Hstate_events_fn
+      Hstate_validators
+      decide_eq
+      simp_lv_event_lt
+      simp_lv_event_lt_dec
+      get_simp_event_subject_some.
  
-  Definition LH (s : vstate X) : set index :=
+    Definition HH (s : vstate X) : set index := 
     List.filter (fun i : index => negb (
-    @bool_decide _ (
-      @observable_events_equivocation_evidence_dec 
-      (vstate X) index lv_event _ 
-      (composed_complete_observations_witness_set (GH s)) 
-      _ lv_event_lt lv_event_lt_dec 
-      get_event_subject_some 
-      s i))) index_listing.
-  
-  Definition LE (s : vstate X) : set index :=
+    @bool_decide _ (@composite_observable_events_equivocation_evidence_dec
+      message index simp_lv_event
+      decide_eq
+      index (GH s) IM_index
+      Hstate_events_fn
+      Hstate_validators
+      decide_eq
+      simp_lv_event_lt
+      simp_lv_event_lt_dec
+      get_simp_event_subject_some s i))) index_listing.
+    
+  Definition HE (s : vstate X) : set index := 
     List.filter (fun i : index => 
-    @bool_decide _ (
-      @observable_events_equivocation_evidence_dec 
-      (vstate X) index lv_event _ 
-      (composed_complete_observations_witness_set (GH s)) 
-      _ lv_event_lt lv_event_lt_dec 
-      get_event_subject_some 
-      s i)) index_listing. *)
-  
-  Check @composite_state_events_fn.
-  
-  Definition cobs := (composite_state_events_fn index_listing IM_index Hstate_events_fn).
+    @bool_decide _ (@composite_observable_events_equivocation_evidence_dec
+      message index simp_lv_event
+      decide_eq
+      index (GH s) IM_index
+      Hstate_events_fn
+      Hstate_validators
+      decide_eq
+      simp_lv_event_lt
+      simp_lv_event_lt_dec
+      get_simp_event_subject_some s i)) index_listing.
+
+  Definition wcobs 
+    (ws : set index) := 
+    (composite_state_events_fn ws IM_index Hstate_events_fn).
+    
+  Definition cobs := wcobs index_listing.
   
   Definition cobs_messages 
     (s : vstate X)
@@ -2687,7 +2699,7 @@ Context
       (Hmatch : get_matching_state s to from = s') :
       let res := snd (apply_plan X s (get_matching_plan s from to)) in
       finite_protocol_plan_from X s (get_matching_plan s from to) /\
-      project (res to) from = project s' from /\ set_eq (GE res) (GE s).
+      project (res to) from = project s' from.
     Proof.
       simpl.
       unfold get_matching_plan.
@@ -2847,7 +2859,6 @@ Context
         let res := snd (apply_plan X s (get_receives_for s li from)) in
         finite_protocol_plan_from X s (get_receives_for s li from) /\
         forall (i : index), In i li -> project (res i) from = project (get_matching_state s i from) from.
-        (* set_eq (GH res) (GH s). *)
     Proof.
       induction li using rev_ind; intros.
       - unfold get_receives_for. simpl.
