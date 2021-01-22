@@ -2252,6 +2252,37 @@ is also available to Y.
     Qed.
 
     (** VLSM inclusion specialized to finite trace. *)
+
+    Lemma VLSM_incl_finite_protocol_trace
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (Hincl : VLSM_incl_part MX MY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (s : vstate X)
+      (tr : list (vtransition_item X))
+      (Htr : finite_protocol_trace X s tr)
+      : finite_protocol_trace Y s tr.
+    Proof.
+      assert (Hptr : protocol_trace_prop X (Finite s tr)) by assumption.
+      cut (protocol_trace_prop Y (Finite s tr)). { intro. assumption. }
+      revert Hptr. apply Hincl.
+    Qed.
+
+    Lemma VLSM_incl_initial_state
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (Hincl : VLSM_incl_part MX MY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (is : vstate X)
+      : vinitial_state_prop X is -> vinitial_state_prop Y is.
+    Proof.
+      intro His.
+      cut (finite_protocol_trace Y is []). { intro Hpis. apply Hpis. }
+      assert (Hpis : finite_protocol_trace X is []).
+      { split; [|assumption]. constructor. apply initial_is_protocol. assumption. }
+      revert Hpis. apply VLSM_incl_finite_protocol_trace. assumption.
+    Qed.
+
     Lemma VLSM_incl_finite_trace
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
@@ -2783,4 +2814,41 @@ Proof.
     destruct Htr as [_ Htr].
     inversion Htr. clear Htr. subst. simpl in Hm. subst.
     eexists _, l1. apply H3. 
+Qed.
+
+Lemma VLSM_incl_can_emit_in_state
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY)
+  (Hincl : VLSM_incl X Y)
+  (s : state)
+  (m : message)
+  : can_emit_in_state X s m -> can_emit_in_state Y s m.
+Proof.
+  intro Hsm.
+  apply non_empty_protocol_trace_from_can_emit_in_state.
+  apply non_empty_protocol_trace_from_can_emit_in_state in Hsm.
+  destruct Hsm as [is [tr [item [Htr Hsm]]]].
+  exists is, tr, item.
+  split; [|assumption]. clear Hsm.
+  revert Htr.
+  apply VLSM_incl_finite_protocol_trace.
+  assumption.
+Qed.
+
+Lemma VLSM_incl_can_emit
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY)
+  (Hincl : VLSM_incl X Y)
+  (m : message)
+  : can_emit X m -> can_emit Y m.
+Proof.
+  repeat rewrite can_emit_iff.
+  intros [s Hsm]. exists s. revert Hsm.
+  apply VLSM_incl_can_emit_in_state. assumption.
 Qed.
