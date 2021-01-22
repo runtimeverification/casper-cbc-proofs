@@ -3027,68 +3027,9 @@ Context
             intuition.
     Qed.
     
-    Lemma get_receives_for_correct_GE
-        (s : vstate X)
-        (Hpr : protocol_state_prop X s)
-        (li : list index)
-        (from : index)
-        (Hnodup : NoDup li)
-        (Hnf : ~ In from li) :
-        let res := snd (apply_plan X s (get_receives_for s li from)) in
-        incl (GE res) (GE s).
-    Proof.
-      induction li using rev_ind; intros.
-      - simpl in res.
-        unfold res.
-        apply incl_refl.
-      - simpl in Hnf.
-        (*
-        apply NoDup_cons_iff in Hnodup.
-        destruct Hnodup as [Hna Hnodup].
-        specialize (IHli Hnodup). *)
-        
-        assert (NoDup li). {
-          admit.
-        }
-        
-        assert (~ In from li). {
-          admit.
-        }
-        
-        spec IHli. intuition.
-        
-        unfold get_receives_for in res. simpl in res.
-        (* remember (get_matching_plan s from a) as short_plan.
-        remember (concat (map (get_matching_plan s from) li)) as long_plan. *)
-        unfold res.
-        rewrite map_app.
-        rewrite concat_app.
-        rewrite apply_plan_app.
-        
-        destruct (apply_plan X s (concat (map (get_matching_plan s from) li))) as (tr_long, res_long) eqn : eq_long.
-        destruct (apply_plan X res_long (concat (map (get_matching_plan s from) [x]))) as (tr_short, res_short) eqn : eq_short.
-        
-        simpl.
-        
-        spec IHli. {
-          intuition.
-        }
-        simpl in IHli.
-        apply incl_tran with (m := GE res_long). 
-        2 : {
-          replace res_long with (snd (apply_plan X s (concat (map (get_matching_plan s from) li)))) by (rewrite eq_long;intuition).
-          unfold get_receives_for in IHli.
-          intuition.
-        }
-        
-        simpl in eq_short.
-        rewrite app_nil_r in eq_short.
-        replace res_short with (snd (apply_plan X res_long (get_matching_plan s from x))) by (rewrite eq_short; intuition).
-        admit.
-    Admitted.
-    
     Definition is_receive_plan
       (a : vplan X) : Prop := 
+      forall (ai : 
       let labels_a := List.map label_a a in
       let label_types := List.map (fun (l : vlabel X) => let (i, li) := l in li) labels_a in
       forall (l : label_list), In l label_types -> l = receive.
@@ -3635,8 +3576,29 @@ Context
           intuition.
         }
         
+        assert (Hrec_long':  is_receive_plan (get_receives_all s lfrom)). {
+          unfold is_receive_plan. intros.
+          
+        }
+        
         assert (Hrec_long : is_receive_plan (concat (map (fun i : index => get_receives_for s (others i s) i) lfrom))). {
-          admit.
+          unfold get_receives_all in Hrec_long'. apply Hrec_long'.
+          unfold is_receive_plan.
+          intros.
+          apply in_map_iff in H1.
+          destruct H1 as [vl [Heq1 Hinvl]].
+          apply in_map_iff in Hinvl.
+          destruct Hinvl as [pi [Hl Hinpi]].
+          
+          apply in_concat in Hinpi.
+          destruct Hinpi as [smaller [Hinsmaller Hinpi]].
+          apply in_map_iff in Hinsmaller.
+          destruct Hinsmaller as [k [Heqrec Hink]].
+          rewrite <- Heqrec in Hinpi.
+          apply get_receives_for_info in Hinpi.
+          rewrite Hl in Hinpi.
+          rewrite <- Heq1.
+          apply Hinpi.
         }
         
         assert (Hrec_short : is_receive_plan (get_receives_for s (others x s) x)). {
