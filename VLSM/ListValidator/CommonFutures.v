@@ -107,7 +107,7 @@ Context
       simp_lv_event_lt
       simp_lv_event_lt_dec
       get_simp_event_subject_some s i)) index_listing.
-
+  
   Definition wcobs := 
     (composite_state_events_fn ws IM_index Hstate_events_fn).
   
@@ -391,6 +391,57 @@ Context
           -- apply ((proj2 Hfinite) (get_simp_event_subject e)).
      + intuition.
   Qed.
+    
+  Lemma wH_wE'
+    (s : vstate X)
+    (i : index) :
+    In i (wH s) <-> ~ In i (wE s).
+  Proof.
+    unfold wH.
+    unfold wE.
+    split; intros.
+    - apply filter_In in H.
+      intros contra.
+      apply filter_In in contra.
+      destruct H as [_ H].
+      destruct contra as [_ contra].
+      rewrite contra in H.
+      unfold negb in H. congruence.
+    - apply filter_In.
+      split; [apply (proj2 Hfinite)|].
+      rewrite negb_true_iff.
+      match goal with
+      |- ?e = _ =>
+         destruct e eqn : eq_d end.
+      + contradict H.
+        apply filter_In.
+        split; [apply (proj2 Hfinite)|].
+        intuition.
+      + intuition.
+  Qed.
+  
+  Lemma wH_wE
+    (s : vstate X) :
+    set_eq (wH s) (set_diff decide_eq index_listing (wE s)).
+  Proof.
+    apply set_eq_extract_forall.
+    intros i.
+    split; intros H.
+    - apply set_diff_intro.
+      apply (proj2 Hfinite i).
+      apply wH_wE' in H.
+      intuition.
+    - apply set_diff_iff in H.
+      destruct H as [_ H].
+      apply wH_wE'.
+      intuition. 
+  Qed.
+  
+  Lemma HE_eq_equiv
+    (s s' : vstate X) :
+    set_eq (wH s) (wH s') <-> set_eq (wE s) (wE s').
+  Proof.
+  Admitted.
   
   End EquivObsUtils.
   
@@ -1739,51 +1790,6 @@ Context
     intuition.
     apply GH_NoDup.
   Qed.
-
-  Lemma GH_GE'
-    (s : vstate X)
-    (i : index) :
-    In i (GH s) <-> ~ In i (GE s).
-  Proof.
-    unfold GH.
-    unfold GE.
-    split; intros.
-    - apply filter_In in H.
-      intros contra.
-      apply filter_In in contra.
-      destruct H as [_ H].
-      destruct contra as [_ contra].
-      rewrite contra in H.
-      unfold negb in H. congruence.
-    - apply filter_In.
-      split; [apply (proj2 Hfinite)|].
-      rewrite negb_true_iff.
-      match goal with
-      |- ?e = _ =>
-         destruct e eqn : eq_d end.
-      + contradict H.
-        apply filter_In.
-        split; [apply (proj2 Hfinite)|].
-        intuition.
-      + intuition.
-  Qed.
-  
-  Lemma GH_GE
-    (s : vstate X) :
-    set_eq (GH s) (set_diff decide_eq index_listing (GE s)).
-  Proof.
-    apply set_eq_extract_forall.
-    intros i.
-    split; intros H.
-    - apply set_diff_intro.
-      apply (proj2 Hfinite i).
-      apply GH_GE' in H.
-      intuition.
-    - apply set_diff_iff in H.
-      destruct H as [_ H].
-      apply GH_GE'.
-      intuition. 
-  Qed.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
@@ -1982,17 +1988,19 @@ Context
           intuition.
         - apply GE_existing_same_rev.
           intuition.
-          rewrite <- GH_GE'.
+          unfold GE.
+          rewrite <- wH_wE'.
           apply Hhonest. intuition.
       }
       
       spec IHli. {
         unfold incl in *.
         intros idx Hidx.
-        apply GH_GE'.
+        unfold GE.
+        apply wH_wE'.
         specialize (Hhonest idx).
         setoid_rewrite HGEs'.
-        apply GH_GE'.
+        apply wH_wE'.
         apply Hhonest.
         intuition.
       }
@@ -2110,7 +2118,8 @@ Context
             specialize (GE_existing_same_rev s Hprs (feasible_update_value (s i) i) i) as Hexist'.
             
             spec Hexist'. {
-              apply GH_GE'.
+              unfold GE.
+              apply wH_wE'.
               intuition.
             }
             simpl in Hexist, Hexist'.
@@ -2186,95 +2195,6 @@ Context
     apply GH_NoDup.
     all : intuition.
   Qed. 
-  
-  (*
-  Lemma everything_in_projections 
-    (s : vstate X)
-    (Hprs : protocol_state_prop _ s)
-    (Hnf : no_component_fully_equivocating s index_listing)
-    (li : list index)
-    (s' := phase_one_res s) :
-    set_eq 
-    (unite_observations (component_list s li))
-    (unite_observations (zip_apply (List.map project (component_list s' li)) li)).
-  Proof.
-    split.
-    - unfold incl.
-      intros.
-      unfold unite_observations in H.
-      apply set_union_in_iterated in H.
-      apply set_union_in_iterated.
-      rewrite Exists_exists in *.
-      destruct H as [x [Hinx Hinax]].
-      rewrite in_map_iff in Hinx.
-      destruct Hinx as [si [Heq Hinsi]].
-      unfold component_list in Hinsi.
-      rewrite in_map_iff in Hinsi.
-      destruct Hinsi as [i [Heqi Hini]].
-      exists (complete_observations (project (s' i) i)).
-      split.
-      rewrite in_map_iff.
-      exists (project (s' i) i).
-      split.
-      reflexivity.
-      apply In_nth_error in Hini.
-      destruct Hini as [n Hn].
-      apply in_zip_apply_if with (n0 := n).
-      remember (component_list s' li) as f.
-      rewrite nth_error_map.
-      rewrite Heqf.
-      unfold component_list.
-      rewrite nth_error_map.
-      rewrite Hn.
-      simpl.
-      reflexivity.
-      assumption.
-      unfold s'.
-      rewrite phase_one_projections.
-      rewrite Heqi.
-      rewrite Heq.
-      all : assumption.
-    - unfold incl.
-      intros.
-      unfold unite_observations in *.
-      apply set_union_in_iterated in H.
-      apply set_union_in_iterated.
-      rewrite Exists_exists in H.
-      destruct H as [x [Hinx Hina]].
-      rewrite in_map_iff in Hinx.
-      destruct Hinx as [x0 [Heqx Hinx]].
-      rewrite Exists_exists.
-      apply in_zip_apply_if2 in Hinx.
-      destruct Hinx as [pr [i [n H]]].
-      exists (complete_observations (s i)).
-      split.
-      rewrite in_map_iff.
-      exists (s i).
-      intuition.
-      unfold component_list.
-      rewrite in_map_iff.
-      exists i.
-      intuition.
-      apply nth_error_In in H.
-      assumption.
-      rewrite <- Heqx in Hina.
-      assert (x0 = (s i)). {
-        destruct H as [alfa [beta caroten]].
-        rewrite nth_error_map in alfa.
-        unfold component_list in alfa.
-        rewrite nth_error_map in alfa.
-        rewrite beta in alfa.
-        simpl in alfa.
-        inversion alfa.
-        rewrite <- H0 in caroten.
-        rewrite <- caroten.
-        apply phase_one_projections.
-        assumption.
-        assumption.
-      }
-      rewrite H0 in Hina.
-      assumption.
-  Qed. *)
   
   Definition lift_to_receive_item (to from : index) (s : state): vplan_item (IM_index to) :=
     @Build_plan_item _ (type (IM_index to)) receive (Some (from, s)).
@@ -3815,4 +3735,86 @@ Context
         intuition.
       - apply Hph1.
     Qed.
+    
+  Definition HE (s : vstate X) := @wE (GH s) s.
+  Definition HH (s : vstate X) := @wH (GH s) s.
+  
+  Definition LE (i : index) := (@wE [i]).
+  Definition LH (i : index) := (@wH [i]).
+  
+  Print get_matching_state.
+  
+  Lemma self_projections_same
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := phase_one_res s)
+    (res := common_future s) :
+    forall (i : index), project (res_send i) i = project (res i) i.
+  Proof.
+  Admitted.
+  
+  Lemma get_matching_state_for_honest
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := phase_one_res s) 
+    (i j : index)
+    (Hhonest : In i (GH s)) :
+    get_matching_state res_send j i = (res_send i).
+  Proof.
+    unfold get_matching_state.
+    destruct (find (fun s' : state => state_ltb' i (project (res_send j) i) s')
+    (get_topmost_candidates res_send i)) eqn : eq_find.
+    - admit.
+    - specialize (find_none (fun s' : state => state_ltb' i (project (res_send j) i) s')) as Hnone.
+      specialize (Hnone (get_topmost_candidates res_send i) eq_find).
+      specialize (Hnone (res_send i)).
+        
+      assert (In (res_send i) (get_topmost_candidates res_send i)).
+      
+      unfold get_topmost_candidates in Hnone.
+      unfold get_candidates in Hnone.
+  Admitted.
+   
+  Lemma honest_receive_honest
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := phase_one_res s)
+    (res := common_future s) :
+    forall (i j : index), In i (GH res) -> In j (GH res) -> project (res i) j = project (res j) j.
+  Proof.
+    intros.
+    destruct (decide (i = j));[subst i;intuition|].
+      
+    assert (Hsend_pr : protocol_state_prop X res_send). {
+      admit.
+    }
+    
+    assert (In i (GH s) /\ In j (GH s)). {
+      admit.
+    }
+    
+    assert (HiGH : In i (GH (phase_one_res s))). {
+      admit.
+    }
+    
+    specialize (get_receives_all_protocol (phase_one_res s) index_listing (proj1 Hfinite) Hsend_pr) as Hrec.
+    simpl in Hrec. destruct Hrec as [Hrec_pr Hrec].
+    specialize (Hrec j i). 
+    spec Hrec. apply in_listing.
+    specialize (Hrec n).
+    unfold res in H.
+
+    specialize (Hrec HiGH).
+    unfold res at 1.
+    unfold common_future.
+    unfold phase_two.
+    rewrite Hrec. 
+    rewrite get_matching_state_for_honest.
+    2, 3, 4 : intuition.
+    rewrite self_projections_same.
+    all : intuition.
+  Admitted.
 End Composition.
