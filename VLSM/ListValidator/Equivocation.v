@@ -3276,7 +3276,7 @@ Context
     | State'
     | Message'.
     
-    Instance simp_event_type_eq_dec : EqDecision simp_lv_event_type.
+    Global Instance simp_event_type_eq_dec : EqDecision simp_lv_event_type.
       solve_decision.
     Defined. 
     
@@ -3481,6 +3481,9 @@ Context
     Definition simp_lv_message_observations_f (s : state) (target : index) : set simp_lv_event :=
       filter (fun (e : simp_lv_event) => bool_decide (get_simp_event_type e = Message')) (simp_lv_observations s target).
     
+    Definition simp_lv_state_observations_f (s : state) (target : index) : set simp_lv_event :=
+      filter (fun (e : simp_lv_event) => bool_decide (get_simp_event_type e = State')) (simp_lv_observations s target).
+    
     Lemma cons_clean_message_obs 
       (s : state)
       (target : index)
@@ -3519,6 +3522,30 @@ Context
         rewrite <- H.
         all : intuition.
       - intuition.
+    Qed.
+    
+    Lemma in_simp_lv_message_observations'
+      (s : state)
+      (target : index)
+      (e : simp_lv_event)
+      (Hin : In e (simp_lv_message_observations s target)) :
+      In e (simp_lv_observations s target).
+    Proof.
+      unfold simp_lv_observations.
+      apply set_union_iff.
+      left. intuition.
+    Qed.
+    
+    Lemma in_simp_lv_state_observations'
+      (s : state)
+      (target : index)
+      (e : simp_lv_event)
+      (Hin : In e (simp_lv_state_observations s target)) :
+      In e (simp_lv_observations s target).
+    Proof.
+      unfold simp_lv_observations.
+      apply set_union_iff.
+      right. intuition.
     Qed.
     
     Lemma in_simp_lv_observations
@@ -3569,7 +3596,7 @@ Context
     - intuition. 
   Qed.
   
-  Lemma message_f
+  Lemma simp_lv_message_f_eq
     (s : vstate X)
     (target : index)  :
     set_eq (simp_lv_message_observations s target) (simp_lv_message_observations_f s target).
@@ -3579,8 +3606,33 @@ Context
     unfold incl.
     split; intros.
     - apply filter_In.
-      split. 
-  Admitted.
+      apply in_simp_lv_message_observations in H as H'.
+      split.
+      + apply in_simp_lv_message_observations'. intuition.
+      + apply bool_decide_eq_true. intuition.
+    - apply filter_In in H.
+      rewrite bool_decide_eq_true in H.
+      apply in_and_message. all : intuition.
+  Qed.
+  
+  Lemma simp_lv_state_f_eq
+    (s : vstate X)
+    (target : index)  :
+    set_eq (simp_lv_state_observations s target) (simp_lv_state_observations_f s target).
+  Proof.
+    unfold simp_lv_state_observations_f.
+    unfold set_eq.
+    unfold incl.
+    split; intros.
+    - apply filter_In.
+      apply in_simp_lv_state_observations in H as H'.
+      split.
+      + apply in_simp_lv_state_observations'. intuition.
+      + apply bool_decide_eq_true. intuition.
+    - apply filter_In in H.
+      rewrite bool_decide_eq_true in H.
+      apply in_and_state. all : intuition.
+  Qed.
     
     Lemma get_event_state_nb
       (s s': state)
