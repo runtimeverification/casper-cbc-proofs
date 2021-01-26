@@ -1762,7 +1762,6 @@ Lemma complete_prefix_empty
   `{EqDecision A}
   (l : list A) :
   complete_prefix l [] = Some l.
-
 Proof.
   induction l.
   - simpl. reflexivity.
@@ -1883,6 +1882,18 @@ Proof.
     assumption.
     intros.
     discriminate H.
+Qed.
+
+Lemma complete_suffix_empty 
+  {A : Type}
+  `{EqDecision A}
+  (l : list A) :
+  complete_suffix l [] = Some l.
+Proof.
+  unfold complete_suffix. simpl.
+  rewrite complete_prefix_empty.
+  f_equal. 
+  apply rev_involutive.
 Qed.
 
 (** elements belonging to first type in a list of a sum type *)

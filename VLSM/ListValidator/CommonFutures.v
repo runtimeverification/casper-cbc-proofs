@@ -2634,7 +2634,7 @@ Context
     Proof.
       intros contra.
       unfold get_matching_state in contra.
-      destruct (find (fun s' : state => state_ltb' from (project (s to) from) s')
+      destruct (find (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))
                (get_topmost_candidates s from)) eqn : eq_find.
       - apply find_some in eq_find.
         destruct eq_find as [_ eq_find].
@@ -2642,20 +2642,28 @@ Context
         destruct (complete_suffix (get_history s0 from) (get_history (s to) from)) eqn : eq_suf.
         discriminate contra.
         unfold state_ltb' in eq_find.
-        apply in_correct in eq_find.
-        assert (eq_find' := eq_find).
-        apply in_split in eq_find.
-        destruct eq_find as [pref [suff Heq]].
-        apply (@unfold_history index index_listing) in Heq as Hsufhist.
-        rewrite Hsufhist in Heq.
-        apply complete_suffix_correct in Heq.
-        assert ((project (s to) from :: get_history (project (s to) from) from) = get_history (s to) from). {
-          symmetry.
-          apply (@unfold_history_cons index index_listing).
-          assumption.
-          apply (@no_bottom_in_history index index_listing Hfinite idec s0 _ from).
-          intuition.
-        }
+        rewrite bool_decide_eq_true in eq_find.
+        unfold state_lt_ext in eq_find.
+        destruct eq_find as [eq_find|eq_find].
+        + destruct eq_find as [Hb _].
+          apply unfold_history_bottom in Hb.
+          rewrite Hb in eq_suf.
+          rewrite complete_suffix_empty in eq_suf.
+          congruence.
+        + unfold state_lt' in eq_find.
+          assert (eq_find' := eq_find).
+          apply in_split in eq_find.
+          destruct eq_find as [pref [suff Heq]].
+          apply (@unfold_history index index_listing) in Heq as Hsufhist.
+          rewrite Hsufhist in Heq.
+          apply complete_suffix_correct in Heq.
+          assert ((project (s to) from :: get_history (project (s to) from) from) = get_history (s to) from). {
+            symmetry.
+            apply (@unfold_history_cons index index_listing).
+            assumption.
+            apply (@no_bottom_in_history index index_listing Hfinite idec s0 _ from).
+            intuition.
+          }
         rewrite H in Heq.
         rewrite Heq in eq_suf.
         discriminate eq_suf.
@@ -2687,14 +2695,13 @@ Context
       rewrite Hmatch.
       destruct (sync s s' to from) eqn : eq_sync.
       - unfold sync in eq_sync.
-        destruct (complete_suffix (get_history s' from) (get_history (s to) from)) eqn : eq_suf.
-        2 : discriminate eq_sync.
+        destruct (complete_suffix (get_history s' from) (get_history (s to) from)) eqn : eq_suf;[|congruence].
         assert (eq_suf_original := eq_suf).
         apply complete_suffix_correct in eq_suf.
         inversion eq_sync.
         specialize (one_sender_receive_protocol s s Hprs Hprs to) as Hone.
         unfold get_matching_state in Hmatch.
-        destruct (find (fun s' : state => state_ltb' from (project (s to) from) s')
+        destruct (find (fun s'0 : state => bool_decide (state_lt_ext from (project (s to) from) s'0))
              (get_topmost_candidates s from)) eqn : eq_find.
         + apply find_some in eq_find.
           destruct eq_find as [eq_find _].
@@ -3762,21 +3769,25 @@ Context
   Definition LE (i : index) := (@wE [i]).
   Definition LH (i : index) := (@wH [i]).
   
-  Print get_matching_state.
-  
-  Existing Instance state_lt'_dec.
-  
   Lemma honest_projections_maximal
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
     (i j : index)
-    (* Do we need j? *)
-    (Hhonest : In i (GH s) /\ In j (GH s)) :
-    state_lt' i (project (s j) i) (s i).
+    (Hhonest : In i (GH s)) :
+    state_lt_ext i (project (s j) i) (s i).
   Proof.
-    Check @decide.
-    destruct (decide (state_lt' i (project (s j) i) (s i))).
+    assert (Hsnb : forall (i : index), (s i) <> Bottom). {
+      intros.
+      apply protocol_state_component_no_bottom.
+      intuition.
+    }
+    
+    unfold state_lt_ext.
+    
+    destruct (s i) eqn : eq_si;[specialize (Hsnb i);congruence|].
+    destruct (project (s j) i) eqn : eq_pji;[left; intuition congruence|].
+    destruct (decide (state_lt' i (project (s j) i) (s i)));right; rewrite <- eq_si; rewrite <- eq_pji.
     - intuition.
     - assert (He : In i (GE s)). {
         apply GE_direct.
@@ -3795,8 +3806,8 @@ Context
             apply cobs_single.
             exists j. split;[apply in_listing|].
             apply refold_simp_lv_observations1.
-            admit.
-            admit.
+            apply Hsnb.
+            rewrite eq_pji. congruence.
             intuition.
           + split;[intuition|].
             unfold simp_lv_event_lt.
@@ -3809,9 +3820,8 @@ Context
               destruct H;[intuition|].
               intuition.
       }
-      destruct Hhonest as [Hhonest _].
       apply wH_wE' in Hhonest. intuition.
-  Admitted.
+  Qed.
   
   Lemma self_projections_same
     (s : vstate X)
@@ -3839,14 +3849,25 @@ Context
       apply filter_In in H.
       destruct H as [Hin H].
       rewrite forallb_forall in H.
+      specialize (H (s i)).
+      spec H. admit.
+      rewrite negb_true_iff in H.
+      rewrite bool_decide_eq_false in H.
       admit.
     - simpl in H.  destruct H;[|intuition].
+      subst s'.
       unfold get_topmost_candidates.
       unfold get_maximal_elements.
       apply filter_In.
       split.
       + unfold get_candidates. apply in_map_iff. exists i. intuition.
       + rewrite forallb_forall. intros.
+        rewrite negb_true_iff.
+        rewrite bool_decide_eq_false.
+        apply in_map_iff in H.
+        destruct H as [j [Heqj Hinj]]. subst x.
+        specialize (honest_projections_maximal s Hpr Hnf i j Hhonest) as Hh.
+        apply (@state_lt_ext_antisymmetric index index_listing Hfinite) in Hh.
         admit.
   Admitted.
   

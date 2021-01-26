@@ -616,6 +616,30 @@ Context
     
     Existing Instance state_lt'_dec.
     
+    Lemma state_lt'_antisymmetric
+      (i : index)
+      (s1 s2 : (@state index index_listing)) :
+      state_lt' i s1 s2 -> ~ state_lt' i s2 s1.
+     Proof.
+      intro H.
+      unfold state_lt' in *.
+      intros contra.
+      apply in_split in H.
+      destruct H as [left [right Heq]].
+      apply unfold_history in Heq as Heq'.
+      rewrite Heq' in Heq.
+      apply in_split in contra.
+      destruct contra as [left' [right' Heq_contra]].
+      rewrite Heq_contra in Heq.
+      specialize (history_no_self_reference s2 i) as Hnsr.
+      rewrite Heq in Hnsr.
+      contradict Hnsr.
+      apply in_app_iff. right.
+      simpl. right.
+      apply in_app_iff. right.
+      intuition.
+     Qed.
+    
     Lemma state_lt_ext_dec 
       (i : index)
       : RelDecision (state_lt_ext i).
@@ -633,6 +657,26 @@ Context
       - destruct (decide (state_lt' i x y)); subst x; subst y.
         * left. right. intuition.
         * right. intros contra. destruct contra;[intuition congruence|intuition]. 
+    Qed.
+    
+    Lemma state_lt_ext_antisymmetric
+     (i : index)
+     (s1 s2 : (@state index index_listing)) :
+     state_lt_ext i s1 s2 -> ~ state_lt_ext i s2 s1.
+    Proof.
+      intros H.
+      unfold state_lt_ext in *.
+      destruct H.
+      - intros contra.
+        destruct contra;[intuition|].
+        destruct H as [Hs1 Hs2]. subst s1.
+        unfold state_lt' in H0. intuition.
+      - intros contra.
+        destruct contra.
+        + destruct H0 as [H1 H2]. subst s2.
+          unfold state_lt' in H. intuition.
+        + apply state_lt'_antisymmetric in H.
+          intuition.
     Qed.
 
     Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
