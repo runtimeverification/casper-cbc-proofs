@@ -142,7 +142,7 @@ Proof.
     unfold preloaded_protocol_equivocator_vlsm_trace_oproject.
     destruct (to_nat nj) as [j Hj] eqn:Heqnj.
     destruct
-      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ Hbtr _ Hj false)
+      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ (proj1 Hbtr) _ Hj false)
       as [trX [di [Hproject Hdi]]].
     rewrite Hproject.
     destruct di as [sn | i fi].

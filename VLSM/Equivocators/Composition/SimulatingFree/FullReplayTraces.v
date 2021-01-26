@@ -90,7 +90,7 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
       (equivocators_no_equivocations_constraint IM Hbs finite_index)
       constraint
   )
-  : vvalid (equivocators_constrained_vlsm IM constraint)
+  : vvalid (composite_vlsm equivocator_IM constraint)
       (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
         (vl0 (IM (eqv)), NewMachine _ sn))
       (snd (apply_plan equivocators_no_equivocations_vlsm s a), None).
@@ -762,6 +762,7 @@ Proof.
   - apply functional_extensionality_dep_good.
     intros eqv.
     unfold equivocators_state_project. unfold Common.equivocators_state_project.
+    unfold equivocator_state_descriptor_project.
     spec Heqv_choice eqv.
     spec Heqv_choice' eqv.
     unfold proper_descriptor in *.
@@ -820,22 +821,22 @@ Lemma replay_trace_from_protocol
         (last
            (map Common.destination
               (fst
-                 (apply_plan (equivocators_constrained_vlsm IM constraint)
+                 (apply_plan (composite_vlsm equivocator_IM constraint)
                     full_replay_state
                     (spawn_initial_state is ++
                      map
                        (update_euivocators_transition_item_descriptor full_replay_state)
                        epref)))) full_replay_state, input eitem)
   )
-  : finite_protocol_trace_from (equivocators_constrained_vlsm IM constraint)
+  : finite_protocol_trace_from (composite_vlsm equivocator_IM constraint)
       full_replay_state (replay_trace_from full_replay_state is tr).
 Proof.
-  assert (Hfull_replay_state' : protocol_state_prop (equivocators_constrained_vlsm IM constraint) full_replay_state).
+  assert (Hfull_replay_state' : protocol_state_prop (composite_vlsm equivocator_IM constraint) full_replay_state).
   { destruct Hfull_replay_state as [om Hfull_replay_state]. exists om.
     apply (constraint_subsumption_protocol_prop equivocator_IM _ _ Hconstraint_subsumption).
     assumption.
   }
-  apply (finite_protocol_plan_iff  (equivocators_constrained_vlsm IM constraint)).
+  apply (finite_protocol_plan_iff  (composite_vlsm equivocator_IM constraint)).
   split; [assumption|].
   specialize
     (finite_protocol_trace_from_to_plan equivocators_no_equivocations_vlsm _ _ (proj1 Htr))
@@ -860,7 +861,7 @@ Proof.
         subst l. reflexivity.
       }
       simpl in Hinputs. subst a.
-      assert (Hinputs' : option_protocol_message_prop (equivocators_constrained_vlsm IM constraint) input).
+      assert (Hinputs' : option_protocol_message_prop (composite_vlsm equivocator_IM constraint) input).
       { destruct Hinputs as [_s Hinputs]. exists _s.
         apply (constraint_subsumption_protocol_prop equivocator_IM _ _ Hconstraint_subsumption).
         assumption.

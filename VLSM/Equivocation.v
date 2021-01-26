@@ -416,18 +416,27 @@ Section Simple.
       An equivocating transition can be detected by calling the [has_been_sent]
       oracle on its arguments and we simply forbid them **)
    
-     Definition no_equivocations
-       {Hbs : has_been_sent_capability}
-       (l : vlabel vlsm)
-       (som : state * option message)
-       : Prop
-       :=
-       let (s, om) := som in
-       match om with
-       | None => True
-       | Some m => has_been_sent s m \/ vinitial_message_prop vlsm m
-       end.
-   
+    Definition no_equivocations_except_from
+      {Hbs : has_been_sent_capability}
+      (exception : message -> Prop)
+      (l : vlabel vlsm)
+      (som : state * option message)
+      :=
+      let (s, om) := som in
+      match om with
+      | None => True
+      | Some m => has_been_sent s m \/ exception m
+      end.
+    
+    Definition no_equivocations
+      {Hbs : has_been_sent_capability}
+      (l : vlabel vlsm)
+      (som : state * option message)
+      : Prop
+      :=
+      no_equivocations_except_from (vinitial_message_prop vlsm) l som.
+
+    
     Class has_been_received_capability := {
       has_been_received: state_message_oracle;
       has_been_received_dec :> RelDecision has_been_received;
@@ -1170,6 +1179,17 @@ Definition no_additional_equivocations
   : Prop
   :=
   has_been_observed vlsm s m \/ vinitial_message_prop vlsm m.
+
+Lemma no_additional_equivocations_dec
+  {message : Type}
+  (vlsm : VLSM message)
+  {Hbo : has_been_observed_capability vlsm}
+  (initial_dec : forall m, Decision (vinitial_message_prop vlsm m))
+  : RelDecision (no_additional_equivocations vlsm).
+Proof.
+  intros s m. apply Decision_or; [|apply initial_dec].
+  apply has_been_observed_dec.
+Qed.
 
 Definition no_additional_equivocations_constraint
   {message : Type}
@@ -2087,3 +2107,38 @@ Section full_node_constraint.
   Qed.
 
 End full_node_constraint.
+
+Section seeded_composite_vlsm_no_equivocation.
+
+  Context
+    {message : Type}
+    {index : Type}
+    {IndEqDec : EqDecision index}
+    (IM : index -> VLSM message)
+    {i0 : Inhabited index}
+    (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
+    (X := free_composite_vlsm IM)
+    (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
+    (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
+    {index_listing : list index}
+    (finite_index : Listing index_listing)
+    (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index has_been_sent_capabilities)
+    (seed : message -> Prop)
+    .
+  
+  Existing Instance X_has_been_sent_capability.
+
+  Definition seeded_no_equivocations_constraint
+    (l : composite_label IM)
+    (som : composite_state IM * option message)
+    (initial_or_seed := fun m => vinitial_message_prop X m \/ seed m)
+    :=
+    no_equivocations_except_from X initial_or_seed l som
+    /\ constraint l som.
+
+  Definition seeded_composite_no_equivocation_vlsm
+    : VLSM message
+    :=
+    vlsm_add_initial_messages (composite_vlsm IM seeded_no_equivocations_constraint) seed.
+
+End seeded_composite_vlsm_no_equivocation. 

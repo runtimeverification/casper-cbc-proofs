@@ -41,7 +41,7 @@ Definition equivocators_fixed_equivocations_constraint
 Definition equivocators_fixed_equivocations_vlsm
   : VLSM message
   :=
-  equivocators_constrained_vlsm IM equivocators_fixed_equivocations_constraint.
+  composite_vlsm equivocator_IM equivocators_fixed_equivocations_constraint.
 
 Lemma equivocators_fixed_equivocations_vlsm_incl_free
   : VLSM_incl equivocators_fixed_equivocations_vlsm (free_composite_vlsm equivocator_IM).
@@ -252,6 +252,13 @@ Context
   (X : VLSM message := fixed_equivocation_vlsm_composition IM Hbs Hbr finite_index equivocating Hi0_equiv)
   (equivocators_free_Hbs := composite_has_been_sent_capability (equivocator_IM IM) (free_constraint (equivocator_IM IM)) finite_index (equivocator_Hbs IM Hbs))
   (FreeE : VLSM message := free_composite_vlsm (equivocator_IM IM))
+  (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
+  (comopsite_initial_decidable := composite_decidable_initial_message IM finite_index Hdec_init)
+  (Free := free_composite_vlsm IM)
+  (Free_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
+  (Free_has_been_received_capability : has_been_received_capability Free := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
+  (Free_has_been_observed_capability : has_been_observed_capability Free := has_been_observed_capability_from_sent_received Free)
+  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free comopsite_initial_decidable)
   .
 
 Existing Instance equivocators_free_Hbs.
@@ -336,7 +343,7 @@ Proof.
     unfold final_state in Hproper. rewrite Htr_lst in Hproper.
     rewrite map_app in Hproper. simpl in Hproper. rewrite last_is_last in Hproper.
     spec Hproperx Hproper.
-    destruct Hproperx as [oitem [final_choice' [Hprojectx Hproperx]]].
+    destruct Hproperx as [oitem [final_choice' [Hprojectx [Hitemx Hproperx]]]].
     specialize (Hproperx (last (map destination tr') is)).
     unfold equivocators_trace_project.
     rewrite fold_right_app.
@@ -352,8 +359,7 @@ Proof.
     specialize (H' _ Hproper').
     destruct H' as [trX' [initial_choice [Hproper_initial [Htr_project [Hstate_project HtrX']]]]].
     destruct oitem as [item|].
-    +  destruct Hx as [Hl [Hinput [Houtput [Hdestination Hx]]]].
-      simpl in Hl, Hinput, Houtput, Hdestination.
+    +  simpl in Hitemx. destruct Hitemx as [Hl [Hinput [Houtput Hdestination]]].
       specialize (Hx _ eq_refl).
       destruct Hx as [Hvx Htx].
       exists (trX' ++ [item]), initial_choice. subst foldx.
@@ -381,71 +387,70 @@ Proof.
       destruct Hc as [Hno_equiv Hfixed].
       simpl in Htx,Hvx,Hstate_project.
       rewrite Hstate_project in Hvx, Htx.
-      repeat split; [assumption| |assumption| |assumption].
-      * destruct input as [input|]; [|apply option_protocol_message_None].
-        apply option_protocol_message_Some.
-        clear Hiom Hplst Hdestination Hvx Htx Hprojectx final_choice Hproper final_state
-          Hlst H3.
-        simpl in Hno_equiv.
-        apply or_comm in Hno_equiv.
-        destruct Hno_equiv as [Hinit_input | Hno_equiv].
-        { apply fixed_equivocators_initial_message in Hinit_input.
-          apply protocol_message_prop_iff. left. exists (exist _ _ Hinit_input).
-          reflexivity.
-        }
-        assert
-          (Hs_free : protocol_state_prop FreeE (last (map Common.destination tr') is)).
-        {
-        destruct Hs as [_om Hs].
+      destruct input as [input|]
+      ; [|repeat split; [assumption| apply option_protocol_message_None |assumption| left; exact I |assumption]].
+
+      simpl in Hno_equiv.
+      apply or_comm in Hno_equiv.
+      destruct Hno_equiv as [Hinit_input | Hno_equiv]
+      ; [apply fixed_equivocators_initial_message in Hinit_input|]
+      ; [repeat split; [assumption| |assumption| left; right;assumption |assumption]|].
+      { apply protocol_message_prop_iff. left. exists (exist _ _ Hinit_input).
+        reflexivity.
+      }
+      assert
+        (Hs_free : protocol_state_prop FreeE (last (map Common.destination tr') is)).
+      { destruct Hs as [_om Hs].
         apply (constraint_subsumption_protocol_prop (equivocator_IM IM))
           with (constraint2 := free_constraint (equivocator_IM IM))
           in Hs as Hs_free
           ; [|intro x; intros; exact I].
         exists _om. assumption.
-        }
-        specialize
-          (specialized_proper_sent_rev FreeE _ Hs_free _ Hno_equiv) as Hall.
-        specialize (Hall is tr').
-        spec Hall.
-        {  split; [|assumption].
-          apply VLSM_incl_finite_trace; [apply equivocators_fixed_equivocations_vlsm_incl_free|].
-          assumption.
-        }
-        specialize (Hall eq_refl).
-        apply exists_first in Hall; [|intro y; apply decide_eq].
-        destruct Hall as [pre [suf [item [Hitem [Htr_item _]]]]].
-        specialize (H (length (pre ++ [item]))).
-        spec H. { subst. repeat rewrite app_length. simpl. lia. }
-        specialize (H (pre ++ [item])).
-        simpl in H.
-        subst tr'.
-        rewrite app_assoc in Htr.
-        apply (finite_protocol_trace_from_app_iff XE) in Htr.
-        destruct Htr as [Hpre Hsuf].
-        specialize (H (conj Hpre Hinit) eq_refl).
-        match type of H with
-        | context [equivocators_state_project _ _ ?l] => remember l as lst
-        end.
-(*        
-        specialize
-          (equivocators_protocol_trace_project IM Hbs finite_index
-            final_choice' lst suf
-          ) as Hsuf_pr.
-        simpl in Hsuf_pr.
-        spec Hsuf_pr.
-        { subst. clear -Hproper'. rewrite app_assoc,map_app, last_app in Hproper'.
-          assumption.
-        }
-        spec Hsuf_pr.
-        { subst. clear -Hsuf.
-          apply (VLSM_incl_finite_trace _ _ (equivocators_fixed_equivocations_vlsm_incl_no_equivocations IM Hbs finite_index equivocating)).
-          assumption.
-        }
-        destruct Hsuf_pr as [_ [item_choice [_ [_ [Hproper_item _]]]]].
-        specialize (H _ Hproper_item).
-*)        
-        admit.
-      * admit.
+      }
+      specialize
+        (specialized_proper_sent_rev FreeE _ Hs_free _ Hno_equiv) as Hall.
+      specialize (Hall is tr').
+      assert
+        (Htr' : finite_protocol_trace FreeE is tr').
+      {  split; [|assumption].
+        apply VLSM_incl_finite_trace; [apply equivocators_fixed_equivocations_vlsm_incl_free|].
+        assumption.
+      }
+      spec Hall Htr'.
+      specialize (Hall eq_refl).
+      assert
+        (Htr'pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm FreeE) is tr').
+      { split; [|assumption].
+        specialize (vlsm_incl_pre_loaded_with_all_messages_vlsm FreeE) as Hincl.
+        apply (VLSM_incl_finite_trace _ _ Hincl). apply Htr'.
+      }
+      destruct (equivocators_trace_project_output_reflecting_inv IM _ _ (proj1 Htr'pre) _ Hall)
+        as [final_choice_m [initial_choice_m [trXm [Hfinal_choice_m [Hproject_trXm Hex]]]]].
+      specialize (H (length tr')).
+      spec H. { rewrite app_length. simpl. lia. }
+      specialize (H tr' (conj Htr Hinit) eq_refl final_choice_m Hfinal_choice_m).
+      destruct H as [trXm' [initial_choice_m' [Hproper_initial_m [Hproject_trXm' [Hpr_fin_tr' HtrXm]]]]].
+      simpl in *. rewrite Hproject_trXm in Hproject_trXm'.
+      inversion Hproject_trXm'. subst trXm' initial_choice_m'. clear Hproject_trXm'.
+      repeat split; [assumption| |assumption| |assumption]
+      ; [ apply option_protocol_message_Some
+        ; apply (protocol_trace_output_is_protocol X _ _ (proj1 HtrXm) _ Hex)
+        |].
+      match goal with
+      |- fixed_equivocation_constraint _ _ _ _ _ _ _ (?s, Some ?m) =>
+        destruct (Free_no_additional_equivocation_decidable s m)
+      end
+      ; [left; assumption|right].
+      exists input. split; [reflexivity|].
+      unfold no_additional_equivocations in n.
+      match type of n with
+      | ~ (?o \/ ?i) => assert (Hn : ~ o /\ ~ i) by intuition
+      end.
+      clear n; destruct Hn as [Hno Hni].
+      match type of Hno with
+      | ~ has_been_observed _ ?s _ => remember s as lst_trX'
+      end.
+      admit.
     + exists trX'. exists initial_choice. subst foldx. split; [assumption|].
       split; [apply Htr_project|]. split; [|assumption].
       subst tr. clear -Hstate_project Hx.

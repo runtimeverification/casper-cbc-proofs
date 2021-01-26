@@ -121,6 +121,21 @@ Definition equivocator_state_project
   | _ =>  None
   end.
 
+Definition equivocator_state_descriptor_project
+  (s : equivocator_state)
+  (descriptor : MachineDescriptor)
+  : vstate X
+  :=
+  match descriptor with
+  | NewMachine sn => sn
+  | Existing j _ =>
+    let (n, bs) := s in
+    match (le_lt_dec (S n) j) with
+    | right lt_in => bs (of_nat_lt lt_in)
+    | left _ => bs F1
+    end
+  end.
+
 Definition equivocator_state_update
   (bs : equivocator_state)
   (n := projT1 bs)
@@ -510,6 +525,121 @@ Proof.
         exists om'. assumption.
       * destruct (Fin.eq_dec (of_nat_lt Hj) i); [|apply IHHbs].
         exists om'. assumption.
+Qed.
+
+Lemma new_machine_label_equivocator_state_project_last
+  (l : vlabel equivocator_vlsm) s oin s' oout
+  (Ht : vtransition equivocator_vlsm l (s, oin) = (s', oout))
+  sn
+  (Hnew: snd l = NewMachine _ sn)
+  fi
+  : equivocator_state_descriptor_project X s' (Existing _ (projT1 s') fi) =
+    equivocator_state_descriptor_project X s (NewMachine _ sn).
+Proof.
+  destruct l as (l, new). simpl in Hnew. subst new.
+  unfold vtransition in Ht. simpl in Ht. inversion Ht. subst.
+  clear Ht. 
+  remember (equivocator_state_extend X s sn) as ext.
+  destruct ext as (n, bs).
+  unfold projT1. unfold equivocator_state_descriptor_project.
+  destruct (le_lt_dec (S n) n); [lia|].
+  destruct s as (nsi, bsi). unfold equivocator_state_extend in Heqext.
+  inversion Heqext. subst.
+  simpl_existT. subst. rewrite to_nat_of_nat.
+  destruct (nat_eq_dec (S nsi) (S nsi)); [|congruence].
+  reflexivity.
+Qed.
+
+Lemma new_machine_label_equivocator_state_project_not_last
+  (l : vlabel equivocator_vlsm) s oin s' oout
+  (Ht : vtransition equivocator_vlsm l (s, oin) = (s', oout))
+  sn
+  (Hnew: snd l = NewMachine _ sn)
+  ni fi
+  (Hni : ni < projT1 s')
+  fi'
+  : equivocator_state_descriptor_project X s' (Existing _ ni fi) =
+    equivocator_state_descriptor_project X s (Existing _ ni fi').
+Proof.
+  destruct l as (li, new). simpl in Hnew. subst new.
+  inversion Ht. subst.
+  unfold equivocator_state_descriptor_project.
+  unfold equivocator_state_extend.
+  unfold equivocator_state_extend in Hni.
+  destruct s as (nsi', bsi').
+  unfold projT1 in Hni.
+  destruct (le_lt_dec (S (S nsi')) ni); [lia|].
+  rewrite to_nat_of_nat.
+  destruct (nat_eq_dec ni (S nsi')); [lia|].
+  destruct (le_lt_dec (S nsi') ni); [lia|].
+  f_equal.
+  apply of_nat_ext.
+Qed.
+
+Lemma existing_true_label_equivocator_state_project_not_last
+  (l : vlabel equivocator_vlsm) s oin s' oout
+  (Ht : vtransition equivocator_vlsm l (s, oin) = (s', oout))
+  ieqvi
+  (Hex_true: snd l = Existing _ ieqvi true)
+  (Hieqvi : ieqvi < S (projT1 s))
+  ni fi
+  (Hni : ni < projT1 s')
+  fi'
+  : equivocator_state_descriptor_project X s' (Existing _ ni fi)
+  = equivocator_state_descriptor_project X s (Existing _ ni fi').
+Proof.
+  destruct l as (li, ex_true). simpl in Hex_true. subst ex_true.
+  unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+  destruct ( le_lt_dec (S (projT1 s)) ieqvi ); [lia|].
+  destruct
+    (vtransition X (fst (li, Existing X ieqvi true))
+    (projT2 s (of_nat_lt l), oin))
+    as (si'', om'').
+  inversion Ht. subst. clear Ht.
+  unfold equivocator_state_descriptor_project.
+  unfold equivocator_state_extend.
+  unfold equivocator_state_extend in Hni.
+  destruct s as (nsi', bsi').
+  unfold projT1 in Hni.
+  destruct (le_lt_dec (S (S nsi')) ni); [lia|].
+  rewrite to_nat_of_nat.
+  destruct (nat_eq_dec ni (S nsi')); [lia|].
+  destruct (le_lt_dec (S nsi') ni); [lia|].
+  f_equal.
+  apply of_nat_ext.
+Qed.
+
+Lemma existing_false_label_equivocator_state_project_not_same
+  (l : vlabel equivocator_vlsm) s oin s' oout
+  (Ht : vtransition equivocator_vlsm l (s, oin) = (s', oout))
+  ieqvi
+  (Hex_false: snd l = Existing _ ieqvi false)
+  (Hieqvi : ieqvi < S (projT1 s))
+  ni fi
+  (Hni : ni < S (projT1 s'))
+  (Hnieqvi : ieqvi <> ni)
+  fi'
+  : equivocator_state_descriptor_project X s' (Existing _ ni fi)
+  = equivocator_state_descriptor_project X s (Existing _ ni fi').
+Proof.
+  destruct l as (li, ex_false). simpl in Hex_false. subst ex_false.
+  unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+  destruct ( le_lt_dec (S (projT1 s)) ieqvi ); [lia|].
+  destruct
+    (vtransition X (fst (li, Existing X ieqvi false))
+    (projT2 s (of_nat_lt l), oin))
+    as (si'', om'').
+  inversion Ht. subst. clear Ht.
+  unfold equivocator_state_descriptor_project.
+  destruct s as (nsi', bsi').
+  simpl in Hieqvi, l.
+  unfold equivocator_state_update in *.
+  unfold projT1 in *. 
+  destruct (le_lt_dec (S nsi') ni); [lia|].
+  rewrite eq_dec_if_false; [reflexivity|].
+  intro contra. elim Hnieqvi.
+  apply (f_equal to_nat) in contra. repeat rewrite to_nat_of_nat in contra.
+  inversion contra. reflexivity.
 Qed.
 
 End equivocator_vlsm_protocol_state_projections.

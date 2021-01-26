@@ -68,12 +68,6 @@ Proof.
   apply equivocator_has_been_sent_capability. apply Hbs.
 Qed.
 
-Definition equivocators_constrained_vlsm
-  (constraint :  composite_label equivocator_IM -> composite_state equivocator_IM * option message -> Prop)
-  : VLSM message
-  :=
-  composite_vlsm equivocator_IM constraint.
-
 Existing Instance is_equivocating_state_dec.
 
 Definition equivocating_indices
@@ -86,7 +80,7 @@ Definition equivocating_indices
 Context
   {index_listing : list index}
   (finite_index : Listing index_listing)
-  (equivocators_free_vlsm := equivocators_constrained_vlsm (free_constraint equivocator_IM))
+  (equivocators_free_vlsm := free_composite_vlsm equivocator_IM)
   (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index equivocator_Hbs)
   .
 
@@ -101,7 +95,13 @@ Definition equivocators_no_equivocations_constraint
 Definition equivocators_no_equivocations_vlsm
   : VLSM message
   :=
-  equivocators_constrained_vlsm equivocators_no_equivocations_constraint.
+  composite_vlsm equivocator_IM equivocators_no_equivocations_constraint.
+
+Definition seeded_equivocators_no_equivocation_vlsm
+  (seed : message -> Prop)
+  : VLSM message
+  :=
+  seeded_composite_no_equivocation_vlsm equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index seed.
 
 Lemma equivocators_initial_state_size
   (is : vstate equivocators_no_equivocations_vlsm)
@@ -182,15 +182,7 @@ Definition equivocators_state_project
   (eqv : index)
   : vstate (IM eqv)
   :=
-  match (eqv_choice eqv) with
-  | NewMachine _ sn => sn
-  | Existing _ j _ =>
-    let (n, bs) := s eqv in
-    match (le_lt_dec (S n) j) with
-    | right lt_in => bs (of_nat_lt lt_in)
-    | left _ => bs F1
-    end
-  end.
+  equivocator_state_descriptor_project (IM eqv) (s eqv) (eqv_choice eqv).
 
 Definition lift_to_equivocators_state
   (s : vstate X)
@@ -308,190 +300,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma new_machine_reflects_equivocators_state_project
-  (l : composite_label equivocator_IM) s oin s' oout
-  (Ht : composite_transition equivocator_IM l (s, oin) = (s', oout))
-  (eqv_choice : equivocators_choice)
-  (i := projT1 l)
-  sn
-  (Heqvi : eqv_choice i = NewMachine _ sn)
-  : equivocators_state_project eqv_choice s' = equivocators_state_project eqv_choice s.
-Proof.
-  simpl in Ht. unfold i in *. clear i. destruct l as (i, li). simpl in *.
-  destruct (vtransition (equivocator_IM i) li (s i, oin)) as (si', om').
-  inversion Ht. subst. clear Ht.
-  specialize (equivocators_state_project_state_update_eqv eqv_choice s i si').
-  rewrite Heqvi. intro H. rewrite H. clear H.
-  apply functional_extensionality_dep. intro j.
-  destruct (decide (j = i)); [|apply state_update_neq; assumption].
-  subst. rewrite state_update_eq. unfold equivocators_state_project.
-  rewrite Heqvi. reflexivity.
-Qed.
-
-Lemma new_machine_label_equivocators_state_project_last
-  (l : composite_label equivocator_IM) s oin s' oout
-  (Ht : composite_transition equivocator_IM l (s, oin) = (s', oout))
-  sn
-  (Hnew: snd (projT2 l) = NewMachine _ sn)
-  (eqv_choice : equivocators_choice)
-  fi
-  (Heqvi : eqv_choice (projT1 l) = Existing _ (projT1 (s' (projT1 l))) fi)
-  : equivocators_state_project eqv_choice s' =
-    equivocators_state_project (equivocators_choice_update eqv_choice (projT1 l) (NewMachine _ sn)) s.
-Proof.
-  simpl in Ht. destruct l as (i, (li, new)). simpl in *.
-  subst new. simpl in Ht. inversion Ht. subst.
-  apply functional_extensionality_dep. intro j.
-  unfold equivocators_state_project at 2.
-  destruct (decide (j = i)).
-  - subst. rewrite equivocators_choice_update_eq.
-    unfold equivocators_state_project. rewrite state_update_eq in *.
-    rewrite Heqvi. clear Heqvi.
-    specialize (equivocator_state_extend_project_last (IM i) (s i) sn).
-    remember (equivocator_state_extend (IM i) (s i) sn) as ext.
-    intro Hext. destruct ext as (n, bs).
-    unfold projT1. destruct (le_lt_dec (S n) n); [lia|].
-    assert (Hns : S (projT1 (s i)) = n).
-    { destruct (s i) as (nsi, bsi). unfold equivocator_state_extend in Heqext.
-      inversion Heqext. subst. reflexivity.
-    }
-    subst n.
-    specialize (Hext l). assumption.
-  - rewrite equivocators_choice_update_neq; [|assumption].
-    unfold equivocators_state_project. rewrite state_update_neq; [|assumption].
-    reflexivity.
-Qed.
-
-Lemma new_machine_label_equivocators_state_project_not_last
-  (l : composite_label equivocator_IM) s oin s' oout
-  (Ht : composite_transition equivocator_IM l (s, oin) = (s', oout))
-  sn
-  (Hnew: snd (projT2 l) = NewMachine _ sn)
-  (eqv_choice : equivocators_choice)
-  ni fi
-  (Heqvi : eqv_choice (projT1 l) = Existing _ ni fi)
-  (Hni : ni < projT1 (s' (projT1 l)))
-  fi'
-  : equivocators_state_project eqv_choice s' =
-    equivocators_state_project (equivocators_choice_update eqv_choice (projT1 l) (Existing _ ni fi')) s.
-Proof.
-  destruct l as (i, (li, new)). simpl in sn, Hnew. subst new. simpl in *.
-  inversion Ht.
-  apply functional_extensionality_dep. intro j.
-  destruct (decide (j = i)).
-  - subst. unfold equivocators_state_project.
-    rewrite Heqvi.
-    rewrite equivocators_choice_update_eq.
-    rewrite state_update_eq.
-    rewrite state_update_eq in Hni.
-    unfold equivocator_state_extend.
-    unfold equivocator_state_extend in Hni.
-    destruct (s i) as (nsi', bsi').
-    unfold projT1 in Hni.
-    destruct (le_lt_dec (S (S nsi')) ni); [lia|].
-    rewrite to_nat_of_nat.
-    destruct (nat_eq_dec ni (S nsi')); [lia|].
-    destruct (le_lt_dec (S nsi') ni); [lia|].
-    f_equal.
-    apply of_nat_ext.
-  - unfold equivocators_state_project.
-    rewrite equivocators_choice_update_neq; [|assumption].
-    rewrite state_update_neq; [|assumption].
-    reflexivity.
-Qed.
-
-Lemma existing_true_label_equivocators_state_project_not_last
-  (l : composite_label equivocator_IM) s oin s' oout
-  (Ht : composite_transition equivocator_IM l (s, oin) = (s', oout))
-  ieqvi
-  (Hex_true: snd (projT2 l) = Existing _ ieqvi true)
-  (Hieqvi : ieqvi < S (projT1 (s (projT1 l))))
-  (eqv_choice : equivocators_choice)
-  ni fi
-  (Heqvi : eqv_choice (projT1 l) = Existing _ ni fi)
-  (Hni : ni < projT1 (s' (projT1 l)))
-  fi'
-  : equivocators_state_project eqv_choice s' =
-    equivocators_state_project (equivocators_choice_update eqv_choice (projT1 l) (Existing _ ni fi')) s.
-Proof.
-  destruct l as (i, (li, ex_true)). simpl in Hex_true. subst ex_true. simpl in *.
-  destruct (vtransition (equivocator_IM i) (li, Existing (IM i) ieqvi true)) as (si', om') eqn:Ht'.
-  unfold vtransition in Ht'. unfold_transition Ht'. unfold snd in Ht'.
-  destruct ( le_lt_dec (S (projT1 (s i))) ieqvi ); [lia|].
-  destruct
-    (vtransition (IM i) (fst (li, Existing (IM i) ieqvi true))
-    (projT2 (s i) (Fin2Restrict.n2f l), oin))
-    as (si'', om'').
-  inversion Ht'. subst. clear Ht'. inversion Ht. subst. clear Ht.
-  apply functional_extensionality_dep. intro j.
-  destruct (decide (j = i)).
-  - subst. unfold equivocators_state_project.
-    rewrite Heqvi.
-    rewrite equivocators_choice_update_eq.
-    rewrite state_update_eq.
-    rewrite state_update_eq in Hni.
-    unfold equivocator_state_extend.
-    unfold equivocator_state_extend in Hni.
-    destruct (s i) as (nsi', bsi').
-    unfold projT1 in Hni.
-    destruct (le_lt_dec (S (S nsi')) ni); [lia|].
-    rewrite to_nat_of_nat.
-    destruct (nat_eq_dec ni (S nsi')); [lia|].
-    destruct (le_lt_dec (S nsi') ni); [lia|].
-    f_equal.
-    apply of_nat_ext.
-  - unfold equivocators_state_project.
-    rewrite equivocators_choice_update_neq; [|assumption].
-    rewrite state_update_neq; [|assumption].
-    reflexivity.
-Qed.
-
-Lemma existing_false_label_equivocators_state_project_not_same
-  (l : composite_label equivocator_IM) s oin s' oout
-  (Ht : composite_transition equivocator_IM l (s, oin) = (s', oout))
-  ieqvi
-  (Hex_false: snd (projT2 l) = Existing _ ieqvi false)
-  (Hieqvi : ieqvi < S (projT1 (s (projT1 l))))
-  (eqv_choice : equivocators_choice)
-  ni fi
-  (Heqvi : eqv_choice (projT1 l) = Existing _ ni fi)
-  (Hni : ni < S (projT1 (s' (projT1 l))))
-  (Hnieqvi : ieqvi <> ni)
-  fi'
-  : equivocators_state_project eqv_choice s' =
-    equivocators_state_project (equivocators_choice_update eqv_choice (projT1 l) (Existing _ ni fi')) s.
-Proof.
-  destruct l as (i, (li, ex_false)). simpl in Hex_false. subst ex_false. simpl in *.
-  destruct (vtransition (equivocator_IM i) (li, Existing (IM i) ieqvi false)) as (si', om') eqn:Ht'.
-  unfold vtransition in Ht'. unfold_transition Ht'. unfold snd in Ht'.
-  destruct ( le_lt_dec (S (projT1 (s i))) ieqvi ); [lia|].
-  destruct
-    (vtransition (IM i) (fst (li, Existing (IM i) ieqvi false))
-    (projT2 (s i) (Fin2Restrict.n2f l), oin))
-    as (si'', om'').
-  inversion Ht'. subst. clear Ht'. inversion Ht. subst. clear Ht.
-  apply functional_extensionality_dep. intro j.
-  destruct (decide (j = i)).
-  - subst. unfold equivocators_state_project.
-    rewrite Heqvi.
-    rewrite equivocators_choice_update_eq.
-    rewrite state_update_eq.
-    destruct (s i) as (nsi', bsi').
-    simpl in Hieqvi, l.
-    rewrite state_update_eq in Hni.
-    unfold equivocator_state_update in *.
-    unfold projT1 in *. 
-    destruct (le_lt_dec (S nsi') ni); [lia|].
-    rewrite eq_dec_if_false; [reflexivity|].
-    intro contra. elim Hnieqvi.
-    apply (f_equal to_nat) in contra. repeat rewrite to_nat_of_nat in contra.
-    inversion contra. reflexivity.
-  - unfold equivocators_state_project.
-    rewrite equivocators_choice_update_neq; [|assumption].
-    rewrite state_update_neq; [|assumption].
-    reflexivity.
-Qed.
-
 Lemma equivocators_initial_state_project
   (es : vstate equivocators_free_vlsm)
   (Hes : vinitial_state_prop equivocators_free_vlsm es)
@@ -597,7 +405,7 @@ Proof.
           with (equivocators_state_project eqv_choice s)
           ; [assumption|].
         apply functional_extensionality_dep.
-        intros eqv'. unfold equivocators_state_project.
+        intros eqv'. unfold equivocators_state_project. unfold equivocator_state_descriptor_project.
         destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
         destruct (decide (eqv' = eqv)).
         --- subst.
@@ -643,7 +451,7 @@ Proof.
           ; [assumption|].
           apply functional_extensionality_dep.
           intro i.
-          unfold equivocators_state_project at 1. unfold eqv_choice'.
+          unfold equivocators_state_project at 1. unfold equivocator_state_descriptor_project. unfold eqv_choice'.
           rewrite equivocators_state_project_state_update_eqv.
           destruct (decide (i = eqv)).
           --- subst. repeat rewrite state_update_eq.
@@ -654,7 +462,7 @@ Proof.
             rewrite to_nat_of_nat.
             destruct (nat_eq_dec (S n) (S n)); congruence.
           --- repeat rewrite state_update_neq; [|assumption].
-            unfold equivocators_state_project.
+            unfold equivocators_state_project. unfold equivocator_state_descriptor_project.
             rewrite equivocators_choice_update_neq; congruence.
         ** assert (Heqvs : proper_equivocators_choice eqv_choice s).
           { intro eqv'. specialize (Heqv eqv').
@@ -675,7 +483,7 @@ Proof.
             with (equivocators_state_project eqv_choice s)
           ; [assumption|].
           apply functional_extensionality_dep.
-          intros eqv'. unfold equivocators_state_project.
+          intros eqv'. unfold equivocators_state_project.  unfold equivocator_state_descriptor_project.
           destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
           destruct (decide (eqv' = eqv))
           ; [|rewrite state_update_neq; [reflexivity|assumption]].
@@ -716,7 +524,7 @@ Proof.
         spec Hgen_om'.
         { split; [|exact I].
           unfold free_composite_valid.
-          unfold equivocators_state_project.
+          unfold equivocators_state_project.  unfold equivocator_state_descriptor_project.
           unfold eqv_choice'.
           rewrite equivocators_choice_update_eq.
           destruct (s eqv) as (nieqv, bsieqv).
@@ -728,6 +536,7 @@ Proof.
         remember (equivocators_state_project eqv_choice' s) as sp.
         simpl in Hgen_om'.
         subst sp. unfold equivocators_state_project at 1 in Hgen_om'.
+        unfold equivocator_state_descriptor_project in Hgen_om'.
         unfold eqv_choice' at 1 in Hgen_om'.
         rewrite equivocators_choice_update_eq in Hgen_om'.
         destruct (s eqv) as (nieqv, bsieqv) eqn:Hsieqv.
@@ -760,7 +569,7 @@ Proof.
             with (equivocators_state_project eqv_choice s)
             ; [assumption|].
           apply functional_extensionality_dep.
-          intros eqv'. unfold equivocators_state_project.
+          intros eqv'. unfold equivocators_state_project.  unfold equivocator_state_descriptor_project.
           destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
           destruct (decide (eqv' = eqv))
           ; [|rewrite state_update_neq; [reflexivity|assumption]].
@@ -803,7 +612,7 @@ Proof.
               unfold free_composite_valid. unfold vvalid. simpl in Hv.
               replace (equivocators_state_project eqv_choice'' s eqv) with (bsieqv (of_nat_lt Hi)); try assumption.
               unfold eqv_choice''.
-              unfold equivocators_state_project.
+              unfold equivocators_state_project.  unfold equivocator_state_descriptor_project.
               rewrite equivocators_choice_update_eq.
               rewrite Hsieqv.
               destruct (le_lt_dec (S nieqv) i); [lia|].
@@ -817,7 +626,7 @@ Proof.
             unfold projT2 in Hgen.
             unfold composite_vlsm_machine in Hgen.
             unfold composite_transition in Hgen.
-            unfold equivocators_state_project at 1 in Hgen.
+            unfold equivocators_state_project at 1 in Hgen.  unfold equivocator_state_descriptor_project in Hgen.
             unfold eqv_choice'' in Hgen.
             rewrite equivocators_choice_update_eq in Hgen.
             rewrite Hsieqv in Hgen.
@@ -868,7 +677,7 @@ Proof.
               with (equivocators_state_project eqv_choice s)
             ; [assumption|].
             apply functional_extensionality_dep.
-            intros eqv'. unfold equivocators_state_project.
+            intros eqv'. unfold equivocators_state_project. unfold  equivocator_state_descriptor_project.
             destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
             destruct (decide (eqv' = eqv))
             ; [|rewrite state_update_neq; [reflexivity|assumption]].
@@ -903,7 +712,7 @@ Proof.
         spec Hgen_om'.
         { split; [|exact I].
           unfold free_composite_valid.
-          unfold equivocators_state_project.
+          unfold equivocators_state_project.  unfold equivocator_state_descriptor_project.
           unfold eqv_choice'.
           rewrite equivocators_choice_update_eq.
           destruct (s eqv) as (nieqv, bsieqv).
@@ -916,7 +725,7 @@ Proof.
         simpl in Hgen_om'.
         subst sp. unfold equivocators_state_project at 1 in Hgen_om'.
         unfold eqv_choice' at 1 in Hgen_om'.
-        rewrite equivocators_choice_update_eq in Hgen_om'.
+        rewrite equivocators_choice_update_eq in Hgen_om'.  unfold equivocator_state_descriptor_project in Hgen_om'.
         destruct (s eqv) as (nieqv, bsieqv) eqn:Hsieqv.
         simpl in Hi.
         destruct (le_lt_dec (S nieqv) i); [lia|].
@@ -981,7 +790,7 @@ Proof.
               replace (equivocators_state_project eqv_choice'' s eqv) with (bsieqv (of_nat_lt Hi))
               ; [assumption|].
               unfold eqv_choice''.
-              unfold equivocators_state_project.
+              unfold equivocators_state_project.  unfold equivocator_state_descriptor_project.
               rewrite equivocators_choice_update_eq.
               rewrite Hsieqv.
               destruct (le_lt_dec (S nieqv) i); [lia|].
@@ -995,7 +804,7 @@ Proof.
             unfold projT2 in Hgen.
             unfold composite_vlsm_machine in Hgen.
             unfold composite_transition in Hgen.
-            unfold equivocators_state_project at 1 in Hgen.
+            unfold equivocators_state_project at 1 in Hgen.  unfold equivocator_state_descriptor_project in Hgen.
             unfold eqv_choice'' in Hgen.
             rewrite equivocators_choice_update_eq in Hgen.
             rewrite Hsieqv in Hgen.
@@ -1048,7 +857,7 @@ Proof.
               with (equivocators_state_project eqv_choice s)
             ; [assumption|].
             apply functional_extensionality_dep.
-            intros eqv'. unfold equivocators_state_project.
+            intros eqv'. unfold equivocators_state_project.  unfold equivocator_state_descriptor_project.
             +++ destruct (eqv_choice eqv') eqn:Heqv'; [reflexivity|].
               destruct (decide (eqv' = eqv))
               ; [|rewrite state_update_neq; [reflexivity| assumption]].

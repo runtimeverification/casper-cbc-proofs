@@ -68,6 +68,10 @@ corresponding sets.
     ; m0 := @m0 _ _ sign
     ; l0 := @l0 _ _ sign
     |}.
+  
+  Definition decidable_initial_messages_prop
+    {message : Type} {vtype : VLSM_type message} (sign : VLSM_sign vtype)
+    := forall m, Decision (initial_message_prop m).
 
 (**
 
@@ -222,6 +226,7 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition vs0 := @s0 _ _ sign.
   Definition vm0 := @m0 _ _ sign.
   Definition vl0 := @l0 _ _ sign.
+  Definition vdecidable_initial_messages_prop := @decidable_initial_messages_prop _ _ sign.
   Definition vtransition := @transition _ _ _ machine.
   Definition vvalid := @valid _ _ _ machine.
   Definition vtransition_item := @transition_item _ type.
@@ -1585,17 +1590,19 @@ in <<s>> by outputting <<m>> *)
       (tr : list transition_item)
       (Htr : finite_protocol_trace_from s tr)
       : exists (is : state) (trs : list transition_item),
-        finite_protocol_trace is (trs ++ tr).
+        finite_protocol_trace is (trs ++ tr) /\
+        last (List.map destination trs) is = s.
     Proof.
       apply finite_ptrace_first_pstate in Htr as Hs.
       destruct Hs as [om Hs].
       apply protocol_is_trace in Hs.
       destruct Hs as [Hs | [is [trs [Htrs [Hs Hom]]]]].
-      - exists s. exists []. split; assumption.
+      - exists s. exists []. split; [|reflexivity]. split; assumption.
       - exists is. exists trs.
         destruct Htrs as [Htrs His].
-        split; [|assumption].
         apply last_error_destination_last with (default := is) in Hs.
+        split; [|assumption].
+        split; [|assumption].
         apply finite_protocol_trace_from_app_iff. split; [assumption|].
         rewrite Hs. assumption.
     Qed.
@@ -2191,6 +2198,15 @@ is also available to Y.
         protocol_trace_prop X t -> protocol_trace_prop Y t.
     Local Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
 
+    Lemma VLSM_incl_trans
+      {SigX SigY SigZ: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY) (MZ : VLSM_class SigZ)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY) (Z := mk_vlsm MZ)
+      : VLSM_incl X Y -> VLSM_incl Y Z -> VLSM_incl X Z.
+    Proof.
+      firstorder.
+    Qed.
+
     Lemma VLSM_incl_in_futures
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
@@ -2312,6 +2328,22 @@ is also available to Y.
         subst. assumption.
     Qed.
 
+    Lemma VLSM_incl_protocol_state
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (Hincl : VLSM_incl_part MX MY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (s : vstate X)
+      (Hs : protocol_state_prop X s)
+      : protocol_state_prop Y s.
+    Proof.
+      apply protocol_state_has_trace in Hs.
+      destruct Hs as [is [tr [Htr Hs]]].
+      apply (VLSM_incl_finite_protocol_trace _ _ Hincl) in Htr.
+      apply trace_is_protocol in Htr.
+      simpl in *. rewrite Hs in Htr. assumption.
+    Qed.
+
   (* end hide *)
   End VLSM_equality.
 
@@ -2362,7 +2394,7 @@ Context
   .
 
 (* begin hide *)
-Lemma VLSM_incl_protocol_state
+Lemma basic_VLSM_incl_protocol_state
   (s : state)
   (om : option message)
   (Hps : protocol_prop X (s,om))
@@ -2406,7 +2438,7 @@ Proof.
   destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
   specialize (protocol_generated_valid X Hps Hpm Hv); intros Hpv.
   repeat split.
-  - apply VLSM_incl_protocol_state with _om. assumption.
+  - apply basic_VLSM_incl_protocol_state with _om. assumption.
   - apply Hprotocol_message in Hpv. assumption.
   - specialize (Hvalid l is iom Hpv).
     assumption.
@@ -2423,7 +2455,7 @@ Qed.
     induction Hpxt.
     - apply (finite_ptrace_empty Y).
       destruct H as [m H].
-      apply VLSM_incl_protocol_state in H. assumption.
+      apply basic_VLSM_incl_protocol_state in H. assumption.
     - apply (finite_ptrace_extend Y); try assumption.
       apply VLSM_incl_protocol_transition. assumption.
   Qed.
@@ -2795,7 +2827,7 @@ Proof.
       constructor; [constructor | assumption].
       apply (protocol_transition_destination X Hsm). 
     }
-    destruct  Htr as [is [trs Htrs]].
+    destruct  Htr as [is [trs [Htrs Hlst]]].
     exists is.
     match type of Htrs with
     | context [_ ++ [?item]] => remember item as lstitem

@@ -22,6 +22,23 @@ Context
   (Xj := composite_vlsm_constrained_projection IM constraint j)
   .
 
+Definition composite_transition_item_projection_from_eq
+  (item : composite_transition_item IM)
+  (i := projT1 (l item))
+  j
+  (e : j = i)
+  : vtransition_item (IM j)
+  := 
+  let lj := eq_rect_r _ (projT2 (l item)) e in
+  @Build_transition_item _ (type (IM j)) lj (input item) (destination item j) (output item).
+
+Definition composite_transition_item_projection
+  (item : composite_transition_item IM)
+  (i := projT1 (l item))
+  : vtransition_item (IM i)
+  :=
+  composite_transition_item_projection_from_eq item i eq_refl.
+
 Fixpoint finite_trace_projection_list
   (trx : list (composite_transition_item IM))
   : list (vtransition_item (IM j))
@@ -30,13 +47,8 @@ Fixpoint finite_trace_projection_list
   | [] => []
   | item :: trx =>
     let tail := finite_trace_projection_list trx in
-    let s := destination item in
-    let l := l item in
-    let x := projT1 l in
-    match decide (j = x) with
-    | left e =>
-      let lj := eq_rect_r _ (projT2 l) e in
-      @Build_transition_item _ (type (IM j)) lj (input item) (s j) (output item) :: tail
+    match decide (j = (projT1 (l item))) with
+    | left e => composite_transition_item_projection_from_eq item j e :: tail
     | _ => tail
     end
   end.
@@ -246,7 +258,9 @@ Proof.
     + subst x.
       simpl in Ht.
       destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.
-      inversion Ht; subst. rewrite state_update_eq in *.
+      inversion Ht; subst. unfold composite_transition_item_projection_from_eq.
+      simpl.
+      rewrite state_update_eq in *.
       simpl in Hv.
       apply (finite_ptrace_extend Xj).
       * apply IHHtr.
@@ -333,7 +347,9 @@ Proof.
       unfold vtransition in Ht. simpl in Ht.
       unfold vtransition in Ht. simpl in Ht.
       destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.
-      inversion Ht; subst. rewrite state_update_eq in *.
+      inversion Ht; subst. 
+      unfold composite_transition_item_projection_from_eq. simpl.
+      rewrite state_update_eq in *.
       simpl in Hv.
       apply (finite_ptrace_extend (pre_loaded_with_all_messages_vlsm (IM j))).
       * apply IHHtr.
@@ -859,12 +875,12 @@ Proof.
 Qed.
 
 Lemma finite_trace_projection_list_in_rev
-  (tr : list (vtransition_item X))
+  (tr : list (composite_transition_item IM))
   (j : index)
   (itemj : vtransition_item (IM j))
   (Hitemj : In itemj  (finite_trace_projection_list IM j tr))
   : exists
-    (itemX : vtransition_item X)
+    (itemX : composite_transition_item IM)
     (Houtput : output itemX = output itemj)
     (Hinput : input itemX = input itemj)
     (Hl1 : j = projT1 (l itemX))

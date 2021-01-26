@@ -1634,3 +1634,32 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
     := composite_vlsm_free_projection binary_IM second.
 
 End binary_free_composition.
+
+Section composite_decidable_initial_message.
+
+Context
+  {message : Type}
+  {index : Type}
+  {IndEqDec : EqDecision index}
+  (IM : index -> VLSM message)
+  {i0 : Inhabited index}
+  {index_listing : list index}
+  (finite_index : Listing index_listing).
+
+Lemma composite_decidable_initial_message
+  (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
+  : decidable_initial_messages_prop (composite_sig IM).
+Proof.
+  intro m. simpl. unfold composite_initial_message_prop.
+  apply
+    (Decision_iff
+      (P := List.Exists (fun i => vinitial_message_prop (IM i) m) index_listing)
+    ).
+  - rewrite <- exists_finite by (apply finite_index).
+    split; intros [i Hm]; exists i.
+    + exists (exist _ _ Hm). reflexivity.
+    + destruct Hm as [[im Hinit] Him]. subst. assumption.
+  - apply @Exists_dec. intro i. apply Hdec_init.
+Qed.
+
+End composite_decidable_initial_message.

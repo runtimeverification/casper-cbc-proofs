@@ -48,6 +48,6 @@ Definition equivocators_limited_equivocations_constraint
 Definition equivocators_limited_equivocations_vlsm
   : VLSM message
   :=
-  equivocators_constrained_vlsm IM equivocators_limited_equivocations_constraint.
+  composite_vlsm equivocator_IM equivocators_limited_equivocations_constraint.
 
 End equivocators_composition_projections.
