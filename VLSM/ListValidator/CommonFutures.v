@@ -1655,6 +1655,23 @@ Context
         intuition.
   Qed. 
   
+  Lemma rec_plan 
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (a : vplan X)
+    (Hpr_a : finite_protocol_plan_from X s a)
+    (Hgood : forall (ai : vplan_item X), In ai a ->
+      (projT2 (label_a ai)) = receive) :
+    let res := snd (apply_plan X s a) in
+    forall (i : index), project (res i) i = project (s i) i.
+  Proof.
+    intros. simpl.
+    induction a using rev_ind.
+    - simpl in *. unfold res. intuition.
+    - apply finite_protocol_plan_from_app_iff in Hpr_a as Hpr_a'.
+      admit.
+  Admitted.
+  
   Lemma ep_plan 
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -2559,18 +2576,21 @@ Context
       :=
     component_list s (GH s).
     
+    Existing Instance state_lt'_dec.
+    Existing Instance state_lt_ext_dec.
+    
     Definition get_topmost_candidates
       (s : vstate X)
       (target : index) :
       list state 
       :=
-      get_maximal_elements (fun s s' => state_ltb' target (project s target) (project s' target)) (get_candidates s).
+      get_maximal_elements (fun s s' => bool_decide (state_lt_ext target (project s target) (project s' target))) (get_candidates s).
       
     Definition get_matching_state
       (s : vstate X)
       (to from : index) : state :=
       let candidates := (get_topmost_candidates s from) in
-      let found := List.find (fun s' => state_ltb' from (project (s to) from) s') candidates in
+      let found := List.find (fun s' => bool_decide (state_lt_ext from (project (s to) from) s')) candidates in
       match found with
       | Some s' => s'
       | None => (s to)
@@ -2582,7 +2602,7 @@ Context
       exists (inter : index), (get_matching_state s to from) = (s inter).
     Proof.
       unfold get_matching_state.
-      destruct (find (fun s' : state => state_ltb' from (project (s to) from) s')
+      destruct (find (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))
       (get_topmost_candidates s from)) eqn : eq_find.
       - apply find_some in eq_find.
         destruct eq_find as [eq_find _].
@@ -3744,6 +3764,55 @@ Context
   
   Print get_matching_state.
   
+  Existing Instance state_lt'_dec.
+  
+  Lemma honest_projections_maximal
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (i j : index)
+    (* Do we need j? *)
+    (Hhonest : In i (GH s) /\ In j (GH s)) :
+    state_lt' i (project (s j) i) (s i).
+  Proof.
+    Check @decide.
+    destruct (decide (state_lt' i (project (s j) i) (s i))).
+    - intuition.
+    - assert (He : In i (GE s)). {
+        apply GE_direct.
+        unfold cequiv_evidence.
+        unfold equivocation_evidence.
+        setoid_rewrite hbo_cobs.
+        exists (SimpObs State' i (s i)).
+        unfold get_simp_event_subject_some. simpl.
+        split.
+        - apply in_cobs_states'.
+          apply state_obs_present. apply in_listing.
+        - split;[intuition|].
+          exists (SimpObs Message' i (project (s j) i)). simpl.
+          split.
+          + apply in_cobs_messages'.
+            apply cobs_single.
+            exists j. split;[apply in_listing|].
+            apply refold_simp_lv_observations1.
+            admit.
+            admit.
+            intuition.
+          + split;[intuition|].
+            unfold simp_lv_event_lt.
+            unfold comparable.
+            rewrite decide_True by intuition.
+            intros contra.
+            destruct contra.
+            * congruence.
+            * rewrite decide_True in H by intuition.
+              destruct H;[intuition|].
+              intuition.
+      }
+      destruct Hhonest as [Hhonest _].
+      apply wH_wE' in Hhonest. intuition.
+  Admitted.
+  
   Lemma self_projections_same
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -3752,6 +3821,33 @@ Context
     (res := common_future s) :
     forall (i : index), project (res_send i) i = project (res i) i.
   Proof.
+  Admitted.
+  
+  Lemma something 
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (i : index)
+    (Hhonest : In i (GH s)) :
+    set_eq (get_topmost_candidates s i) [s i].
+  Proof.
+    apply set_eq_extract_forall. intro s'.
+    split; intros.
+    - unfold get_topmost_candidates.
+      unfold get_topmost_candidates in H.
+      unfold get_maximal_elements in H.
+      apply filter_In in H.
+      destruct H as [Hin H].
+      rewrite forallb_forall in H.
+      admit.
+    - simpl in H.  destruct H;[|intuition].
+      unfold get_topmost_candidates.
+      unfold get_maximal_elements.
+      apply filter_In.
+      split.
+      + unfold get_candidates. apply in_map_iff. exists i. intuition.
+      + rewrite forallb_forall. intros.
+        admit.
   Admitted.
   
   Lemma get_matching_state_for_honest
@@ -3766,12 +3862,19 @@ Context
     unfold get_matching_state.
     destruct (find (fun s' : state => state_ltb' i (project (res_send j) i) s')
     (get_topmost_candidates res_send i)) eqn : eq_find.
-    - admit.
+    - apply find_some in eq_find.
+      admit.
     - specialize (find_none (fun s' : state => state_ltb' i (project (res_send j) i) s')) as Hnone.
       specialize (Hnone (get_topmost_candidates res_send i) eq_find).
       specialize (Hnone (res_send i)).
         
-      assert (In (res_send i) (get_topmost_candidates res_send i)).
+      assert (In (res_send i) (get_topmost_candidates res_send i)). {
+        admit.
+      }
+      
+      specialize (Hnone H).
+      simpl in Hnone. (* because they're comparable, the other direction holds *)
+      (* then we prove that nothing greater than the self projection can exist *)
       
       unfold get_topmost_candidates in Hnone.
       unfold get_candidates in Hnone.

@@ -593,6 +593,12 @@ Context
       : bool
       := inb decide_eq s1 (get_history s2 i).
       
+    Definition state_lt_ext
+      (i : index)
+      (s1 s2 : (@state index index_listing)) :=
+      (s1 = Bottom /\ s2 <> Bottom) \/
+      state_lt' i s1 s2.
+      
     Lemma state_lt'_dec 
       (i : index)
       : RelDecision (state_lt' i).
@@ -607,7 +613,27 @@ Context
         rewrite eqb in contra.
         discriminate contra. 
     Qed.
-
+    
+    Existing Instance state_lt'_dec.
+    
+    Lemma state_lt_ext_dec 
+      (i : index)
+      : RelDecision (state_lt_ext i).
+    Proof.
+      unfold RelDecision; intros.
+      unfold Decision.
+      unfold state_lt_ext.
+      destruct x eqn : eq_x; destruct y eqn : eq_y; simpl.
+      - right. intros contra. destruct contra;[intuition congruence|].
+        unfold state_lt' in H. simpl in H. intuition.
+      - left. left. intuition congruence.
+      - right. intros contra. 
+        destruct contra;[intuition|].
+        unfold state_lt' in H. simpl in H. intuition.
+      - destruct (decide (state_lt' i x y)); subst x; subst y.
+        * left. right. intuition.
+        * right. intros contra. destruct contra;[intuition congruence|intuition]. 
+    Qed.
 
     Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
     Proof.
@@ -4063,59 +4089,6 @@ Context
           rewrite lv_observations_other in Hini by intuition.
           intuition.
    Qed.
-   
-   (*
-   Lemma unfold_simp_lv_observations
-      (s : state)
-      (target : index)
-      (Hdif : target <> index_self)
-      (e : simp_lv_event) 
-      (Hnb : s <> Bottom /\ (get_simp_event_state e) <> Bottom) :
-      In e (simp_lv_observations s target) <->
-      (e = SimpObs Message' target (project s target)) \/
-      (exists (i : index), (In e (simp_lv_observations (project s i) target))).
-   Proof.
-      rewrite simp_lv_observations_other by intuition.
-      destruct e as [et ev es].
-      split; intros.
-      - apply in_simp_lv_message_observations in H as H'.
-        assert (et = Message') by intuition.
-        assert (ev = target) by intuition.
-        subst et. subst ev.
-        apply raw_message in H as Hraw. 2 : intuition.
-        apply unfold_raw_observations in Hraw. 2 : intuition.
-        destruct Hraw.
-        + left. rewrite H0. intuition.
-        + right.
-          destruct H0 as [i Hini].
-          exists i.
-          apply raw_message in Hini.
-          rewrite simp_lv_observations_other.
-          all : intuition.
-      - assert (et = Message' /\ ev = target). {
-          destruct H.
-          - inversion H.
-            intuition.
-          - destruct H as [i Hini].
-            rewrite simp_lv_observations_other in Hini by intuition.
-            apply in_simp_lv_message_observations in Hini.
-            intuition.
-        }
-        destruct H0 as [Het Hev].
-        subst et; subst ev.
-        
-        apply raw_message. intuition.
-        apply unfold_raw_observations. intuition.
-        
-        destruct H.
-        + left. inversion H. intuition.
-        + right. 
-          destruct H as [i Hini].
-          exists i.
-          apply raw_message. intuition.
-          rewrite simp_lv_observations_other in Hini by intuition.
-          intuition.
-   Qed. *)
    
    Lemma in_message_observations_nb
     (s : state)
