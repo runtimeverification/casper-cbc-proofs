@@ -3769,7 +3769,7 @@ Context
   Definition LE (i : index) := (@wE [i]).
   Definition LH (i : index) := (@wH [i]).
   
-  Lemma honest_projections_maximal
+  Lemma honest_projections_maximal1
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
@@ -3823,6 +3823,54 @@ Context
       apply wH_wE' in Hhonest. intuition.
   Qed.
   
+  Lemma honest_projections_maximal2
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (i j : index)
+    (Hhonest : In i (GH s)) :
+    project (s j) i = project (s i) i \/ state_lt_ext i (project (s j) i) (project (s i) i).
+  Proof.
+    assert (Hsnb : forall (i : index), (s i) <> Bottom). {
+      intros.
+      apply protocol_state_component_no_bottom.
+      intuition.
+    } 
+    unfold state_lt_ext.
+    destruct (s i) eqn : eq_si;[specialize (Hsnb i);congruence|]. rewrite <- eq_si.
+    
+    specialize (honest_projections_maximal1 s Hpr Hnf i j Hhonest) as Hh.
+    destruct (project (s i) i) eqn : eq_pii.
+    - destruct (project (s j) i) eqn : eq_pji.
+      + left. intuition.
+      + rewrite <- eq_pji in *.
+        unfold state_lt_ext in Hh.
+        destruct Hh;[intuition congruence|].
+        unfold state_lt' in H.
+        rewrite unfold_history_bottom in H by intuition. 
+        intuition.
+    - unfold state_lt_ext in Hh.
+      destruct Hh;[intuition congruence|].
+      rewrite <- eq_pii in *.
+      destruct (project (s j) i) eqn : eq_pji;[right;left;intuition congruence|].
+      rewrite <- eq_pji in *.
+      destruct (decide (project (s j) i = project (s i) i));[left;intuition|].
+      right. right.
+      
+      unfold state_lt' in H.
+      apply in_split in H as H2.
+      destruct H2 as [left1 [right1 Heq1]].
+      apply (@unfold_history index index_listing Hfinite) in Heq1 as Heq1'.
+      rewrite Heq1' in Heq1.
+      rewrite (@unfold_history_cons index index_listing Hfinite) in Heq1 by (intuition congruence).
+      destruct left1.
+      + simpl in Heq1. inversion Heq1. congruence.
+      + inversion Heq1.
+        unfold state_lt'.
+        rewrite H2.
+        apply in_app_iff. right. intuition.
+  Qed.
+  
   Lemma self_projections_same
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -3838,7 +3886,9 @@ Context
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
     (i : index)
-    (Hhonest : In i (GH s)) :
+    (Hhonest : In i (GH s))
+    (s' : state) :
+    In s' (get_topmost_candidates s i) -> project s' i = project (s i) i.
     set_eq (get_topmost_candidates s i) [s i].
   Proof.
     apply set_eq_extract_forall. intro s'.
@@ -3850,11 +3900,22 @@ Context
       destruct H as [Hin H].
       rewrite forallb_forall in H.
       specialize (H (s i)).
-      spec H. admit.
+      spec H. {
+        unfold get_candidates.
+        apply in_map_iff.
+        exists i;intuition.
+      }
       rewrite negb_true_iff in H.
       rewrite bool_decide_eq_false in H.
+      destruct (decide ((s i) =  s')).
+      + simpl. intuition.
+      + apply in_map_iff in Hin.
+        destruct Hin as [j [Heqj Hj]].
+        subst s'.
+        contradict H.
+        specialize (honest_projections_maximal2 s Hpr Hnf i j Hhonest).
       admit.
-    - simpl in H.  destruct H;[|intuition].
+    - simpl in H. destruct H;[|intuition].
       subst s'.
       unfold get_topmost_candidates.
       unfold get_maximal_elements.
@@ -3866,9 +3927,17 @@ Context
         rewrite bool_decide_eq_false.
         apply in_map_iff in H.
         destruct H as [j [Heqj Hinj]]. subst x.
-        specialize (honest_projections_maximal s Hpr Hnf i j Hhonest) as Hh.
-        apply (@state_lt_ext_antisymmetric index index_listing Hfinite) in Hh.
-        admit.
+        specialize (honest_projections_maximal2 s Hpr Hnf i j Hhonest) as Hh.
+        intros contra.
+        destruct Hh.
+        * unfold state_lt_ext in contra.
+          destruct contra;[intuition congruence|].
+          rewrite H in H0.
+          unfold state_lt' in H0.
+          apply (@history_no_self_reference index index_listing Hfinite) in H0.
+          intuition.
+        * apply (@state_lt_ext_antisymmetric index index_listing Hfinite) in H.
+        intuition.
   Admitted.
   
   Lemma get_matching_state_for_honest
