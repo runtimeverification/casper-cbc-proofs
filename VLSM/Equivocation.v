@@ -756,9 +756,6 @@ Section Simple.
       |}.
 End Simple.
 
-Arguments field_selector [message] [T] field msg item /.
-Arguments item_sends_or_receives {message} {T} msg item /.
-
 (**
  *** Stepwise consistency properties for [state_message_oracle].
 
@@ -793,6 +790,33 @@ Record oracle_stepwise_props
 Arguments oracle_no_inits {message} {vlsm} {message_selector} {oracle} _.
 Arguments oracle_step_update {message} {vlsm} {message_selector} {oracle} _.
 
+Lemma oracle_partial_trace_update
+      [message] [vlsm: VLSM message]
+      [selector: message -> transition_item -> Prop]
+      [oracle: state_message_oracle vlsm]
+      (Horacle: oracle_stepwise_props selector oracle)
+      s0 s tr
+         (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm vlsm) s0 tr)
+         (Hlast: last (List.map Common.destination tr) s0 = s):
+    forall m,
+      oracle s m
+      <-> (List.Exists (selector m) tr \/ oracle s0 m).
+Proof.
+  induction Htr.
+  - simpl in Hlast; subst s.
+    intro m.
+    rewrite Exists_nil.
+    tauto.
+  - simpl List.map in Hlast.
+    rewrite unroll_last in Hlast.
+    specialize (IHHtr Hlast);clear Hlast.
+    intro m.
+    specialize (IHHtr m).
+    rewrite Exists_cons. simpl.
+    apply (Horacle.(oracle_step_update)) with (msg:=m) in H.
+    tauto.
+Qed.
+
 (**
    Proving the trace properties from the stepwise properties
    begins with a lemma using induction along a trace to
@@ -815,29 +839,6 @@ Section TraceFromStepwise.
     (oracle_props : oracle_stepwise_props selector oracle)
     .
 
-  Local Lemma H_partial_trace_prop
-        s0 s tr
-        (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm vlsm) s0 tr)
-        (Hlast: last (List.map Common.destination tr) s0 = s):
-    forall m,
-      oracle s m
-      <-> (List.Exists (selector m) tr \/ oracle s0 m).
-  Proof.
-    induction Htr.
-    - simpl in Hlast; subst s.
-      intro m.
-      rewrite Exists_nil.
-      tauto.
-    - simpl List.map in Hlast.
-      rewrite unroll_last in Hlast.
-      specialize (IHHtr Hlast);clear Hlast.
-      intro m.
-      specialize (IHHtr m).
-      rewrite Exists_cons. simpl.
-      apply (oracle_props.(oracle_step_update)) with (msg:=m) in H.
-      tauto.
-  Qed.
-
   Local Lemma H_protocol_trace_prop
         [s0 tr]
         (Htr: finite_protocol_trace (pre_loaded_with_all_messages_vlsm vlsm) s0 tr)
@@ -848,7 +849,7 @@ Section TraceFromStepwise.
   Proof.
     intro m.
     destruct Htr as [Htr Hinit].
-     rewrite (H_partial_trace_prop _ _ _ Htr Hlast).
+    rewrite (oracle_partial_trace_update oracle_props _ _ _ Htr Hlast).
     assert (~oracle s0 m).
     apply oracle_props, Hinit.
     tauto.
@@ -902,16 +903,9 @@ Section TraceFromStepwise.
       (m : message),
       oracle s1 m -> oracle  s2 m.
   Proof.
-    unfold in_futures.
     intros s1 s2 [tr [Htr Hlst]] m Hs1m.
-    generalize dependent s2.
-    induction tr using rev_ind; intros; [subst; assumption|]. 
-    apply finite_protocol_trace_from_app_iff in Htr.
-    destruct Htr as [Htr Hx].
-    specialize (IHtr Htr _ eq_refl).
-    rewrite map_app in Hlst. simpl in Hlst. rewrite last_is_last in Hlst.
-    inversion Hx. subst. clear Hx H2. simpl.
-    apply (oracle_step_update oracle_props _ _ _ _ _ H3 m). right. assumption.
+    apply (oracle_partial_trace_update oracle_props _ _ _ Htr Hlst).
+    right;assumption.
   Qed.
 End TraceFromStepwise.
 

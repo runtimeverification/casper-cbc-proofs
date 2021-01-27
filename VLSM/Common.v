@@ -196,6 +196,9 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
 
 End Traces.
 
+Arguments field_selector {_} {T} _ msg item / .
+Arguments item_sends_or_receives {message} {T} msg item /.
+
 Section vlsm_projections.
 
   Context
@@ -329,8 +332,6 @@ dependent types [protocol_state] and [protocol_message].
     Definition protocol_message : Type :=
       { m : message | protocol_message_prop m }.
 
-    (* begin hide *)
-
     Lemma initial_is_protocol
       (s : state)
       (Hinitial : initial_state_prop s) :
@@ -349,7 +350,15 @@ dependent types [protocol_state] and [protocol_message].
       apply protocol_initial_state.
     Qed.
 
-    (* end hide *)
+    Lemma initial_message_is_protocol
+      (m : message)
+      (Hinitial : initial_message_prop m) :
+      protocol_message_prop m.
+    Proof.
+      exists (proj1_sig s0).
+      change m with (proj1_sig (exist _ m Hinitial)).
+      apply protocol_initial_message.
+    Qed.
 
 (**
 As often times we work with optional protocol messages, it is convenient
@@ -797,6 +806,15 @@ To complete our definition of a finite protocol trace, we must also guarantee th
 initial state according to the protocol.
 *)
 
+    Definition finite_ptrace_singleton :
+      forall {l : label} {s s': state} {iom oom : option message},
+        protocol_transition l (s, iom) (s', oom) ->
+        finite_protocol_trace_from  s ({| l := l; input := iom; destination := s'; output := oom |} :: [])
+      := fun l s s' iom oom Hptrans =>
+           finite_ptrace_extend s' []
+               (finite_ptrace_empty s' (protocol_transition_destination Hptrans))
+               _ _ _ _ Hptrans.
+
     Definition finite_protocol_trace (s : state) (ls : list transition_item) : Prop :=
       finite_protocol_trace_from s ls /\ initial_state_prop s.
 
@@ -880,23 +898,14 @@ decompose the above properties in proofs.
       (Houtput : List.Exists (field_selector output m) tr)
       : protocol_message_prop m.
     Proof.
-      apply Exists_exists in Houtput.
-      destruct Houtput as [item [Hitem Houtput]].
-      apply in_split in Hitem.
-      destruct Hitem as [pre [suf Hitem]].
-      destruct_list_last pre pre' item0 Heq.
-      - simpl in Hitem. subst tr.
-        apply finite_ptrace_first_valid_transition in Htr.
-        apply protocol_transition_out in Htr.
-        destruct item. subst. unfold field_selector in Houtput. simpl in *.
-        subst. assumption.
-      - replace ((pre' ++ [item0]) ++ item :: suf) with (pre' ++ [item0; item] ++ suf) in Hitem.
-        + specialize (finite_ptrace_consecutive_valid_transition _ _ _ _ _ _ Htr Hitem)
-          as Ht.
-          apply protocol_transition_out in Ht. 
-          destruct item. subst. unfold field_selector in Houtput. simpl in *.
-          subst. assumption.
-        + simpl. rewrite <- app_assoc. simpl. reflexivity.
+      revert is Htr.
+      induction Houtput;intros;inversion Htr;subst.
+      - simpl in H.
+        subst.
+        apply protocol_transition_out in H4.
+        assumption.
+      - apply (IHHoutput s).
+        assumption.
     Qed.
 
     Lemma protocol_trace_input_is_protocol
@@ -907,22 +916,14 @@ decompose the above properties in proofs.
       (Hinput : List.Exists (field_selector input m) tr)
       : protocol_message_prop m.
     Proof.
-      apply Exists_exists in Hinput.
-      destruct Hinput as [item [Hitem Hinput]].
-      apply in_split in Hitem.
-      destruct Hitem as [pre [suf Hitem]].
-      destruct item eqn:Heq_item. unfold field_selector in Hinput. simpl in *.
-      destruct_list_last pre pre' item0 Heq.
-      - simpl in Hitem. subst tr.
-        apply finite_ptrace_first_valid_transition in Htr.
-        apply protocol_transition_in in Htr.
-        subst. assumption.
-      - replace ((pre' ++ [item0]) ++ _ :: suf) with (pre' ++ [item0; item] ++ suf) in Hitem.
-        + specialize (finite_ptrace_consecutive_valid_transition _ _ _ _ _ _ Htr Hitem)
-          as Ht.
-          apply protocol_transition_in in Ht. 
-          subst. assumption.
-        + rewrite <- app_assoc. subst. reflexivity.
+      revert is Htr.
+      induction Hinput;intros;inversion Htr;subst.
+      - simpl in H.
+        subst.
+        apply protocol_transition_in in H4.
+        assumption.
+      - apply (IHHinput s).
+        assumption.
     Qed.
 
     Lemma first_transition_valid
@@ -950,8 +951,7 @@ decompose the above properties in proofs.
       : finite_protocol_trace_from s1 (ts ++ [{| l := l3; destination := s3; input := iom3; output := oom3 |}]).
     Proof.
       induction Ht12.
-      - simpl. apply finite_ptrace_extend; try assumption.
-        constructor. apply (protocol_transition_destination Hv23).
+      - simpl. apply finite_ptrace_singleton;assumption.
       - rewrite <- app_comm_cons.
         apply finite_ptrace_extend; try assumption.
         simpl in IHHt12. apply IHHt12.
@@ -1868,11 +1868,7 @@ This relation is often used in stating safety and liveness properties.*)
         ; destruct Hprefix as [suffix Heq]; subst; destruct Htr as [Htr Hinit]
         ; unfold trace_first; simpl; constructor; try assumption
         ; inversion Htr; subst; clear Htr
-        ; specialize
-            (finite_ptrace_extend
-               s1 [] (finite_ptrace_empty _ (protocol_transition_destination H3))
-               s iom oom l1); intro Hext
-        ; apply Hext; assumption.
+        ; apply finite_ptrace_singleton; assumption.
       - intros last_p p Hind last tr Htr Hprefix.
         specialize (Hind last_p tr Htr).
         destruct tr as [ | ]; unfold trace_prefix in Hprefix;   simpl in Hprefix
@@ -2756,14 +2752,8 @@ Proof.
   split.
   - intros [(s', om') [l Hsm]].
     destruct (id Hsm) as [[Hp _] _].
-    specialize (finite_protocol_trace_from_complete_left X s'
-      [{| l := l; input := om'; destination := s; output := Some m |}])
-      as Htr.
-    spec Htr.
-    {
-      constructor; [constructor | assumption].
-      apply (protocol_transition_destination X Hsm). 
-    }
+    pose proof (finite_ptrace_singleton _ Hsm) as Htr.
+    apply finite_protocol_trace_from_complete_left in Htr.
     destruct  Htr as [is [trs Htrs]].
     exists is.
     match type of Htrs with
@@ -2782,5 +2772,5 @@ Proof.
     apply finite_protocol_trace_from_app_iff in Htr.
     destruct Htr as [_ Htr].
     inversion Htr. clear Htr. subst. simpl in Hm. subst.
-    eexists _, l1. apply H3. 
+    eexists _, l1. apply H3.
 Qed.
