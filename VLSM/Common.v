@@ -2323,7 +2323,7 @@ Proof.
   destruct HX as (sm & [s im] & l & HX).
   pose proof (finite_ptrace_singleton _ HX).
   apply finite_protocol_trace_from_complete_left in H.
-  destruct H as [is [trs Htr]].
+  destruct H as [is [trs [Htr _]]].
   apply (Hincl (Finite _ _)) in Htr.
   apply can_emit_from_protocol_trace with (m0:=m) in Htr.
   assumption.
