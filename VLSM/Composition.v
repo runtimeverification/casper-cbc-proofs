@@ -684,10 +684,6 @@ Then <<X1>> is trace-included into <<X2>>.
       intro l; intros. exact I.
     Qed.
 
-(**
-A component [protocol_state]'s [lift_to_composite_state] is a [protocol_state]
-for the [free_composite_vlsm].
-*)
     Lemma protocol_prop_composite_free_lift_generalized_initial
       (P Q : message -> Prop)
       (PimpliesQ : forall m, P m -> Q m)
@@ -746,6 +742,10 @@ for the [free_composite_vlsm].
           apply state_update_twice.
     Qed.
 
+(**
+If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_composite_state] of @sj@, then
+@(s, om)@ has the [protocol_prop]erty for the [free_composite_vlsm].
+*)
     Lemma protocol_prop_composite_free_lift
       (j : index)
       (sj : vstate (IM j))

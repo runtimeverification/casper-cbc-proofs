@@ -592,7 +592,7 @@ pre-existing concepts.
     useful than that whether <<m>> is a [protocol_message].
     *)
 
-    Definition can_emit_in_state
+    Definition protocol_generated_prop
       (s : state)
       (m : message)
       :=
@@ -607,7 +607,7 @@ pre-existing concepts.
     Lemma can_emit_in_state_protocol
       (s : state)
       (m : message)
-      (Hm : can_emit_in_state s m)
+      (Hm : protocol_generated_prop s m)
       : protocol_prop (s, Some m) .
     Proof.
       destruct Hm as [(s0, om0) [l [[[_om0 Hs0] [[_s0 Hom0] Hv]] Ht]]].
@@ -626,7 +626,7 @@ pre-existing concepts.
     
     Lemma can_emit_iff
       (m : message)
-      : can_emit m <-> exists s, can_emit_in_state s m.
+      : can_emit m <-> exists s, protocol_generated_prop s m.
     Proof.
       split.
       - intros [som [l [s Ht]]]. exists s, som, l. assumption.
@@ -1585,17 +1585,18 @@ in <<s>> by outputting <<m>> *)
       (tr : list transition_item)
       (Htr : finite_protocol_trace_from s tr)
       : exists (is : state) (trs : list transition_item),
-        finite_protocol_trace is (trs ++ tr).
+        finite_protocol_trace is (trs ++ tr) /\
+        last (List.map destination trs) is = s.
     Proof.
       apply finite_ptrace_first_pstate in Htr as Hs.
       destruct Hs as [om Hs].
       apply protocol_is_trace in Hs.
       destruct Hs as [Hs | [is [trs [Htrs [Hs Hom]]]]].
-      - exists s. exists []. split; assumption.
+      - exists s. exists []. split; [split; assumption|reflexivity].
       - exists is. exists trs.
         destruct Htrs as [Htrs His].
-        split; [|assumption].
         apply last_error_destination_last with (default := is) in Hs.
+        split; [|assumption]. split; [|assumption].
         apply finite_protocol_trace_from_app_iff. split; [assumption|].
         rewrite Hs. assumption.
     Qed.
@@ -2743,7 +2744,7 @@ Lemma non_empty_protocol_trace_from_can_emit_in_state
   `(X : VLSM message)
   (s : state)
   (m : message)
-  : can_emit_in_state X s m
+  : protocol_generated_prop X s m
   <-> exists (is : state) (tr : list transition_item) (item : transition_item),
     finite_protocol_trace X is tr /\
     last_error tr = Some item /\
@@ -2754,7 +2755,7 @@ Proof.
     destruct (id Hsm) as [[Hp _] _].
     pose proof (finite_ptrace_singleton _ Hsm) as Htr.
     apply finite_protocol_trace_from_complete_left in Htr.
-    destruct  Htr as [is [trs Htrs]].
+    destruct  Htr as [is [trs [Htrs _]]].
     exists is.
     match type of Htrs with
     | context [_ ++ [?item]] => remember item as lstitem
