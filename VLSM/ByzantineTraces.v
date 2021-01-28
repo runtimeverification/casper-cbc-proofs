@@ -455,7 +455,7 @@ Lemma [pre_loaded_with_all_messages_composite_free_protocol_message] above to pr
         apply basic_VLSM_incl
         ; intros; try (assumption || reflexivity).
         - apply pre_loaded_with_all_messages_composite_free_protocol_message with l s.
-          destruct H as [_ [_ Hv]]. assumption.
+          assumption.
         - intros. destruct H as [_ [_ [Hv Hc]]].
           split; try assumption.
           exact I.
