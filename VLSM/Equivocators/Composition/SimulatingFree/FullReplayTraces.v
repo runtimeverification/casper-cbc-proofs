@@ -97,7 +97,8 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
 Proof.
   split.
   - split; [assumption|reflexivity].
-  - apply Hconstraint_subsumption. exact I.
+  - apply Hconstraint_subsumption.
+    split; exact I.
 Qed.
 
 Definition spawn_initial_state
@@ -994,6 +995,7 @@ Proof.
   apply replay_trace_from_protocol
   ;[assumption|assumption|intro; intros; assumption|].
   intros.
+  split; [|exact I].
   subst tr.
   destruct Htr as [Htr His].
   apply finite_protocol_trace_from_app_iff in Htr.
@@ -1009,7 +1011,7 @@ Proof.
   unfold equivocators_no_equivocations_constraint at 1.
   unfold no_equivocations in Heqv.
   subst input.
-  destruct Heqv as [Heqv | Hinitial]; [| right; assumption].
+  destruct Heqv as [[Heqv | Hinitial] _]; [| right; assumption].
   left. apply specialized_proper_sent; [assumption|].
   apply specialized_proper_sent_rev in Heqv
   ; [|

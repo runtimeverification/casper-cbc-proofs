@@ -586,7 +586,8 @@ Proof.
         rewrite Hstate_final. clear -Hv.
         simpl in Hv. destruct Hv as [Hv _].
         assumption.
-      - unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
+      - split; [|exact I].
+        unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
         destruct (null_dec (transitions eqv_msg_run)).
         + right.
           apply (vlsm_run_no_transitions_output equivocators_no_equivocations_vlsm)

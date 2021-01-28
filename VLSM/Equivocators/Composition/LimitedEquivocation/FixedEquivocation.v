@@ -384,7 +384,7 @@ Proof.
       apply (extend_right_finite_trace_from X lst []); [constructor; assumption|].
       simpl in Hl. subst. 
       simpl in Hc.
-      destruct Hc as [Hno_equiv Hfixed].
+      destruct Hc as [[Hno_equiv _] Hfixed].
       simpl in Htx,Hvx,Hstate_project.
       rewrite Hstate_project in Hvx, Htx.
       destruct input as [input|]

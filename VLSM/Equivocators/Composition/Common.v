@@ -87,10 +87,8 @@ Context
 Existing Instance equivocators_free_Hbs.
 
 Definition equivocators_no_equivocations_constraint
-  (l : composite_label equivocator_IM)
-  (som : composite_state equivocator_IM * option message)
   :=
-  no_equivocations equivocators_free_vlsm l som.
+  no_equivocations_constraint equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index.
 
 Definition equivocators_no_equivocations_vlsm
   : VLSM message

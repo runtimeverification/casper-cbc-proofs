@@ -2350,6 +2350,28 @@ is also available to Y.
 Notation VLSM_eq X Y := (VLSM_eq_part (machine X) (machine Y)).
 Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
 
+Lemma VLSM_eq_sym
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY)
+  : VLSM_eq X Y -> VLSM_eq Y X.
+Proof.
+  firstorder.
+Qed.
+
+Lemma VLSM_eq_trans
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY SigZ: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY) (MZ : VLSM_class SigZ)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY) (Z := mk_vlsm MZ)
+  : VLSM_eq X Y -> VLSM_eq Y Z -> VLSM_eq X Z.
+Proof.
+  firstorder.
+Qed.
+
 (** It is natural to look for sufficient conditions for VLSM inclusion (or equality),
 which are easy to verify in a practical setting. One such result is the following.
 

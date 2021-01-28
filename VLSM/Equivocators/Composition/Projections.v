@@ -375,43 +375,146 @@ Proof.
     split; assumption.
 Qed.
 
-Local Tactic Notation "unfold_transition"  hyp(Ht) :=
-  ( unfold transition in Ht; unfold equivocator_IM in Ht;
-  unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
-  unfold machine in Ht; unfold projT2 in Ht;
-  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
+Lemma equivocators_trace_project_finite_trace_projection_list_commute
+  (i : index)
+  (final_choice initial_choice : equivocators_choice)
+  (eqv_initial : MachineDescriptor (IM i))
+  (tr : list (composite_transition_item equivocator_IM))
+  (trX : list (composite_transition_item IM))
+  (trXi : list (vtransition_item (IM i)))
+  (eqv_final := final_choice i)
+  (Hproject_tr : equivocators_trace_project final_choice tr = Some (trX, initial_choice))
+  (Hproject_tri :
+    equivocator_vlsm_trace_project (IM i)
+      (finite_trace_projection_list equivocator_IM i tr) eqv_final
+    = Some (trXi, eqv_initial))
+  : initial_choice i = eqv_initial /\
+    finite_trace_projection_list IM i trX = trXi.
+Proof.
+  generalize dependent trXi. generalize dependent trX.
+  generalize dependent final_choice.
+  induction tr using rev_ind; intros.
+  - simpl in Hproject_tr. inversion Hproject_tr. subst.
+    clear Hproject_tr.
+    simpl in Hproject_tri.
+    inversion Hproject_tri. subst. split; reflexivity.
+  - unfold equivocators_trace_project in Hproject_tr.
+    rewrite fold_right_app in Hproject_tr.
+    match type of Hproject_tr with
+    | fold_right _ ?i _ = _ => destruct i as [(projectx,final_choice')|] eqn:Hproject_x
+    end
+    ; [|rewrite equivocators_trace_project_fold_None in Hproject_tr; inversion Hproject_tr].
+    apply equivocators_trace_project_folder_additive_iff in Hproject_tr.
+    destruct Hproject_tr as [trX0 [HtrX0 HtrX]].
+    specialize (IHtr _ _ HtrX0).
+    rewrite finite_trace_projection_list_app in Hproject_tri.
+    apply equivocator_vlsm_trace_project_app in Hproject_tri.
+    destruct Hproject_tri as [eqv_final' [trXi' [project_xi [HtrXi' [Hproject_xi HeqtrXi]]]]].
+    assert (Hfinal'i : final_choice' i = eqv_final' /\ finite_trace_projection_list IM i projectx = project_xi).
+    { clear - Hproject_x Hproject_xi.
+      simpl in *.
+      destruct (equivocators_transition_item_project final_choice x)
+        as [(ox, final')|] eqn:Hpr_item_x
+      ; [|congruence].
+      unfold equivocators_transition_item_project in Hpr_item_x.
+      unfold composite_transition_item_projection in Hpr_item_x.
+      destruct (decide (i = projT1 (l x))).
+      - subst i. simpl in Hproject_xi.
+        unfold eqv_final in *.
+        remember
+          (equivocator_vlsm_transition_item_project (IM (projT1 (l x))) (composite_transition_item_projection_from_eq equivocator_IM x (projT1 (l x)) eq_refl) (final_choice (projT1 (l x))))
+          as pr_item_x.
+        destruct pr_item_x as [(oitem', descriptor')|]; [|discriminate Hproject_xi].
+        destruct oitem' as [item'|]
+        ; inversion Hproject_xi; subst descriptor' project_xi; clear Hproject_xi
+        ; inversion Hpr_item_x; subst; clear Hpr_item_x
+        ; inversion Hproject_x; subst; clear Hproject_x
+        ; unfold equivocators_choice_update; rewrite equivocators_choice_update_eq
+        ; [|split; reflexivity].
+        split; [reflexivity|].
+        symmetry in Heqpr_item_x.
+        simpl. destruct x. simpl in *. destruct l as (i, li). simpl in *.
+        destruct (decide (i = i)); [|congruence].
+        f_equal.
+        replace e with (@eq_refl _ i) by apply UIP. clear e.
+        unfold composite_transition_item_projection_from_eq in *.
+        simpl in *.
+        destruct item'.
+        apply equivocator_transition_item_project_inv_characterization in Heqpr_item_x.
+        simpl in *.
+        destruct Heqpr_item_x as [Hl [Hinput [Houtput Hdestination]]].
+        subst. reflexivity.
+      - simpl in Hproject_xi.
+        unfold eqv_final in *.
+        inversion Hproject_xi. subst. clear Hproject_xi.
+        remember
+          (equivocator_vlsm_transition_item_project (IM (projT1 (l x))) (composite_transition_item_projection_from_eq equivocator_IM x (projT1 (l x)) eq_refl) (final_choice (projT1 (l x))))
+          as pr_item_x.
+        destruct pr_item_x as [(oitem', descriptor')|]; [|discriminate Hpr_item_x].
+        destruct oitem' as [item'|]
+        ; inversion Hpr_item_x; subst; clear Hpr_item_x
+        ; inversion Hproject_x; subst; clear Hproject_x
+        ; unfold equivocators_choice_update; (rewrite equivocators_choice_update_neq ; [|assumption])
+        ; [|split; reflexivity].
+        split; [reflexivity|].
+        simpl.
+        destruct (decide (i = projT1 (l x))); congruence.
+    }
+    destruct Hfinal'i as [Hfinal'i Hpr_xi].
+    rewrite <- Hfinal'i in HtrXi'.
+    specialize (IHtr _ HtrXi').
+    destruct IHtr as [Heqv_initial Hpr_trXi'].
+    split; [assumption|].
+    subst.
+    rewrite finite_trace_projection_list_app.
+    reflexivity.
+Qed.
 
-Lemma preloaded_equivocators_protocol_trace_project
+Section seeded_equivocators_protocol_trace_project.
+
+Context
+  (seed : message -> Prop)
+  (FreeE := free_composite_vlsm equivocator_IM)
+  (PreFreeE := pre_loaded_with_all_messages_vlsm FreeE)
+  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs finite_index seed)
+  (SeededX := vlsm_add_initial_messages X seed)
+  .
+
+Lemma seeded_equivocators_initial_message
+  (m : message)
+  (Hem : vinitial_message_prop SeededXE m)
+  : vinitial_message_prop SeededX m.
+Proof.
+  destruct Hem as [[eqv [emi Hem]]|Hseed].
+  - left. exists eqv. exists emi. assumption.
+  - right. assumption.
+Qed.
+
+Lemma seeded_equivocators_incl_preloaded
+  : VLSM_incl SeededXE PreFreeE.
+Proof.
+  apply seeded_equivocators_incl_preloaded.
+Qed.
+
+Lemma preloaded_equivocators_protocol_trace_from_project
   (final_choice : equivocators_choice)
   (is : composite_state equivocator_IM)
   (tr : list (composite_transition_item equivocator_IM))
   (final_state := last (map destination tr) is)
   (Hproper : proper_equivocators_choice final_choice final_state)
-  (Htr : finite_protocol_trace pre_loaded_equivocators is tr)
+  (Htr : finite_protocol_trace_from pre_loaded_equivocators is tr)
   : exists
     (trX : list (composite_transition_item IM))
-    (initial_choice : equivocators_choice)
-    (isX := equivocators_state_project initial_choice is)
-    (Hproject: equivocators_trace_project final_choice tr = Some (trX, initial_choice))
-    (final_stateX := last (map destination trX) isX)
-    (Hfinal : equivocators_state_project final_choice final_state = final_stateX)
-    (Hproper : proper_equivocators_choice initial_choice is),
-    finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) isX trX.
+    (initial_choice : equivocators_choice),
+    equivocators_trace_project final_choice tr = Some (trX, initial_choice).
 Proof.
   generalize dependent final_choice.
   generalize dependent is.
   induction tr using rev_ind; intros.
-  - exists []. simpl. exists final_choice.
-    exists eq_refl. exists eq_refl. exists Hproper.
-    cut (vinitial_state_prop (pre_loaded_with_all_messages_vlsm X) (equivocators_state_project final_choice is)).
-    { intro Hinitx. split; [|assumption].
-      constructor. apply initial_is_protocol. assumption.
-    }
-    destruct Htr as [_ His]. 
-    apply (equivocators_initial_state_project IM); assumption.
-  - destruct Htr as [Htr Hinit]. apply finite_protocol_trace_from_app_iff in Htr.
+  - exists []. simpl. exists final_choice. reflexivity.
+  - apply finite_protocol_trace_from_app_iff in Htr.
     destruct Htr as [Htr Hx].
-    specialize (IHtr _ (conj Htr Hinit)).
+    specialize (IHtr _ Htr).
     specialize (equivocators_transition_item_project_proper_characterization final_choice x) as Hproperx.
     unfold final_state in Hproper.
     rewrite map_app in Hproper. simpl in Hproper. rewrite last_is_last in Hproper.
@@ -426,11 +529,11 @@ Proof.
     simpl in Heqfoldx.
     rewrite Hprojectx in Heqfoldx.
     inversion Hx. subst tl s' x. clear Hx.
-    destruct H3 as [[Hs [Hiom [Hv _]]] Ht].
+    destruct H3 as [[_ [_ [Hv _]]] Ht].
     specialize (Hproperx Hv Ht). clear Hv Ht.
     destruct Hproperx as [Hproper' Hx].
     specialize (IHtr _ Hproper').
-    destruct IHtr as [trX' [initial_choice [Htr_project [Hstate_project [Hproper_initial HtrX']]]]].
+    destruct IHtr as [trX' [initial_choice Htr_project]].
     destruct oitem as [item|].
     + simpl in Hitemx. destruct Hitemx as [Hl [Hinput [Houtput Hdestination]]].
       specialize (Hx _ eq_refl).
@@ -438,38 +541,8 @@ Proof.
       exists (trX' ++ [item]), initial_choice. subst foldx.
       rewrite equivocators_trace_project_folder_additive with (trX := trX') (eqv_choice := initial_choice)
       ; [|assumption].
-      exists eq_refl.
-      rewrite map_app. simpl. rewrite last_is_last.
-      unfold final_state. rewrite map_app. simpl. rewrite last_is_last.
-      exists Hdestination.
-      exists Hproper_initial.
-      destruct HtrX' as [HtrX' HinitX].
-      split; [|assumption].
-      apply finite_protocol_trace_from_app_iff.
-      split; [assumption|].
-      change [item] with ([] ++ [item]).
-      match goal with
-      |- finite_protocol_trace_from _ ?l _ => remember l as lst
-      end.
-      destruct item.
-      assert (Hlst : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) lst).
-      { apply finite_ptrace_last_pstate in HtrX'. subst. assumption. }
-      apply (extend_right_finite_trace_from (pre_loaded_with_all_messages_vlsm X) lst []); [constructor; assumption|].
-      simpl in Hl. subst. 
-      split.
-      * split; [assumption|]. split; [exists (proj1_sig (vs0 X)); apply pre_loaded_with_all_messages_message_protocol_prop|].
-        split; [|exact I].
-        clear -Hvx Hstate_project. simpl in Hvx. simpl in Hstate_project.
-        rewrite Hstate_project in Hvx.
-        simpl. assumption.
-      * simpl. simpl in Htx, Hstate_project.
-        rewrite Hstate_project in Htx.
-        assumption. 
-    + exists trX'. exists initial_choice. subst foldx. exists Htr_project.
-      split; [|split ]; [| assumption| assumption].
-      clear -Hstate_project Hx. rewrite Hstate_project in Hx.
-      rewrite <- Hx. f_equal. unfold final_state.
-      rewrite map_app. simpl. rewrite last_is_last. reflexivity.
+      reflexivity.
+    + exists trX'. exists initial_choice. subst foldx. assumption.
 Qed.
 
 Lemma preloaded_equivocators_protocol_trace_project_inv
@@ -496,7 +569,7 @@ Proof.
   end.
   simpl in Heqproject_x.
   destruct project_x as [(x', x_choice)|]
-  ; [|rewrite composite_vlsm equivocator_IM in Hproject; congruence].
+  ; [|rewrite equivocators_trace_project_fold_None in Hproject; congruence].
   destruct (equivocators_transition_item_project final_choice x) as [(oitem', ditem')|]
     eqn:Hproject_x
   ; [|congruence].
@@ -569,182 +642,6 @@ Proof.
       ).
 Qed.
 
-Lemma preloaded_equivocators_protocol_state_project
-  (choice : equivocators_choice)
-  (s : composite_state equivocator_IM)
-  (Hproper : proper_equivocators_choice choice s)
-  (Hs : protocol_state_prop pre_loaded_equivocators s)
-  : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (equivocators_state_project choice s).
-Proof.
-  apply protocol_state_has_trace in Hs.
-  destruct Hs as [is [tr [Htr Hs]]].
-  apply preloaded_equivocators_protocol_trace_project with (final_choice := choice) in Htr
-  ; [|subst; assumption].
-  destruct Htr as [trX [ichoice [Hpr [Hspr [Hproperi HtrX]]]]].
-  destruct HtrX as [HtrX _].
-  apply finite_ptrace_last_pstate in HtrX.
-  subst. simpl in *. rewrite Hspr. assumption.
-Qed.
-
-Lemma preloaded_equivocators_protocol_trace_from_project
-  (final_choice : equivocators_choice)
-  (is : composite_state equivocator_IM)
-  (tr : list (composite_transition_item equivocator_IM))
-  (final_state := last (map destination tr) is)
-  (Hproper : proper_equivocators_choice final_choice final_state)
-  (Htr : finite_protocol_trace_from pre_loaded_equivocators is tr)
-  : exists
-    (trX : list (composite_transition_item IM))
-    (initial_choice : equivocators_choice)
-    (isX := equivocators_state_project initial_choice is)
-    (Hproject: equivocators_trace_project final_choice tr = Some (trX, initial_choice))
-    (final_stateX := last (map destination trX) isX)
-    (Hfinal : equivocators_state_project final_choice final_state = final_stateX)
-    (Hproper : proper_equivocators_choice initial_choice is),
-    finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) isX trX.
-Proof.
-  apply finite_protocol_trace_from_complete_left in Htr as Hcomplete.
-  destruct Hcomplete as [is0 [pre [Htr' His]] ].
-  specialize (preloaded_equivocators_protocol_trace_project final_choice is0 (pre ++ tr))
-    as H.
-  simpl in H.
-  spec H.
-  { rewrite map_app. rewrite last_app. simpl in *. rewrite His. assumption.  }
-  spec H Htr'.
-  destruct H as [trX' [initial_choice' [Hproject' [Hlst [Hiproper' HtrX']]]]].
-  rewrite map_app in Hlst. rewrite last_app in Hlst.
-  simpl in His, Hlst. rewrite His in Hlst.
-  unfold equivocators_trace_project in *.
-  rewrite fold_right_app in Hproject'.
-  match type of Hproject' with
-  | fold_right _ ?f _ = _ => remember f as  project_tr
-  end.
-  match goal with
-  |- context[?f = Some _] => replace f with project_tr
-  end.
-  destruct project_tr as [(trX, initial_choice)|]
-  ; [| rewrite composite_vlsm equivocator_IM in Hproject'; congruence].
-  eexists _. eexists _. exists eq_refl.
-  apply (equivocators_trace_project_folder_additive_iff pre trX initial_choice initial_choice' trX')
-    in Hproject'.
-  destruct Hproject' as [preX [Hproject_pre HeqtrX']].
-  subst trX'.
-  rewrite map_app in Hlst. rewrite last_app in Hlst.
-  destruct Htr' as [Htr' Hinit].
-  apply finite_protocol_trace_from_app_iff in Htr'.
-  destruct Htr' as [Hpre _].
-  specialize
-    (preloaded_equivocators_protocol_trace_project_inv initial_choice
-      is0 pre (conj Hpre Hinit) _ _ Hproject_pre Hiproper') as Hiproper.
-  destruct HtrX' as [HtrX' HinitX].
-  apply finite_protocol_trace_from_app_iff in HtrX'.
-  destruct HtrX' as [HpreX HtrX].
-  destruct
-    (preloaded_equivocators_protocol_trace_project initial_choice is0 pre Hiproper (conj Hpre Hinit))
-    as [preX' [initial_choice'' [Hproject_pre' H]]].
-  unfold equivocators_trace_project in Hproject_pre'. rewrite Hproject_pre in Hproject_pre'.
-  inversion Hproject_pre'. subst preX' initial_choice''. clear Hproject_pre'.
-  destruct H as [Hpr_lst_pre _].
-  subst is. simpl in *. rewrite Hpr_lst_pre. exists Hlst.
-  exists Hiproper.
-  assumption.
-Qed.
-
-Lemma equivocators_trace_project_finite_trace_projection_list_commute
-  (i : index)
-  (final_choice initial_choice : equivocators_choice)
-  (eqv_initial : MachineDescriptor (IM i))
-  (tr : list (composite_transition_item equivocator_IM))
-  (trX : list (composite_transition_item IM))
-  (trXi : list (vtransition_item (IM i)))
-  (eqv_final := final_choice i)
-  (Hproject_tr : equivocators_trace_project final_choice tr = Some (trX, initial_choice))
-  (Hproject_tri :
-    equivocator_vlsm_trace_project (IM i)
-      (finite_trace_projection_list equivocator_IM i tr) eqv_final
-    = Some (trXi, eqv_initial))
-  : initial_choice i = eqv_initial /\
-    finite_trace_projection_list IM i trX = trXi.
-Proof.
-  generalize dependent trXi. generalize dependent trX.
-  generalize dependent final_choice.
-  induction tr using rev_ind; intros.
-  - simpl in Hproject_tr. inversion Hproject_tr. subst.
-    clear Hproject_tr.
-    simpl in Hproject_tri.
-    inversion Hproject_tri. subst. split; reflexivity.
-  - unfold equivocators_trace_project in Hproject_tr.
-    rewrite fold_right_app in Hproject_tr.
-    match type of Hproject_tr with
-    | fold_right _ ?i _ = _ => destruct i as [(projectx,final_choice')|] eqn:Hproject_x
-    end
-    ; [|rewrite composite_vlsm equivocator_IM in Hproject_tr; inversion Hproject_tr].
-    apply equivocators_trace_project_folder_additive_iff in Hproject_tr.
-    destruct Hproject_tr as [trX0 [HtrX0 HtrX]].
-    specialize (IHtr _ _ HtrX0).
-    rewrite finite_trace_projection_list_app in Hproject_tri.
-    apply equivocator_vlsm_trace_project_app in Hproject_tri.
-    destruct Hproject_tri as [eqv_final' [trXi' [project_xi [HtrXi' [Hproject_xi HeqtrXi]]]]].
-    assert (Hfinal'i : final_choice' i = eqv_final' /\ finite_trace_projection_list IM i projectx = project_xi).
-    { clear - Hproject_x Hproject_xi.
-      simpl in *.
-      destruct (equivocators_transition_item_project final_choice x)
-        as [(ox, final')|] eqn:Hpr_item_x
-      ; [|congruence].
-      unfold equivocators_transition_item_project in Hpr_item_x.
-      unfold composite_transition_item_projection in Hpr_item_x.
-      destruct (decide (i = projT1 (l x))).
-      - subst i. simpl in Hproject_xi.
-        unfold eqv_final in *.
-        remember
-          (equivocator_vlsm_transition_item_project (IM (projT1 (l x))) (composite_transition_item_projection_from_eq equivocator_IM x (projT1 (l x)) eq_refl) (final_choice (projT1 (l x))))
-          as pr_item_x.
-        destruct pr_item_x as [(oitem', descriptor')|]; [|discriminate Hproject_xi].
-        destruct oitem' as [item'|]
-        ; inversion Hproject_xi; subst descriptor' project_xi; clear Hproject_xi
-        ; inversion Hpr_item_x; subst; clear Hpr_item_x
-        ; inversion Hproject_x; subst; clear Hproject_x
-        ; unfold equivocators_choice_update; rewrite equivocators_choice_update_eq
-        ; [|split; reflexivity].
-        split; [reflexivity|].
-        symmetry in Heqpr_item_x.
-        simpl. destruct x. simpl in *. destruct l as (i, li). simpl in *.
-        destruct (decide (i = i)); [|congruence].
-        f_equal.
-        replace e with (@eq_refl _ i) by apply UIP. clear e.
-        unfold composite_transition_item_projection_from_eq in *.
-        simpl in *.
-        destruct item'.
-        apply equivocator_transition_item_project_inv_characterization in Heqpr_item_x.
-        simpl in *.
-        destruct Heqpr_item_x as [Hl [Hinput [Houtput Hdestination]]].
-        subst. reflexivity.
-      - simpl in Hproject_xi.
-        unfold eqv_final in *.
-        inversion Hproject_xi. subst. clear Hproject_xi.
-        remember
-          (equivocator_vlsm_transition_item_project (IM (projT1 (l x))) (composite_transition_item_projection_from_eq equivocator_IM x (projT1 (l x)) eq_refl) (final_choice (projT1 (l x))))
-          as pr_item_x.
-        destruct pr_item_x as [(oitem', descriptor')|]; [|discriminate Hpr_item_x].
-        destruct oitem' as [item'|]
-        ; inversion Hpr_item_x; subst; clear Hpr_item_x
-        ; inversion Hproject_x; subst; clear Hproject_x
-        ; unfold equivocators_choice_update; (rewrite equivocators_choice_update_neq ; [|assumption])
-        ; [|split; reflexivity].
-        split; [reflexivity|].
-        simpl.
-        destruct (decide (i = projT1 (l x))); congruence.
-    }
-    destruct Hfinal'i as [Hfinal'i Hpr_xi].
-    rewrite <- Hfinal'i in HtrXi'.
-    specialize (IHtr _ HtrXi').
-    destruct IHtr as [Heqv_initial Hpr_trXi'].
-    split; [assumption|].
-    subst.
-    rewrite finite_trace_projection_list_app.
-    reflexivity.
-Qed.
-
 Lemma equivocators_trace_project_output_reflecting_inv
   (is: composite_state equivocator_IM)
   (tr: list (composite_transition_item equivocator_IM))
@@ -794,7 +691,7 @@ Proof.
   exists final_choice.
   subst final.
   destruct (preloaded_equivocators_protocol_trace_from_project  _ _ _ Hfinal_choice Htr)
-    as [trX [initial_choice [Hproject_tr [Hpr_lst_tr [Hiproper HtrX]]]]].
+    as [trX [initial_choice Hproject_tr]].
   exists initial_choice, trX. split; [assumption|]. split; [assumption|].
   specialize
     (equivocators_trace_project_finite_trace_projection_list_commute i final_choice initial_choice
@@ -811,48 +708,6 @@ Proof.
   destruct Hx as [itemX [Houtput [_ [_ [_ [_ HitemX]]]]]].
   apply Exists_exists. exists itemX. split; [assumption|].
   simpl in *. rewrite Houtput. assumption.
-Qed.
-
-Context
-  (seed : message -> Prop)
-  (FreeE := free_composite_vlsm equivocator_IM)
-  (PreFreeE := pre_loaded_with_all_messages_vlsm FreeE)
-  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs finite_index seed)
-  (SeededX := vlsm_add_initial_messages X seed)
-  .
-
-Lemma seeded_equivocators_initial_message
-  (m : message)
-  (Hem : vinitial_message_prop SeededXE m)
-  : vinitial_message_prop SeededX m.
-Proof.
-  destruct Hem as [[eqv [emi Hem]]|Hseed].
-  - left. exists eqv. exists emi. assumption.
-  - right. assumption.
-Qed.
-
-Lemma seeded_equivocators_incl_preloaded
-  : VLSM_incl SeededXE PreFreeE.
-Proof.
-  unfold SeededXE. unfold seeded_equivocators_no_equivocation_vlsm.
-  unfold seeded_composite_no_equivocation_vlsm.
-  match goal with
-  |- VLSM_incl (vlsm_add_initial_messages ?v _) _ =>
-    specialize (pre_loaded_with_all_messages_vlsm_is_add_initial_True v) as Hprev
-  end.
-  apply VLSM_eq_incl_iff in Hprev. apply proj2 in Hprev.
-  match type of Hprev with
-  | VLSM_incl (mk_vlsm ?m) _ => apply VLSM_incl_trans with m
-  end
-  ; [apply vlsm_add_initial_messages_incl; intros; exact I|].
-  match type of Hprev with
-  | VLSM_incl _ (mk_vlsm ?m) => apply VLSM_incl_trans with m
-  end
-  ; [assumption| ].
-  unfold FreeE. unfold free_composite_vlsm. unfold equivocator_IM.
-  simpl.
-  apply preloaded_constraint_subsumption_pre_loaded_with_all_messages_incl.
-  intro. intros. exact I.
 Qed.
 
 Lemma seeded_equivocators_protocol_trace_project
@@ -1010,94 +865,86 @@ Lemma seeded_equivocators_protocol_trace_from_project
 Proof.
   apply finite_protocol_trace_from_complete_left in Htr as Htr'.
   destruct Htr' as [is0 [pre [Htr' His]]].
-  apply (seeded_equivocators_protocol_trace_project final_choice) in Htr'
+  apply (seeded_equivocators_protocol_trace_project final_choice) in Htr' as HtrX'
   ; [| rewrite map_app; rewrite last_app; subst; assumption].
-  destruct Htr' as [trX' [initial_choice' [Hinitial_choice' [Hproject' [Hstate_project HtrX']]]]].
-  unfold equivocators_trace_project in Hproject'.
-  rewrite fold_right_app in Hproject'.
-  match type of Hproject' with
-  | fold_right _ ?f _ = _ => remember f as fld
+  destruct HtrX' as [trX' [initial_choice' [Hinitial_choice' [Hproject' [Hstate_project HtrX']]]]].
+  apply equivocators_trace_project_app_iff in Hproject'.
+  destruct Hproject' as [preX [trX [initial_choice [Hproject_tr [Hproject_pre HeqtrX']]]]].
+  subst trX'.
+  destruct HtrX' as [HtrX' HinitX].
+  apply finite_protocol_trace_from_app_iff in HtrX'.
+  destruct HtrX' as [HpreX HtrX].
+  exists trX. exists initial_choice.
+  rewrite! map_app in Hstate_project.
+  rewrite! last_app in Hstate_project.
+  destruct Htr' as [Htr' Hinit].
+  apply finite_protocol_trace_from_app_iff in Htr'.
+  destruct Htr' as [Hpre _].
+  assert (HprePre : finite_protocol_trace pre_loaded_equivocators is0 pre).
+  { split; [|assumption].
+    apply (VLSM_incl_finite_trace _ _ seeded_equivocators_incl_preloaded).
+    assumption.
+  }
+  specialize
+    (preloaded_equivocators_protocol_trace_project_inv initial_choice _ _ HprePre _ _ Hproject_pre Hinitial_choice')
+    as Hinitial_choice.
+  destruct
+    (seeded_equivocators_protocol_trace_project _ _ _ Hinitial_choice (conj Hpre Hinit))
+    as [_preX [_initial_choice' [_ [_Hproject_pre [Hpr_last_pre _]]]]].
+  rewrite Hproject_pre in _Hproject_pre.
+  inversion _Hproject_pre. subst _preX _initial_choice'. clear _Hproject_pre.
+  subst is. unfold final_state in *. simpl in *. rewrite <- Hpr_last_pre in *.
+  repeat (split; [assumption|]). split; [|assumption].
+  match goal with
+  |- ?p = _ =>
+    match type of Hstate_project with
+    | _ = ?l => replace p with l
+    end
   end.
-  destruct fld as [(trX, initial_choice)|]
-  ;[| rewrite composite_vlsm equivocator_IM in Hproject'; congruence].
-  exists trX, initial_choice. symmetry in Heqfld.
-Admitted.
-
-(*
-Proof.
-  generalize dependent final_choice.
-  generalize dependent is.
-  induction tr using rev_ind; intros.
-  - exists []. simpl. exists final_choice.
-    exists eq_refl. exists eq_refl. exists Hproper.
-    constructor.
-    inversion Htr. subst. destruct H as [_om His].
-    apply (proj2 (equivocators_protocol_state_project IM Hbs _ _ _ His) final_choice Hproper).
-  - apply finite_protocol_trace_from_app_iff in Htr.
-    destruct Htr as [Htr Hinit].
-    specialize (IHtr _ Htr).
-    specialize (equivocators_transition_item_project_proper_characterization final_choice x) as Hproperx.
-    unfold final_state in Hproper.
-    rewrite map_app in Hproper. simpl in Hproper. rewrite last_is_last in Hproper.
-    spec Hproperx Hproper.
-    destruct Hproperx as [oitem [final_choice' [Hprojectx [Hitemx Hproperx]]]].
-    specialize (Hproperx (last (map destination tr) is)).
-    unfold equivocators_trace_project.
-    rewrite fold_right_app.
-    match goal with
-    |- context [fold_right _ ?fld _] => remember fld as foldx
-    end.
-    simpl in Heqfoldx.
-    rewrite Hprojectx in Heqfoldx.
-    inversion Hinit. subst tl s' x.
-    destruct H3 as [[Hs [Hiom [Hv _]]] Ht].
-    specialize (Hproperx Hv Ht). clear Hv Ht.
-    destruct Hproperx as [Hproper' Hx].
-    specialize (IHtr _ Hproper').
-    destruct IHtr as [trX' [initial_choice [Htr_project [Hstate_project [Hproper_initial HtrX']]]]].
-    destruct oitem as [item|].
-    + simpl in Hitemx. destruct Hitemx as [Hl [Hinput [Houtput Hdestination]]].
-      specialize (Hx _ eq_refl).
-      destruct Hx as [Hvx Htx].
-      exists (trX' ++ [item]), initial_choice. subst foldx.
-      rewrite equivocators_trace_project_folder_additive with (trX := trX') (eqv_choice := initial_choice)
-      ; [|assumption].
-      exists eq_refl.
-      rewrite map_app. simpl. rewrite last_is_last.
-      unfold final_state. rewrite map_app. simpl. rewrite last_is_last.
-      exists Hdestination.
-      exists Hproper_initial.
-      apply finite_protocol_trace_from_app_iff.
-      split; [assumption|].
-      change [item] with ([] ++ [item]).
-      match goal with
-      |- finite_protocol_trace_from _ ?l _ => remember l as lst
-      end.
-      destruct item.
-      assert (Hlst : protocol_state_prop X lst).
-      { apply finite_ptrace_last_pstate in HtrX'. subst. assumption. }
-      apply (extend_right_finite_trace_from X lst []); [constructor; assumption|].
-      simpl in Hl. subst. 
-      split.
-      * split; [assumption|].
-        unfold Common.input in Hiom.
-        destruct Hiom as [_s Hiom].
-        apply equivocators_protocol_state_project in Hiom.
-        destruct Hiom as [Hiom _].
-        split; [assumption|].
-        split; [|exact I].
-        clear -Hvx Hstate_project. simpl in Hvx. simpl in Hstate_project.
-        rewrite Hstate_project in Hvx.
-        simpl. assumption.
-      * simpl. simpl in Htx, Hstate_project.
-        rewrite Hstate_project in Htx.
-        assumption. 
-    + exists trX'. exists initial_choice. subst foldx. exists Htr_project.
-      repeat split; [| assumption | assumption].
-      clear -Hstate_project Hx. rewrite Hstate_project in Hx.
-      rewrite <- Hx. f_equal. unfold final_state.
-      rewrite map_app. simpl. rewrite last_is_last. reflexivity.
+  f_equal. symmetry. assumption.
 Qed.
-*)
+
+End seeded_equivocators_protocol_trace_project.
+
+Lemma equivocators_protocol_trace_from_project
+  (final_choice : equivocators_choice)
+  (is : vstate equivocators_no_equivocations_vlsm)
+  (tr : list (composite_transition_item equivocator_IM))
+  (final_state := last (map destination tr) is)
+  (Hproper : proper_equivocators_choice final_choice final_state)
+  (Htr : finite_protocol_trace_from equivocators_no_equivocations_vlsm is tr)
+  : exists
+    (trX : list (composite_transition_item IM))
+    (initial_choice : equivocators_choice)
+    (isX := equivocators_state_project initial_choice is)
+    (final_stateX := last (map destination trX) isX),
+    proper_equivocators_choice initial_choice is /\
+    equivocators_trace_project final_choice tr = Some (trX, initial_choice) /\
+    equivocators_state_project final_choice final_state = final_stateX /\
+    finite_protocol_trace_from X isX trX.
+Proof.
+  specialize
+    (seeded_equivocators_protocol_trace_from_project (fun m => False)
+      final_choice is tr Hproper
+    ) as Hproject.
+  spec Hproject.
+  { apply VLSM_incl_finite_trace; [|assumption].
+    specialize (false_seeded_composite_no_equivocation_vlsm equivocator_IM (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index)
+      as Heq.
+    match goal with
+    |- VLSM_incl_part ?m1 ?m2 =>
+      cut (VLSM_eq (mk_vlsm m2) (mk_vlsm m1))
+    end
+    ; [intro H; apply VLSM_eq_incl_iff in H; exact (proj2 H)|].
+    assumption.
+  }
+  destruct Hproject as [trX [initial_choice [Hinitial_choice [Hproject_tr [Hproject_lst HtrX]]]]].
+  exists trX, initial_choice.
+  specialize (vlsm_is_add_initial_False X) as Heq.
+  apply VLSM_eq_incl_iff in Heq.
+  destruct Heq as [_ Hincl].
+  apply (VLSM_incl_finite_trace _ _ Hincl) in HtrX.
+  repeat split; assumption.
+Qed.
 
 End equivocators_composition_projections.

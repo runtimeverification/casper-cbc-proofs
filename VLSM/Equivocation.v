@@ -2123,22 +2123,113 @@ Section seeded_composite_vlsm_no_equivocation.
     {index_listing : list index}
     (finite_index : Listing index_listing)
     (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index has_been_sent_capabilities)
-    (seed : message -> Prop)
     .
   
   Existing Instance X_has_been_sent_capability.
 
-  Definition seeded_no_equivocations_constraint
+  Section seeded_composite_vlsm_no_equivocation_definition.
+
+    Context
+      (seed : message -> Prop)
+      .
+
+    Definition seeded_no_equivocations_constraint
+      (l : composite_label IM)
+      (som : composite_state IM * option message)
+      (initial_or_seed := fun m => vinitial_message_prop X m \/ seed m)
+      :=
+      no_equivocations_except_from X initial_or_seed l som
+      /\ constraint l som.
+
+    Definition seeded_composite_no_equivocation_vlsm
+      : VLSM message
+      :=
+      vlsm_add_initial_messages (composite_vlsm IM seeded_no_equivocations_constraint) seed.
+
+    Lemma seeded_equivocators_incl_preloaded
+      : VLSM_incl seeded_composite_no_equivocation_vlsm (pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM)).
+    Proof.
+      unfold seeded_composite_no_equivocation_vlsm.
+      match goal with
+      |- VLSM_incl (vlsm_add_initial_messages ?v _) _ =>
+        specialize (pre_loaded_with_all_messages_vlsm_is_add_initial_True v) as Hprev
+      end.
+      apply VLSM_eq_incl_iff in Hprev. apply proj2 in Hprev.
+      match type of Hprev with
+      | VLSM_incl (mk_vlsm ?m) _ => apply VLSM_incl_trans with m
+      end
+      ; [apply vlsm_add_initial_messages_incl; intros; exact I|].
+      match type of Hprev with
+      | VLSM_incl _ (mk_vlsm ?m) => apply VLSM_incl_trans with m
+      end
+      ; [assumption| ].
+      unfold free_composite_vlsm.
+      simpl.
+      apply preloaded_constraint_subsumption_pre_loaded_with_all_messages_incl.
+      intro. intros. exact I.
+    Qed.
+
+  End seeded_composite_vlsm_no_equivocation_definition.
+
+  Definition no_equivocations_constraint
     (l : composite_label IM)
     (som : composite_state IM * option message)
-    (initial_or_seed := fun m => vinitial_message_prop X m \/ seed m)
     :=
-    no_equivocations_except_from X initial_or_seed l som
+    no_equivocations X l som
     /\ constraint l som.
+  
+  Context
+    (SeededNoeqvFalse := seeded_composite_no_equivocation_vlsm (fun m => False))
+    (Noeqv := composite_vlsm IM no_equivocations_constraint)
+    .
 
-  Definition seeded_composite_no_equivocation_vlsm
-    : VLSM message
-    :=
-    vlsm_add_initial_messages (composite_vlsm IM seeded_no_equivocations_constraint) seed.
+  Lemma false_seeded_composite_no_equivocation_vlsm
+    : VLSM_eq SeededNoeqvFalse Noeqv.
+  Proof.
+    unfold SeededNoeqvFalse.
+    unfold seeded_composite_no_equivocation_vlsm.
+    match goal with
+    |- VLSM_eq (vlsm_add_initial_messages ?m _) _ => specialize (vlsm_is_add_initial_False m) as Heq
+    end.
+    apply VLSM_eq_sym in Heq.
+    match type of Heq with 
+    | VLSM_eq _ ?v => apply VLSM_eq_trans with (machine v)
+    end
+    ; [assumption|].
+    apply VLSM_eq_incl_iff.
+    specialize (constraint_subsumption_incl IM) as Hincl.
+    split.
+    - specialize
+        (Hincl
+          (seeded_no_equivocations_constraint (fun _ : message => False))
+          no_equivocations_constraint
+        ).
+      apply Hincl.
+      intros l som. unfold seeded_no_equivocations_constraint.
+      clear -l.
+      unfold no_equivocations_constraint.
+      unfold no_equivocations.
+      unfold no_equivocations_except_from.
+      destruct som as (s, [m|]); [|exact id].
+      rewrite <- or_assoc.
+      intros [[H|contra] Hc]; [|contradiction].
+      split; assumption.
+    - specialize
+        (Hincl
+          no_equivocations_constraint
+          (seeded_no_equivocations_constraint (fun _ : message => False))
+        ).
+      apply Hincl.
+      intros l som. unfold seeded_no_equivocations_constraint.
+      clear -l.
+      unfold no_equivocations_constraint.
+      unfold no_equivocations.
+      unfold no_equivocations_except_from.
+      destruct som as (s, [m|]); [|exact id].
+      rewrite <- or_assoc.
+      intros [H Hc].
+      split; [|assumption].
+      left. assumption.
+  Qed.
 
 End seeded_composite_vlsm_no_equivocation. 
