@@ -44,6 +44,186 @@ Context
   
   Local Notation in_listing := (proj2 Hfinite).
   
+  Proposition self_projections_same_after_receive
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (i : index)
+    (ai : vplan_item X)
+    (Hrec : projT2 (label_a ai) = receive)
+    (Hprai : finite_protocol_plan_from X s [ai]) :
+    project ((snd (apply_plan X s [ai])) i) i = project (s i) i.
+  Proof.
+    apply finite_protocol_plan_from_one in Hprai.
+    destruct Hprai as [Hprotocol Htransition].
+    unfold protocol_valid in Hprotocol.
+    unfold valid in Hprotocol.
+    simpl in Hprotocol.
+    unfold constrained_composite_valid in Hprotocol.
+    unfold free_composite_valid in Hprotocol.
+    unfold vvalid in Hprotocol.
+    unfold valid in Hprotocol.
+    simpl in Hprotocol.
+    simpl in Hrec. 
+    destruct ai. simpl in *.
+    destruct label_a. simpl in *. subst v. simpl in *.
+    destruct input_a eqn : eq_input.
+    + simpl in Htransition.
+      assert (x <> fst m) by intuition.
+      simpl.
+      destruct (decide (i = x)).
+      * subst x. rewrite state_update_eq. 
+        rewrite (@project_different index index_listing Hfinite).
+        intuition. intuition.
+        apply protocol_state_component_no_bottom. intuition.
+     * rewrite state_update_neq by intuition.
+       intuition.
+    + intuition. 
+  Qed.
+  
+  Proposition self_projections_same_after_receives
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (a : vplan X)
+    (Hpra : finite_protocol_plan_from X s a)
+    (Hrec : forall (ai : vplan_item X), In ai a -> projT2 (label_a ai) = receive) :
+    let res := snd (apply_plan X s a) in
+    forall (i : index), project (res i) i = project (s i) i.
+  Proof.
+    induction a using rev_ind.
+    - intuition.
+    - simpl in *.
+      intros.
+      rewrite apply_plan_app.
+      destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
+      destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
+      
+      assert (Hres_long : res_long = snd ((apply_plan X s a))) by (rewrite eq_long; intuition).
+      assert (Hres_short : res_short = snd (apply_plan X res_long [x])) by (rewrite eq_short; intuition).
+      simpl in *.
+      
+      apply finite_protocol_plan_from_app_iff in Hpra.
+      destruct Hpra as [Hpra_long Hpra_short].
+      
+      specialize (IHa Hpra_long).
+      
+      spec IHa. {
+        intros. specialize (Hrec ai). 
+        spec Hrec. apply in_app_iff. intuition. intuition.
+      }
+      
+      specialize (IHa i).
+      rewrite <- IHa.
+      
+      assert (Hpr_long : protocol_state_prop X res_long). {
+        rewrite Hres_long.
+        apply apply_plan_last_protocol.
+        all : intuition.
+      }
+      
+      specialize (self_projections_same_after_receive res_long Hpr_long i x) as Hone.
+      spec Hone. {
+        specialize (Hrec x). spec Hrec. apply in_app_iff. intuition.
+        intuition.
+     }
+     rewrite Hres_long in Hone.
+     specialize (Hone Hpra_short).
+     rewrite Hres_long. rewrite Hres_short.
+     rewrite Hres_long.
+     intuition.
+  Qed.
+  
+  Proposition non_self_projections_same_after_send
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (i j : index)
+    (Hdif : i <> j)
+    (ai : vplan_item X)
+    (Hrec : exists (c : bool), projT2 (label_a ai) = update c)
+    (Hprai : finite_protocol_plan_from X s [ai]) :
+    project ((snd (apply_plan X s [ai])) i) j = project (s i) j.
+  Proof.
+    apply finite_protocol_plan_from_one in Hprai.
+    destruct Hprai as [Hprotocol Htransition].
+    unfold protocol_valid in Hprotocol.
+    unfold valid in Hprotocol.
+    simpl in Hprotocol.
+    unfold constrained_composite_valid in Hprotocol.
+    unfold free_composite_valid in Hprotocol.
+    unfold vvalid in Hprotocol.
+    unfold valid in Hprotocol.
+    simpl in Hprotocol.
+    simpl in Hrec. 
+    destruct ai. simpl in *.
+    destruct label_a. simpl in *. 
+    destruct Hrec as [c Heqv].
+    subst v. simpl in *.
+    destruct input_a eqn : eq_input.
+    + simpl in Htransition.
+      intuition congruence.
+    + destruct (decide (x = i)).
+      * subst x.
+        rewrite state_update_eq.
+        rewrite <- update_consensus_clean with (value := c).
+        rewrite (@project_different index index_listing Hfinite).
+        intuition. intuition.
+        apply protocol_state_component_no_bottom. intuition.
+      * rewrite state_update_neq by intuition.
+        intuition.
+  Qed.
+  
+  Proposition non_self_projections_same_after_sends
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (a : vplan X)
+    (Hpra : finite_protocol_plan_from X s a)
+    (Hrec : forall (ai : vplan_item X), In ai a -> exists (c : bool), projT2 (label_a ai) = update c) :
+    let res := snd (apply_plan X s a) in
+    forall (i j : index), i <> j -> project (res i) j = project (s i) j.
+  Proof.
+    induction a using rev_ind.
+    - intuition.
+    - simpl in *.
+      intros.
+      rewrite apply_plan_app.
+      destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
+      destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
+      
+      assert (Hres_long : res_long = snd ((apply_plan X s a))) by (rewrite eq_long; intuition).
+      assert (Hres_short : res_short = snd (apply_plan X res_long [x])) by (rewrite eq_short; intuition).
+      simpl in *.
+      
+      apply finite_protocol_plan_from_app_iff in Hpra.
+      destruct Hpra as [Hpra_long Hpra_short].
+      
+      specialize (IHa Hpra_long).
+      
+      spec IHa. {
+        intros. specialize (Hrec ai).
+        spec Hrec. apply in_app_iff. intuition. intuition.
+      }
+      
+      specialize (IHa i).
+      rewrite <- IHa.
+      
+      assert (Hpr_long : protocol_state_prop X res_long). {
+        rewrite Hres_long.
+        apply apply_plan_last_protocol.
+        all : intuition.
+      }
+      
+      specialize (non_self_projections_same_after_send res_long Hpr_long i j H x) as Hone.
+      spec Hone. {
+        specialize (Hrec x). spec Hrec. apply in_app_iff. intuition.
+        intuition.
+     }
+     rewrite Hres_long in Hone.
+     specialize (Hone Hpra_short).
+     rewrite Hres_long. rewrite Hres_short.
+     rewrite Hres_long.
+     intuition.
+     intuition.
+  Qed.
+  
   Definition get_message_providers_from_plan
    (a : vplan X) : list index :=
     List.map fst (messages_a X a).
@@ -2208,7 +2388,7 @@ Context
     apply apply_plan_last.
   Qed.
   
-  Lemma send_phase_result_projections 
+  Remark send_phase_result_projections 
     (s : vstate X)
     (Hprss : protocol_state_prop _ s)
     (Hnf : no_component_fully_equivocating s (GH s))
@@ -2221,7 +2401,37 @@ Context
     intuition.
     apply GH_NoDup.
     all : intuition.
-  Qed. 
+  Qed.
+  
+  Remark non_self_projections_same_after_send_phase
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := send_phase_result s) :
+    forall (i j : index), i <> j -> project (res_send i) j = project (s i) j.
+  Proof.
+    intros.
+    specialize (non_self_projections_same_after_sends s Hpr (send_phase_plan s)) as Hsame.
+    spec Hsame. {
+      apply send_phase_protocol. 
+      intuition.
+      intuition.
+    }
+    spec Hsame. {
+      intros.
+      apply in_map_iff in H0.
+      destruct H0 as [k [Heq Hink]].
+      unfold feasible_update_composite in Heq.
+      unfold feasible_update_single in Heq.
+      simpl in Heq.
+      rewrite <- Heq.
+      simpl.
+      exists (feasible_update_value (s k) k).
+      intuition.
+    }
+    specialize (Hsame i j H).
+    intuition.
+  Qed.
   
   Definition lift_to_receive_item (to from : index) (s : state): vplan_item (IM_index to) :=
     @Build_plan_item _ (type (IM_index to)) receive (Some (from, s)).
@@ -2595,7 +2805,165 @@ Context
       list state 
       :=
       get_maximal_elements (fun s s' => bool_decide (state_lt_ext target (project s target) (project s' target))) (get_candidates s).
+    
+    Lemma honest_self_projections_maximal1
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (i j : index)
+      (Hhonest : In i (GH s)) :
+      state_lt_ext i (project (s j) i) (s i).
+    Proof.
+      assert (Hsnb : forall (i : index), (s i) <> Bottom). {
+        intros.
+        apply protocol_state_component_no_bottom.
+        intuition.
+      }
+    unfold state_lt_ext.
+    destruct (s i) eqn : eq_si;[specialize (Hsnb i);congruence|].
+    destruct (project (s j) i) eqn : eq_pji;[left; intuition congruence|].
+    destruct (decide (state_lt' i (project (s j) i) (s i)));right; rewrite <- eq_si; rewrite <- eq_pji.
+    - intuition.
+    - assert (He : In i (GE s)). {
+        apply GE_direct.
+        unfold cequiv_evidence.
+        unfold equivocation_evidence.
+        setoid_rewrite hbo_cobs.
+        exists (SimpObs State' i (s i)).
+        unfold get_simp_event_subject_some. simpl.
+        split.
+        - apply in_cobs_states'.
+          apply state_obs_present. apply in_listing.
+        - split;[intuition|].
+          exists (SimpObs Message' i (project (s j) i)). simpl.
+          split.
+          + apply in_cobs_messages'.
+            apply cobs_single.
+            exists j. split;[apply in_listing|].
+            apply refold_simp_lv_observations1.
+            apply Hsnb.
+            rewrite eq_pji. congruence.
+            intuition.
+          + split;[intuition|].
+            unfold simp_lv_event_lt.
+            unfold comparable.
+            rewrite decide_True by intuition.
+            intros contra.
+            destruct contra.
+            * congruence.
+            * rewrite decide_True in H by intuition.
+              destruct H;[intuition|].
+              intuition.
+      }
+      apply wH_wE' in Hhonest. intuition.
+  Qed.
+  
+    Lemma honest_self_projections_maximal2
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (i j : index)
+    (Hhonest : In i (GH s)) :
+    project (s j) i = project (s i) i \/ state_lt_ext i (project (s j) i) (project (s i) i).
+  Proof.
+    assert (Hsnb : forall (i : index), (s i) <> Bottom). {
+      intros.
+      apply protocol_state_component_no_bottom.
+      intuition.
+    } 
+    unfold state_lt_ext.
+    destruct (s i) eqn : eq_si;[specialize (Hsnb i);congruence|]. rewrite <- eq_si.
+    
+    specialize (honest_self_projections_maximal1 s Hpr i j Hhonest) as Hh.
+    destruct (project (s i) i) eqn : eq_pii.
+    - destruct (project (s j) i) eqn : eq_pji.
+      + left. intuition.
+      + rewrite <- eq_pji in *.
+        unfold state_lt_ext in Hh.
+        destruct Hh;[intuition congruence|].
+        unfold state_lt' in H.
+        rewrite unfold_history_bottom in H by intuition. 
+        intuition.
+    - unfold state_lt_ext in Hh.
+      destruct Hh;[intuition congruence|].
+      rewrite <- eq_pii in *.
+      destruct (project (s j) i) eqn : eq_pji;[right;left;intuition congruence|].
+      rewrite <- eq_pji in *.
+      destruct (decide (project (s j) i = project (s i) i));[left;intuition|].
+      right. right.
       
+      unfold state_lt' in H.
+      apply in_split in H as H2.
+      destruct H2 as [left1 [right1 Heq1]].
+      apply (@unfold_history index index_listing Hfinite) in Heq1 as Heq1'.
+      rewrite Heq1' in Heq1.
+      rewrite (@unfold_history_cons index index_listing Hfinite) in Heq1 by (intuition congruence).
+      destruct left1.
+      + simpl in Heq1. inversion Heq1. congruence.
+      + inversion Heq1.
+        unfold state_lt'.
+        rewrite H2.
+        apply in_app_iff. right. intuition.
+  Qed.
+    
+    Lemma honest_always_candidate_for_self
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (i : index)
+      (Hhonest : In i (GH s)) :
+      In (s i) (get_topmost_candidates s i).
+    Proof.
+     - unfold get_topmost_candidates.
+      unfold get_maximal_elements.
+      apply filter_In.
+      split.
+      + unfold get_candidates. apply in_map_iff. exists i. intuition.
+      + rewrite forallb_forall. intros.
+        rewrite negb_true_iff.
+        rewrite bool_decide_eq_false.
+        apply in_map_iff in H.
+        destruct H as [j [Heqj Hinj]]. subst x.
+        specialize (honest_self_projections_maximal2 s Hpr i j Hhonest) as Hh.
+        intros contra.
+        destruct Hh.
+        * unfold state_lt_ext in contra.
+          destruct contra;[intuition congruence|].
+          rewrite H in H0.
+          unfold state_lt' in H0.
+          apply (@history_no_self_reference index index_listing Hfinite) in H0.
+          intuition.
+        * apply (@state_lt_ext_antisymmetric index index_listing Hfinite) in H.
+          intuition.
+  Qed.
+  
+  Lemma all_candidates_for_honest_equiv
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (i : index)
+    (Hhonest : In i (GH s)) :
+    forall (s' : (@state index index_listing)), 
+    In s' (get_topmost_candidates s i) -> project s' i = project (s i) i.
+  Proof.
+    intros.
+    unfold get_topmost_candidates in H.
+    unfold get_maximal_elements in H.
+    apply filter_In in H.
+    destruct H as [Hin H].
+    rewrite forallb_forall in H.
+    specialize (H (s i)).
+    spec H. {
+      apply in_map_iff. exists i. intuition.
+    }
+    rewrite negb_true_iff in H.
+    rewrite bool_decide_eq_false in H.
+    destruct (decide (project (s i) i = project s' i));[intuition|].
+    
+    apply in_map_iff in Hin.
+    destruct Hin as [j [Heqj Hj]].
+    subst s'.
+    specialize (honest_self_projections_maximal2 s Hpr i j Hhonest) as Hh.
+    destruct Hh;[intuition congruence|].
+    intuition.
+  Qed.
+    
     Definition get_matching_state
       (s : vstate X)
       (to from : index) : state :=
@@ -2606,7 +2974,7 @@ Context
       | None => (s to)
       end.
       
-    Lemma get_matching_state_correct1
+    Remark get_matching_state_correct1
       (s : vstate X)
       (to from : index) :
       exists (inter : index), (get_matching_state s to from) = (s inter).
@@ -2628,7 +2996,7 @@ Context
       - exists to. intuition.
     Qed.
     
-    Lemma get_matching_state_correct2
+    Remark get_matching_state_correct2
       (s : vstate X)
       (to from : index)
       (Hin : In to (GH s)) :
@@ -2650,6 +3018,40 @@ Context
         exists inter. intuition.
       - exists to. intuition.
     Qed.
+    
+   Lemma get_matching_state_for_honest
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (i j : index)
+    (Hhonest : In i (GH s)) :
+    project (get_matching_state s j i) i = project (s i) i.
+  Proof.
+    unfold get_matching_state.
+    destruct (find (fun s' : state => bool_decide (state_lt_ext i (project (s j) i) s'))
+    (get_topmost_candidates s i)) eqn : eq_find.
+    - apply find_some in eq_find.
+      destruct eq_find as [Hin Hcomp].
+      rewrite bool_decide_eq_true in Hcomp.
+      specialize (all_candidates_for_honest_equiv s Hpr i Hhonest).
+      intros.
+      specialize (H s0 Hin).
+      intuition.
+    - specialize (find_none (fun s' : state => bool_decide (state_lt_ext i (project (s j) i) s'))) as Hnone.
+      specialize (Hnone (get_topmost_candidates s i) eq_find).
+      specialize (Hnone (s i)).
+        
+      assert (In (s i) (get_topmost_candidates s i)). {
+         apply honest_always_candidate_for_self.
+         intuition.
+         intuition.
+      }
+      
+      specialize (Hnone H).
+      simpl in Hnone.
+      rewrite bool_decide_eq_false in Hnone.
+      specialize (honest_self_projections_maximal1 s Hpr i j Hhonest) as Hh.
+      intuition.
+  Qed.
       
     Definition get_matching_plan
       (s : vstate X)
@@ -2783,7 +3185,7 @@ Context
         intuition. 
     Qed.
     
-    Lemma get_matching_plan_info
+    Remark get_matching_plan_info
       (s : vstate X)
       (from to : index)
       (ai : plan_item)
@@ -3508,7 +3910,7 @@ Context
       let receive_fors := List.map (fun (i : index) => get_receives_for s (others i s) i) lfrom in
       List.concat receive_fors.
       
-    Definition get_receives_all_info
+    Remark get_receives_all_info
       (s : vstate X)
       (lfrom : list index)
       (ai : vplan_item X)
@@ -3738,7 +4140,7 @@ Context
       intuition.
     Qed.
     
-    Corollary receive_phase_result_protocol
+    Remark receive_phase_result_protocol
       (s : vstate X)
       (Hprs : protocol_state_prop X s)
       (res_receive := receive_phase_result s) :
@@ -3787,6 +4189,27 @@ Context
       apply apply_plan_last.
     Qed.
     
+    Remark self_projections_same_after_receive_phase
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (res_receive := receive_phase_result s) :
+      forall (i : index), project (res_receive i) i = project (s i) i.
+    Proof.
+      intros.
+      specialize (self_projections_same_after_receives s Hpr) as Hsame.
+      specialize (Hsame (receive_phase_plan s)).
+      spec Hsame. apply receive_phase_protocol. intuition.
+  
+      spec Hsame. {
+        intros.
+        unfold receive_phase_plan in H.
+        apply get_receives_all_info in H.
+        intuition.
+      }
+      specialize (Hsame i).
+      intuition.
+    Qed.
+    
     Definition common_future (s : vstate X) := receive_phase_result (send_phase_result s).
     
     Lemma common_future_in_futures
@@ -3819,440 +4242,6 @@ Context
       apply send_phase_GE.
       intuition. intuition.
     Qed.
-  
-  Lemma honest_projections_maximal1
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (i j : index)
-    (Hhonest : In i (GH s)) :
-    state_lt_ext i (project (s j) i) (s i).
-  Proof.
-    assert (Hsnb : forall (i : index), (s i) <> Bottom). {
-      intros.
-      apply protocol_state_component_no_bottom.
-      intuition.
-    }
-    unfold state_lt_ext.
-    destruct (s i) eqn : eq_si;[specialize (Hsnb i);congruence|].
-    destruct (project (s j) i) eqn : eq_pji;[left; intuition congruence|].
-    destruct (decide (state_lt' i (project (s j) i) (s i)));right; rewrite <- eq_si; rewrite <- eq_pji.
-    - intuition.
-    - assert (He : In i (GE s)). {
-        apply GE_direct.
-        unfold cequiv_evidence.
-        unfold equivocation_evidence.
-        setoid_rewrite hbo_cobs.
-        exists (SimpObs State' i (s i)).
-        unfold get_simp_event_subject_some. simpl.
-        split.
-        - apply in_cobs_states'.
-          apply state_obs_present. apply in_listing.
-        - split;[intuition|].
-          exists (SimpObs Message' i (project (s j) i)). simpl.
-          split.
-          + apply in_cobs_messages'.
-            apply cobs_single.
-            exists j. split;[apply in_listing|].
-            apply refold_simp_lv_observations1.
-            apply Hsnb.
-            rewrite eq_pji. congruence.
-            intuition.
-          + split;[intuition|].
-            unfold simp_lv_event_lt.
-            unfold comparable.
-            rewrite decide_True by intuition.
-            intros contra.
-            destruct contra.
-            * congruence.
-            * rewrite decide_True in H by intuition.
-              destruct H;[intuition|].
-              intuition.
-      }
-      apply wH_wE' in Hhonest. intuition.
-  Qed.
-  
-  Lemma honest_projections_maximal2
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (i j : index)
-    (Hhonest : In i (GH s)) :
-    project (s j) i = project (s i) i \/ state_lt_ext i (project (s j) i) (project (s i) i).
-  Proof.
-    assert (Hsnb : forall (i : index), (s i) <> Bottom). {
-      intros.
-      apply protocol_state_component_no_bottom.
-      intuition.
-    } 
-    unfold state_lt_ext.
-    destruct (s i) eqn : eq_si;[specialize (Hsnb i);congruence|]. rewrite <- eq_si.
-    
-    specialize (honest_projections_maximal1 s Hpr i j Hhonest) as Hh.
-    destruct (project (s i) i) eqn : eq_pii.
-    - destruct (project (s j) i) eqn : eq_pji.
-      + left. intuition.
-      + rewrite <- eq_pji in *.
-        unfold state_lt_ext in Hh.
-        destruct Hh;[intuition congruence|].
-        unfold state_lt' in H.
-        rewrite unfold_history_bottom in H by intuition. 
-        intuition.
-    - unfold state_lt_ext in Hh.
-      destruct Hh;[intuition congruence|].
-      rewrite <- eq_pii in *.
-      destruct (project (s j) i) eqn : eq_pji;[right;left;intuition congruence|].
-      rewrite <- eq_pji in *.
-      destruct (decide (project (s j) i = project (s i) i));[left;intuition|].
-      right. right.
-      
-      unfold state_lt' in H.
-      apply in_split in H as H2.
-      destruct H2 as [left1 [right1 Heq1]].
-      apply (@unfold_history index index_listing Hfinite) in Heq1 as Heq1'.
-      rewrite Heq1' in Heq1.
-      rewrite (@unfold_history_cons index index_listing Hfinite) in Heq1 by (intuition congruence).
-      destruct left1.
-      + simpl in Heq1. inversion Heq1. congruence.
-      + inversion Heq1.
-        unfold state_lt'.
-        rewrite H2.
-        apply in_app_iff. right. intuition.
-  Qed.
-  
-  Lemma self_projections_same_after_receive
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (i : index)
-    (ai : vplan_item X)
-    (Hrec : projT2 (label_a ai) = receive)
-    (Hprai : finite_protocol_plan_from X s [ai]) :
-    project ((snd (apply_plan X s [ai])) i) i = project (s i) i.
-  Proof.
-    apply finite_protocol_plan_from_one in Hprai.
-    destruct Hprai as [Hprotocol Htransition].
-    unfold protocol_valid in Hprotocol.
-    unfold valid in Hprotocol.
-    simpl in Hprotocol.
-    unfold constrained_composite_valid in Hprotocol.
-    unfold free_composite_valid in Hprotocol.
-    unfold vvalid in Hprotocol.
-    unfold valid in Hprotocol.
-    simpl in Hprotocol.
-    simpl in Hrec. 
-    destruct ai. simpl in *.
-    destruct label_a. simpl in *. subst v. simpl in *.
-    destruct input_a eqn : eq_input.
-    + simpl in Htransition.
-      assert (x <> fst m) by intuition.
-      simpl.
-      destruct (decide (i = x)).
-      * subst x. rewrite state_update_eq. 
-        rewrite (@project_different index index_listing Hfinite).
-        intuition. intuition.
-        apply protocol_state_component_no_bottom. intuition.
-     * rewrite state_update_neq by intuition.
-       intuition.
-    + intuition. 
-  Qed.
-  
-  Lemma self_projections_same_after_receives
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (a : vplan X)
-    (Hpra : finite_protocol_plan_from X s a)
-    (Hrec : forall (ai : vplan_item X), In ai a -> projT2 (label_a ai) = receive) :
-    let res := snd (apply_plan X s a) in
-    forall (i : index), project (res i) i = project (s i) i.
-  Proof.
-    induction a using rev_ind.
-    - intuition.
-    - simpl in *.
-      intros.
-      rewrite apply_plan_app.
-      destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
-      destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
-      
-      assert (Hres_long : res_long = snd ((apply_plan X s a))) by (rewrite eq_long; intuition).
-      assert (Hres_short : res_short = snd (apply_plan X res_long [x])) by (rewrite eq_short; intuition).
-      simpl in *.
-      
-      apply finite_protocol_plan_from_app_iff in Hpra.
-      destruct Hpra as [Hpra_long Hpra_short].
-      
-      specialize (IHa Hpra_long).
-      
-      spec IHa. {
-        intros. specialize (Hrec ai). 
-        spec Hrec. apply in_app_iff. intuition. intuition.
-      }
-      
-      specialize (IHa i).
-      rewrite <- IHa.
-      
-      assert (Hpr_long : protocol_state_prop X res_long). {
-        rewrite Hres_long.
-        apply apply_plan_last_protocol.
-        all : intuition.
-      }
-      
-      specialize (self_projections_same_after_receive res_long Hpr_long i x) as Hone.
-      spec Hone. {
-        specialize (Hrec x). spec Hrec. apply in_app_iff. intuition.
-        intuition.
-     }
-     rewrite Hres_long in Hone.
-     specialize (Hone Hpra_short).
-     rewrite Hres_long. rewrite Hres_short.
-     rewrite Hres_long.
-     intuition.
-  Qed.
-  
-  Lemma non_self_projections_same_after_send
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (i j : index)
-    (Hdif : i <> j)
-    (ai : vplan_item X)
-    (Hrec : exists (c : bool), projT2 (label_a ai) = update c)
-    (Hprai : finite_protocol_plan_from X s [ai]) :
-    project ((snd (apply_plan X s [ai])) i) j = project (s i) j.
-  Proof.
-    apply finite_protocol_plan_from_one in Hprai.
-    destruct Hprai as [Hprotocol Htransition].
-    unfold protocol_valid in Hprotocol.
-    unfold valid in Hprotocol.
-    simpl in Hprotocol.
-    unfold constrained_composite_valid in Hprotocol.
-    unfold free_composite_valid in Hprotocol.
-    unfold vvalid in Hprotocol.
-    unfold valid in Hprotocol.
-    simpl in Hprotocol.
-    simpl in Hrec. 
-    destruct ai. simpl in *.
-    destruct label_a. simpl in *. 
-    destruct Hrec as [c Heqv].
-    subst v. simpl in *.
-    destruct input_a eqn : eq_input.
-    + simpl in Htransition.
-      intuition congruence.
-    + destruct (decide (x = i)).
-      * subst x.
-        rewrite state_update_eq.
-        rewrite <- update_consensus_clean with (value := c).
-        rewrite (@project_different index index_listing Hfinite).
-        intuition. intuition.
-        apply protocol_state_component_no_bottom. intuition.
-      * rewrite state_update_neq by intuition.
-        intuition.
-  Qed.
-  
-  Lemma non_self_projections_same_after_sends
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (a : vplan X)
-    (Hpra : finite_protocol_plan_from X s a)
-    (Hrec : forall (ai : vplan_item X), In ai a -> exists (c : bool), projT2 (label_a ai) = update c) :
-    let res := snd (apply_plan X s a) in
-    forall (i j : index), i <> j -> project (res i) j = project (s i) j.
-  Proof.
-    induction a using rev_ind.
-    - intuition.
-    - simpl in *.
-      intros.
-      rewrite apply_plan_app.
-      destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
-      destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
-      
-      assert (Hres_long : res_long = snd ((apply_plan X s a))) by (rewrite eq_long; intuition).
-      assert (Hres_short : res_short = snd (apply_plan X res_long [x])) by (rewrite eq_short; intuition).
-      simpl in *.
-      
-      apply finite_protocol_plan_from_app_iff in Hpra.
-      destruct Hpra as [Hpra_long Hpra_short].
-      
-      specialize (IHa Hpra_long).
-      
-      spec IHa. {
-        intros. specialize (Hrec ai).
-        spec Hrec. apply in_app_iff. intuition. intuition.
-      }
-      
-      specialize (IHa i).
-      rewrite <- IHa.
-      
-      assert (Hpr_long : protocol_state_prop X res_long). {
-        rewrite Hres_long.
-        apply apply_plan_last_protocol.
-        all : intuition.
-      }
-      
-      specialize (non_self_projections_same_after_send res_long Hpr_long i j H x) as Hone.
-      spec Hone. {
-        specialize (Hrec x). spec Hrec. apply in_app_iff. intuition.
-        intuition.
-     }
-     rewrite Hres_long in Hone.
-     specialize (Hone Hpra_short).
-     rewrite Hres_long. rewrite Hres_short.
-     rewrite Hres_long.
-     intuition.
-     intuition.
-  Qed.
-  
-  Lemma non_self_projections_same_after_send_phase
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := send_phase_result s) :
-    forall (i j : index), i <> j -> project (res_send i) j = project (s i) j.
-  Proof.
-    intros.
-    specialize (non_self_projections_same_after_sends s Hpr (send_phase_plan s)) as Hsame.
-    spec Hsame. {
-      apply send_phase_protocol. 
-      intuition.
-      intuition.
-    }
-    spec Hsame. {
-      intros.
-      apply in_map_iff in H0.
-      destruct H0 as [k [Heq Hink]].
-      unfold feasible_update_composite in Heq.
-      unfold feasible_update_single in Heq.
-      simpl in Heq.
-      rewrite <- Heq.
-      simpl.
-      exists (feasible_update_value (s k) k).
-      intuition.
-    }
-    specialize (Hsame i j H).
-    intuition.
-  Qed.
-  
-  Lemma self_projections_same_after_receive_phase
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := send_phase_result s)
-    (res := common_future s) :
-    forall (i : index), project (res i) i = project (res_send i) i.
-  Proof.
-    intros.
-    assert (protocol_state_prop X res_send). {
-      apply apply_plan_last_protocol.
-      intuition.
-      apply send_phase_protocol. intuition. intuition.
-    }
-    specialize (self_projections_same_after_receives (res_send) H) as Hsame.
-    specialize (Hsame (get_receives_all res_send index_listing)).
-    spec Hsame. {
-      apply get_receives_all_protocol.
-      apply Hfinite. 
-      intuition.
-    }
-    spec Hsame. {
-      intros.
-      apply get_receives_all_info in H0.
-      intuition.
-    }
-    specialize (Hsame i).
-    intuition.
-  Qed.
-  
-  Lemma something 
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (i : index)
-    (Hhonest : In i (GH s)) :
-    In (s i) (get_topmost_candidates s i).
-  Proof.
-    - unfold get_topmost_candidates.
-      unfold get_maximal_elements.
-      apply filter_In.
-      split.
-      + unfold get_candidates. apply in_map_iff. exists i. intuition.
-      + rewrite forallb_forall. intros.
-        rewrite negb_true_iff.
-        rewrite bool_decide_eq_false.
-        apply in_map_iff in H.
-        destruct H as [j [Heqj Hinj]]. subst x.
-        specialize (honest_projections_maximal2 s Hpr i j Hhonest) as Hh.
-        intros contra.
-        destruct Hh.
-        * unfold state_lt_ext in contra.
-          destruct contra;[intuition congruence|].
-          rewrite H in H0.
-          unfold state_lt' in H0.
-          apply (@history_no_self_reference index index_listing Hfinite) in H0.
-          intuition.
-        * apply (@state_lt_ext_antisymmetric index index_listing Hfinite) in H.
-          intuition.
-  Qed.
-  
-  Lemma something2 
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (i : index)
-    (Hhonest : In i (GH s)) :
-    forall (s' : (@state index index_listing)), 
-    In s' (get_topmost_candidates s i) -> project s' i = project (s i) i.
-  Proof.
-    intros.
-    unfold get_topmost_candidates in H.
-    unfold get_maximal_elements in H.
-    apply filter_In in H.
-    destruct H as [Hin H].
-    rewrite forallb_forall in H.
-    specialize (H (s i)).
-    spec H. {
-      apply in_map_iff. exists i. intuition.
-    }
-    rewrite negb_true_iff in H.
-    rewrite bool_decide_eq_false in H.
-    destruct (decide (project (s i) i = project s' i));[intuition|].
-    
-    apply in_map_iff in Hin.
-    destruct Hin as [j [Heqj Hj]].
-    subst s'.
-    specialize (honest_projections_maximal2 s Hpr i j Hhonest) as Hh.
-    destruct Hh;[intuition congruence|].
-    intuition.
-  Qed.
-  
-  Lemma get_matching_state_for_honest
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := send_phase_result s) 
-    (i j : index)
-    (Hhonest : In i (GH s)) :
-    project (get_matching_state s j i) i = project (s i) i.
-  Proof.
-    unfold get_matching_state.
-    destruct (find (fun s' : state => bool_decide (state_lt_ext i (project (s j) i) s'))
-    (get_topmost_candidates s i)) eqn : eq_find.
-    - apply find_some in eq_find.
-      destruct eq_find as [Hin Hcomp].
-      rewrite bool_decide_eq_true in Hcomp.
-      specialize (something2 s Hpr i Hhonest).
-      intros.
-      specialize (H s0 Hin).
-      intuition.
-    - specialize (find_none (fun s' : state => bool_decide (state_lt_ext i (project (s j) i) s'))) as Hnone.
-      specialize (Hnone (get_topmost_candidates s i) eq_find).
-      specialize (Hnone (s i)).
-        
-      assert (In (s i) (get_topmost_candidates s i)). {
-         apply something.
-         intuition.
-         intuition.
-      }
-      
-      specialize (Hnone H).
-      simpl in Hnone.
-      rewrite bool_decide_eq_false in Hnone.
-      specialize (honest_projections_maximal1 s Hpr i j Hhonest) as Hh.
-      intuition.
-  Qed.
    
   Lemma honest_receive_honest
     (s : vstate X)
@@ -4266,11 +4255,12 @@ Context
     destruct (decide (i = j));[subst i;intuition|].
       
     assert (Hsend_pr : protocol_state_prop X res_send). {
-      admit.
+      apply send_phase_result_protocol.
+      all : intuition.
     }
     
     assert (In i (GH s) /\ In j (GH s)). {
-      admit.
+       admit.
     }
     
     assert (HiGH : In i (GH (send_phase_result s))). {
@@ -4287,12 +4277,14 @@ Context
     specialize (Hrec HiGH).
     unfold res at 1.
     unfold common_future.
-    unfold phase_two.
+    unfold receive_phase_result.
+    unfold receive_phase.
+    unfold receive_phase_plan.
     rewrite Hrec. 
     rewrite get_matching_state_for_honest.
-    2, 3, 4 : intuition.
     rewrite <- self_projections_same_after_receive_phase.
-    all : intuition.
+    intuition.
+    1, 2 : intuition.
   Admitted.
   
   Definition hcobs (s : vstate X) := @wcobs (GH s) s.
