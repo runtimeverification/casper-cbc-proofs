@@ -1486,3 +1486,57 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
     := composite_vlsm_free_projection binary_IM second.
 
 End binary_free_composition.
+
+Section sub_composition.
+
+Context
+  {message : Type}
+  {index : Type}
+  {IndEqDec : EqDecision index}
+  (IM : index -> VLSM message)
+  {i0 : Inhabited index}
+  (X := free_composite_vlsm IM)
+  (sub_index_list : list index)
+  (Hi0_sub : sub_index_list <> [])
+  .
+
+Definition sub_index_prop (i : index) : Prop := In i sub_index_list.
+
+Local Instance sub_index_prop_dec
+  (i : index)
+  : Decision (sub_index_prop i).
+Proof.
+  apply in_dec. assumption.
+Qed.
+
+Definition sub_index : Type
+  := dec_sig sub_index_prop.
+
+Local Instance sub_index_i0 : Inhabited sub_index.
+Proof.
+  split.
+  destruct (destruct_list sub_index_list) as [[x [tl Heq]]| n]
+  ; [|elim Hi0_sub; assumption].
+  exists x. apply bool_decide_eq_true.
+  unfold sub_index_prop. subst sub_index_list. left. reflexivity.
+Qed.
+
+Local Instance sub_index_eq_dec : EqDecision sub_index.
+Proof.
+  apply dec_sig_eq_dec. assumption.
+Qed.
+
+Definition sub_IM
+  (ei : sub_index)
+  : VLSM message
+  := IM (proj1_sig ei).
+
+Definition free_sub_vlsm_composition : VLSM message
+  := free_composite_vlsm sub_IM.
+
+Definition seeded_free_sub_composition
+  (messageSet : message -> Prop)
+  := vlsm_add_initial_messages free_sub_vlsm_composition
+      (fun m => messageSet m \/ vinitial_message_prop X m).
+
+End sub_composition.
