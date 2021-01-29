@@ -140,11 +140,11 @@ Section fixed_equivocation_with_fullnode.
     (Hbr : forall i : index, has_been_received_capability (IM i))
     {i0 : Inhabited index}
     (equivocator_IM := equivocator_IM IM)
-    {index_listing : list index}
+    (index_listing : list index)
     (finite_index : Listing index_listing)
     (equivocating : set index)
     (admissible_index := fun s i => In i equivocating)
-    (Hno_resend : forall i : index, cannot_resend_message_stepwise_props (IM i))
+    (Hno_resend : forall i : index, cannot_resend_message_stepwise_prop (IM i))
     (full_node_constraint
       := full_node_condition_for_admissible_equivocators IM Hbs Hbr finite_index admissible_index)
     (full_node_constraint_alt
@@ -218,102 +218,3 @@ Section fixed_equivocation_with_fullnode.
 
   End fixed_equivocation_constraint_comparison.
 End fixed_equivocation_with_fullnode.
-
-Section from_equivocators_to_nodes.
-
-Context
-  {message : Type}
-  (index : Type)
-  {IndEqDec : EqDecision index}
-  (IM : index -> VLSM message)
-  (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (Hbr : forall i : index, has_been_received_capability (IM i))
-  {i0 : Inhabited index}
-  {index_listing : list index}
-  (finite_index : Listing index_listing)
-  (equivocating : set index)
-  (XE : VLSM message := equivocators_fixed_equivocations_vlsm IM Hbs finite_index equivocating)
-  (Hi0_equiv : equivocating <> [])
-  (X : VLSM message := fixed_equivocation_vlsm_composition IM Hbs Hbr finite_index equivocating Hi0_equiv)
-  .
-
-Lemma fixed_equivocators_initial_state_project
-  (es : vstate XE)
-  (Hes : vinitial_state_prop XE es)
-  (eqv_choice : equivocators_choice IM)
-  (Heqv : proper_equivocators_choice IM eqv_choice es)
-  : vinitial_state_prop X (equivocators_state_project IM eqv_choice es).
-Proof.
-  intro eqv. specialize (Hes eqv).
-  unfold equivocator_IM in Hes.
-  unfold equivocators_state_project.
-  specialize (Heqv eqv). 
-  destruct (eqv_choice eqv) as [sn | i fi]; [assumption|].
-  destruct Hes as [Hzero Hes].
-  destruct (es eqv) as (n, bs). simpl in Heqv.
-  destruct (le_lt_dec (S n) i); [lia|].
-  simpl in *.
-  subst. assert (Hi: i = 0) by lia. subst.
-  assumption.
-Qed.
-
-Lemma fixed_equivocators_initial_message
-  (m : message)
-  (Hem : vinitial_message_prop XE m)
-  : vinitial_message_prop X m.
-Proof.
-  destruct Hem as [eqv [emi Hem]].
-  exists eqv.
-  unfold equivocator_IM in emi.
-  exists emi. assumption.
-Qed.
-
-Local Tactic Notation "unfold_transition"  hyp(Ht) :=
-  ( unfold transition in Ht; unfold equivocator_IM in Ht;
-  unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
-  unfold machine in Ht; unfold projT2 in Ht;
-  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
-
-Lemma equivocators_protocol_trace_project
-  (final_choice : equivocators_choice IM)
-  (is : vstate XE)
-  (tr : list (vtransition_item XE))
-  (final_state := last (map destination tr) is)
-  (Hproper : proper_equivocators_choice IM final_choice final_state)
-  (Htr : finite_protocol_trace XE is tr)
-  : exists
-    (trX : list (vtransition_item X))
-    (initial_choice : equivocators_choice IM)
-    (isX := equivocators_state_project IM initial_choice is)
-    (final_stateX := last (map destination trX) isX),
-    proper_equivocators_choice IM initial_choice is /\
-    equivocators_trace_project IM final_choice tr = Some (trX, initial_choice) /\
-    equivocators_state_project IM final_choice final_state = final_stateX /\
-    finite_protocol_trace X isX trX.
-Proof.
-  remember (length tr) as len_tr.
-  generalize dependent final_choice. generalize dependent tr.
-  induction len_tr using (well_founded_induction Wf_nat.lt_wf); intros.
-  subst len_tr.
-  destruct_list_last tr tr' lst Htr_lst.
-  - clear H. subst. unfold final_state in *. exists [], final_choice.
-    split; [assumption|]. split; [reflexivity|]. split; [reflexivity|].
-    remember (equivocators_state_project IM final_choice is) as isx.
-    cut (vinitial_state_prop X isx).
-    { intro. split; [|assumption]. constructor.
-      apply protocol_state_prop_iff. left.
-      exists (exist _ _ H). reflexivity.
-    }
-    subst.
-    apply fixed_equivocators_initial_state_project; [|assumption].
-    apply Htr.
-  - specialize (H (length tr')) as H'.
-    spec H'. { rewrite app_length. simpl. lia. }
-    destruct Htr as [Htr Hinit].
-    apply finite_protocol_trace_from_app_iff in Htr.
-    destruct Htr as [Htr Hlst].
-    specialize (H' tr' (conj Htr Hinit) eq_refl).
-    
-Admitted.  
-
-End from_equivocators_to_nodes.

@@ -144,10 +144,11 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
         : VLSM_incl PreLoaded Xi.
     Proof.
         apply (basic_VLSM_incl (machine PreLoaded) (machine Xi))
-        ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
+        ; intros; try (assumption || reflexivity).
         - apply Hvalidating in H. destruct H as [_ [_ [_ [Hopm _]]]].
           apply protocol_message_projection. assumption.
-        - apply Hvalidating in H. assumption.
+        - destruct H as [_ [_ H]]. 
+          apply Hvalidating in H. assumption.
     Qed.
 
 (**

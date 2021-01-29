@@ -587,9 +587,7 @@ Then <<X1>> is trace-included into <<X2>>.
     Proof.
       apply (basic_VLSM_incl (machine X1) (machine X2))
       ; intros; try (assumption || reflexivity).
-      - destruct H as [_ [[_s Hom] _]]. exists _s.
-        apply preloaded_constraint_subsumption_protocol_prop.
-        assumption.
+      - apply initial_message_is_protocol;assumption.
       - apply preloaded_constraint_subsumption_protocol_valid.
         assumption.
     Qed.
@@ -599,8 +597,7 @@ Then <<X1>> is trace-included into <<X2>>.
     Proof.
       apply (basic_VLSM_incl (machine (pre_loaded_with_all_messages_vlsm X1)) (machine (pre_loaded_with_all_messages_vlsm X2)))
       ; intros; try (assumption || reflexivity).
-      - destruct H as [_ [[_s Hom] _]]. exists _s.
-        apply preloaded_constraint_subsumption_preloaded_protocol_prop. assumption.
+      - apply initial_message_is_protocol; assumption.
       - apply preloaded_constraint_subsumption_preloaded_protocol_valid.
         assumption.
     Qed.
@@ -685,10 +682,6 @@ Then <<X1>> is trace-included into <<X2>>.
       intro l; intros. exact I.
     Qed.
 
-(**
-A component [protocol_state]'s [lift_to_composite_state] is a [protocol_state]
-for the [free_composite_vlsm].
-*)
     Lemma protocol_prop_composite_free_lift_generalized_initial
       (P Q : message -> Prop)
       (PimpliesQ : forall m, P m -> Q m)
@@ -747,6 +740,10 @@ for the [free_composite_vlsm].
           apply state_update_twice.
     Qed.
 
+(**
+If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_composite_state] of @sj@, then
+@(s, om)@ has the [protocol_prop]erty for the [free_composite_vlsm].
+*)
     Lemma protocol_prop_composite_free_lift
       (j : index)
       (sj : vstate (IM j))
@@ -912,7 +909,7 @@ Proof.
   intros [om Hproto].
   apply protocol_state_project_preloaded_to_preloaded.
   exists om.
-  apply pre_loaded_with_all_messages_protocol_prop in Hproto.
+  apply preloaded_weaken_protocol_prop.
   assumption.
 Qed.
 
@@ -1224,9 +1221,7 @@ We can now finally prove the main result for this section:
     Proof.
       apply (basic_VLSM_incl (machine Xj) (machine PreLoaded))
       ; intros; try (assumption || reflexivity).
-      - destruct H as [_ [[_s Hpm] _]]. exists _s.
-        apply proj_pre_loaded_with_all_messages_protocol_prop.
-        assumption.
+      - apply initial_message_is_protocol; exact I.
       - apply projection_valid_implies_valid.
         destruct H as [_ [_ Hv]].
         assumption.
