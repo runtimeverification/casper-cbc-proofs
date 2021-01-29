@@ -1655,23 +1655,6 @@ Context
         intuition.
   Qed. 
   
-  Lemma rec_plan 
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (a : vplan X)
-    (Hpr_a : finite_protocol_plan_from X s a)
-    (Hgood : forall (ai : vplan_item X), In ai a ->
-      (projT2 (label_a ai)) = receive) :
-    let res := snd (apply_plan X s a) in
-    forall (i : index), project (res i) i = project (s i) i.
-  Proof.
-    intros. simpl.
-    induction a using rev_ind.
-    - simpl in *. unfold res. intuition.
-    - apply finite_protocol_plan_from_app_iff in Hpr_a as Hpr_a'.
-      admit.
-  Admitted.
-  
   Lemma ep_plan 
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -4234,15 +4217,58 @@ Context
     rewrite Hrec. 
     rewrite get_matching_state_for_honest.
     2, 3, 4 : intuition.
-    rewrite self_projections_same.
+    rewrite <- self_projections_same_after_receive_phase.
     all : intuition.
   Admitted.
+  
+  Definition hcobs (s : vstate X) := @wcobs (GH s) s.
+  Definition hcobs_messages (s : vstate X) := @wcobs_messages (GH s) s.
+  Definition hcobs_states (s : vstate X) := @wcobs_states (GH s) s.
   
   Definition HE (s : vstate X) := @wE (GH s) s.
   Definition HH (s : vstate X) := @wH (GH s) s.
   
   Definition LE (i : index) := (@wE [i]).
   Definition LH (i : index) := (@wH [i]).
+  
+  Lemma all_message_observations_old
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := phase_one_res s)
+    (res := common_future s) 
+    (i target : index)
+    (Hi : In i (GH res))
+    (Htarget : ~In target (GH res))
+    (e : simp_lv_event) :
+    In e (hcobs_messages res target) -> 
+    In e (hcobs_messages s target).
+  Proof.
+    intros.
+    apply cobs_single in H.
+    destruct H as [k [Hink Hine]].
+    
+  Qed.
+  
+  Lemma all_message_observations_in_single
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := phase_one_res s)
+    (res := common_future s) 
+    (i target : index)
+    (Hi : In i (GH res))
+    (e : simp_lv_event) :
+    In e (hcobs_messages res target) -> In e (simp_lv_message_observations (res i) target).
+  Proof.
+    intros.
+    apply cobs_single in H.
+    destruct H as [k [Hink Hine]].
+    
+    destruct (decide (k = i));[subst k;intuition|].
+    specialize (honest_receive_honest s Hpr Hnf i k Hi Hink) as Hrec.
+    
+  Qed.
   
   Lemma local_and_honest
     (s : vstate X)
@@ -4303,8 +4329,12 @@ Context
          destruct He1 as [j [Hinj Hine1]].
          destruct He2 as [k [Hink Hine2]].
          
-         apply (@unfold_simp_lv_observations index index_listing Hfinite) in Hine1.
-         destruct Hine1.
+         apply GE_direct.
+         unfold cequiv_evidence.
+         unfold equivocation_evidence.
+         setoid_rewrite hbo_cobs.
+         
+         exists e1.
       
     - assert (Hdif : i <> v). {
         admit.
