@@ -1865,20 +1865,6 @@ Context
   Definition chain_updates (li : list index) (s : vstate X) : vplan X :=
     List.map (feasible_update_composite s) li.
   
-  Definition phase_one_plan (s : vstate X) : vplan X :=
-    chain_updates (GH s) s.
- 
-  Definition phase_one (s : vstate X) : list (vtransition_item X) * vstate X :=
-    apply_plan X s (phase_one_plan s).
-  
-  Definition phase_one_res 
-    (s : vstate X) :=
-    snd (phase_one s).
- 
-  Definition phase_one_transitions
-    (s : vstate X) :=
-    fst (phase_one s).
-  
   Lemma chain_updates_projections_out 
     (s : vstate X)
     (li : list index)
@@ -2148,46 +2134,87 @@ Context
           assumption.
   Qed.
   
-  Lemma phase_one_protocol
+  Definition send_phase_plan (s : vstate X) : vplan X :=
+    chain_updates (GH s) s.
+ 
+  Definition send_phase (s : vstate X) : list (vtransition_item X) * vstate X :=
+    apply_plan X s (send_phase_plan s).
+  
+  Definition send_phase_result 
+    (s : vstate X) :=
+    snd (send_phase s).
+ 
+  Definition send_phase_transitions
+    (s : vstate X) :=
+    fst (send_phase s).
+  
+  Lemma send_phase_protocol
     (s : vstate X)
     (Hprs : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s)) :
-    finite_protocol_plan_from X s (phase_one_plan s) /\ set_eq (GE (phase_one_res s)) (GE s).
+    finite_protocol_plan_from X s (send_phase_plan s).
   Proof.
-    unfold phase_one_plan.
+    unfold send_phase_plan.
     specialize (chain_updates_protocol s Hprs (GH s) (GH_NoDup s)) as Hchain.
     spec Hchain. intuition.
     specialize (Hchain Hnf). simpl in Hchain.
-    unfold phase_one_res.
+    unfold send_phase_result.
     destruct Hchain as [Hchain1 [Hchain2 Hchain3]].
-    split. intuition.
-    unfold phase_one. intuition.
+    intuition.
   Qed.
   
-  Lemma phase_one_future 
+  Corollary send_phase_result_protocol
+    (s : vstate X)
+    (Hprs : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s)) 
+    (res_send := send_phase_result s) :
+    protocol_state_prop X res_send.
+  Proof. 
+    apply apply_plan_last_protocol.
+    intuition.
+    apply send_phase_protocol.
+    all : intuition.
+  Qed.
+  
+  Lemma send_phase_GE
+    (s : vstate X)
+    (Hprs : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s)) :
+    set_eq (GE (send_phase_result s)) (GE s).
+  Proof.
+    unfold send_phase_plan.
+    specialize (chain_updates_protocol s Hprs (GH s) (GH_NoDup s)) as Hchain.
+    spec Hchain. intuition.
+    specialize (Hchain Hnf). simpl in Hchain.
+    unfold send_phase_result.
+    destruct Hchain as [Hchain1 [Hchain2 Hchain3]].
+    unfold send_phase. intuition.
+  Qed.
+  
+  Lemma send_phase_future 
     (s : vstate X)
     (Hnf : no_component_fully_equivocating s (GH s))
     (Hspr : protocol_state_prop _ s) :
-    in_futures _ s (phase_one_res s).
+    in_futures _ s (send_phase_result s).
   Proof.
     unfold in_futures.
-    exists (phase_one_transitions s).
+    exists (send_phase_transitions s).
     split.
-    apply phase_one_protocol.
+    apply send_phase_protocol.
     assumption.
     assumption.
-    unfold phase_one_transitions.
-    unfold phase_one_res.
+    unfold send_phase_transitions.
+    unfold send_phase_result.
     apply apply_plan_last.
   Qed.
   
-  Lemma phase_one_projections 
+  Lemma send_phase_result_projections 
     (s : vstate X)
     (Hprss : protocol_state_prop _ s)
     (Hnf : no_component_fully_equivocating s (GH s))
     (i : index)
     (Hin : In i (GH s))
-    (s' := phase_one_res s) :
+    (s' := send_phase_result s) :
     project (s' i) i = (s i).
   Proof.
     apply chain_updates_protocol.
@@ -3695,8 +3722,72 @@ Context
                 all : intuition.
     Qed.
     
-    Definition phase_two (s : vstate X) := snd (apply_plan X s (get_receives_all s index_listing)).
-    Definition common_future (s : vstate X) := phase_two (phase_one_res s).
+    Definition receive_phase_plan (s : vstate X) := (get_receives_all s index_listing).
+    Definition receive_phase (s : vstate X) := apply_plan X s (receive_phase_plan s).
+    Definition receive_phase_result (s : vstate X) := snd (receive_phase s).
+    Definition receive_phase_transitions (s : vstate X) := fst (receive_phase s).
+    
+    Lemma receive_phase_protocol
+      (s : vstate X)
+      (Hprs : protocol_state_prop X s):
+      finite_protocol_plan_from X s (receive_phase_plan s).
+    Proof.
+      unfold receive_phase_plan.
+      apply get_receives_all_protocol.
+      apply (proj1 Hfinite).
+      intuition.
+    Qed.
+    
+    Corollary receive_phase_result_protocol
+      (s : vstate X)
+      (Hprs : protocol_state_prop X s)
+      (res_receive := receive_phase_result s) :
+      protocol_state_prop X res_receive.
+    Proof. 
+      apply apply_plan_last_protocol.
+      intuition.
+      apply receive_phase_protocol.
+      all : intuition.
+    Qed.
+  
+    Lemma receive_phase_GE
+      (s : vstate X)
+      (Hprs : protocol_state_prop X s)
+      (res_receive := receive_phase_result s) :
+      set_eq (GE res_receive) (GE s).
+    Proof.
+      specialize (ep_plan s Hprs (receive_phase_plan s)) as Hep.
+      spec Hep. apply receive_phase_protocol. intuition. 
+      spec Hep. {
+        intros.
+        unfold receive_phase_plan in H.
+        apply get_receives_all_info in H.
+        split;[intuition|].
+        destruct H as [_ H].
+        destruct H as [so [from H]].
+        exists so. exists from. intuition.
+      }
+      simpl in Hep.
+      apply set_eq_comm.
+      intuition.
+    Qed.
+  
+    Remark receive_phase_future 
+      (s : vstate X)
+      (Hspr : protocol_state_prop _ s) :
+      in_futures _ s (receive_phase_result s).
+    Proof.
+      unfold in_futures.
+      exists (receive_phase_transitions s).
+      split.
+      apply receive_phase_protocol.
+      assumption.
+      unfold receive_phase_transitions.
+      unfold receive_phase_result.
+      apply apply_plan_last.
+    Qed.
+    
+    Definition common_future (s : vstate X) := receive_phase_result (send_phase_result s).
     
     Lemma common_future_in_futures
       (s : vstate X)
@@ -3704,35 +3795,15 @@ Context
       (Hnf : no_component_fully_equivocating s (GH s)) :
       in_futures X s (common_future s).
     Proof.
-      specialize (@in_futures_trans message X s (phase_one_res s) (common_future s)) as Htrans.
+      specialize (@in_futures_trans message X s (send_phase_result s) (common_future s)) as Htrans.
       apply Htrans.
-      apply phase_one_future.
-      assumption.
-      assumption.
+      apply send_phase_future.
+      intuition.
+      intuition.
       unfold common_future.
-      unfold phase_two.
-      unfold in_futures.
-      remember (phase_one_res s) as s'.
-      exists (fst (apply_plan X (phase_one_res s) (get_receives_all s' index_listing))).
-      split.
-      - specialize (get_receives_all_protocol s' index_listing (proj1 Hfinite)) as Hrec.
-        spec Hrec. {
-          rewrite Heqs'.
-          unfold phase_one_res.
-          unfold phase_one.
-          apply apply_plan_last_protocol.
-          assumption.
-          apply phase_one_protocol.
-          assumption.
-          assumption.
-        }
-        simpl in Hrec.
-        destruct Hrec as [Hrec _].
-        unfold finite_protocol_plan_from in Hrec.
-        rewrite Heqs' in *.
-        assumption.
-      - rewrite Heqs'.
-        apply apply_plan_last.
+      apply receive_phase_future.
+      apply send_phase_result_protocol.
+      all : intuition.
     Qed.
     
     Lemma common_future_no_extra_equivocation
@@ -3741,32 +3812,12 @@ Context
       (Hnf : no_component_fully_equivocating s (GH s)) :
       set_eq (GE (common_future s)) (GE s).
     Proof.
-      unfold common_future.
-      specialize (phase_one_protocol s Hpr Hnf) as Hph1.
-      apply set_eq_tran with (s2 := GE (phase_one_res s)).
-      - specialize (ep_plan (phase_one_res s)) as Hep.
-        spec Hep. {
-          apply apply_plan_last_protocol.
-          all : intuition.
-        }
-        specialize (Hep (get_receives_all (phase_one_res s) index_listing)).
-        spec Hep. apply get_receives_all_protocol. intuition. apply (proj1 Hfinite).
-        apply apply_plan_last_protocol. intuition. intuition.
-        spec Hep. {
-          intros.
-          specialize (get_receives_all_info (phase_one_res s) index_listing) as Hinfo.
-          specialize (Hinfo ai H). simpl in Hinfo.
-          split;[intuition|].
-          destruct Hinfo as [_ Hexist].
-          destruct Hexist as [so [from Heq]].
-          exists so. exists from.
-          split;[intuition|].
-          intuition.
-        }
-        simpl in Hep.
-        apply set_eq_comm.
-        intuition.
-      - apply Hph1.
+      apply set_eq_tran with (s2 := GE (send_phase_result s)).
+      apply receive_phase_GE.
+      apply send_phase_result_protocol.
+      intuition. intuition.
+      apply send_phase_GE.
+      intuition. intuition.
     Qed.
   
   Lemma honest_projections_maximal1
@@ -4051,13 +4102,13 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := phase_one_res s) :
+    (res_send := send_phase_result s) :
     forall (i j : index), i <> j -> project (res_send i) j = project (s i) j.
   Proof.
     intros.
-    specialize (non_self_projections_same_after_sends s Hpr (phase_one_plan s)) as Hsame.
+    specialize (non_self_projections_same_after_sends s Hpr (send_phase_plan s)) as Hsame.
     spec Hsame. {
-      apply phase_one_protocol. 
+      apply send_phase_protocol. 
       intuition.
       intuition.
     }
@@ -4081,7 +4132,7 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := phase_one_res s)
+    (res_send := send_phase_result s)
     (res := common_future s) :
     forall (i : index), project (res i) i = project (res_send i) i.
   Proof.
@@ -4089,7 +4140,7 @@ Context
     assert (protocol_state_prop X res_send). {
       apply apply_plan_last_protocol.
       intuition.
-      apply phase_one_protocol. intuition. intuition.
+      apply send_phase_protocol. intuition. intuition.
     }
     specialize (self_projections_same_after_receives (res_send) H) as Hsame.
     specialize (Hsame (get_receives_all res_send index_listing)).
@@ -4171,7 +4222,7 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := phase_one_res s) 
+    (res_send := send_phase_result s) 
     (i j : index)
     (Hhonest : In i (GH s)) :
     project (get_matching_state s j i) i = project (s i) i.
@@ -4207,7 +4258,7 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := phase_one_res s)
+    (res_send := send_phase_result s)
     (res := common_future s) :
     forall (i j : index), In i (GH res) -> In j (GH res) -> project (res i) j = project (res j) j.
   Proof.
@@ -4222,11 +4273,11 @@ Context
       admit.
     }
     
-    assert (HiGH : In i (GH (phase_one_res s))). {
+    assert (HiGH : In i (GH (send_phase_result s))). {
       admit.
     }
     
-    specialize (get_receives_all_protocol (phase_one_res s) index_listing (proj1 Hfinite) Hsend_pr) as Hrec.
+    specialize (get_receives_all_protocol (send_phase_result s) index_listing (proj1 Hfinite) Hsend_pr) as Hrec.
     simpl in Hrec. destruct Hrec as [Hrec_pr Hrec].
     specialize (Hrec j i). 
     spec Hrec. apply in_listing.
@@ -4258,7 +4309,7 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := phase_one_res s)
+    (res_send := send_phase_result s)
     (res := common_future s) 
     (i target : index)
     (Hi : In i (GH res))
@@ -4357,7 +4408,7 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := phase_one_res s)
+    (res_send := send_phase_result s)
     (res := common_future s) 
     (i target : index)
     (Hi : In i (GH res))
@@ -4377,7 +4428,7 @@ Context
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := phase_one_res s)
+    (res_send := send_phase_result s)
     (res := common_future s) 
     (i : index)
     (Hi : In i (GH res)) : 
