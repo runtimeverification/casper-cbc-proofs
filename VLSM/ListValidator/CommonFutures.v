@@ -2600,6 +2600,29 @@ Context
         exists inter. intuition.
       - exists to. intuition.
     Qed.
+    
+    Lemma get_matching_state_correct2
+      (s : vstate X)
+      (to from : index)
+      (Hin : In to (GH s)) :
+      exists (inter : index), In inter (GH s) /\ (get_matching_state s to from) = (s inter).
+    Proof.
+      unfold get_matching_state.
+      destruct (find (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))
+      (get_topmost_candidates s from)) eqn : eq_find.
+      - apply find_some in eq_find.
+        destruct eq_find as [eq_find _].
+        unfold get_topmost_candidates in eq_find.
+        unfold get_maximal_elements in eq_find.
+        apply filter_In in eq_find.
+        destruct eq_find as [eq_find _].
+        unfold get_candidates in eq_find.
+        unfold component_list in eq_find.
+        apply in_map_iff in eq_find.
+        destruct eq_find as [inter Hinter].
+        exists inter. intuition.
+      - exists to. intuition.
+    Qed.
       
     Definition get_matching_plan
       (s : vstate X)
@@ -4245,9 +4268,89 @@ Context
     In e (hcobs_messages s target).
   Proof.
     intros.
+    assert (H' := H).
     apply cobs_single in H.
     destruct H as [k [Hink Hine]].
     
+    assert (Hspr : protocol_state_prop X res_send). {
+      admit.
+    }
+    
+    assert (In k (GH res_send)). {
+      admit.
+    }
+    
+    assert (Hdif : target <> k). {
+      destruct (decide (k = target)).
+      - subst k. intuition.
+      - intuition.
+    }
+  
+    apply (@unfold_simp_lv_observations index index_listing Hfinite) in Hine.
+    assert (project (res k) target = project (get_matching_state (res_send) k target) target). {
+      unfold res.
+      unfold common_future.
+      specialize (get_receives_all_protocol res_send index_listing (proj1 Hfinite) Hspr) as Hrec.
+      destruct Hrec as [_ Hrec].
+      specialize (Hrec target k (in_listing target)).
+      spec Hrec. intuition.
+      specialize (Hrec H).
+      unfold phase_two. 
+      unfold res_send in Hrec.
+      apply Hrec.
+    }
+    
+    specialize (get_matching_state_correct2 res_send k target H) as Hinter.
+    destruct Hinter as [inter [HinterGH Hmatch]].
+    rewrite Hmatch in H0.
+    
+    assert (In inter (GH res) /\ In inter (GH s)). {
+      admit.
+    }
+    
+    assert (inter <> target). {
+      destruct (decide (inter = target)).
+      - subst inter. intuition.
+      - intuition.
+    }
+    
+    assert (project (res_send inter) target = project (s inter) target). {
+      specialize (non_self_projections_same_after_send_phase s Hpr Hnf inter target H2) as Hnon.
+      unfold res_send.
+      rewrite Hnon.
+      intuition. 
+    }
+    
+    
+    destruct Hine as [Hine|Hine].
+    - apply cobs_single.
+      exists inter. split;[intuition|].
+      rewrite H3 in H0.
+      rewrite H0 in Hine.
+      apply refold_simp_lv_observations1. admit. admit. intuition.
+    - destruct Hine as [l Hine].
+      
+      destruct (decide (k = l)).
+      + subst k. admit.
+      + assert (Hl : project (res k) l = project (get_matching_state res_send k l) l). {
+          unfold res.
+          unfold common_future.
+          specialize (get_receives_all_protocol res_send index_listing (proj1 Hfinite) Hspr) as Hrec.
+          destruct Hrec as [_ Hrec].
+          specialize (Hrec l k (in_listing l)).
+          spec Hrec. intuition.
+          specialize (Hrec H).
+          unfold phase_two. 
+          unfold res_send in Hrec.
+          apply Hrec.
+        }
+        
+      specialize (get_matching_state_correct2 res_send k l H) as Hinter2.
+      destruct Hinter2 as [inter2 [Hinter2GH Hmatch2]].
+      rewrite Hmatch2 in Hl.
+      rewrite Hl in Hine.
+      apply cobs_single.
+      exists inter2. split;[admit|].
   Qed.
   
   Lemma all_message_observations_in_single
