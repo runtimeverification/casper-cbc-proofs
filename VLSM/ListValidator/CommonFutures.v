@@ -4690,4 +4690,77 @@ Context
         * split;[intuition|].
           intuition.
   Admitted.
+  
+  Lemma honest_equiv_proj_same
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := send_phase_result s)
+    (res := common_future s) :
+    forall (h1 h2 hh : index), 
+    In h1 (GH res) ->
+    In h2 (GH res) -> 
+    In hh (HH res) ->
+    project (res h1) hh = project (res h2) hh.
+  Proof.
+    intros.
+    
+    destruct (decide (h1 = hh)).
+    subst hh.
+    specialize (honest_receive_honest s Hpr Hnf h2 h1).
+    intuition.
+    destruct (decide (h2 = hh)).
+    subst hh.
+    specialize (honest_receive_honest s Hpr Hnf h1 h2).
+    intuition.
+    
+    destruct (decide (project (res h1) hh = project (res h2) hh));[intuition|]. 
+    exfalso.
+    
+    specialize (get_receives_all_protocol res_send index_listing (proj1 Hfinite)) as Hmatch.
+    spec Hmatch. apply send_phase_result_protocol. intuition. intuition.
+    destruct Hmatch as [_ Hmatch].
+    
+    specialize (Hmatch hh h1) as Hmatch1. 
+    spec Hmatch1. apply in_listing. spec Hmatch1. intuition.
+    spec Hmatch1. unfold res_send. rewrite GH_eq3 by intuition. intuition.
+    specialize (Hmatch hh h2) as Hmatch2. 
+    spec Hmatch2. apply in_listing. spec Hmatch2. intuition.
+    spec Hmatch2. unfold res_send. rewrite GH_eq3 by intuition. intuition.
+    
+    unfold res in n1. unfold common_future in n1. unfold receive_phase_result in n1.
+    unfold res_send in Hmatch1, Hmatch2.
+    unfold receive_phase in n1.
+    unfold receive_phase_plan in n1.
+    rewrite Hmatch1 in n1.
+    rewrite Hmatch2 in n1.
+    
+    clear Hmatch Hmatch1 Hmatch2.
+    
+    
+    
+    assert (In hh (HE res)). {
+      unfold HE.
+      apply GE_direct.
+      unfold cequiv_evidence. 
+      unfold equivocation_evidence.
+      setoid_rewrite hbo_cobs.
+      exists (SimpObs Message' hh (project (res h1) hh)).
+      split.
+      - apply in_cobs_messages'.
+        apply cobs_single.
+        exists h1. split;[intuition|].
+        apply refold_simp_lv_observations1.
+        apply protocol_state_component_no_bottom.
+        apply common_future_result_protocol.
+        intuition.
+        intuition.
+        admit.
+        intuition.
+      - split;[intuition|].
+   
+    }
+  Qed.
+    
+     
 End Composition.
