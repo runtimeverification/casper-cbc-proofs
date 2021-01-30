@@ -4457,8 +4457,7 @@ Context
     (Hnf : no_component_fully_equivocating s (GH s))
     (res_send := send_phase_result s)
     (res := common_future s) 
-    (i target : index)
-    (Hi : In i (GH res))
+    (target : index)
     (Htarget : ~In target (GH res))
     (e : simp_lv_event) :
     In e (hcobs_messages res target) -> 
@@ -4551,9 +4550,20 @@ Context
     (Htarget : ~In target (GH res))
     (e : simp_lv_event) :
     In e (hcobs_messages s target) -> 
-    exists (j : index), (In j (GH res)) /\ In e (simp_lv_message_observations (project (s j) j) target).
+    In e (simp_lv_message_observations (res i) target).
   Proof.
-    
+    intros.
+    apply cobs_single in H.
+    destruct H as [j [HjGH Hine]].
+    apply (@refold_simp_lv_observations2 index index_listing Hfinite).
+    apply protocol_state_component_no_bottom; apply common_future_result_protocol; intuition.
+    exists j.
+    specialize (honest_receive_honest s Hpr Hnf i j Hi) as Hhonest.
+    spec Hhonest. rewrite <- GH_eq2; intuition.
+    unfold res. rewrite Hhonest.
+    unfold common_future.
+    rewrite self_projections_same_after_receive_phase by (apply send_phase_result_protocol;intuition).
+    rewrite send_phase_result_projections; intuition.
   Qed.
   
   Lemma local_and_honest
@@ -4610,18 +4620,30 @@ Context
          rewrite H1 in Heqj.
          destruct (decide (v = j));[subst v;intuition|].
          subst le. intuition.
-       * apply cobs_single in He1.
-         apply cobs_single in He2.
-         destruct He1 as [j [Hinj Hine1]].
-         destruct He2 as [k [Hink Hine2]].
-         
-         apply GE_direct.
+       * apply GE_direct.
          unfold cequiv_evidence.
          unfold equivocation_evidence.
          setoid_rewrite hbo_cobs.
-         
+         inversion He1'.
+         inversion He2'.
          exists e1.
-      
+         split.
+         -- apply all_message_observations_old in He1.
+            apply all_message_observations_in_new_projections with (i := i) in He1.
+            unfold wcobs. unfold composite_state_events_fn. simpl. unfold Hstate_events_fn.
+            unfold res. apply in_simp_lv_message_observations'. intuition.
+            intuition. intuition. intuition. rewrite H1.
+            intuition. intuition. intuition. rewrite H1. intuition.
+         -- split;[intuition|].
+            exists e2.
+            split.
+            ++ apply all_message_observations_old in He2.
+               apply all_message_observations_in_new_projections with (i := i) in He2.
+               unfold wcobs. unfold composite_state_events_fn. simpl. unfold Hstate_events_fn.
+               unfold res. apply in_simp_lv_message_observations'. intuition.
+               intuition. intuition. intuition. rewrite H2.
+               intuition. intuition. intuition. rewrite H2. intuition.
+            ++ rewrite He2'. rewrite H1. intuition.
     - assert (Hdif : i <> v). {
         admit.
       }
@@ -4666,6 +4688,6 @@ Context
           rewrite decide_False in H0 by intuition.
           intuition.
         * split;[intuition|].
-          intuition. 
-  Qed.
+          intuition.
+  Admitted.
 End Composition.
