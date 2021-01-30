@@ -4242,6 +4242,50 @@ Context
       apply send_phase_GE.
       intuition. intuition.
     Qed.
+    
+    Remark common_future_result_protocol
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (Hnf : no_component_fully_equivocating s (GH s))
+      (res := common_future s) :
+      protocol_state_prop X res.
+    Proof.
+      unfold res.
+      unfold common_future.
+      apply receive_phase_result_protocol.
+      apply send_phase_result_protocol.
+      all : intuition.
+    Qed. 
+    
+    Corollary GH_eq1
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (Hnf : no_component_fully_equivocating s (GH s))
+      (res_send := send_phase_result s)
+      (res := common_future s) :
+      (GH s) = (GH res_send).
+    Proof.
+    Admitted.
+    
+    Corollary GH_eq2
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (Hnf : no_component_fully_equivocating s (GH s))
+      (res_send := send_phase_result s)
+      (res := common_future s) :
+      (GH s) = (GH res).
+    Proof.
+    Admitted.
+    
+    Corollary GH_eq3
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (Hnf : no_component_fully_equivocating s (GH s))
+      (res_send := send_phase_result s)
+      (res := common_future s) :
+      (GH res_send) = (GH res).
+    Proof.
+    Admitted.
    
   Lemma honest_receive_honest
     (s : vstate X)
@@ -4259,13 +4303,8 @@ Context
       all : intuition.
     }
     
-    assert (In i (GH s) /\ In j (GH s)). {
-       admit.
-    }
-    
-    assert (HiGH : In i (GH (send_phase_result s))). {
-      admit.
-    }
+    assert (In i (GH s) /\ In j (GH s)) by (setoid_rewrite GH_eq2;intuition).
+    assert (HiGH : In i (GH (send_phase_result s))) by (setoid_rewrite <- GH_eq1;intuition).
     
     specialize (get_receives_all_protocol (send_phase_result s) index_listing (proj1 Hfinite) Hsend_pr) as Hrec.
     simpl in Hrec. destruct Hrec as [Hrec_pr Hrec].
@@ -4285,7 +4324,8 @@ Context
     rewrite <- self_projections_same_after_receive_phase.
     intuition.
     1, 2 : intuition.
-  Admitted.
+    setoid_rewrite <- GH_eq1; intuition.
+  Qed.
   
   Definition hcobs (s : vstate X) := @wcobs (GH s) s.
   Definition hcobs_messages (s : vstate X) := @wcobs_messages (GH s) s.
@@ -4296,6 +4336,120 @@ Context
   
   Definition LE (i : index) := (@wE [i]).
   Definition LH (i : index) := (@wH [i]).
+  
+  Lemma all_projections_old1
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := send_phase_result s)
+    (res := common_future s) 
+    (i j : index)
+    (Hdif : i <> j)
+    (Hi : In i (GH res)) :
+    (project (res i) j = (s j) /\ (In j (GH res))) \/
+    (exists (inter : index), In inter (GH res) /\
+    project (s inter) j = project (res i) j).
+  Proof.
+    assert (Hspr: protocol_state_prop X res_send) by (apply send_phase_result_protocol;intuition).
+    assert (In i (GH res_send)). {
+      unfold res_send.
+      rewrite GH_eq3; intuition.
+    }
+    
+    assert (project (res i) j = project (get_matching_state (res_send) i j) j). {
+      unfold res.
+      unfold common_future.
+      specialize (get_receives_all_protocol res_send index_listing (proj1 Hfinite) Hspr) as Hrec.
+      destruct Hrec as [_ Hrec].
+      specialize (Hrec j i (in_listing j)).
+      spec Hrec. intuition.
+      specialize (Hrec H).
+      apply Hrec.
+    }
+    specialize (get_matching_state_correct2 res_send i j H) as Hinter.
+    destruct Hinter as [inter [HinterGH Hmatch]].
+    
+    destruct (decide (inter = j)).
+    - subst inter.
+      left.
+      rewrite Hmatch in H0.
+      unfold res_send in H0.
+      rewrite send_phase_result_projections in H0.
+      2 , 3 : intuition.
+      2 : {
+        rewrite GH_eq1; intuition.
+      }
+      split.
+      + intuition.
+      + unfold res. rewrite <- GH_eq3; intuition.
+    - right. 
+      exists inter.
+      split.
+      + unfold res. rewrite <- GH_eq3; intuition.
+      + assert (project (s inter) j = project (res_send inter) j). {
+          specialize (non_self_projections_same_after_send_phase s Hpr Hnf inter j n).
+          intuition.
+        }
+        rewrite Hmatch in H0.
+        rewrite H0.
+        intuition.
+  Qed.
+  
+  Lemma all_projections_old2
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := send_phase_result s)
+    (res := common_future s) 
+    (i j : index)
+    (Hi : In i (GH res))
+    (Hk : ~ In j (GH res)) :
+    exists (inter : index), In inter (GH res) /\
+    project (s inter) j = project (res i) j.
+  Proof.
+    
+    assert (Hdif : i <> j). {
+      destruct (decide (i = j));[subst i;intuition|intuition].
+    }
+  
+    assert (Hspr: protocol_state_prop X res_send) by (apply send_phase_result_protocol;intuition).
+    assert (In i (GH res_send)). {
+      unfold res_send.
+      rewrite GH_eq3; intuition.
+    }
+    
+    assert (project (res i) j = project (get_matching_state (res_send) i j) j). {
+      unfold res.
+      unfold common_future.
+      specialize (get_receives_all_protocol res_send index_listing (proj1 Hfinite) Hspr) as Hrec.
+      destruct Hrec as [_ Hrec].
+      specialize (Hrec j i (in_listing j)).
+      spec Hrec. intuition.
+      specialize (Hrec H).
+      apply Hrec.
+    }
+    specialize (get_matching_state_correct2 res_send i j H) as Hinter.
+    destruct Hinter as [inter [HinterGH Hmatch]].
+    
+    assert (inter <> j). {
+      destruct (decide (inter = j)).
+      - subst inter.
+        unfold res_send in HinterGH. 
+        rewrite GH_eq3 in HinterGH; intuition.
+      - intuition.
+    } 
+    
+    exists inter.
+    split.
+    + unfold res. rewrite <- GH_eq3; intuition.
+    + assert (project (s inter) j = project (res_send inter) j). {
+        specialize (non_self_projections_same_after_send_phase s Hpr Hnf inter j H1).
+        intuition.
+      }
+      rewrite Hmatch in H0.
+      rewrite H0.
+      intuition.
+  Qed.
   
   Lemma all_message_observations_old
     (s : vstate X)
@@ -4316,11 +4470,12 @@ Context
     destruct H as [k [Hink Hine]].
     
     assert (Hspr : protocol_state_prop X res_send). {
-      admit.
+      apply send_phase_result_protocol; intuition.
     }
     
     assert (In k (GH res_send)). {
-      admit.
+      unfold res_send.
+      rewrite GH_eq3; intuition.
     }
     
     assert (Hdif : target <> k). {
@@ -4330,73 +4485,62 @@ Context
     }
   
     apply (@unfold_simp_lv_observations index index_listing Hfinite) in Hine.
-    assert (project (res k) target = project (get_matching_state (res_send) k target) target). {
-      unfold res.
-      unfold common_future.
-      specialize (get_receives_all_protocol res_send index_listing (proj1 Hfinite) Hspr) as Hrec.
-      destruct Hrec as [_ Hrec].
-      specialize (Hrec target k (in_listing target)).
-      spec Hrec. intuition.
-      specialize (Hrec H).
-      unfold phase_two. 
-      unfold res_send in Hrec.
-      apply Hrec.
+    2 : {
+      apply protocol_state_component_no_bottom.
+      apply common_future_result_protocol; intuition.
     }
-    
-    specialize (get_matching_state_correct2 res_send k target H) as Hinter.
-    destruct Hinter as [inter [HinterGH Hmatch]].
-    rewrite Hmatch in H0.
-    
-    assert (In inter (GH res) /\ In inter (GH s)). {
-      admit.
-    }
-    
-    assert (inter <> target). {
-      destruct (decide (inter = target)).
-      - subst inter. intuition.
-      - intuition.
-    }
-    
-    assert (project (res_send inter) target = project (s inter) target). {
-      specialize (non_self_projections_same_after_send_phase s Hpr Hnf inter target H2) as Hnon.
-      unfold res_send.
-      rewrite Hnon.
-      intuition. 
-    }
-    
+    apply cobs_single.
     
     destruct Hine as [Hine|Hine].
-    - apply cobs_single.
-      exists inter. split;[intuition|].
-      rewrite H3 in H0.
-      rewrite H0 in Hine.
-      apply refold_simp_lv_observations1. admit. admit. intuition.
-    - destruct Hine as [l Hine].
-      
+    - specialize (all_projections_old2 s Hpr Hnf k target Hink Htarget) as Hinter.
+      destruct Hinter as [inter [HinterGH Hproject]].
+      exists inter.
+      split.
+      + rewrite GH_eq2; intuition.
+      + unfold res in Hine.
+        rewrite <- Hproject in Hine.
+        apply refold_simp_lv_observations1.
+        apply protocol_state_component_no_bottom; intuition.
+        apply cobs_single in H'.
+        destruct H' as [inter2 Hrest].
+        destruct Hrest as [_ Hrest].
+        apply (@in_message_observations_nb index index_listing Hfinite) in Hrest.
+        rewrite Hine in Hrest. simpl in Hrest.
+        intuition.
+        intuition.
+    - destruct Hine as [l Hinel].
       destruct (decide (k = l)).
-      + subst k. admit.
-      + assert (Hl : project (res k) l = project (get_matching_state res_send k l) l). {
-          unfold res.
-          unfold common_future.
-          specialize (get_receives_all_protocol res_send index_listing (proj1 Hfinite) Hspr) as Hrec.
-          destruct Hrec as [_ Hrec].
-          specialize (Hrec l k (in_listing l)).
-          spec Hrec. intuition.
-          specialize (Hrec H).
-          unfold phase_two. 
-          unfold res_send in Hrec.
-          apply Hrec.
-        }
-        
-      specialize (get_matching_state_correct2 res_send k l H) as Hinter2.
-      destruct Hinter2 as [inter2 [Hinter2GH Hmatch2]].
-      rewrite Hmatch2 in Hl.
-      rewrite Hl in Hine.
-      apply cobs_single.
-      exists inter2. split;[admit|].
+      + subst l.
+        unfold res in Hinel.
+        unfold common_future in Hinel.
+        rewrite self_projections_same_after_receive_phase in Hinel by intuition.
+        rewrite send_phase_result_projections in Hinel.
+        2, 3 : intuition.
+        2 : (rewrite GH_eq2; intuition).
+        exists k. 
+        split. 
+        * rewrite GH_eq1; intuition.
+        * intuition.
+      + specialize (all_projections_old1 s Hpr Hnf k l n Hink) as Hinter.
+        destruct Hinter.
+        * unfold res in Hinel. 
+          destruct H0 as [H0 HlGH].
+          rewrite H0 in Hinel.
+          exists l.
+          rewrite GH_eq2; intuition.
+        * destruct H0 as [inter2 [Hinter2GH Hproj]].
+          unfold res in Hinel.
+          rewrite <- Hproj in Hinel.
+          exists inter2.
+          split.
+          -- rewrite GH_eq2; intuition.
+          -- apply (@refold_simp_lv_observations2 index index_listing Hfinite).
+             apply protocol_state_component_no_bottom.
+             intuition.
+             exists l. intuition.
   Qed.
   
-  Lemma all_message_observations_in_single
+  Lemma all_message_observations_in_new_projections
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s))
@@ -4404,15 +4548,11 @@ Context
     (res := common_future s) 
     (i target : index)
     (Hi : In i (GH res))
+    (Htarget : ~In target (GH res))
     (e : simp_lv_event) :
-    In e (hcobs_messages res target) -> In e (simp_lv_message_observations (res i) target).
+    In e (hcobs_messages s target) -> 
+    exists (j : index), (In j (GH res)) /\ In e (simp_lv_message_observations (project (s j) j) target).
   Proof.
-    intros.
-    apply cobs_single in H.
-    destruct H as [k [Hink Hine]].
-    
-    destruct (decide (k = i));[subst k;intuition|].
-    specialize (honest_receive_honest s Hpr Hnf i k Hi Hink) as Hrec.
     
   Qed.
   
