@@ -19,3 +19,7 @@ _build
 resources/index.html
 .lia.cache
 html
+deps.dot
+deps.map
+resources/deps.png
+resources/map.html
