@@ -679,7 +679,7 @@ Program Instance composed_basic_observable_equivocation
   := @composed_observable_basic_equivocation
       message V message message_eq message_preceeds message_preceeds_dec
       full_node_message_subject_of_observation index indices finite_index IM_index
-      free_observable_messages_index 
+      free_observable_messages_index
       Hmeasurable Hrt
       composite_validators
       composite_validators_nodup _.
@@ -695,7 +695,7 @@ Next Obligation.
             (Exists
               (fun e2 =>
                 full_node_message_subject_of_observation e2 = Some v /\
-                ~ comparable message_preceeds e1 e2) 
+                ~ comparable message_preceeds e1 e2)
               (state_union s)))
           (state_union s)
         )

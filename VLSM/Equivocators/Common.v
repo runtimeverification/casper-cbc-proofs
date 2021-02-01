@@ -203,7 +203,7 @@ Lemma equivocator_state_extend_project_last
   : let ext := equivocator_state_extend bs s in
     forall (l : S ns < S (projT1 ext)), projT2 ext (of_nat_lt l) = s.
 Proof.
-  unfold ns. clear ns. 
+  unfold ns. clear ns.
   destruct bs as (ns, sbs). simpl. intro l.
   rewrite to_nat_of_nat.
   destruct (nat_eq_dec (S ns) (S ns)); [|lia].
@@ -538,7 +538,7 @@ Lemma new_machine_label_equivocator_state_project_last
 Proof.
   destruct l as (l, new). simpl in Hnew. subst new.
   unfold vtransition in Ht. simpl in Ht. inversion Ht. subst.
-  clear Ht. 
+  clear Ht.
   remember (equivocator_state_extend X s sn) as ext.
   destruct ext as (n, bs).
   unfold projT1. unfold equivocator_state_descriptor_project.
@@ -634,7 +634,7 @@ Proof.
   destruct s as (nsi', bsi').
   simpl in Hieqvi, l.
   unfold equivocator_state_update in *.
-  unfold projT1 in *. 
+  unfold projT1 in *.
   destruct (le_lt_dec (S nsi') ni); [lia|].
   rewrite eq_dec_if_false; [reflexivity|].
   intro contra. elim Hnieqvi.

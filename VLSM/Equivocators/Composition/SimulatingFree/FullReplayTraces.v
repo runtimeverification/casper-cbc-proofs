@@ -146,7 +146,7 @@ Proof.
     ) as Hlst.
   rewrite Htra in Hlst. simpl in Hlst.
   simpl.
-  match goal with 
+  match goal with
   |- context [fst (apply_plan _ ?l _)] => replace l with tra_final
   end.
   destruct

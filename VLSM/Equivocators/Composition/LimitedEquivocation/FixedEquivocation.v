@@ -182,7 +182,7 @@ Section fixed_equivocation_with_fullnode.
     (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
     (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
     .
-  
+
   Local Instance index_equivocating_dec
     (i : index)
     : Decision (index_equivocating_prop equivocating i).
@@ -273,7 +273,7 @@ Proof.
   intro eqv. specialize (Hes eqv).
   unfold equivocator_IM in Hes.
   unfold equivocators_state_project.
-  specialize (Heqv eqv). 
+  specialize (Heqv eqv).
   destruct (eqv_choice eqv) as [sn | i fi]; [assumption|].
   destruct Hes as [Hzero Hes].
   destruct (es eqv) as (n, bs). simpl in Heqv.
@@ -382,7 +382,7 @@ Proof.
       assert (Hplst : protocol_state_prop X lst).
       { apply finite_ptrace_last_pstate in HtrX'. subst. assumption. }
       apply (extend_right_finite_trace_from X lst []); [constructor; assumption|].
-      simpl in Hl. subst. 
+      simpl in Hl. subst.
       simpl in Hc.
       destruct Hc as [[Hno_equiv _] Hfixed].
       simpl in Htx,Hvx,Hstate_project.
@@ -455,8 +455,8 @@ Proof.
       split; [apply Htr_project|]. split; [|assumption].
       subst tr. clear -Hstate_project Hx.
       rewrite Hstate_project in Hx.
-      rewrite <- Hx. f_equal. unfold final_state. 
+      rewrite <- Hx. f_equal. unfold final_state.
       rewrite map_app. simpl. rewrite last_is_last. reflexivity.
-Admitted. 
+Admitted.
 
 End from_equivocators_to_nodes.

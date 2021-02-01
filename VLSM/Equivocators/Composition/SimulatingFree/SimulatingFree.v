@@ -89,7 +89,7 @@ Proof.
   simpl in Heqa_app.
   inversion Heqa_app. subst. clear Heqa_app. simpl.
   unfold equivocators_transition_item_project.
-  unfold composite_transition_item_projection.  
+  unfold composite_transition_item_projection.
   unfold composite_transition_item_projection_from_eq.
   unfold eq_rect_r.
   simpl.
@@ -210,7 +210,7 @@ Proof.
   + simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
     simpl.
     unfold equivocators_transition_item_project.
-    unfold composite_transition_item_projection.  
+    unfold composite_transition_item_projection.
     unfold composite_transition_item_projection_from_eq.
     unfold eq_rect_r.
     simpl.
@@ -238,7 +238,7 @@ Proof.
     * simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
       simpl.
       unfold equivocators_transition_item_project. simpl.
-      unfold composite_transition_item_projection. simpl.  
+      unfold composite_transition_item_projection. simpl.
       unfold composite_transition_item_projection_from_eq. simpl.
       unfold eq_rect_r. simpl.
       rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
@@ -274,7 +274,7 @@ Proof.
       -- simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
         simpl.
         unfold equivocators_transition_item_project. simpl.
-        unfold composite_transition_item_projection. simpl.  
+        unfold composite_transition_item_projection. simpl.
         unfold composite_transition_item_projection_from_eq. simpl.
         unfold eq_rect_r. simpl.
         rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
@@ -290,9 +290,9 @@ Proof.
         ++ subst eqv'. rewrite state_update_eq. simpl. lia.
         ++ rewrite state_update_neq by assumption. apply Hsize.
       -- simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-        simpl. 
+        simpl.
         unfold equivocators_transition_item_project. simpl.
-        unfold composite_transition_item_projection. simpl.  
+        unfold composite_transition_item_projection. simpl.
         unfold composite_transition_item_projection_from_eq. simpl.
         unfold eq_rect_r. simpl.
         rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
@@ -757,7 +757,7 @@ Proof.
       unfold equivocators_trace_project_folder.
       subst el.
       unfold equivocators_transition_item_project. simpl.
-      unfold composite_transition_item_projection. simpl.  
+      unfold composite_transition_item_projection. simpl.
       unfold composite_transition_item_projection_from_eq. simpl.
       unfold eq_rect_r. simpl.
       simpl in Hproject.

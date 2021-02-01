@@ -216,7 +216,7 @@ Lemma equivocator_transition_item_project_proper_characterization
           (Hsx : sx = equivocator_state_descriptor_project X s descriptor'),
           vvalid X (l itemx) (sx, input itemx) /\
           vtransition X (l itemx) (sx, input itemx) = (destination itemx, output itemx)
-      | None => 
+      | None =>
         equivocator_state_descriptor_project X (destination item) descriptor = equivocator_state_descriptor_project X s descriptor'
       end.
 Proof.
@@ -257,7 +257,7 @@ Proof.
       * inversion e. subst ni. clear e.
         eexists _. eexists _. split; [reflexivity|]. split; [repeat split|].
         -- unfold equivocator_state_descriptor_project.
-          destruct (le_lt_dec (S n) n); [lia|]. simpl. f_equal. apply of_nat_ext. 
+          destruct (le_lt_dec (S n) n); [lia|]. simpl. f_equal. apply of_nat_ext.
         -- intros.
           destruct Hv as [Heqv Hv].
           split; [assumption|].
@@ -272,7 +272,7 @@ Proof.
           replace (of_nat_lt l0) with (of_nat_lt Heqv) in * by apply of_nat_ext.
           clear l0.
           assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
-          { subst. 
+          { subst.
             destruct s as (nsi, si). unfold projT2.
             simpl in Heqv.
             destruct (le_lt_dec (S nsi) ieqvi); [lia|].
@@ -311,7 +311,7 @@ Proof.
         eexists _. eexists _. split; [reflexivity|].
         split; [repeat split|].
         -- unfold equivocator_state_descriptor_project.
-          destruct (le_lt_dec (S ni) n); [lia|]. simpl. f_equal. apply of_nat_ext. 
+          destruct (le_lt_dec (S ni) n); [lia|]. simpl. f_equal. apply of_nat_ext.
         -- intros.  destruct Hv as [Heqv Hv].
           split; [assumption|].
           intros. simpl.

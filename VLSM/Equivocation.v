@@ -415,7 +415,7 @@ Section Simple.
   (** It is now straightforward to define a [no_equivocations] composition constraint.
       An equivocating transition can be detected by calling the [has_been_sent]
       oracle on its arguments and we simply forbid them **)
-   
+
     Definition no_equivocations_except_from
       {Hbs : has_been_sent_capability}
       (exception : message -> Prop)
@@ -427,7 +427,7 @@ Section Simple.
       | None => True
       | Some m => has_been_sent s m \/ exception m
       end.
-    
+
     Definition no_equivocations
       {Hbs : has_been_sent_capability}
       (l : vlabel vlsm)
@@ -436,7 +436,7 @@ Section Simple.
       :=
       no_equivocations_except_from (vinitial_message_prop vlsm) l som.
 
-    
+
     Class has_been_received_capability := {
       has_been_received: state_message_oracle;
       has_been_received_dec :> RelDecision has_been_received;
@@ -1534,7 +1534,7 @@ Section Composite.
       composite_has_been_sent_stepwise_props.
 
   Section composite_has_been_received.
-  
+
   Context
         (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
         .
@@ -1576,7 +1576,7 @@ Section Composite.
     has_been_received_capability_from_stepwise
       composite_has_been_received_dec
       composite_has_been_received_stepwise_props.
-  
+
   End composite_has_been_received.
 
 
@@ -1891,7 +1891,7 @@ Qed.
       match type of Hx with
       | finite_protocol_trace_from _ ?s _ => remember s as tr_last
       end.
-      match type of Hlst with 
+      match type of Hlst with
       | protocol_state_prop _ ?l => replace l with tr_last in *
       end.
       change [x] with ([] ++ [x]).
@@ -1900,7 +1900,7 @@ Qed.
       + apply (finite_ptrace_empty (vlsm_add_initial_messages X Q)).
         assumption.
       + simpl. split; [|apply H3]. split; [assumption|].
-        destruct (id H3) as [[_ [_ Hv]] _]. simpl in *. 
+        destruct (id H3) as [[_ [_ Hv]] _]. simpl in *.
         split; [|apply Hv].
         destruct iom as [m|]; [|apply option_protocol_message_None].
         apply option_protocol_message_Some.
@@ -2085,7 +2085,7 @@ Section seeded_composite_vlsm_no_equivocation.
     (finite_index : Listing index_listing)
     (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index has_been_sent_capabilities)
     .
-  
+
   Existing Instance X_has_been_sent_capability.
 
   Section seeded_composite_vlsm_no_equivocation_definition.
@@ -2138,7 +2138,7 @@ Section seeded_composite_vlsm_no_equivocation.
     :=
     no_equivocations X l som
     /\ constraint l som.
-  
+
   Context
     (SeededNoeqvFalse := seeded_composite_no_equivocation_vlsm (fun m => False))
     (Noeqv := composite_vlsm IM no_equivocations_constraint)
@@ -2153,7 +2153,7 @@ Section seeded_composite_vlsm_no_equivocation.
     |- VLSM_eq (vlsm_add_initial_messages ?m _) _ => specialize (vlsm_is_add_initial_False m) as Heq
     end.
     apply VLSM_eq_sym in Heq.
-    match type of Heq with 
+    match type of Heq with
     | VLSM_eq _ ?v => apply VLSM_eq_trans with (machine v)
     end
     ; [assumption|].
@@ -2193,4 +2193,4 @@ Section seeded_composite_vlsm_no_equivocation.
       left. assumption.
   Qed.
 
-End seeded_composite_vlsm_no_equivocation. 
+End seeded_composite_vlsm_no_equivocation.

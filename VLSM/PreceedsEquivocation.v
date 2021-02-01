@@ -400,7 +400,7 @@ Instance observable_messages
 
 Definition message_observation_based_equivocation_evidence
   : @observation_based_equivocation_evidence state validator message _ _ _ message_preceeds_dec sender.
-Proof. split. Defined.  
+Proof. split. Defined.
 
 Local Instance message_observation_based_equivocation_evidence_dec
   : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ message_observation_based_equivocation_evidence).

@@ -55,19 +55,19 @@ messages, implementing a limited equivocation tolerance policy.
   Program Instance observable_messages
     : observable_events message message
     := {
-      has_been_observed (m e :message) := m = e \/ In e (get_message_set (unmake_justification (get_justification m))) 
+      has_been_observed (m e :message) := m = e \/ In e (get_message_set (unmake_justification (get_justification m)))
     }.
   Next Obligation.
     intros m e. apply Decision_or; [| apply in_dec]; apply message_eq.
   Defined.
- 
+
   Definition full_node_client_observable_messages_fn
     (s : set message)
     (v : V)
     : set message
     :=
     filter (fun m => bool_decide (sender m = v)) s.
-  
+
   Definition full_node_client_state_validators
     (s : set message)
     : set V
@@ -77,7 +77,7 @@ messages, implementing a limited equivocation tolerance policy.
   Instance full_node_client_observable_messages
     : observable_events (set message) message
     :=
-    state_observable_events_instance (set message) V message _ 
+    state_observable_events_instance (set message) V message _
       full_node_client_observable_messages_fn full_node_client_state_validators.
 
   Lemma full_node_client_has_been_observed_iff
@@ -112,7 +112,7 @@ messages, implementing a limited equivocation tolerance policy.
   Instance full_node_client_observation_based_equivocation_evidence
     : observation_based_equivocation_evidence (set message) V message _ decide_eq _ happens_before_dec full_node_message_subject_of_observation
     :=
-    observable_events_equivocation_evidence _ _ _ _ 
+    observable_events_equivocation_evidence _ _ _ _
       full_node_client_observable_messages_fn full_node_client_state_validators
       _ happens_before_dec full_node_message_subject_of_observation.
 

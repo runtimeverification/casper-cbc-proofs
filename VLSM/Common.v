@@ -68,7 +68,7 @@ corresponding sets.
     ; m0 := @m0 _ _ sign
     ; l0 := @l0 _ _ sign
     |}.
-  
+
   Definition decidable_initial_messages_prop
     {message : Type} {vtype : VLSM_type message} (sign : VLSM_sign vtype)
     := forall m, Decision (initial_message_prop m).
@@ -628,7 +628,7 @@ pre-existing concepts.
       (l : label)
       (s : state),
       protocol_transition l som (s, Some m).
-    
+
     Lemma can_emit_iff
       (m : message)
       : can_emit m <-> exists s, protocol_generated_prop s m.
@@ -2953,7 +2953,7 @@ Proof.
     apply finite_protocol_trace_from_app_iff in Htr.
     destruct Htr as [_ Htr].
     inversion Htr. clear Htr. subst. simpl in Hm. subst.
-    eexists _, l1. apply H3. 
+    eexists _, l1. apply H3.
 Qed.
 
 Lemma VLSM_incl_protocol_generated_prop

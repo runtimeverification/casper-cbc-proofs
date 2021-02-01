@@ -461,7 +461,7 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
           protocol_state_prop (pre_loaded_with_all_messages_vlsm free_composite_vlsm) s ->
           forall (l : composite_label) (om : option message),
             constraint1 l (s, om) -> constraint2 l (s, om).
-    
+
     Lemma preloaded_constraint_subsumption_weaker
         (constraint1 constraint2 : composite_label -> composite_state * option message -> Prop)
         : constraint_subsumption constraint1 constraint2 -> preloaded_constraint_subsumption constraint1 constraint2.
@@ -712,7 +712,7 @@ Then <<X1>> is trace-included into <<X2>>.
       -
         destruct im as [m Hjm]; simpl in om.
         cut (vinitial_message_prop (vlsm_add_initial_messages free_composite_vlsm Q) m).
-        { intro Hinit. 
+        { intro Hinit.
           replace (lift_to_composite_state j s) with (proj1_sig (vs0 (vlsm_add_initial_messages free_composite_vlsm Q)))
           ; try (symmetry; apply state_update_id; reflexivity).
           unfold om. clear om.

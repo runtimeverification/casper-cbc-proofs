@@ -28,7 +28,7 @@ Definition composite_transition_item_projection_from_eq
   j
   (e : j = i)
   : vtransition_item (IM j)
-  := 
+  :=
   let lj := eq_rect_r _ (projT2 (l item)) e in
   @Build_transition_item _ (type (IM j)) lj (input item) (destination item j) (output item).
 
@@ -347,7 +347,7 @@ Proof.
       unfold vtransition in Ht. simpl in Ht.
       unfold vtransition in Ht. simpl in Ht.
       destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.
-      inversion Ht; subst. 
+      inversion Ht; subst.
       unfold composite_transition_item_projection_from_eq. simpl.
       rewrite state_update_eq in *.
       simpl in Hv.
@@ -415,7 +415,7 @@ Proof.
   apply preloaded_protocol_state_projection.
   apply finite_ptrace_first_pstate in Htr.
   assumption.
-Qed.  
+Qed.
 
 Lemma in_futures_projection
   (s1 s2 : state)

@@ -126,7 +126,7 @@ Lemma equivocators_transition_item_project_proper_descriptor_characterization
           (Hsx : sx = equivocators_state_project eqv_choice' s),
           free_composite_valid IM (l itemx) (sx, input itemx) /\
           composite_transition IM (l itemx) (sx, input itemx) = (destination itemx, output itemx)
-      | None => 
+      | None =>
         equivocators_state_project eqv_choice (destination item) = equivocators_state_project eqv_choice' s
       end.
 Proof.
@@ -145,8 +145,8 @@ Proof.
   ; rewrite Hli; subst; split; [repeat split|]
   | split; [exact I|]]
   ; intros
-  ; match type of Ht with 
-    | (let (_, _) := ?t in _ ) = _ => 
+  ; match type of Ht with
+    | (let (_, _) := ?t in _ ) = _ =>
       destruct t as (si', om') eqn:Ht'
     end
   ; inversion Ht; subst; clear Ht
@@ -173,7 +173,7 @@ Proof.
       rewrite equivocators_choice_update_eq.
       simpl in *. rewrite Htx. f_equal.
       apply functional_extensionality_dep.
-      intro eqv. 
+      intro eqv.
       destruct (decide (eqv = i)).
       * subst. repeat rewrite state_update_eq.
         rewrite state_update_eq in Hdestinationi. symmetry. assumption.
@@ -188,7 +188,7 @@ Proof.
       * subst. rewrite state_update_eq. reflexivity.
       * repeat (rewrite state_update_neq; [| assumption]). reflexivity.
     + apply functional_extensionality_dep.
-      intro eqv. 
+      intro eqv.
       unfold equivocators_state_project. unfold Common.equivocators_state_project.
       unfold equivocators_choice_update.
       destruct (decide (eqv = i)).
@@ -221,7 +221,7 @@ Lemma equivocators_transition_item_project_proper_characterization
           (Hsx : sx = equivocators_state_project eqv_choice' s),
           free_composite_valid IM (l itemx) (sx, input itemx) /\
           composite_transition IM (l itemx) (sx, input itemx) = (destination itemx, output itemx)
-      | None => 
+      | None =>
         equivocators_state_project eqv_choice (destination item) = equivocators_state_project eqv_choice' s
       end.
 Proof.
@@ -233,8 +233,8 @@ Proof.
   intros.
   specialize (H s Hv Ht). clear Hv Ht Hoitem.
   destruct H as [Hproperi' [Heqv' [Hs H]]].
-  split; [|assumption]. clear H. 
-  intro eqv. 
+  split; [|assumption]. clear H.
+  intro eqv.
   destruct (decide (eqv = (projT1 (l item)))).
   - subst. assumption.
   - rewrite Heqv'. rewrite Hs.
@@ -303,7 +303,7 @@ Proof.
       destruct pr_tr as [(tr1, e1)|]; [|inversion Htr].
       specialize (IHtr (tr1 ++ itrX) e1). apply proj2 in IHtr.
       spec IHtr. { eexists _.  split; reflexivity. }
-      rewrite IHtr. 
+      rewrite IHtr.
       simpl in *.
       destruct (equivocators_transition_item_project e1 a)
         as [(oitem, odescriptor)|] eqn:Ha
@@ -580,7 +580,7 @@ Proof.
   inversion Hx. subst. clear Hx.
   unfold equivocators_transition_item_project in Hproject_x.
   simpl in Hproject_x.
-  unfold composite_transition_item_projection in Hproject_x. simpl in Hproject_x.  
+  unfold composite_transition_item_projection in Hproject_x. simpl in Hproject_x.
   unfold composite_transition_item_projection_from_eq in Hproject_x. simpl in Hproject_x.
   unfold eq_rect_r in Hproject_x. simpl in Hproject_x.
   match type of Hproject_x with
@@ -792,7 +792,7 @@ Proof.
       assert (Hplst : protocol_state_prop SeededX lst).
       { apply finite_ptrace_last_pstate in HtrX'. subst. assumption. }
       apply (extend_right_finite_trace_from SeededX lst []); [constructor; assumption|].
-      simpl in Hl. subst. 
+      simpl in Hl. subst.
       simpl in Htx,Hvx,Hstate_project.
       rewrite Hstate_project in Hvx, Htx.
       destruct input as [input|]
@@ -843,7 +843,7 @@ Proof.
       split; [apply Htr_project|]. split; [|assumption].
       subst tr. clear -Hstate_project Hx.
       rewrite Hstate_project in Hx.
-      rewrite <- Hx. f_equal. unfold final_state. 
+      rewrite <- Hx. f_equal. unfold final_state.
       rewrite map_app. simpl. rewrite last_is_last. reflexivity.
 Qed.
 

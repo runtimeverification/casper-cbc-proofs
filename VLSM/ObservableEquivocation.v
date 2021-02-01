@@ -383,7 +383,7 @@ Proof.
   unfold trace_generated_event.
   apply
     (Decision_iff
-      (P := Exists 
+      (P := Exists
         (fun t =>
           match t with
           (prefix, item, _) =>

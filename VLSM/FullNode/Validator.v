@@ -33,14 +33,14 @@ Section CompositeValidator.
   Existing Instance eq_V.
   Existing Instance message_preceeds_dec.
 
- 
+
   Definition full_node_validator_observable_messages_fn
     (s : state C V)
     (v : V)
     : set message
     :=
     filter (fun m => bool_decide (sender m = v)) (get_message_set s).
-  
+
     Definition full_node_validator_state_validators
     (s : state C V)
     : set V
@@ -50,7 +50,7 @@ Section CompositeValidator.
   Instance full_node_validator_observable_messages
     : observable_events (state C V) message
     :=
-    state_observable_events_instance (state C V) V message _ 
+    state_observable_events_instance (state C V) V message _
       full_node_validator_observable_messages_fn full_node_validator_state_validators.
 
   Lemma full_node_validator_has_been_observed_iff
@@ -85,7 +85,7 @@ Section CompositeValidator.
   Instance full_node_validator_observation_based_equivocation_evidence
     : observation_based_equivocation_evidence (state C V) V message _ decide_eq _ message_preceeds_dec full_node_message_subject_of_observation
     :=
-    observable_events_equivocation_evidence _ _ _ _ 
+    observable_events_equivocation_evidence _ _ _ _
       full_node_validator_observable_messages_fn full_node_validator_state_validators
       _ message_preceeds_dec full_node_message_subject_of_observation.
 
@@ -208,7 +208,7 @@ Section CompositeValidator.
     mk_vlsm (VLSM_full_validator_machine v).
 
   Existing Instance observable_messages.
-  
+
   Definition full_node_validator_vlsm_observable_messages
     (v : V)
     : vlsm_observable_events (VLSM_full_validator v) full_node_message_subject_of_observation.
