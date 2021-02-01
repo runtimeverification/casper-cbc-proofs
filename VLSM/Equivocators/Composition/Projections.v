@@ -812,8 +812,9 @@ Proof.
       assert
         (Hs_free : protocol_state_prop PreFreeE (last (map Common.destination tr') is)).
       { clear -Hs.
-        apply (VLSM_incl_protocol_state _ _ seeded_equivocators_incl_preloaded).
-        assumption.
+        apply VLSM_incl_protocol_state with (machine SeededXE)
+        ; [|assumption].
+        apply seeded_equivocators_incl_preloaded.
       }
 
       specialize

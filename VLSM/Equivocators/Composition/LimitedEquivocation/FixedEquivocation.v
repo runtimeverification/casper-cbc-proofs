@@ -154,11 +154,11 @@ Section fixed_equivocation_with_fullnode.
     (Hbr : forall i : index, has_been_received_capability (IM i))
     {i0 : Inhabited index}
     (equivocator_IM := equivocator_IM IM)
-    {index_listing : list index}
+    (index_listing : list index)
     (finite_index : Listing index_listing)
     (equivocating : set index)
     (admissible_index := fun s i => In i equivocating)
-    (Hno_resend : forall i : index, cannot_resend_message_stepwise_props (IM i))
+    (Hno_resend : forall i : index, cannot_resend_message_stepwise_prop (IM i))
     (full_node_constraint
       := full_node_condition_for_admissible_equivocators IM Hbs Hbr finite_index admissible_index)
     (full_node_constraint_alt
