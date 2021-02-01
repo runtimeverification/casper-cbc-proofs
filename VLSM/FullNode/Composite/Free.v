@@ -477,8 +477,8 @@ Lemma full_composed_free_sent_messages_comparable
   (Htr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s tr)
   (m1 m2 : message)
   (Hvalidator : sender m1 = sender m2)
-  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free (Equivocation.field_selector output) m1 tr)
-  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free (Equivocation.field_selector output) m2 tr)
+  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free (field_selector output) m1 tr)
+  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free (field_selector output) m2 tr)
   : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
 Proof.
   unfold Equivocation.trace_has_message in *.

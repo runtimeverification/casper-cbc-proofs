@@ -18,13 +18,13 @@ Section equivocators_fixed_equivocations_vlsm.
 
 Context
   {message : Type}
-  (index : Type)
+  {index : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   {i0 : Inhabited index}
   (equivocator_IM := equivocator_IM IM)
-  (index_listing : list index)
+  {index_listing : list index}
   (finite_index : Listing index_listing)
   (equivocating : set index)
   .
@@ -46,15 +46,20 @@ End equivocators_fixed_equivocations_vlsm.
 
 Section fixed_equivocation_without_fullnode.
 
-Context {message : Type}
-  (index : Type)
+Context
+  {message : Type}
+  {index : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
+  (Hbr : forall i : index, has_been_received_capability (IM i))
   {i0 : Inhabited index}
   (X := free_composite_vlsm IM)
-  (index_listing : list index)
+  {index_listing : list index}
   (finite_index : Listing index_listing)
+  (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
+  (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
+  (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
   (equivocators_choice := equivocators_choice IM)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
@@ -63,6 +68,8 @@ Context {message : Type}
   (equivocating : set index)
   (Hi0_equiv : equivocating <> [])
   .
+
+Existing Instance X_has_been_observed_capability.
 
 Definition index_equivocating_prop (i : index) : Prop := In i equivocating.
 
@@ -98,48 +105,115 @@ Definition equivocating_IM
 Definition free_equivocating_vlsm_composition : VLSM message
   := free_composite_vlsm equivocating_IM.
 
-Definition sent_by_non_equivocating
-  (s : composite_state IM)
-  (m : message)
-  : Prop
-  :=
-  exists
-    (i : index)
-    (Hi : ~In i equivocating),
-    has_been_sent (IM i) (s i) m.
-
 Definition seeded_free_equivocators_composition
   (messageSet : message -> Prop)
-  := vlsm_add_initial_messages free_equivocating_vlsm_composition messageSet.
+  := vlsm_add_initial_messages free_equivocating_vlsm_composition
+      (fun m => messageSet m \/ vinitial_message_prop X m).
 
-  Context
-    {validator : Type}
-    (A : validator -> index)
-    (sender : message -> option validator)
-    (Hsender_safety : Prop := sender_safety_prop IM (free_constraint IM) A sender)
-    .
+Context
+  {validator : Type}
+  .
 
 Definition fixed_equivocation_constraint
   (l : composite_label IM)
   (som : composite_state IM * option message)
   : Prop
   :=
+  no_additional_equivocations_constraint X l som \/
   let (s, om) := som in
-  match om with
-  | None => True
-  | Some m =>
-    let ov := sender m in
-    match ov with
-    | None => composite_initial_message_prop IM m
-    | Some v =>
-      let i := A v in
-      if index_equivocating_prop_dec i
-      then protocol_message_prop (seeded_free_equivocators_composition (sent_by_non_equivocating s)) m
-      else has_been_sent (IM i) (s i) m
-    end
-  end.
+  exists m : message, om = Some m /\
+  can_emit (seeded_free_equivocators_composition (no_additional_equivocations X s)) m.
 
 Definition fixed_equivocation_vlsm_composition : VLSM message
   := composite_vlsm IM fixed_equivocation_constraint.
 
 End fixed_equivocation_without_fullnode.
+
+Section fixed_equivocation_with_fullnode.
+  Context
+    {message : Type}
+    (index : Type)
+    {IndEqDec : EqDecision index}
+    (IM : index -> VLSM message)
+    (Hbs : forall i : index, has_been_sent_capability (IM i))
+    (Hbr : forall i : index, has_been_received_capability (IM i))
+    {i0 : Inhabited index}
+    (equivocator_IM := equivocator_IM IM)
+    (index_listing : list index)
+    (finite_index : Listing index_listing)
+    (equivocating : set index)
+    (admissible_index := fun s i => In i equivocating)
+    (Hno_resend : forall i : index, cannot_resend_message_stepwise_prop (IM i))
+    (full_node_constraint
+      := full_node_condition_for_admissible_equivocators IM Hbs Hbr finite_index admissible_index)
+    (full_node_constraint_alt
+      := full_node_condition_for_admissible_equivocators_alt IM Hbs Hbr finite_index admissible_index)
+    .
+
+  Section fixed_equivocation_constraint_comparison.
+
+  Context
+    `{EqDecision message}
+    (Hi0_equiv : equivocating <> [])
+    (equivocating_inhabited : Inhabited (equivocating_index equivocating) := equivocating_i0 _ Hi0_equiv)
+    {validator : Type}
+    (A : validator -> index)
+    (sender : message -> option validator)
+    (fixed_equivocation_constraint : composite_label IM  -> composite_state IM * option message -> Prop
+      := fixed_equivocation_constraint IM Hbs Hbr finite_index equivocating Hi0_equiv)
+    (Hsender_safety : Prop := sender_safety_prop IM (free_constraint IM) A sender)
+    (X := free_composite_vlsm IM)
+    (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
+    (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
+    (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
+    .
+  
+  Local Instance index_equivocating_dec
+    (i : index)
+    : Decision (index_equivocating_prop equivocating i).
+  Proof.
+    apply index_equivocating_prop_dec.
+  Qed.
+
+  Existing Instance  equivocating_inhabited.
+  Existing Instance  equivocating_index_eq_dec.
+
+  Existing Instance X_has_been_observed_capability.
+  Lemma fixed_equivocation_constraint_subsumption :
+    preloaded_constraint_subsumption IM full_node_constraint fixed_equivocation_constraint.
+  Proof.
+    cut (preloaded_constraint_subsumption IM full_node_constraint_alt fixed_equivocation_constraint).
+    {
+      intros H s Hs l om Hfull.
+      apply H; [assumption|].
+      apply
+        (@full_node_condition_for_admissible_equivocators_subsumption
+          _ _ _ _ IM _ Hbs Hbr _ finite_index
+          admissible_index
+          Hno_resend
+        ); [assumption|].
+      assumption.
+    }
+    intros s Hs l om [Hno_equiv | Hfull]; [left; assumption|].
+    destruct Hfull as [m [Hom [i [Hi Hm]]]].
+    subst om.
+    right. exists m. split; [reflexivity|].
+    remember (no_additional_equivocations (free_composite_vlsm IM) s) as P.
+    unfold seeded_free_equivocators_composition.
+    remember (fun m => P m \/ vinitial_message_prop (free_composite_vlsm IM) m) as Q.
+    unfold free_equivocating_vlsm_composition.
+    specialize (can_emit_composite_free_lift (equivocating_IM IM equivocating) P Q) as Hemit.
+    spec Hemit. { intros. subst Q. left. assumption. }
+    assert
+      (Hi_dec :
+        @bool_decide
+          (@index_equivocating_prop index equivocating i)
+          (@index_equivocating_prop_dec index IndEqDec equivocating i) = true).
+    { apply bool_decide_eq_true. assumption. }
+    specialize (Hemit (exist _  i Hi_dec)).
+    apply Hemit.
+    unfold equivocating_IM. simpl. assumption.
+  Qed.
+
+  End fixed_equivocation_constraint_comparison.
+End fixed_equivocation_with_fullnode.

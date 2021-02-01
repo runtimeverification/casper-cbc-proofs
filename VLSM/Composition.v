@@ -239,13 +239,20 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       - exact output.
     Defined.
 
+    Definition lift_to_composite_finite_trace
+      (j : index)
+      (trj : list (vtransition_item (IM j)))
+      : list (@transition_item _ composite_type)
+      :=
+      List.map (lift_to_composite_transition_item j) trj.
+
     Definition lift_to_composite_trace
       (j : index)
       (trj : vTrace (IM j))
       : @Trace _ composite_type
       :=
       match trj with
-      | Finite s l => Finite (lift_to_composite_state j s) (List.map (lift_to_composite_transition_item j) l)
+      | Finite s l => Finite (lift_to_composite_state j s) (lift_to_composite_finite_trace j l)
       | Infinite s l => Infinite (lift_to_composite_state j s) (Streams.map (lift_to_composite_transition_item j) l)
       end.
 
@@ -353,7 +360,7 @@ the [free_composite_valid]ity.
       inversion Ht. apply state_update_eq.
     Qed.
 
-    Section constraint_subsumption.
+    Section constraint_subsumption_part_one.
 (**
 
 ** Constraint subssumption
@@ -412,100 +419,7 @@ Lemma [basic_VLSM_inclusion]
         apply protocol_generated_valid with _om _s; assumption.
     Qed.
 
-    Lemma constraint_subsumption_can_emit
-      (m : message)
-      (Hm : can_emit X1 m)
-      : can_emit X2 m.
-    Proof.
-      destruct Hm as [(s0,om0) [l [s [Hv1 Ht]]]].
-      assert (Hv2 := constraint_subsumption_protocol_valid _ _ _ Hv1).
-      destruct Hv1 as [[_om0 Hs0] [[_s0 Hom0] Hv1]].
-      apply constraint_subsumption_protocol_prop in Hs0.
-      apply constraint_subsumption_protocol_prop in Hom0.
-      exists (s0, om0). exists l. exists s.
-      destruct Hv2 as [Hv2 Hc2].
-      repeat split; try assumption.
-      - exists _om0. assumption.
-      - exists _s0. assumption.
-    Qed.
-
-    Lemma constraint_subsumption_preloaded_protocol_valid
-      (l : label)
-      (s : state)
-      (om : option message)
-      (Hv : protocol_valid (pre_loaded_with_all_messages_vlsm X1) l (s, om))
-      : vvalid (pre_loaded_with_all_messages_vlsm X2) l (s, om).
-    Proof.
-      destruct Hv as [Hps [Hopm [Hv Hctr]]].
-      split; try assumption.
-      apply Hsubsumption.
-      assumption.
-    Qed.
-
-    Lemma constraint_subsumption_preloaded_protocol_prop
-      (s : state)
-      (om : option message)
-      (Hps : protocol_prop (pre_loaded_with_all_messages_vlsm X1) (s, om))
-      : protocol_prop (pre_loaded_with_all_messages_vlsm X2) (s, om).
-    Proof.
-      induction Hps.
-      - apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X2) is).
-      - apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm X2)).
-      - apply (protocol_generated (pre_loaded_with_all_messages_vlsm X2)) with _om _s; try assumption.
-        apply constraint_subsumption_preloaded_protocol_valid.
-        destruct Hv as [Hv Hc1].
-        repeat split; try assumption.
-        + exists _om. assumption.
-        + exists _s. assumption.
-    Qed.
-
-    Lemma constraint_subsumption_byzantine_message_prop
-      (m : message)
-      (Hm : byzantine_message_prop X1 m)
-      : byzantine_message_prop X2 m.
-    Proof.
-      destruct Hm as [(s0,om0) [l [s [Hv1 Ht]]]].
-      assert (Hv2 := constraint_subsumption_preloaded_protocol_valid _ _ _ Hv1).
-      destruct Hv1 as [[_om0 Hs0] [[_s0 Hom0] Hv1]].
-      apply constraint_subsumption_preloaded_protocol_prop in Hs0.
-      apply constraint_subsumption_preloaded_protocol_prop in Hom0.
-      exists (s0, om0). exists l. exists s.
-      destruct Hv2 as [Hv2 Hc2].
-      repeat split; try assumption.
-      - exists _om0. assumption.
-      - exists _s0. assumption.
-    Qed.
-
-(* end hide *)
-
-(**
-Then <<X1>> is trace-included into <<X2>>.
-*)
-
-    Lemma constraint_subsumption_incl
-      : VLSM_incl X1 X2.
-    Proof.
-      apply (basic_VLSM_incl (machine X1) (machine X2))
-      ; intros; try (assumption || reflexivity).
-      - destruct H as [_ [[_s Hom] _]]. exists _s.
-        apply constraint_subsumption_protocol_prop.
-        assumption.
-      - apply constraint_subsumption_protocol_valid.
-        assumption.
-    Qed.
-
-    Lemma constraint_subsumption_pre_loaded_with_all_messages_incl
-      : VLSM_incl (pre_loaded_with_all_messages_vlsm X1) (pre_loaded_with_all_messages_vlsm X2).
-    Proof.
-      apply (basic_VLSM_incl (machine (pre_loaded_with_all_messages_vlsm X1)) (machine (pre_loaded_with_all_messages_vlsm X2)))
-      ; intros; try (assumption || reflexivity).
-      - destruct H as [_ [[_s Hom] _]]. exists _s.
-        apply constraint_subsumption_preloaded_protocol_prop. assumption.
-      - apply constraint_subsumption_preloaded_protocol_valid.
-        assumption.
-    Qed.
-
-    End constraint_subsumption.
+    End constraint_subsumption_part_one.
 
 (**
 
@@ -525,18 +439,6 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
     Definition free_composite_vlsm : VLSM message
       := composite_vlsm free_constraint.
 
-    (** Next two lemmas are corrolaries of the above, instantiates on the
-      free composition whose constraint ([True]) subsumes any constraint.
-    *)
-
-    Lemma constraint_free_incl
-      (constraint : composite_label -> composite_state  * option message -> Prop)
-      : VLSM_incl (composite_vlsm constraint) free_composite_vlsm.
-    Proof.
-      apply constraint_subsumption_incl.
-      intro l; intros. exact I.
-    Qed.
-
     Lemma constraint_free_protocol_prop
       (constraint : composite_label -> composite_state * option message -> Prop)
       (som : state * option message)
@@ -549,23 +451,251 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
       intro l; intros. exact I.
     Qed.
 
+    Section preloaded_constraint_subsumption.
+
+    Definition preloaded_constraint_subsumption
+        (constraint1 constraint2 : composite_label -> composite_state * option message -> Prop)
+        :=
+        forall (s : composite_state),
+          protocol_state_prop (pre_loaded_with_all_messages_vlsm free_composite_vlsm) s ->
+          forall (l : composite_label) (om : option message),
+            constraint1 l (s, om) -> constraint2 l (s, om).
+    
+    Lemma preloaded_constraint_subsumption_weaker
+        (constraint1 constraint2 : composite_label -> composite_state * option message -> Prop)
+        : constraint_subsumption constraint1 constraint2 -> preloaded_constraint_subsumption constraint1 constraint2.
+    Proof.
+      intros Hcs s Hs l om Hc1.
+      apply Hcs. assumption.
+    Qed.
+
+    Context
+      (constraint1 constraint2 : composite_label -> composite_state * option message -> Prop)
+      (Hsubsumption : preloaded_constraint_subsumption constraint1 constraint2)
+      (X1 := composite_vlsm constraint1)
+      (X2 := composite_vlsm constraint2)
+      .
+
+    Lemma preloaded_constraint_subsumption_protocol_valid
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : protocol_valid X1 l (s, om))
+      : vvalid X2 l (s, om).
+    Proof.
+      destruct Hv as [Hps [Hopm [Hv Hctr]]].
+      split; try assumption.
+      apply Hsubsumption; [|assumption].
+      destruct Hps as [_om Hps].
+      exists _om. apply preloaded_weaken_protocol_prop.
+      apply constraint_free_protocol_prop with constraint1.
+      assumption.
+    Qed.
+
+    Lemma preloaded_constraint_subsumption_protocol_prop
+      (s : state)
+      (om : option message)
+      (Hps : protocol_prop X1 (s, om))
+      : protocol_prop X2 (s, om).
+    Proof.
+      induction Hps.
+      - apply (protocol_initial_state X2 is).
+      - apply (protocol_initial_message X2).
+      - apply (protocol_generated X2) with _om _s; try assumption.
+        apply preloaded_constraint_subsumption_protocol_valid.
+        apply protocol_generated_valid with _om _s; assumption.
+    Qed.
+
+    Lemma preloaded_constraint_subsumption_can_emit
+      (m : message)
+      (Hm : can_emit X1 m)
+      : can_emit X2 m.
+    Proof.
+      destruct Hm as [(s0,om0) [l [s [Hv1 Ht]]]].
+      assert (Hv2 := preloaded_constraint_subsumption_protocol_valid _ _ _ Hv1).
+      destruct Hv1 as [[_om0 Hs0] [[_s0 Hom0] Hv1]].
+      apply preloaded_constraint_subsumption_protocol_prop in Hs0.
+      apply preloaded_constraint_subsumption_protocol_prop in Hom0.
+      exists (s0, om0). exists l. exists s.
+      destruct Hv2 as [Hv2 Hc2].
+      repeat split; try assumption.
+      - exists _om0. assumption.
+      - exists _s0. assumption.
+    Qed.
+
+    Lemma preloaded_constraint_subsumption_preloaded_protocol_valid
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : protocol_valid (pre_loaded_with_all_messages_vlsm X1) l (s, om))
+      : vvalid (pre_loaded_with_all_messages_vlsm X2) l (s, om).
+    Proof.
+      destruct Hv as [Hps [Hopm [Hv Hctr]]].
+      split; [assumption|].
+      apply Hsubsumption; [|assumption].
+      clear -Hps.
+      apply preloaded_protocol_state_prop_iff in Hps.
+      apply preloaded_protocol_state_prop_iff.
+      induction Hps; [constructor; assumption|].
+      apply (preloaded_protocol_generated free_composite_vlsm); [assumption|].
+      split; [apply Hv|exact I].
+    Qed.
+
+    Lemma preloaded_constraint_subsumption_preloaded_protocol_prop
+      (s : state)
+      (om : option message)
+      (Hps : protocol_prop (pre_loaded_with_all_messages_vlsm X1) (s, om))
+      : protocol_prop (pre_loaded_with_all_messages_vlsm X2) (s, om).
+    Proof.
+      induction Hps.
+      - apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X2) is).
+      - apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm X2)).
+      - apply (protocol_generated (pre_loaded_with_all_messages_vlsm X2)) with _om _s; try assumption.
+        apply preloaded_constraint_subsumption_preloaded_protocol_valid.
+        destruct Hv as [Hv Hc1].
+        repeat split; try assumption.
+        + exists _om. assumption.
+        + exists _s. assumption.
+    Qed.
+
+    Lemma preloaded_constraint_subsumption_byzantine_message_prop
+      (m : message)
+      (Hm : byzantine_message_prop X1 m)
+      : byzantine_message_prop X2 m.
+    Proof.
+      destruct Hm as [(s0,om0) [l [s [Hv1 Ht]]]].
+      assert (Hv2 := preloaded_constraint_subsumption_preloaded_protocol_valid _ _ _ Hv1).
+      destruct Hv1 as [[_om0 Hs0] [[_s0 Hom0] Hv1]].
+      apply preloaded_constraint_subsumption_preloaded_protocol_prop in Hs0.
+      apply preloaded_constraint_subsumption_preloaded_protocol_prop in Hom0.
+      exists (s0, om0). exists l. exists s.
+      destruct Hv2 as [Hv2 Hc2].
+      repeat split; try assumption.
+      - exists _om0. assumption.
+      - exists _s0. assumption.
+    Qed.
+
+(* end hide *)
+
 (**
-A component [protocol_state]'s [lift_to_composite_state] is a [protocol_state]
-for the [free_composite_vlsm].
+Then <<X1>> is trace-included into <<X2>>.
 *)
-    Lemma protocol_prop_composite_free_lift
+
+    Lemma preloaded_constraint_subsumption_incl
+      : VLSM_incl X1 X2.
+    Proof.
+      apply (basic_VLSM_incl (machine X1) (machine X2))
+      ; intros; try (assumption || reflexivity).
+      - apply initial_message_is_protocol;assumption.
+      - apply preloaded_constraint_subsumption_protocol_valid.
+        assumption.
+    Qed.
+
+    Lemma preloaded_constraint_subsumption_pre_loaded_with_all_messages_incl
+      : VLSM_incl (pre_loaded_with_all_messages_vlsm X1) (pre_loaded_with_all_messages_vlsm X2).
+    Proof.
+      apply (basic_VLSM_incl (machine (pre_loaded_with_all_messages_vlsm X1)) (machine (pre_loaded_with_all_messages_vlsm X2)))
+      ; intros; try (assumption || reflexivity).
+      - apply initial_message_is_protocol; assumption.
+      - apply preloaded_constraint_subsumption_preloaded_protocol_valid.
+        assumption.
+    Qed.
+
+    End preloaded_constraint_subsumption.
+
+    Section constraint_subsumption_part_two.
+
+    Context
+      (constraint1 constraint2 : composite_label -> composite_state * option message -> Prop)
+      (Hsubsumption : constraint_subsumption constraint1 constraint2)
+      (X1 := composite_vlsm constraint1)
+      (X2 := composite_vlsm constraint2)
+      .
+
+    Lemma constraint_subsumption_can_emit
+      (m : message)
+      (Hm : can_emit X1 m)
+      : can_emit X2 m.
+    Proof.
+      apply preloaded_constraint_subsumption_can_emit with constraint1 ; [|assumption].
+      apply preloaded_constraint_subsumption_weaker. assumption.
+    Qed.
+
+    Lemma constraint_subsumption_preloaded_protocol_valid
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : protocol_valid (pre_loaded_with_all_messages_vlsm X1) l (s, om))
+      : vvalid (pre_loaded_with_all_messages_vlsm X2) l (s, om).
+    Proof.
+      apply preloaded_constraint_subsumption_preloaded_protocol_valid; [|assumption].
+      apply preloaded_constraint_subsumption_weaker. assumption.
+    Qed.
+
+    Lemma constraint_subsumption_preloaded_protocol_prop
+      (s : state)
+      (om : option message)
+      (Hps : protocol_prop (pre_loaded_with_all_messages_vlsm X1) (s, om))
+      : protocol_prop (pre_loaded_with_all_messages_vlsm X2) (s, om).
+    Proof.
+      apply preloaded_constraint_subsumption_preloaded_protocol_prop; [|assumption].
+      apply preloaded_constraint_subsumption_weaker. assumption.
+    Qed.
+
+    Lemma constraint_subsumption_byzantine_message_prop
+      (m : message)
+      (Hm : byzantine_message_prop X1 m)
+      : byzantine_message_prop X2 m.
+    Proof.
+      apply preloaded_constraint_subsumption_byzantine_message_prop with constraint1; [|assumption].
+      apply preloaded_constraint_subsumption_weaker. assumption.
+    Qed.
+
+(* end hide *)
+
+(**
+Then <<X1>> is trace-included into <<X2>>.
+*)
+
+    Lemma constraint_subsumption_incl
+      : VLSM_incl X1 X2.
+    Proof.
+      apply preloaded_constraint_subsumption_incl.
+      apply preloaded_constraint_subsumption_weaker. assumption.
+    Qed.
+
+    Lemma constraint_subsumption_pre_loaded_with_all_messages_incl
+      : VLSM_incl (pre_loaded_with_all_messages_vlsm X1) (pre_loaded_with_all_messages_vlsm X2).
+    Proof.
+      apply preloaded_constraint_subsumption_pre_loaded_with_all_messages_incl.
+      apply preloaded_constraint_subsumption_weaker. assumption.
+    Qed.
+
+    End constraint_subsumption_part_two.
+
+    Lemma constraint_free_incl
+      (constraint : composite_label -> composite_state  * option message -> Prop)
+      : VLSM_incl (composite_vlsm constraint) free_composite_vlsm.
+    Proof.
+      apply constraint_subsumption_incl.
+      intro l; intros. exact I.
+    Qed.
+
+    Lemma protocol_prop_composite_free_lift_generalized_initial
+      (P Q : message -> Prop)
+      (PimpliesQ : forall m, P m -> Q m)
       (j : index)
       (sj : vstate (IM j))
       (om : option message)
-      (Hp : protocol_prop (IM j) (sj, om))
+      (Hp : protocol_prop (vlsm_add_initial_messages (IM j) P) (sj, om))
       (s := lift_to_composite_state j sj)
-      : protocol_prop free_composite_vlsm (s, om).
+      : protocol_prop (vlsm_add_initial_messages free_composite_vlsm Q) (s, om).
     Proof.
       remember (sj, om) as sjom.
       generalize dependent om. generalize dependent sj.
       induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom
       ; unfold s0; clear s0.
-      - assert (Hinit : vinitial_state_prop free_composite_vlsm (lift_to_composite_state j s)).
+      - assert (Hinit : vinitial_state_prop (vlsm_add_initial_messages free_composite_vlsm Q) (lift_to_composite_state j s)).
         { intro i. unfold lift_to_composite_state.
           destruct (decide (i = j)).
           - subst; rewrite state_update_eq. unfold s. destruct is. assumption.
@@ -575,66 +705,81 @@ for the [free_composite_vlsm].
             simpl.
             apply Hinit.
         }
-        remember (exist (vinitial_state_prop free_composite_vlsm) (lift_to_composite_state j s) Hinit) as six.
-        replace (lift_to_composite_state j s) with (proj1_sig six); try (subst; reflexivity).
-        apply (protocol_initial_state free_composite_vlsm).
-      - assert (Hinit : vinitial_message_prop free_composite_vlsm (proj1_sig im)).
-        { exists j. exists im. reflexivity. }
-        replace (lift_to_composite_state j s) with (proj1_sig (vs0 free_composite_vlsm))
-        ; try (symmetry; apply state_update_id; reflexivity).
-        unfold om in *; unfold s in *; clear s om.
-        destruct im as [m _H]; simpl in *; clear _H.
-        remember (exist (vinitial_message_prop free_composite_vlsm) m Hinit) as im.
-        replace m with (proj1_sig im); try (subst; reflexivity).
-        apply (protocol_initial_message free_composite_vlsm).
+        remember (exist _ _ Hinit) as six.
+        replace (lift_to_composite_state j s) with (proj1_sig six) by (subst; reflexivity).
+        apply (protocol_initial_state (vlsm_add_initial_messages free_composite_vlsm Q)).
+      -
+        destruct im as [m Hjm]; simpl in om.
+        cut (vinitial_message_prop (vlsm_add_initial_messages free_composite_vlsm Q) m).
+        { intro Hinit. 
+          replace (lift_to_composite_state j s) with (proj1_sig (vs0 (vlsm_add_initial_messages free_composite_vlsm Q)))
+          ; try (symmetry; apply state_update_id; reflexivity).
+          unfold om. clear om.
+          change m with (proj1_sig (exist _ m Hinit)).
+          apply protocol_initial_message.
+        }
+        destruct Hjm as [Hjm | HPm]; [|right; apply PimpliesQ; assumption].
+        left. exists j. exists (exist _ m Hjm). reflexivity.
       - specialize (IHHp1 s _om eq_refl).
         specialize (IHHp2 _s om eq_refl).
         replace
           (@pair composite_state (option message) (lift_to_composite_state j sj) om0)
           with
-          (vtransition free_composite_vlsm (existT _ j l) (lift_to_composite_state j s, om)).
-        + apply (protocol_generated free_composite_vlsm) with _om (lift_to_composite_state j _s)
-          ; try assumption.
-          split; try exact I.
+          (vtransition (vlsm_add_initial_messages free_composite_vlsm Q) (existT _ j l) (lift_to_composite_state j s, om)).
+        + apply (protocol_generated (vlsm_add_initial_messages free_composite_vlsm Q)) with _om (lift_to_composite_state j _s)
+          ; [assumption | assumption|].
+          split; [|exact I].
           simpl. unfold lift_to_composite_state. rewrite state_update_eq. assumption.
         + unfold vtransition. simpl. unfold lift_to_composite_state.
           rewrite state_update_eq. unfold vtransition.
-          replace (@transition message
-          (@projT1 (VLSM_type message)
-             (fun T : VLSM_type message =>
-              @sigT (@VLSM_sign message T)
-                (fun S : @VLSM_sign message T => @VLSM_class message T S))
-             (IM j))
-          (@projT1
-             (@VLSM_sign message
-                (@projT1 (VLSM_type message)
-                   (fun T : VLSM_type message =>
-                    @sigT (@VLSM_sign message T)
-                      (fun S : @VLSM_sign message T => @VLSM_class message T S))
-                   (IM j)))
-             (fun
-                S : @VLSM_sign message
-                      (@projT1 (VLSM_type message)
-                         (fun T : VLSM_type message =>
-                          @sigT (@VLSM_sign message T)
-                            (fun S : @VLSM_sign message T =>
-                             @VLSM_class message T S))
-                         (IM j)) =>
-              @VLSM_class message
-                (@projT1 (VLSM_type message)
-                   (fun T : VLSM_type message =>
-                    @sigT (@VLSM_sign message T)
-                      (fun S0 : @VLSM_sign message T => @VLSM_class message T S0))
-                   (IM j)) S)
-             (@projT2 (VLSM_type message)
-                (fun T : VLSM_type message =>
-                 @sigT (@VLSM_sign message T)
-                   (fun S : @VLSM_sign message T => @VLSM_class message T S))
-                (IM j))) (@machine message (IM j)) l
-          (@pair (@vstate message (IM j)) (option message) s om))
-          with (sj, om0).
+          match goal with
+          |- (let (_, _) := ?t in _) = _ => replace t with (sj, om0)
+          end.
           f_equal.
           apply state_update_twice.
+    Qed.
+
+(**
+If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_composite_state] of @sj@, then
+@(s, om)@ has the [protocol_prop]erty for the [free_composite_vlsm].
+*)
+    Lemma protocol_prop_composite_free_lift
+      (j : index)
+      (sj : vstate (IM j))
+      (om : option message)
+      (Hp : protocol_prop (IM j) (sj, om))
+      (s := lift_to_composite_state j sj)
+      : protocol_prop free_composite_vlsm (s, om).
+    Proof.
+      apply vlsm_is_add_initial_False_protocol_prop.
+      apply vlsm_is_add_initial_False_protocol_prop in Hp.
+      remember (fun _ : message => False) as P.
+      apply (protocol_prop_composite_free_lift_generalized_initial P P); [|assumption].
+      intro m. exact id.
+    Qed.
+
+    Lemma can_emit_composite_free_lift
+      (P Q : message -> Prop)
+      (PimpliesQ : forall m, P m -> Q m)
+      (j : index)
+      (m : message)
+      (Htrj : can_emit (vlsm_add_initial_messages (IM j) P) m)
+      : can_emit (vlsm_add_initial_messages free_composite_vlsm Q) m.
+    Proof.
+      destruct Htrj as [(s,om) [l [s' [[[_om Hs] [[_s Hom] Hv]] Ht]]]].
+      exists ((lift_to_composite_state j s), om).
+      exists (existT _ j l).
+      exists (lift_to_composite_state j s').
+      apply (protocol_prop_composite_free_lift_generalized_initial _ _ PimpliesQ) in Hs.
+      apply (protocol_prop_composite_free_lift_generalized_initial _ _ PimpliesQ) in Hom.
+      repeat split; [exists _om;assumption| exists (lift_to_composite_state j _s); assumption| ..].
+      - simpl. unfold lift_to_composite_state. rewrite state_update_eq. assumption.
+      - unfold lift_to_composite_state. simpl. rewrite state_update_eq.
+        match goal with
+        |- (let (_, _) := ?t in _) = _ => replace t with (s', Some m)
+        end.
+        f_equal.
+        apply state_update_twice.
     Qed.
 
     (** Updating a composite initial state with a component initial state
@@ -690,7 +835,6 @@ for the [free_composite_vlsm].
           rewrite Htj in Hgen.
           eexists _. apply Hgen.
     Qed.
-
   End composite_vlsm.
 
 End VLSM_composition.
@@ -764,7 +908,7 @@ Proof.
   intros [om Hproto].
   apply protocol_state_project_preloaded_to_preloaded.
   exists om.
-  apply pre_loaded_with_all_messages_protocol_prop in Hproto.
+  apply preloaded_weaken_protocol_prop.
   assumption.
 Qed.
 
@@ -1076,9 +1220,7 @@ We can now finally prove the main result for this section:
     Proof.
       apply (basic_VLSM_incl (machine Xj) (machine PreLoaded))
       ; intros; try (assumption || reflexivity).
-      - destruct H as [_ [[_s Hpm] _]]. exists _s.
-        apply proj_pre_loaded_with_all_messages_protocol_prop.
-        assumption.
+      - apply initial_message_is_protocol; exact I.
       - apply projection_valid_implies_valid.
         destruct H as [_ [_ Hv]].
         assumption.
