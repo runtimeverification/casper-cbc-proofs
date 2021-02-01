@@ -3077,7 +3077,33 @@ Context
         rewrite H1 in Hmax. simpl in Hmax. 
         rewrite (@unfold_history_cons index index_listing Hfinite) in Hmax.
         simpl in Hmax. lia. intuition.
-      - unfold state-lt'
+      - unfold state_lt' in H0.
+        apply in_split in H0.
+        destruct H0 as [left [right Hhist]].
+        replace (left ++ project s' from :: right) with (left ++ [project s' from] ++ right) in Hhist.
+        2 : intuition.
+        specialize (@unfold_history index index_listing Hfinite _ (project x from) (project s' from) from) as Hunf.
+        specialize (Hunf left right Hhist).
+        rewrite Hunf in Hhist.
+        assert (length (get_history (project x from) from) > length (get_history (project s' from) from)). {
+          rewrite Hhist.
+          simpl.
+          rewrite app_length. simpl. lia.
+        }
+        
+        destruct (project x from) eqn : eq_b;[simpl in *;lia|].
+        rewrite (@unfold_history_cons index index_listing Hfinite) in Hmax by (intuition congruence).
+        simpl in Hmax. 
+        destruct (project s' from) eqn : eq_b2.
+        + assert (get_history s' from = []) by (apply unfold_history_bottom;intuition).
+          rewrite H1 in Hmax. simpl in Hmax. lia.
+        + assert (get_history s' from = (project s' from) :: get_history (project s' from) from). {
+            apply (@unfold_history_cons index index_listing Hfinite). intuition congruence.
+          }
+          rewrite H1 in Hmax.
+          simpl in Hmax.
+          rewrite eq_b in Hmax. rewrite eq_b2 in Hmax.
+          lia.
     Qed.
     
     Remark get_matching_state_correct3
