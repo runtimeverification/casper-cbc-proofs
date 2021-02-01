@@ -3019,6 +3019,94 @@ Context
       - exists to. intuition.
     Qed.
     
+    Definition top_history
+      (s : vstate X)
+      (from : index) :=
+      let history_lengths := List.map (fun s' : state => length (get_history s' from)) (get_candidates s) in
+      let max_length := list_max history_lengths in
+      filter (fun s' : state => beq_nat (length (get_history s' from)) max_length) (get_candidates s).
+    
+    Lemma top_history_something 
+      (s : vstate X)
+      (from : index) :
+      exists (s' : state), In s' (top_history s from).
+    Proof.
+      unfold top_history.
+      specialize (list_max_exists (List.map (fun s' : state => length (get_history s' from)) (get_candidates s))) as Hmax.
+      spec Hmax. admit. apply in_map_iff in Hmax.
+      destruct Hmax.
+      exists x. apply filter_In. split;[intuition|].
+      rewrite beq_nat_true_iff. intuition.
+    Admitted.
+    
+    Lemma topmost_candidates_nonempty 
+      (s : vstate X)
+      (from : index)
+      (Hne : GH s <> []) :
+      exists (s' : state), In s' (get_topmost_candidates s from).
+    Proof.
+      specialize (top_history_something s from) as Htop_hist.
+      destruct Htop_hist as [s' Htop].
+      exists s'.
+      unfold get_topmost_candidates.
+      apply filter_In.
+      unfold top_history in Htop.
+      apply filter_In in Htop.
+      split;[intuition|].
+      destruct Htop as [_ Htop].
+      rewrite beq_nat_true_iff in Htop.
+      rewrite forallb_forall. 
+      intros.
+      rewrite negb_true_iff.
+      rewrite bool_decide_eq_false.
+      intros contra.
+      specialize (list_max_le (map (fun s'0 : state => length (get_history s'0 from)) (get_candidates s))) as Hmax.
+      specialize (Hmax (length (get_history s' from))).
+      rewrite Htop in Hmax. 
+      destruct Hmax as [Hmax _]. spec Hmax. lia.
+      rewrite Forall_forall in Hmax.
+      specialize (Hmax (length (get_history x from))).
+      spec Hmax. {
+        apply in_map_iff.
+        exists x. intuition.
+      }
+      rewrite <- Htop in Hmax.
+      unfold state_lt_ext in contra.
+      destruct contra.
+      - assert (get_history s' from = []) by (apply unfold_history_bottom;intuition).
+        rewrite H1 in Hmax. simpl in Hmax. 
+        rewrite (@unfold_history_cons index index_listing Hfinite) in Hmax.
+        simpl in Hmax. lia. intuition.
+      - unfold state-lt'
+    Qed.
+    
+    Remark get_matching_state_correct3
+      (s : vstate X)
+      (to from : index)
+      (Hin : In to (GH s)) :
+      In (get_matching_state s to from) (get_topmost_candidates s from).
+    Proof.
+      unfold get_matching_state.
+      destruct (find (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))
+      (get_topmost_candidates s from)) eqn : eq_find.
+      - apply find_some in eq_find. intuition.
+      - unfold get_topmost_candidates.
+        unfold get_maximal_elements.
+        apply filter_In.
+        split.
+        + apply in_map_iff. exists to. intuition.
+        + rewrite forallb_forall. intros.
+          rewrite negb_true_iff.
+          rewrite bool_decide_eq_false.
+          intros contra.
+          specialize (find_none (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))) as Hnone.
+          specialize (Hnone (get_topmost_candidates s from) eq_find).
+          
+          specialize (Hnone x). spec Hnone. admit.
+          rewrite bool_decide_eq_false in Hnone.
+          
+    Admitted.
+    
    Lemma get_matching_state_for_honest
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -4690,6 +4778,132 @@ Context
         * split;[intuition|].
           intuition.
   Admitted.
+ 
+  Lemma honest_hh_projections_comparable
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (h1 h2 hh : index)
+    (Hgh : In h1 (GH s) /\ In h2 (GH s))
+    (Hhh : In hh (HH s)) :
+    comparable (state_lt_ext hh) (project (s h1) hh) (project (s h2) hh).
+  Proof.
+    unfold comparable.
+    destruct (decide (project (s h1) hh = project (s h2) hh));[left;intuition|].
+    right.
+    
+    destruct (project (s h1) hh) eqn : eq1.
+    - left. unfold state_lt_ext. intuition.
+    - destruct (project (s h2) hh) eqn : eq2.
+      + right. unfold state_lt_ext. intuition.
+      + rewrite <- eq1. rewrite <- eq2.
+        
+        assert (Hcomp : comparable (state_lt' hh) (project (s h1) hh) (project (s h2) hh)). {
+          destruct (decide (comparable (state_lt' hh) (project (s h1) hh) (project (s h2) hh)));[intuition|].
+          assert (In hh (HE s)). {
+            unfold HE.
+            apply GE_direct.
+            unfold cequiv_evidence.
+            unfold equivocation_evidence.
+            setoid_rewrite hbo_cobs.
+            
+            exists (SimpObs Message' hh (project (s h1) hh)).
+            simpl. split.
+            - apply in_cobs_messages'.
+              apply cobs_single. 
+              exists h1. split;[intuition|].
+              apply refold_simp_lv_observations1. 
+              apply protocol_state_component_no_bottom; intuition.
+              intuition congruence. intuition.
+            - split;[simpl;intuition|].
+              exists (SimpObs Message' hh (project (s h2) hh)).
+              simpl. split.
+              + apply in_cobs_messages'.
+                apply cobs_single. 
+                exists h2. split;[intuition|].
+                apply refold_simp_lv_observations1. 
+                apply protocol_state_component_no_bottom; intuition.
+                intuition congruence. intuition.
+              + split;[simpl;intuition|].
+                intros contra.
+                unfold comparable in contra.
+                unfold simp_lv_event_lt in contra.
+                rewrite decide_True in contra by intuition.
+                rewrite decide_True in contra by intuition.
+                destruct contra.
+                * inversion H. intuition congruence.
+                * unfold comparable in n0.
+                  contradict n0.
+                  right. intuition.
+          }
+          unfold HH in Hhh.
+          apply wH_wE' in Hhh.
+          unfold HE in H. intuition.
+        }
+        
+        unfold comparable in Hcomp.
+        destruct Hcomp;[intuition congruence|].
+        destruct H.
+        * left. unfold state_lt_ext. intuition.
+        * right. unfold state_lt_ext. intuition.
+  Qed.
+ 
+  Lemma comparable_projections_match
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (h1 h2 hh : index)
+    (Hgh : In h1 (GH s) /\ In h2 (GH s))
+    (Hhh : In hh (HH s)) 
+    (projh1 := project (get_matching_state s h1 hh) hh)
+    (projh2 := project (get_matching_state s h2 hh) hh) :
+    projh1 = projh2.
+  Proof.
+    
+    specialize (get_matching_state_correct2 s h1 hh) as Hmatch1.
+    specialize (get_matching_state_correct2 s h2 hh) as Hmatch2.
+    spec Hmatch1. intuition. spec Hmatch2. intuition.
+    destruct Hmatch1 as [i [GHi Hmatch1]].
+    destruct Hmatch2 as [j [GHj Hmatch2]].
+    
+    assert (Hcomp': comparable (state_lt_ext hh) projh1 projh2). {
+      unfold projh1, projh2.
+      rewrite Hmatch1. rewrite Hmatch2.
+      apply honest_hh_projections_comparable; intuition.
+    }
+    
+    unfold projh1 in *.
+    unfold projh2 in *.
+    specialize (get_matching_state_correct3 s h1 hh) as Htop1.
+    specialize (get_matching_state_correct3 s h2 hh) as Htop2.
+    spec Htop1. intuition. spec Htop2. intuition.
+    
+    unfold comparable in Hcomp'.
+    destruct Hcomp' as [|Hcomp'];[intuition|].
+    destruct Hcomp'.
+    - unfold get_topmost_candidates in Htop1.
+      unfold get_maximal_elements in Htop1.
+      apply filter_In in Htop1.
+      destruct Htop1 as [_ Htop1].
+      rewrite forallb_forall in Htop1.
+      specialize (Htop1 (s j)).
+      spec Htop1.
+      apply in_map_iff. exists j. intuition.
+      rewrite negb_true_iff in Htop1.
+      rewrite bool_decide_eq_false in Htop1.
+      rewrite Hmatch2 in H.
+      intuition.
+    - unfold get_topmost_candidates in Htop2.
+      unfold get_maximal_elements in Htop2.
+      apply filter_In in Htop2.
+      destruct Htop2 as [_ Htop2].
+      rewrite forallb_forall in Htop2.
+      specialize (Htop2 (s i)).
+      spec Htop2.
+      apply in_map_iff. exists i. intuition.
+      rewrite negb_true_iff in Htop2.
+      rewrite bool_decide_eq_false in Htop2.
+      rewrite Hmatch1 in H.
+      intuition.
+   Qed.
   
   Lemma honest_equiv_proj_same
     (s : vstate X)
@@ -4735,32 +4949,19 @@ Context
     rewrite Hmatch1 in n1.
     rewrite Hmatch2 in n1.
     
-    clear Hmatch Hmatch1 Hmatch2.
-    
-    
-    
-    assert (In hh (HE res)). {
-      unfold HE.
-      apply GE_direct.
-      unfold cequiv_evidence. 
-      unfold equivocation_evidence.
-      setoid_rewrite hbo_cobs.
-      exists (SimpObs Message' hh (project (res h1) hh)).
-      split.
-      - apply in_cobs_messages'.
-        apply cobs_single.
-        exists h1. split;[intuition|].
-        apply refold_simp_lv_observations1.
-        apply protocol_state_component_no_bottom.
-        apply common_future_result_protocol.
-        intuition.
-        intuition.
-        admit.
-        intuition.
-      - split;[intuition|].
-   
+    specialize (comparable_projections_match res_send) as Hcomp.
+    spec Hcomp. apply send_phase_result_protocol; intuition.
+    specialize (Hcomp h1 h2 hh).
+    spec Hcomp. {
+      unfold res_send.
+      rewrite GH_eq3 by intuition.
+      unfold res in H, H0. intuition.
     }
-  Qed.
+    spec Hcomp. {
+      admit.
+    }
+    intuition.
+  Admitted.
     
      
 End Composition.

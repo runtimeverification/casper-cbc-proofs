@@ -1,3 +1,4 @@
+Require Import Bool.
 Require Import Coq.Lists.ListSet.
 Require Import List.
 Import ListNotations.
@@ -666,12 +667,51 @@ Proof.
     assumption.
 Qed. 
 
+Definition forallb_false {A}
+  (l : list A)
+  (Hne : l <> [])
+  (f : A -> bool) :
+  forallb f l = false -> 
+  exists (a : A), In a l /\ (f a) = false.
+Proof.
+  intros.
+  induction l;[congruence|].
+  simpl in H.
+  destruct (f a) eqn : eqfa.
+  - simpl in H. 
+    destruct l.
+    + simpl in H. congruence.
+    + spec IHl. congruence.
+      specialize (IHl H).
+      destruct IHl as [a' [Hina' Heqa']].
+      exists a'. intuition.
+  - exists a. intuition.
+Qed.
 
 Definition get_maximal_elements {A}
   (preceeds : A -> A -> bool)
   (l : list A)
   : list A :=
   filter (fun a => forallb (fun b => negb (preceeds a b)) l) l.
+  
+Definition in_get_maximal_elements1 {A}
+  (preceeds : A -> A -> bool)
+  (l : list A)
+  (a : A)
+  (Hina : In a l)  :
+  ~ In a (get_maximal_elements preceeds l) ->
+  exists (b : A), In b (get_maximal_elements preceeds l) /\
+    preceeds a b.
+Proof.
+  intros.
+  destruct ((fun a => forallb (fun b => negb (preceeds a b)) l) a) eqn : eq_comp.
+  - contradict H.
+    apply filter_In. intuition.
+  - apply forallb_false in eq_comp.
+    destruct eq_comp as [b [Hinb Heqb]].
+    rewrite negb_false_iff in Heqb.
+Qed.
+
 Lemma set_prod_nodup `(s1: set A) `(s2: set B):
   NoDup s1 ->
   NoDup s2 ->
