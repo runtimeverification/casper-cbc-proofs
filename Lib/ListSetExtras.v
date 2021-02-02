@@ -807,4 +807,29 @@ Proof.
       intuition).
 Qed.
 
+Lemma filter_set_eq `{EqDecision X}
+   (l : list X) 
+   (f g : X -> bool)
+   (resf := filter f l)
+   (resg := filter g l) :
+   set_eq resf resg -> resf = resg.
+Proof.
+  intros.
+  unfold resf, resg in *.
+  apply filter_ext_in. intros.
+  unfold set_eq in H.
+  destruct H as [H H'].
+  unfold incl in *.
+  specialize (H a). specialize (H' a).
+  assert (f a = true <-> g a = true). {
+    split; intros.
+    - spec H. apply filter_In. intuition.
+      apply filter_In in H. intuition.
+    - spec H'. apply filter_In. intuition.
+      apply filter_In in H'. intuition.
+  }
+  specialize (eq_true_iff_eq (f a) (g a) H1).
+  intuition.
+Qed.  
+
 Unset Implicit Arguments.

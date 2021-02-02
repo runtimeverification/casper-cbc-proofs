@@ -571,7 +571,29 @@ Context
           -- apply ((proj2 Hfinite) (get_simp_event_subject e)).
      + intuition.
   Qed.
-    
+  
+  Remark wE_eq_equality
+    (s s' : vstate X)
+    (i : index) :
+    set_eq (wE s) (wE s') -> (wE s) = (wE s').
+  Proof.
+    intros.
+    apply filter_set_eq.
+    unfold wE in H.
+    intuition.
+  Qed.
+  
+  Remark wH_eq_equality
+    (s s' : vstate X)
+    (i : index) :
+    set_eq (wH s) (wH s') -> (wH s) = (wH s').
+  Proof.
+    intros.
+    apply filter_set_eq.
+    unfold wH in H.
+    intuition.
+  Qed.
+  
   Lemma wH_wE'
     (s : vstate X)
     (i : index) :
@@ -621,6 +643,8 @@ Context
     (s s' : vstate X) :
     set_eq (wH s) (wH s') <-> set_eq (wE s) (wE s').
   Proof.
+    split; intros.
+    - apply wH_eq_equality in H.  
   Admitted.
   
   End EquivObsUtils.
@@ -1878,7 +1902,7 @@ Context
         specialize (Hex e).
         apply Hex.
         intuition.
-  Qed. 
+  Qed.
   
   Lemma ep_plan 
     (s : vstate X)
@@ -4469,6 +4493,7 @@ Context
       (res := common_future s) :
       (GH s) = (GH res_send).
     Proof.
+      apply wH_eq_equality.
     Admitted.
     
     Corollary GH_eq2
@@ -4944,7 +4969,6 @@ Context
     (projh2 := project (get_matching_state s h2 hh) hh) :
     projh1 = projh2.
   Proof.
-    
     specialize (get_matching_state_correct2 s h1 hh) as Hmatch1.
     specialize (get_matching_state_correct2 s h2 hh) as Hmatch2.
     spec Hmatch1. intuition. spec Hmatch2. intuition.
