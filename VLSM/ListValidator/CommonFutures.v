@@ -5111,6 +5111,82 @@ Context
     }
     intuition.
   Admitted.
+  
+  Check est'.
+  
+  Lemma honest_nodes_same_estimators
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := send_phase_result s)
+    (res := common_future s) :
+    forall (i j : index) (b : bool),
+    In i (GH res) ->
+    In j (GH res) -> 
+    (est' i (res i) b) <-> (est' j (res j) b).
+  Proof.
+    intros.
+    unfold est'.
+    unfold equivocation_aware_estimator.
+    assert (res i <> Bottom /\ res j <> Bottom). {
+      split; apply protocol_state_component_no_bottom; apply common_future_result_protocol; intuition.
+    }
+    destruct (res i) eqn : resi;[intuition congruence|].
+    destruct (res j) eqn : resj;[intuition congruence|].
+    
+    rewrite <- resi. rewrite <- resj.
+    
+    specialize (local_and_honest s Hpr Hnf) as Hlocal. simpl in Hlocal.
+    specialize (Hlocal i H) as Hlocali. 
+    specialize (Hlocal j H0) as Hlocalj.
+    
+    assert (@equivocating_validators _ _ _ _ (@simp_lv_basic_equivocation index i index_listing Hfinite idec Mindex Rindex) (res i) =
+          (@equivocating_validators _ _ _ _ (@simp_lv_basic_equivocation index j index_listing Hfinite idec Mindex Rindex)) (res j)). {
+        unfold equivocating_validators.
+        unfold state_validators. simpl.
+        unfold get_validators.
+        apply filter_ext_in. intros.
+        admit.
+    }
+    
+    rewrite H2.
+    Check @no_equivocating_decisions.
+    
+    assert (no_equivocating_decisions (res i)
+           (@equivocating_validators _ _ _ _ (@simp_lv_basic_equivocation index j index_listing Hfinite idec Mindex Rindex) (res j)) 
+           = 
+          no_equivocating_decisions (res j) 
+          ((@equivocating_validators _ _ _ _ (@simp_lv_basic_equivocation index j index_listing Hfinite idec Mindex Rindex) (res j)))). {
+      unfold no_equivocating_decisions.
+      rewrite resi. rewrite resj.
+      rewrite <- resi. rewrite <- resj.
+      f_equal.
+      unfold get_no_equivocating_states.
+      specialize (@map_ext_in index (@state index index_listing) (fun i1 : index => project (res i) i1)) as Hext.
+      specialize (Hext ((fun i1 : index => project (res j) i1))).
+      specialize (Hext (set_diff decide_eq index_listing
+        (@equivocating_validators _ _ _ _ (@simp_lv_basic_equivocation index j index_listing Hfinite idec Mindex Rindex) (res j)))).
+        apply Hext.
+      intros.
+      assert (HaHH : In a (HH res)). {
+        assert (Haj : In a (LH j res)). {
+          apply set_diff_iff in H3.
+          destruct H3 as [_ H3].
+          unfold equivocating_validators in H3.
+          simpl in H3. unfold get_validators in H3.
+          apply filter_In. split;[apply in_listing|].
+          rewrite negb_true_iff. rewrite bool_decide_eq_false.
+          intros contra.
+          admit.
+         }
+         admit.
+      }
+      specialize (honest_equiv_proj_same s Hpr Hnf i j a H H0 HaHH) as Hhonest.
+      intuition.
+    }
+    rewrite H3.
+    intuition.
+  Admitted.
     
      
 End Composition.
