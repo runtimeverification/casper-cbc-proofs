@@ -830,6 +830,29 @@ Proof.
   }
   specialize (eq_true_iff_eq (f a) (g a) H1).
   intuition.
+Qed.
+
+Lemma filter_complement `{EqDecision X}
+   (l : list X) 
+   (f f' : X -> bool)
+   (g := (fun (x : X) => negb (f x)))
+   (g' := (fun (x : X) => negb (f' x))) :
+   filter f l = filter f' l <-> 
+   filter g l = filter g' l.
+Proof.
+   split; intros.
+   - specialize (ext_in_filter f f' l H) as Hext.
+     apply filter_ext_in.
+     intros.
+     unfold g. unfold g'.
+     specialize (Hext a H0).
+     rewrite Hext. intuition.
+   - specialize (ext_in_filter g g' l H) as Hext.
+     apply filter_ext_in. intros.
+     specialize (Hext a H0). 
+     unfold g in Hext.
+     unfold g' in Hext.
+     destruct (f a); destruct (f' a); (simpl in *; intuition congruence).
 Qed.  
 
 Unset Implicit Arguments.

@@ -573,8 +573,7 @@ Context
   Qed.
   
   Remark wE_eq_equality
-    (s s' : vstate X)
-    (i : index) :
+    (s s' : vstate X) :
     set_eq (wE s) (wE s') -> (wE s) = (wE s').
   Proof.
     intros.
@@ -641,11 +640,11 @@ Context
   
   Lemma HE_eq_equiv
     (s s' : vstate X) :
-    set_eq (wH s) (wH s') <-> set_eq (wE s) (wE s').
+    (wH s) = (wH s') <-> (wE s) = (wE s').
   Proof.
-    split; intros.
-    - apply wH_eq_equality in H.  
-  Admitted.
+    unfold wH. unfold wE.
+    symmetry. apply filter_complement.
+  Qed.
   
   End EquivObsUtils.
   
@@ -4493,8 +4492,11 @@ Context
       (res := common_future s) :
       (GH s) = (GH res_send).
     Proof.
-      apply wH_eq_equality.
-    Admitted.
+      apply HE_eq_equiv.
+      specialize (send_phase_GE s Hpr Hnf) as He.
+      apply wE_eq_equality in He.
+      intuition.
+    Qed.
     
     Corollary GH_eq2
       (s : vstate X)
@@ -4504,7 +4506,11 @@ Context
       (res := common_future s) :
       (GH s) = (GH res).
     Proof.
-    Admitted.
+      apply HE_eq_equiv.
+      specialize (common_future_no_extra_equivocation s Hpr Hnf) as He.
+      apply wE_eq_equality in He.
+      intuition.
+    Qed.
     
     Corollary GH_eq3
       (s : vstate X)
@@ -4514,7 +4520,12 @@ Context
       (res := common_future s) :
       (GH res_send) = (GH res).
     Proof.
-    Admitted.
+      apply HE_eq_equiv.
+      specialize (receive_phase_GE res_send) as He.
+      spec He. apply send_phase_result_protocol; intuition.
+      apply wE_eq_equality in He.
+      intuition.
+    Qed.
    
   Lemma honest_receive_honest
     (s : vstate X)
