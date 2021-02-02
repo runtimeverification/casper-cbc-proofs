@@ -339,7 +339,49 @@ Context
     intuition.
   Qed.
   
-  Lemma cobs_single
+  Remark cobs_single
+    (s : vstate X)
+    (target : index)
+    (e : simp_lv_event) :
+    In e (wcobs s target) <->
+    exists (i : index), (In i ws) /\ (In e (@simp_lv_observations index i index_listing _ (s i) target)).
+  Proof.
+    split; intros.
+    - apply set_union_in_iterated in H. rewrite Exists_exists in H.
+      destruct H as [le [Hinle Hine]].
+      apply in_map_iff in Hinle.
+      destruct Hinle as [ii [Heqle Hini]].
+      exists ii. rewrite <- Heqle in Hine. intuition.
+    - apply set_union_in_iterated. rewrite Exists_exists.
+      destruct H as [i Hi].
+      exists (@simp_lv_observations index i index_listing _ (s i) target).
+      split.
+      + apply in_map_iff. exists i. split;intuition.
+      + intuition.
+  Qed.
+  
+  Remark cobs_single_s
+    (s : vstate X)
+    (target : index)
+    (e : simp_lv_event) :
+    In e (wcobs_states s target) <->
+    exists (i : index), (In i ws) /\ (In e (@simp_lv_state_observations index i index_listing _ (s i) target)).
+  Proof.
+    split; intros.
+    - apply set_union_in_iterated in H. rewrite Exists_exists in H.
+      destruct H as [le [Hinle Hine]].
+      apply in_map_iff in Hinle.
+      destruct Hinle as [ii [Heqle Hini]].
+      exists ii. rewrite <- Heqle in Hine. intuition.
+    - apply set_union_in_iterated. rewrite Exists_exists.
+      destruct H as [i Hi].
+      exists (@simp_lv_state_observations index i index_listing _ (s i) target).
+      split.
+      + apply in_map_iff. exists i. split;intuition.
+      + intuition.
+  Qed.
+  
+  Remark cobs_single_m
     (s : vstate X)
     (target : index)
     (e : simp_lv_event) :
@@ -365,50 +407,33 @@ Context
     (target : index) :
     set_eq (wcobs s target) (set_union decide_eq (wcobs_states s target) (wcobs_messages s target)).
   Proof.
-    unfold wcobs, wcobs_states, wcobs_messages.
-    unfold composite_state_events_fn.
-    remember (map (fun i : index => Hstate_events_fn i (s i) target) ws) as ss.
-    specialize (@set_union_iterated_part (@simp_lv_event index index_listing) decide_eq ss) as Hpart.
-    remember (filter (fun (e : simp_lv_event) => @bool_decide ((@get_simp_event_type index index_listing) e = Message') _)) as f.
-    remember (filter (fun (e : simp_lv_event) => @bool_decide ((@get_simp_event_type index index_listing) e = State') _)) as g.
-    specialize (Hpart f g).
-    
-    spec Hpart. {
-      intros.
-      rewrite Heqss in H.
-      apply in_map_iff in H.
-      destruct H as [i [Heq Hini]].
-      unfold Hstate_events_fn in Heq. 
-      rewrite <- Heq. rewrite Heqf. rewrite Heqg.
-      unfold simp_lv_observations at 1.
-      apply set_eq_extract_forall. intros e.
-      split; intros.
-      - apply set_union_iff in H.
-        destruct H.
-        + setoid_rewrite simp_lv_message_f_eq in H.
-          apply set_union_iff. left. intuition.
-        + setoid_rewrite simp_lv_state_f_eq in H.
-          apply set_union_iff. right. intuition.
-      - apply set_union_iff in H.
-        destruct H.
-        + apply set_union_iff. left.
-          setoid_rewrite simp_lv_message_f_eq.
-          intuition.
-        + apply set_union_iff. right.
-          setoid_rewrite simp_lv_state_f_eq.
-          intuition.
-      }
-      apply set_eq_extract_forall. intros e.
-      specialize (Hpart e).
-      rewrite Heqf in Hpart. rewrite Heqg in Hpart.
-      split.
-      - intros.
-        apply Hpart in H.
-        apply set_union_iff in H.
-        apply set_union_iff.
-        destruct H.
-        + right. apply set_union_in_iterated in H. rewrite Exists_exists in H.
-  Admitted.
+    apply set_eq_extract_forall. intros.
+    split; intros.
+    - apply cobs_single in H.
+      destruct H as [i [Hini Hobsi]].
+      unfold simp_lv_observations in Hobsi.
+      apply set_union_iff in Hobsi.
+      apply set_union_iff.
+      destruct Hobsi.
+      + right. apply cobs_single_m.
+        exists i. intuition.
+      + left. apply cobs_single_s.
+        exists i. intuition.
+     - apply set_union_iff in H.
+       destruct H.
+       + apply cobs_single_s in H.
+         destruct H as [i [Hini Hobsi]].
+         apply cobs_single.
+         exists i. split;[intuition|].
+         apply in_simp_lv_state_observations'.
+         intuition.
+       + apply cobs_single_m in H.
+         destruct H as [i [Hini Hobsi]].
+         apply cobs_single.
+         exists i. split;[intuition|].
+         apply in_simp_lv_message_observations'.
+         intuition.
+  Qed.
   
   Lemma in_cobs_and_message
     (s : vstate X)
@@ -718,7 +743,7 @@ Context
     
     assert (Hsonb : so <> Bottom). {
         apply in_cobs_and_message in Hhave.
-        apply cobs_single in Hhave.
+        apply cobs_single_m in Hhave.
         destruct Hhave as [k Hhave].
         destruct Hhave as [_ Hhave].
         apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
@@ -728,7 +753,7 @@ Context
     intros e.
     intros H.
     unfold cobs_messages in H.
-    apply cobs_single in H.
+    apply cobs_single_m in H.
     destruct H as [k Hink].
     destruct (decide (k = i)).
     - subst k.
@@ -747,13 +772,13 @@ Context
         destruct Hink as [Hink|Hink].
         * apply set_union_iff in Hink.
           destruct Hink as [Hink|Hink].
-          -- apply cobs_single.
+          -- apply cobs_single_m.
              exists i. intuition.
              apply (proj2 Hfinite).
           -- apply in_cobs_and_message in Hhave.
-             apply cobs_single in Hhave. 
+             apply cobs_single_m in Hhave. 
              destruct Hhave as [l Hhave].
-             apply cobs_single.
+             apply cobs_single_m.
              exists l.
              split;[apply in_listing|].
              apply (@message_cross_observations index index_listing Hfinite) with (e1 := (SimpObs Message' j so)) (i := j).
@@ -772,15 +797,15 @@ Context
         
         apply set_union_iff in Hink.
         destruct Hink as [Hink|Hink]. 
-        apply cobs_single.
+        apply cobs_single_m.
         exists i.
         split;[apply in_listing|].
         intuition.
         apply in_cobs_and_message in Hhave.
         2 : intuition.  
-        apply cobs_single in Hhave.
+        apply cobs_single_m in Hhave.
         destruct Hhave as [l Hhave].
-        apply cobs_single.
+        apply cobs_single_m.
         exists l.
         split;[apply in_listing|].
         apply (@message_cross_observations index index_listing Hfinite) with (e1 := (SimpObs Message' j so)) (i := j).
@@ -790,7 +815,7 @@ Context
         intuition.
     - unfold s' in Hink.
       rewrite state_update_neq in Hink by intuition.
-      apply cobs_single.
+      apply cobs_single_m.
       exists k.
       intuition.
   Qed.
@@ -813,7 +838,7 @@ Context
     
     assert (Hsonb : so <> Bottom). {
         apply in_cobs_and_message in Hhave.
-        apply cobs_single in Hhave.
+        apply cobs_single_m in Hhave.
         destruct Hhave as [k Hhave].
         destruct Hhave as [_ Hhave].
         apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
@@ -822,11 +847,11 @@ Context
   
     unfold incl.
     intros.
-    apply cobs_single in H.
+    apply cobs_single_m in H.
     destruct H as [k H].
     destruct (decide (i = k)).
     - subst k.
-      apply cobs_single.
+      apply cobs_single_m.
       exists i.
       split;[apply in_listing|].
       destruct H as [_ H].
@@ -836,7 +861,7 @@ Context
       intuition.
       split. apply Hsnb. intuition.
       intuition.
-   - apply cobs_single.
+   - apply cobs_single_m.
      exists k.
      unfold s'.
      rewrite state_update_neq.
@@ -861,11 +886,11 @@ Context
   
     unfold incl.
     intros.
-    apply cobs_single in H.
+    apply cobs_single_m in H.
     destruct H as [k H].
     destruct (decide (i = k)).
     - subst k.
-      apply cobs_single.
+      apply cobs_single_m.
       exists i.
       split;[apply in_listing|].
       destruct H as [_ H].
@@ -875,7 +900,7 @@ Context
       intuition.
       split. apply Hsnb. intuition.
       intuition.
-   - apply cobs_single.
+   - apply cobs_single_m.
      exists k.
      unfold s'.
      rewrite state_update_neq.
@@ -918,7 +943,7 @@ Context
     apply set_eq_extract_forall.
     intros e.
     split; intros H.
-    - apply cobs_single in H.
+    - apply cobs_single_m in H.
       destruct H as [k H].
       destruct (decide (k = i)).
       + subst k.
@@ -928,20 +953,20 @@ Context
         destruct H as [_ H].
         apply (@new_incl_rest_diff index index_listing Hfinite) in H.
         apply set_union_iff in H.
-        destruct H; (apply cobs_single; exists i; split;[apply in_listing|intuition]).
+        destruct H; (apply cobs_single_m; exists i; split;[apply in_listing|intuition]).
         split; apply Hsnb.
         all :intuition.
       + unfold s' in H.
         rewrite state_update_neq in H.
-        apply cobs_single.
+        apply cobs_single_m.
         exists k. all : intuition.
-    - apply cobs_single in H.
+    - apply cobs_single_m in H.
       destruct H as [k H].
       destruct (decide (k = i)).
       + subst k.
         destruct H as [_ H].
         apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H. 
-        apply cobs_single.
+        apply cobs_single_m.
         exists i.
         unfold s'.
         rewrite state_update_eq.
@@ -950,7 +975,7 @@ Context
         intuition.
         split; apply Hsnb.
         intuition.
-      + apply cobs_single.
+      + apply cobs_single_m.
         exists k.
         unfold s'.
         rewrite state_update_neq.
@@ -973,7 +998,7 @@ Context
     apply set_eq_extract_forall.
     intros e.
     split; intros H.
-    - apply cobs_single in H.
+    - apply cobs_single_m in H.
       apply set_union_iff.
       destruct H as [k H].
       destruct (decide (i = k)).
@@ -986,21 +1011,21 @@ Context
         apply set_union_iff in H.
         destruct H as [H|H];[|right;intuition].
         apply set_union_iff in H.
-        destruct H; left; apply cobs_single; exists i; (split;[apply in_listing|intuition]).
+        destruct H; left; apply cobs_single_m; exists i; (split;[apply in_listing|intuition]).
         split; apply Hsnb.
         intuition.
       + left.
         unfold s' in H.
         rewrite state_update_neq in H by intuition.
-        apply cobs_single. exists k. intuition.
+        apply cobs_single_m. exists k. intuition.
     - apply set_union_iff in H.
       destruct H as [H | H].
-      + apply cobs_single in H.
+      + apply cobs_single_m in H.
         destruct H as [k [_ H]].
         destruct (decide (i = k)).
         * subst k. 
           apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H.
-          apply cobs_single.
+          apply cobs_single_m.
           exists i.
           unfold s'.
           rewrite state_update_eq.
@@ -1009,13 +1034,13 @@ Context
           intuition.
           split; apply Hsnb.
           intuition.
-        * apply cobs_single.
+        * apply cobs_single_m.
           exists k.
           unfold s'.
           rewrite state_update_neq.
           split;[apply in_listing|].
           all : intuition.
-      + apply cobs_single.
+      + apply cobs_single_m.
         exists i.
         unfold s'.
         rewrite state_update_eq by intuition.
@@ -1372,7 +1397,7 @@ Context
     
     assert (Hsonb : so <> Bottom). {
         apply in_cobs_and_message in Hhave.
-        apply cobs_single in Hhave.
+        apply cobs_single_m in Hhave.
         destruct Hhave as [k [_ Hhave]].
         apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
         all : intuition.
@@ -1665,7 +1690,7 @@ Context
     
     assert (Hsonb : so <> Bottom). {
         apply in_cobs_and_message in Hhave.
-        apply cobs_single in Hhave.
+        apply cobs_single_m in Hhave.
         destruct Hhave as [k [_ Hhave]].
         apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
         all : intuition.
@@ -2847,7 +2872,7 @@ Context
              rewrite <- Hhist in Hinsa.
              apply (@in_history_in_observations index index_listing Hfinite) in Hinsa.
              apply in_cobs_messages'.
-             apply cobs_single.
+             apply cobs_single_m.
              exists inter.
              split;[apply in_listing|].
              intuition.
@@ -2905,7 +2930,7 @@ Context
           exists (SimpObs Message' i (project (s j) i)). simpl.
           split.
           + apply in_cobs_messages'.
-            apply cobs_single.
+            apply cobs_single_m.
             exists j. split;[apply in_listing|].
             apply refold_simp_lv_observations1.
             apply Hsnb.
@@ -3455,7 +3480,7 @@ Context
           destruct Hinter as [inter Heq_inter].
           rewrite Heq_inter in H.
           apply (@in_history_in_observations index index_listing Hfinite) in H.
-          apply cobs_single.
+          apply cobs_single_m.
           exists inter. intuition.
           apply in_listing.
         + contradict Hin.
@@ -4705,7 +4730,7 @@ Context
   Proof.
     intros.
     assert (H' := H).
-    apply cobs_single in H.
+    apply cobs_single_m in H.
     destruct H as [k [Hink Hine]].
     
     assert (Hspr : protocol_state_prop X res_send). {
@@ -4728,7 +4753,7 @@ Context
       apply protocol_state_component_no_bottom.
       apply common_future_result_protocol; intuition.
     }
-    apply cobs_single.
+    apply cobs_single_m.
     
     destruct Hine as [Hine|Hine].
     - specialize (all_projections_old2 s Hpr Hnf k target Hink Htarget) as Hinter.
@@ -4740,7 +4765,7 @@ Context
         rewrite <- Hproject in Hine.
         apply refold_simp_lv_observations1.
         apply protocol_state_component_no_bottom; intuition.
-        apply cobs_single in H'.
+        apply cobs_single_m in H'.
         destruct H' as [inter2 Hrest].
         destruct Hrest as [_ Hrest].
         apply (@in_message_observations_nb index index_listing Hfinite) in Hrest.
@@ -4793,7 +4818,7 @@ Context
     In e (simp_lv_message_observations (res i) target).
   Proof.
     intros.
-    apply cobs_single in H.
+    apply cobs_single_m in H.
     destruct H as [j [HjGH Hine]].
     apply (@refold_simp_lv_observations2 index index_listing Hfinite).
     apply protocol_state_component_no_bottom; apply common_future_result_protocol; intuition.
@@ -4932,7 +4957,7 @@ Context
             exists (SimpObs Message' hh (project (s h1) hh)).
             simpl. split.
             - apply in_cobs_messages'.
-              apply cobs_single. 
+              apply cobs_single_m. 
               exists h1. split;[intuition|].
               apply refold_simp_lv_observations1. 
               apply protocol_state_component_no_bottom; intuition.
@@ -4941,7 +4966,7 @@ Context
               exists (SimpObs Message' hh (project (s h2) hh)).
               simpl. split.
               + apply in_cobs_messages'.
-                apply cobs_single. 
+                apply cobs_single_m. 
                 exists h2. split;[intuition|].
                 apply refold_simp_lv_observations1. 
                 apply protocol_state_component_no_bottom; intuition.

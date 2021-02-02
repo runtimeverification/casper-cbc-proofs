@@ -752,61 +752,6 @@ Proof.
   intuition.
 Qed.
 
-Lemma set_union_iterated_part
-  `{EqDecision A}
-  (ss : list (set A))
-  (f g : set A -> set A)
-  (Hsplit : forall (s : set A), In s ss -> set_eq s (set_union decide_eq (f s) (g s)))
-  (a : A)
-  : In a (fold_right (set_union decide_eq) nil ss)
-  <-> In a (set_union decide_eq (fold_right (set_union decide_eq) nil (List.map f ss))
-                        (fold_right (set_union decide_eq) nil (List.map g ss))).
-Proof.
-  split; intros H.
-  - apply set_union_in_iterated in H.
-    rewrite Exists_exists in H.
-    destruct H as [s [Hins Hina]].
-    apply set_union_iff.
-    specialize (Hsplit s Hins) as Hs.
-    setoid_rewrite Hs in Hina.
-    apply set_union_iff in Hina.
-    destruct Hina.
-    + left. apply set_union_in_iterated; rewrite Exists_exists.
-      exists (f s).
-      split.
-      * apply in_map_iff.
-        exists s.
-        intuition.
-      * intuition.
-    + right. apply set_union_in_iterated; rewrite Exists_exists.
-      exists (g s).
-      split.
-      * apply in_map_iff.
-        exists s.
-        intuition.
-      * intuition.
-  - apply set_union_iff in H.
-    destruct H;
-     (apply set_union_in_iterated in H;
-      rewrite Exists_exists in H;
-      destruct H as [fs [Hins Hina]];
-      apply set_union_in_iterated;
-      rewrite Exists_exists;
-      apply in_map_iff in Hins;
-      destruct Hins as [s [Heqs Hins]];
-      exists s;
-      split;[intuition|];
-      specialize (Hsplit s Hins);
-      rewrite <- Heqs in Hina;
-      unfold set_eq in Hsplit;
-      destruct Hsplit as [_ Hsplit];
-      unfold incl in Hsplit;
-      specialize (Hsplit a);
-      apply Hsplit;
-      apply set_union_iff;
-      intuition).
-Qed.
-
 Lemma filter_set_eq `{EqDecision X}
    (l : list X) 
    (f g : X -> bool)

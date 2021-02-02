@@ -2661,17 +2661,6 @@ Context
         rewrite Hus'.
         reflexivity.
    Qed.
-  
-    
-    Lemma in_history_can_emits
-      (s sm : state)
-      (Hpr : protocol_state_prop preX s)
-      (i : index) 
-      (Hin : In sm (get_history s i)) : 
-      can_emit X (i, sm).
-    Proof.
-    Admitted.
-      
 
     Global Instance has_been_sent_lv : (has_been_sent_capability X) := {
       has_been_sent := send_oracle;
