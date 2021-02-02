@@ -3028,16 +3028,24 @@ Context
     
     Lemma top_history_something 
       (s : vstate X)
+      (H : GH s <> [])
       (from : index) :
       exists (s' : state), In s' (top_history s from).
     Proof.
       unfold top_history.
-      specialize (list_max_exists (List.map (fun s' : state => length (get_history s' from)) (get_candidates s))) as Hmax.
-      spec Hmax. admit. apply in_map_iff in Hmax.
+      specialize (list_max_exists2 (List.map (fun s' : state => length (get_history s' from)) (get_candidates s))) as Hmax.
+      spec Hmax. {
+        destruct (map (fun s' : state => length (get_history s' from)) (get_candidates s)) eqn : eq.
+        apply map_eq_nil in eq. 
+        unfold get_candidates in eq.
+        apply map_eq_nil in eq. intuition congruence.
+        intuition congruence.
+      } 
+      apply in_map_iff in Hmax.
       destruct Hmax.
       exists x. apply filter_In. split;[intuition|].
       rewrite beq_nat_true_iff. intuition.
-    Admitted.
+    Qed.
     
     Lemma topmost_candidates_nonempty 
       (s : vstate X)
@@ -3045,7 +3053,7 @@ Context
       (Hne : GH s <> []) :
       exists (s' : state), In s' (get_topmost_candidates s from).
     Proof.
-      specialize (top_history_something s from) as Htop_hist.
+      specialize (top_history_something s Hne from) as Htop_hist.
       destruct Htop_hist as [s' Htop].
       exists s'.
       unfold get_topmost_candidates.
@@ -3109,7 +3117,11 @@ Context
     Remark get_matching_state_correct3
       (s : vstate X)
       (to from : index)
-      (Hin : In to (GH s)) :
+      (Hin : In to (GH s))
+      (Hcomp : forall (i j : index), 
+               In i (GH s) -> 
+               In j (GH s) -> 
+               comparable (state_lt_ext from) (project (s i) from) (project (s j) from)) :
       In (get_matching_state s to from) (get_topmost_candidates s from).
     Proof.
       unfold get_matching_state.
@@ -3128,10 +3140,43 @@ Context
           specialize (find_none (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))) as Hnone.
           specialize (Hnone (get_topmost_candidates s from) eq_find).
           
-          specialize (Hnone x). spec Hnone. admit.
-          rewrite bool_decide_eq_false in Hnone.
+          apply in_map_iff in H.
+          destruct H as [k [Hk Hk']].
           
-    Admitted.
+          specialize (topmost_candidates_nonempty s from) as Htop.
+          spec Htop. destruct (GH s); intuition congruence.
+          destruct Htop as [s' Htop].
+          specialize (Hnone s' Htop).
+          simpl in Hnone. rewrite bool_decide_eq_false in Hnone.
+          
+          unfold get_topmost_candidates in Htop.
+          unfold get_maximal_elements in Htop.
+         
+          apply filter_In in Htop.
+          destruct Htop as [Hins' Htop].
+          rewrite forallb_forall in Htop.
+          
+          apply in_map_iff in Hins'.
+          destruct Hins' as [l [Heql Hinl]].
+          specialize (Hcomp k l Hk' Hinl).
+          subst x. subst s'.
+          specialize (Htop (s k)).
+          spec Htop. apply in_map_iff. exists k; intuition.
+          rewrite negb_true_iff in Htop.
+          rewrite bool_decide_eq_false in Htop.
+          unfold comparable in Hcomp.
+          destruct Hcomp as [Hcomp|Hcomp].
+          * rewrite Hcomp in contra.
+            apply (@state_lt_ext_proj index index_listing Hfinite) in contra.
+            intuition.
+          * destruct Hcomp as [Hcomp|Hcomp].
+            -- assert (state_lt_ext from (project (s to) from) (project (s l) from)). {
+                apply (@state_lt_ext_tran index index_listing Hfinite) with (s2 := (project (s k) from)); intuition.
+              }
+              apply (@state_lt_ext_proj index index_listing Hfinite) in H.
+              intuition.
+            -- intuition.  
+   Qed.
     
    Lemma get_matching_state_for_honest
     (s : vstate X)
@@ -4917,6 +4962,7 @@ Context
       rewrite bool_decide_eq_false in Htop1.
       rewrite Hmatch2 in H.
       intuition.
+      intros. apply honest_hh_projections_comparable; intuition.
     - unfold get_topmost_candidates in Htop2.
       unfold get_maximal_elements in Htop2.
       apply filter_In in Htop2.
@@ -4929,6 +4975,7 @@ Context
       rewrite bool_decide_eq_false in Htop2.
       rewrite Hmatch1 in H.
       intuition.
+      intros. apply honest_hh_projections_comparable; intuition.
    Qed.
   
   Lemma honest_equiv_proj_same

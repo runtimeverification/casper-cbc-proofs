@@ -1666,6 +1666,23 @@ Proof.
       reflexivity. 
 Qed.
 
+Lemma list_max_exists2
+   (l : list nat) 
+   (Hne : l <> []) :
+   In (list_max l) l.
+Proof.
+  destruct (list_max l) eqn : eq_max.
+  - destruct l;[intuition congruence|].
+    specialize (list_max_le (n :: l) 0) as Hle.
+    destruct Hle as [Hle _].
+    rewrite eq_max in Hle. spec Hle. apply le_refl.
+    rewrite Forall_forall in Hle.
+    specialize (Hle n). spec Hle. intuition.
+    simpl. lia.
+  - specialize (list_max_exists l) as Hmax.
+    spec Hmax. lia. rewrite <- eq_max. intuition.
+Qed.
+
 Definition mode
   {A : Type}
   `{EqDecision A}

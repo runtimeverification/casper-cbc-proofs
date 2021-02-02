@@ -616,6 +616,26 @@ Context
     
     Existing Instance state_lt'_dec.
     
+    Lemma state_lt'_trans
+      (i : index)
+      (s1 s2 s3 : state)
+      (Hlt : state_lt' i s1 s2 /\ state_lt' i s2 s3) :
+      state_lt' i s1 s3.
+    Proof.
+      destruct Hlt as [Hlt1 Hlt2].
+      unfold state_lt' in Hlt1, Hlt2.
+      apply in_split in Hlt2.
+      destruct Hlt2 as [pref [suff Heq]].
+      apply unfold_history in Heq as Heq'.
+      unfold state_lt'.
+      rewrite Heq.
+      rewrite Heq'.
+      apply in_app_iff.
+      right.
+      apply in_cons.
+      assumption.
+    Qed.
+    
     Lemma state_lt'_antisymmetric
       (i : index)
       (s1 s2 : (@state index index_listing)) :
@@ -677,6 +697,47 @@ Context
           unfold state_lt' in H. intuition.
         + apply state_lt'_antisymmetric in H.
           intuition.
+    Qed.
+    
+    Lemma state_lt_ext_tran
+      (i : index)
+      (s1 s2 s3 : state)
+      (H12 : state_lt_ext i s1 s2)
+      (H23 : state_lt_ext i s2 s3)
+      : state_lt_ext i s1 s3.
+    Proof.
+      unfold state_lt_ext in H12, H23.
+      destruct H12; destruct H23.
+      - intuition congruence.
+      - unfold state_lt_ext.
+        left. split;[intuition|].
+        unfold state_lt' in H0.
+        destruct s3;[simpl in H0;intuition|].
+        congruence.
+      - unfold state_lt' in H. 
+        destruct H0 as [H0 _]. rewrite H0 in H. 
+        simpl in H. intuition. 
+      - unfold state_lt_ext. right.
+        apply state_lt'_trans with (s2 := s2).
+        intuition.
+    Qed.
+    
+    Lemma state_lt_ext_proj
+      (i : index)
+      (s1 s2 : state) :
+      state_lt_ext i s1 (project s2 i) ->
+      state_lt_ext i s1 s2.
+    Proof.
+      intros.
+      unfold state_lt_ext in *.
+      destruct H.
+      - left. split;[intuition|].
+        destruct s2. simpl in H. intuition congruence. congruence.
+      - right. unfold state_lt' in *.
+        destruct (project s2 i) eqn : eq_p.
+        + simpl in H. intuition.
+        + rewrite unfold_history_cons by (intuition congruence).
+          simpl. right. rewrite eq_p. intuition.
     Qed.
 
     Lemma state_lt_function : PredicateFunction2 state_lt state_ltb.
@@ -3253,26 +3314,6 @@ Context
                end  
         end
     end.
-    
-    Lemma state_lt'_trans
-      (i : index)
-      (s1 s2 s3 : state)
-      (Hlt : state_lt' i s1 s2 /\ state_lt' i s2 s3) :
-      state_lt' i s1 s3.
-    Proof.
-      destruct Hlt as [Hlt1 Hlt2].
-      unfold state_lt' in Hlt1, Hlt2.
-      apply in_split in Hlt2.
-      destruct Hlt2 as [pref [suff Heq]].
-      apply unfold_history in Heq as Heq'.
-      unfold state_lt'.
-      rewrite Heq.
-      rewrite Heq'.
-      apply in_app_iff.
-      right.
-      apply in_cons.
-      assumption.
-    Qed.
     
     Lemma lv_event_trans
       (e1 e2 e3 : lv_event)
