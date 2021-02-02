@@ -13,7 +13,8 @@ RUN    apt-get update               \
                     unzip           \
                     wget            \
                     python3         \
-                    python3-pip
+                    python3-pip     \
+                    graphviz
 
 ENV OPAM_VERSION="2.0.7"
 
