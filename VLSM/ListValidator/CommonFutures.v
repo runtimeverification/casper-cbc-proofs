@@ -625,6 +625,51 @@ Context
   
   End EquivObsUtils.
   
+  Lemma ws_incl_cobs
+    (s : vstate X)
+    (i : index)
+    (ws ws' : set index)
+    (Hincl : incl ws' ws)
+    (e : simp_lv_event) :
+    In e (@wcobs ws' s i) -> In e (@wcobs ws s i).
+  Proof.
+    intros.
+    unfold wcobs in *.
+    unfold composite_state_events_fn in *.
+    apply set_union_in_iterated in H; rewrite Exists_exists in H.
+    apply set_union_in_iterated. apply Exists_exists.
+    destruct H as [le [H1 H2]].
+    exists le.
+    apply in_map_iff in H1. destruct H1 as [j [Hj Hinj]].
+    split.
+    - apply in_map_iff.
+      exists j. intuition.
+    - intuition.
+  Qed.
+  
+  Lemma ws_incl_wE
+    (s : vstate X)
+    (ws ws' : set index)
+    (Hincl : incl ws' ws) :
+    incl (@wE ws' s) (@wE ws s).
+  Proof.
+    unfold incl. intros.
+    apply GE_direct in H.
+    apply GE_direct.
+    unfold cequiv_evidence in *.
+    unfold equivocation_evidence in *.
+    setoid_rewrite hbo_cobs.
+    setoid_rewrite hbo_cobs in H.
+    destruct H as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
+    exists e1.
+    apply ws_incl_cobs with (ws := ws) in He1. 2 : intuition.
+    split;[intuition|].
+    split;[intuition|].
+    exists e2.
+    apply ws_incl_cobs with (ws := ws) in He2. 2 : intuition.
+    intuition.
+  Qed.
+  
   Definition GE := @wE index_listing.
   Definition GH := @wH index_listing. 
   
@@ -4739,7 +4784,15 @@ Context
     intros v.
     split; intros.
     - assert (Hdif : ~ In v (GH res)). {
-        admit.
+        intros contra.
+        specialize (ws_incl_wE res index_listing (GH res)) as Hincl.
+        spec Hincl. unfold incl. intros. apply in_listing. 
+        specialize (Hincl v).
+        unfold HE in H.
+        specialize (Hincl H).
+        unfold GH in contra.
+        apply wH_wE' in contra.
+        intuition.
       }
       unfold HE in H.
       unfold LE.
@@ -4803,52 +4856,15 @@ Context
                intuition. intuition. intuition. rewrite H2.
                intuition. intuition. intuition. rewrite H2. intuition.
             ++ rewrite He2'. rewrite H1. intuition.
-    - assert (Hdif : i <> v). {
-        admit.
+    - specialize (ws_incl_wE res (GH res) [i]) as Hincl.
+      spec Hincl. {
+        unfold incl. intros.
+        destruct H0;[|intuition]. subst a. intuition.
       }
-      unfold LE in H. apply GE_direct in H.
-      unfold cequiv_evidence in H.
-      unfold equivocation_evidence in H.
-      setoid_rewrite hbo_cobs in H.
-      destruct H as [e1 [He1 [He1' [e2 [He2 [He2']]]]]].
-      unfold HE.
-      apply GE_direct.
-      unfold cequiv_evidence.
-      unfold equivocation_evidence.
-      setoid_rewrite hbo_cobs.
-      
-      exists e1.
-      split. 
-      + apply in_cobs_messages'.
-        apply cobs_single. exists i. split;[intuition|].
-        unfold wcobs in He1. unfold composite_state_events_fn in He1. simpl in He1.
-        unfold Hstate_events_fn in He1.
-        unfold simp_lv_observations in He1.
-        apply set_union_iff in He1.
-        destruct He1;[intuition|].
-        unfold simp_lv_state_observations in H0.
-        inversion He1'.
-        rewrite H2 in H0.
-        rewrite decide_False in H0 by intuition.
-        intuition.
-      + split;[intuition|].
-        exists e2.
-        split.
-        * apply in_cobs_messages'.
-          apply cobs_single. exists i. split;[intuition|].
-          unfold wcobs in He2. unfold composite_state_events_fn in He2. simpl in He2.
-          unfold Hstate_events_fn in He2.
-          unfold simp_lv_observations in He2.
-          apply set_union_iff in He2.
-          destruct He2;[intuition|].
-          unfold simp_lv_state_observations in H0.
-          inversion He2'.
-          rewrite H2 in H0.
-          rewrite decide_False in H0 by intuition.
-          intuition.
-        * split;[intuition|].
-          intuition.
-  Admitted.
+      specialize (Hincl v).
+      specialize (Hincl H).
+      intuition.
+  Qed.
  
   Lemma honest_hh_projections_comparable
     (s : vstate X)
