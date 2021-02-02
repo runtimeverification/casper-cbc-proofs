@@ -94,12 +94,6 @@ Proof.
   apply Hproper.
 Qed.
 
-Local Tactic Notation "unfold_transition"  hyp(Ht) :=
-  ( unfold transition in Ht; unfold equivocator_IM in Ht; unfold Common.equivocator_IM in Ht;
-  unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
-  unfold machine in Ht; unfold projT2 in Ht;
-  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
-
 Lemma equivocators_transition_item_project_proper_descriptor_characterization
   (eqv_choice : equivocators_choice)
   (item : composite_transition_item equivocator_IM)

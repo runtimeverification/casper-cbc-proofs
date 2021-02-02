@@ -2300,7 +2300,6 @@ is also available to Y.
       assumption.
     Qed.
 
-
     Lemma VLSM_incl_initial_state
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
@@ -2897,25 +2896,6 @@ Byzantine fault tolerance analysis. *)
     split;
     (apply protocol_prop_incl;[|reflexivity|cbn;tauto]);
     intros t Ht;apply Heq;assumption.
-  Qed.
-
-  Lemma vlsm_add_initial_messages_protocol_prop_incl
-    (P Q : message -> Prop)
-    (PimpliesQ : forall m : message, P m -> Q m)
-    (som : vstate X * option message)
-    (Ps : protocol_prop (vlsm_add_initial_messages X P) som)
-    : protocol_prop  (vlsm_add_initial_messages X Q) som.
-  Proof.
-    induction Ps.
-    - apply (protocol_initial_state (vlsm_add_initial_messages X Q)).
-    - destruct im as (m, Pim). simpl in om. unfold om. clear om.
-      cut (vinitial_message_prop (vlsm_add_initial_messages X Q) m).
-      { intro Hm. change m with (proj1_sig (exist _ m Hm)).
-        apply (protocol_initial_message (vlsm_add_initial_messages X Q)).
-      }
-      destruct Pim as [Him | Pim]; [left; assumption|].
-      right. apply PimpliesQ. assumption.
-    - apply (protocol_generated (vlsm_add_initial_messages X Q)) with _om _s; assumption.
   Qed.
 
 End pre_loaded_with_all_messages_vlsm.

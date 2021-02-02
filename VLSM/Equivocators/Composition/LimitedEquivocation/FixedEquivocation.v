@@ -235,6 +235,14 @@ End fixed_equivocation_with_fullnode.
 
 Section from_equivocators_to_nodes.
 
+(** ** From composition of equivocators to composition of simple nodes
+
+In this section we show that the projection of [protocol_trace]s of a
+composition of equivocators with a fixed equivocation constraint are
+[protocol_trace]s for the composition of nodes with a similar fixed
+equivocation constraint.
+*)
+
 Context
   {message : Type}
   `{EqDecision message}
@@ -293,12 +301,6 @@ Proof.
   unfold equivocator_IM in emi.
   exists emi. assumption.
 Qed.
-
-Local Tactic Notation "unfold_transition"  hyp(Ht) :=
-  ( unfold transition in Ht; unfold equivocator_IM in Ht;
-  unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
-  unfold machine in Ht; unfold projT2 in Ht;
-  unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
 
 Lemma equivocators_protocol_trace_project
   (final_choice : equivocators_choice IM)

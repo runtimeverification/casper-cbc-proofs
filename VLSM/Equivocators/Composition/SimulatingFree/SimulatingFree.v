@@ -45,6 +45,16 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
   unfold machine in Ht; unfold projT2 in Ht;
   unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
 
+Local Tactic Notation "unfold_equivocators_transition_item_project" := 
+(
+  simpl;
+  unfold equivocators_transition_item_project; simpl;
+  unfold composite_transition_item_projection; simpl;
+  unfold composite_transition_item_projection_from_eq; simpl;
+  unfold eq_rect_r; simpl
+).
+
+
 Lemma equivocators_trace_project_skip_full_replay_trace_init'
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
   (eqv_choice: equivocators_choice)
@@ -87,12 +97,8 @@ Proof.
   simpl in Heqa_app.
   unfold apply_plan in Heqa_app.
   simpl in Heqa_app.
-  inversion Heqa_app. subst. clear Heqa_app. simpl.
-  unfold equivocators_transition_item_project.
-  unfold composite_transition_item_projection.
-  unfold composite_transition_item_projection_from_eq.
-  unfold eq_rect_r.
-  simpl.
+  inversion Heqa_app. subst. clear Heqa_app.
+  unfold_equivocators_transition_item_project.
   rewrite state_update_eq.
   specialize (Heqv_choice x) as Heqv_choice_eqv.
   specialize (Hsize x) as Hsize_eqv.
@@ -208,12 +214,7 @@ Proof.
   specialize (Hsize eqv) as Hsize_eqv.
   destruct di as [s_di|j_di f_di].
   + simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-    simpl.
-    unfold equivocators_transition_item_project.
-    unfold composite_transition_item_projection.
-    unfold composite_transition_item_projection_from_eq.
-    unfold eq_rect_r.
-    simpl.
+    unfold_equivocators_transition_item_project.
     rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
     rewrite state_update_eq.
     destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
@@ -236,11 +237,7 @@ Proof.
         (j_di + S (projT1 (full_replay_state (eqv))))
       ).
     * simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-      simpl.
-      unfold equivocators_transition_item_project. simpl.
-      unfold composite_transition_item_projection. simpl.
-      unfold composite_transition_item_projection_from_eq. simpl.
-      unfold eq_rect_r. simpl.
+      unfold_equivocators_transition_item_project.
       rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
       rewrite state_update_eq.
       destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
@@ -272,11 +269,7 @@ Proof.
         as (si', om') eqn:Ht.
       destruct f_di.
       -- simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-        simpl.
-        unfold equivocators_transition_item_project. simpl.
-        unfold composite_transition_item_projection. simpl.
-        unfold composite_transition_item_projection_from_eq. simpl.
-        unfold eq_rect_r. simpl.
+        unfold_equivocators_transition_item_project.
         rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
         rewrite state_update_eq.
         destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
@@ -290,11 +283,7 @@ Proof.
         ++ subst eqv'. rewrite state_update_eq. simpl. lia.
         ++ rewrite state_update_neq by assumption. apply Hsize.
       -- simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-        simpl.
-        unfold equivocators_transition_item_project. simpl.
-        unfold composite_transition_item_projection. simpl.
-        unfold composite_transition_item_projection_from_eq. simpl.
-        unfold eq_rect_r. simpl.
+        unfold_equivocators_transition_item_project.
         rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
         rewrite state_update_eq.
         destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
@@ -756,10 +745,7 @@ Proof.
     { subst last_prj. subst last_item.
       unfold equivocators_trace_project_folder.
       subst el.
-      unfold equivocators_transition_item_project. simpl.
-      unfold composite_transition_item_projection. simpl.
-      unfold composite_transition_item_projection_from_eq. simpl.
-      unfold eq_rect_r. simpl.
+      unfold_equivocators_transition_item_project.
       simpl in Hproject.
       rewrite <- Hproject.
       rewrite Heqv_state_choice_eqv.

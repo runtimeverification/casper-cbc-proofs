@@ -22,6 +22,8 @@ Context
   (Xj := composite_vlsm_constrained_projection IM constraint j)
   .
 
+(** Extracted common functionality for both [finite_trace_projection_list]
+    and [finite_trace_projection_list_alt]. *)
 Definition composite_transition_item_projection_from_eq
   (item : composite_transition_item IM)
   (i := projT1 (l item))

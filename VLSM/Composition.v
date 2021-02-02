@@ -1632,6 +1632,13 @@ End binary_free_composition.
 
 Section composite_decidable_initial_message.
 
+(** ** Composite decidable initial message
+
+Here we show that if the [initial_message_prop]erty is decidable for every
+component, then it is decidable for a finite composition as well.
+
+*)
+
 Context
   {message : Type}
   {index : Type}

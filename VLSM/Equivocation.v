@@ -414,7 +414,12 @@ Section Simple.
 
   (** It is now straightforward to define a [no_equivocations] composition constraint.
       An equivocating transition can be detected by calling the [has_been_sent]
-      oracle on its arguments and we simply forbid them **)
+      oracle on its arguments and we simply forbid them.
+
+      However, since we might allow certain other messages, such as initial
+      messages, we give a slightly more general definition, that of
+      [no_equivocation_except_from] those specified by a given predicate.
+  **)
 
     Definition no_equivocations_except_from
       {Hbs : has_been_sent_capability}
@@ -428,6 +433,9 @@ Section Simple.
       | Some m => has_been_sent s m \/ exception m
       end.
 
+    (** The [no_equivocations] constraint only allows initial messages
+    as exceptions (messages being received without being previously sent).
+    *)
     Definition no_equivocations
       {Hbs : has_been_sent_capability}
       (l : vlabel vlsm)
@@ -1174,6 +1182,9 @@ Proof.
   assumption.
 Qed.
 
+(** A received message introduces no additional equivocations to a state
+    if it has already been observed in s or it is an initial message.
+*)
 Definition no_additional_equivocations
   {message : Type}
   (vlsm : VLSM message)
@@ -1184,7 +1195,11 @@ Definition no_additional_equivocations
   :=
   has_been_observed vlsm s m \/ vinitial_message_prop vlsm m.
 
-Lemma no_additional_equivocations_dec
+(** If the [initial_message_prop] is decidable, then the
+    [no_additional_equivocations] is also decidable.
+*)
+
+  Lemma no_additional_equivocations_dec
   {message : Type}
   (vlsm : VLSM message)
   {Hbo : has_been_observed_capability vlsm}
@@ -2071,6 +2086,14 @@ End full_node_constraint.
 
 Section seeded_composite_vlsm_no_equivocation.
 
+(** ** Pre-loading a VLSM composition with no equivocations constraint
+
+When adding initial messages to a VLSM composition with a no equivocation
+constraint, we cannot simply use the [vlsm_add_initial_messages] construct
+because the no-equivocation constraint must also be altered to reflect that
+the newly added initial messages are safe to be received at all times.
+*)
+
   Context
     {message : Type}
     {index : Type}
@@ -2093,6 +2116,8 @@ Section seeded_composite_vlsm_no_equivocation.
     Context
       (seed : message -> Prop)
       .
+
+    (** Constraint is updated to also allow seeded messages. *)
 
     Definition seeded_no_equivocations_constraint
       (l : composite_label IM)
@@ -2132,7 +2157,8 @@ Section seeded_composite_vlsm_no_equivocation.
 
   End seeded_composite_vlsm_no_equivocation_definition.
 
-  Definition no_equivocations_constraint
+  (** Adds a no-equivocations condition on top of an existing constraint. *)
+  Definition no_equivocations_additional_constraint
     (l : composite_label IM)
     (som : composite_state IM * option message)
     :=
@@ -2141,7 +2167,7 @@ Section seeded_composite_vlsm_no_equivocation.
 
   Context
     (SeededNoeqvFalse := seeded_composite_no_equivocation_vlsm (fun m => False))
-    (Noeqv := composite_vlsm IM no_equivocations_constraint)
+    (Noeqv := composite_vlsm IM no_equivocations_additional_constraint)
     .
 
   Lemma false_seeded_composite_no_equivocation_vlsm
@@ -2163,12 +2189,12 @@ Section seeded_composite_vlsm_no_equivocation.
     - specialize
         (Hincl
           (seeded_no_equivocations_constraint (fun _ : message => False))
-          no_equivocations_constraint
+          no_equivocations_additional_constraint
         ).
       apply Hincl.
       intros l som. unfold seeded_no_equivocations_constraint.
       clear -l.
-      unfold no_equivocations_constraint.
+      unfold no_equivocations_additional_constraint.
       unfold no_equivocations.
       unfold no_equivocations_except_from.
       destruct som as (s, [m|]); [|exact id].
@@ -2177,13 +2203,13 @@ Section seeded_composite_vlsm_no_equivocation.
       split; assumption.
     - specialize
         (Hincl
-          no_equivocations_constraint
+          no_equivocations_additional_constraint
           (seeded_no_equivocations_constraint (fun _ : message => False))
         ).
       apply Hincl.
       intros l som. unfold seeded_no_equivocations_constraint.
       clear -l.
-      unfold no_equivocations_constraint.
+      unfold no_equivocations_additional_constraint.
       unfold no_equivocations.
       unfold no_equivocations_except_from.
       destruct som as (s, [m|]); [|exact id].

@@ -121,6 +121,12 @@ Definition equivocator_state_project
   | _ =>  None
   end.
 
+(**
+Projecting an [equivocator_state] over a [MachineDescriptor].
+
+This is extracted from the original [equivocators_state_project] to allow
+factoring out the proofs by proving properties at this level.
+*)
 Definition equivocator_state_descriptor_project
   (s : equivocator_state)
   (descriptor : MachineDescriptor)
@@ -526,6 +532,18 @@ Proof.
       * destruct (Fin.eq_dec (of_nat_lt Hj) i); [|apply IHHbs].
         exists om'. assumption.
 Qed.
+
+(**
+Next couple of lemmas characterize the projections of a [equivocator_state]
+after taking a transition in terms of the preceeeding state.
+
+These are simpler version of the results concerning the projection of
+states from the composition of equivocators over [equivocation_choice]s.
+
+These results are used for characterizing the projection of the [destination]
+of a [transition_item] in an equivocator trace in
+[equivocator_transition_item_project_proper_characterization].
+*)
 
 Lemma new_machine_label_equivocator_state_project_last
   (l : vlabel equivocator_vlsm) s oin s' oout
