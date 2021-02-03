@@ -5113,7 +5113,96 @@ Context
   Admitted.
   
   Check est'.
+  Check @equivocating_validators.
   
+  Lemma eqv_aware_something
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (Hnf : no_component_fully_equivocating s (GH s))
+    (res_send := send_phase_result s)
+    (res := common_future s) 
+    (i : index) :
+    LE i res = (@equivocating_validators _ _ _ _ (Hbasic i) (res i)).
+  Proof.
+    unfold equivocating_validators.
+    unfold LE. unfold wE.
+    unfold state_validators. simpl. unfold get_validators.
+    apply filter_ext_in. intros.
+    
+    unfold equivocation_evidence.
+    rewrite bool_decide_decide.
+    rewrite bool_decide_decide.
+    apply decide_iff.
+    split; intros.
+    - destruct H0 as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
+      exists e1.
+      split.
+      + unfold has_been_observed. simpl.
+        unfold observable_events_has_been_observed. 
+        unfold state_observable_events_fn. 
+        setoid_rewrite hbo_cobs in He1.
+        apply cobs_single in He1.
+        destruct He1 as [j [Heqj]].
+        destruct Heqj;[|intuition]. subst j.
+        apply set_union_in_iterated.
+        rewrite Exists_exists.
+        exists ((@simp_lv_observations index i index_listing _) (res i) (get_simp_event_subject e1)).
+        split.
+        * apply in_map_iff. exists (get_simp_event_subject e1). split;[intuition|apply in_listing].
+        * intuition.
+      + split;[intuition|].
+        exists e2.
+        split.
+        * unfold has_been_observed. simpl.
+        unfold observable_events_has_been_observed. 
+        unfold state_observable_events_fn. 
+        setoid_rewrite hbo_cobs in He2.
+        apply cobs_single in He2.
+        destruct He2 as [j [Heqj]].
+        destruct Heqj;[|intuition]. subst j.
+        apply set_union_in_iterated.
+        rewrite Exists_exists.
+        exists ((@simp_lv_observations index i index_listing _) (res i) (get_simp_event_subject e2)).
+        split.
+        -- apply in_map_iff. exists (get_simp_event_subject e2). split;[intuition|apply in_listing].
+        -- intuition.
+        * split;intuition.
+    - destruct H0 as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
+      exists e1.
+      setoid_rewrite hbo_cobs.
+      split.
+      + unfold has_been_observed in He1.
+        simpl in He1.
+        unfold observable_events_has_been_observed in He1.
+        unfold state_observable_events_fn in He1.
+        apply set_union_in_iterated in He1.
+        rewrite Exists_exists in He1.
+        destruct He1 as [le [Hle Hine1]].
+        apply in_map_iff in Hle.
+        destruct Hle as [j [Hsimp Hinj]].
+        rewrite <- Hsimp in Hine1.
+        apply in_simp_lv_observations in Hine1 as Hine1'.
+        subst j.
+        apply cobs_single. exists i. intuition.
+      + split;[intuition|].
+        exists e2.
+        split.
+        * unfold has_been_observed in He2.
+          simpl in He2.
+          unfold observable_events_has_been_observed in He2.
+          unfold state_observable_events_fn in He2.
+          apply set_union_in_iterated in He2.
+          rewrite Exists_exists in He2.
+          destruct He2 as [le [Hle Hine2]].
+          apply in_map_iff in Hle.
+          destruct Hle as [j [Hsimp Hinj]].
+          rewrite <- Hsimp in Hine2.
+          apply in_simp_lv_observations in Hine2 as Hine2'.
+          subst j.
+          apply cobs_single. exists i. intuition.
+        * split;intuition.
+    Qed. 
+    
   Lemma honest_nodes_same_estimators
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -5139,14 +5228,28 @@ Context
     specialize (local_and_honest s Hpr Hnf) as Hlocal. simpl in Hlocal.
     specialize (Hlocal i H) as Hlocali. 
     specialize (Hlocal j H0) as Hlocalj.
+    unfold res.
+    
+    match goal with
+    |- in_mode_b
+      (mode
+      (no_equivocating_decisions (common_future s i) ?eqv))
+        b = true <-> _ =>
+       replace eqv with (LE i res) end.
+    
+    match goal with
+    |- _ <-> in_mode_b
+      (mode
+      (no_equivocating_decisions (common_future s j) ?eqv))
+        b = true =>
+       replace eqv with (LE j res) end.
+   
+    2, 3 : (unfold res; apply eqv_aware_something; intuition).
     
     assert (@equivocating_validators _ _ _ _ (@simp_lv_basic_equivocation index i index_listing Hfinite idec Mindex Rindex) (res i) =
           (@equivocating_validators _ _ _ _ (@simp_lv_basic_equivocation index j index_listing Hfinite idec Mindex Rindex)) (res j)). {
-        unfold equivocating_validators.
-        unfold state_validators. simpl.
-        unfold get_validators.
-        apply filter_ext_in. intros.
-        admit.
+        unfold res.
+        rewrite <- eqv_aware_something.
     }
     
     rewrite H2.
