@@ -5099,6 +5099,14 @@ Context
       intros. apply honest_hh_projections_comparable; intuition.
    Qed.
   
+  Lemma hh_something
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (res := receive_phase_result s) :
+    incl (HH res) (HH s).
+  Proof.
+  Admitted.
+  
   Lemma honest_equiv_proj_same
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -5152,13 +5160,12 @@ Context
       unfold res in H, H0. intuition.
     }
     spec Hcomp. {
-      admit.
+      apply hh_something.
+      apply send_phase_result_protocol; intuition.
+      intuition.
     }
     intuition.
-  Admitted.
-  
-  Check est'.
-  Check @equivocating_validators.
+  Qed.
   
   Lemma eqv_aware_something
     (s : vstate X)
