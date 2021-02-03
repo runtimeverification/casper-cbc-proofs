@@ -383,7 +383,7 @@ Proof.
   unfold trace_generated_event.
   apply
     (Decision_iff
-      (P := Exists 
+      (P := Exists
         (fun t =>
           match t with
           (prefix, item, _) =>
@@ -907,7 +907,6 @@ Context
   {index : Type}
   `{EqDecision index}
   (index_listing : list index)
-  (finite_index : Listing index_listing)
   (IM : index -> VLSM message)
   (Hstate_events_fn : forall (i : index), vstate (IM i) -> validator -> set event)
   (Hstate_validators : forall (i : index), vstate (IM i) -> set validator)

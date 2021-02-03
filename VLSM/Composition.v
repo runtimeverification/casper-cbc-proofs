@@ -70,6 +70,7 @@ types <<[@label _ (IT n) | n <- index]>>.
 
     Definition composite_state := @state message composite_type.
     Definition composite_label := @label message composite_type.
+    Definition composite_transition_item : Type := @transition_item message composite_type.
 
 (**
 A very useful operation on [composite_state]s is updating the state corresponding
@@ -460,7 +461,7 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
           protocol_state_prop (pre_loaded_with_all_messages_vlsm free_composite_vlsm) s ->
           forall (l : composite_label) (om : option message),
             constraint1 l (s, om) -> constraint2 l (s, om).
-    
+
     Lemma preloaded_constraint_subsumption_weaker
         (constraint1 constraint2 : composite_label -> composite_state * option message -> Prop)
         : constraint_subsumption constraint1 constraint2 -> preloaded_constraint_subsumption constraint1 constraint2.
@@ -711,7 +712,7 @@ Then <<X1>> is trace-included into <<X2>>.
       -
         destruct im as [m Hjm]; simpl in om.
         cut (vinitial_message_prop (vlsm_add_initial_messages free_composite_vlsm Q) m).
-        { intro Hinit. 
+        { intro Hinit.
           replace (lift_to_composite_state j s) with (proj1_sig (vs0 (vlsm_add_initial_messages free_composite_vlsm Q)))
           ; try (symmetry; apply state_update_id; reflexivity).
           unfold om. clear om.
@@ -1628,6 +1629,42 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
     := composite_vlsm_free_projection binary_IM second.
 
 End binary_free_composition.
+
+Section composite_decidable_initial_message.
+
+(** ** Composite decidable initial message
+
+Here we show that if the [initial_message_prop]erty is decidable for every
+component, then it is decidable for a finite composition as well.
+
+*)
+
+Context
+  {message : Type}
+  {index : Type}
+  {IndEqDec : EqDecision index}
+  (IM : index -> VLSM message)
+  {i0 : Inhabited index}
+  {index_listing : list index}
+  (finite_index : Listing index_listing).
+
+Lemma composite_decidable_initial_message
+  (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
+  : decidable_initial_messages_prop (composite_sig IM).
+Proof.
+  intro m. simpl. unfold composite_initial_message_prop.
+  apply
+    (Decision_iff
+      (P := List.Exists (fun i => vinitial_message_prop (IM i) m) index_listing)
+    ).
+  - rewrite <- exists_finite by (apply finite_index).
+    split; intros [i Hm]; exists i.
+    + exists (exist _ _ Hm). reflexivity.
+    + destruct Hm as [[im Hinit] Him]. subst. assumption.
+  - apply @Exists_dec. intro i. apply Hdec_init.
+Qed.
+
+End composite_decidable_initial_message.
 
 Section sub_composition.
 

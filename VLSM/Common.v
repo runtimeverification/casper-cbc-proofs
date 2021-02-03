@@ -69,6 +69,10 @@ corresponding sets.
     ; l0 := @l0 _ _ sign
     |}.
 
+  Definition decidable_initial_messages_prop
+    {message : Type} {vtype : VLSM_type message} (sign : VLSM_sign vtype)
+    := forall m, Decision (initial_message_prop m).
+
 (**
 
 ** VLSM class definition
@@ -225,6 +229,7 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition vs0 := @s0 _ _ sign.
   Definition vm0 := @m0 _ _ sign.
   Definition vl0 := @l0 _ _ sign.
+  Definition vdecidable_initial_messages_prop := @decidable_initial_messages_prop _ _ sign.
   Definition vtransition := @transition _ _ _ machine.
   Definition vvalid := @valid _ _ _ machine.
   Definition vtransition_item := @transition_item _ type.
@@ -604,7 +609,7 @@ pre-existing concepts.
     (** Of course, if a VLSM [can_emit] <<(s,m)>>, then <<(s,m)>> is protocol.
     *)
 
-    Lemma can_emit_in_state_protocol
+    Lemma protocol_generated_prop_protocol
       (s : state)
       (m : message)
       (Hm : protocol_generated_prop s m)
@@ -623,7 +628,7 @@ pre-existing concepts.
       (l : label)
       (s : state),
       protocol_transition l som (s, Some m).
-    
+
     Lemma can_emit_iff
       (m : message)
       : can_emit m <-> exists s, protocol_generated_prop s m.
@@ -643,7 +648,7 @@ pre-existing concepts.
     Proof.
       apply can_emit_iff in Hm.
       destruct Hm as [s Hm].
-      apply can_emit_in_state_protocol in Hm.
+      apply protocol_generated_prop_protocol in Hm.
       exists s. assumption.
     Qed.
 
@@ -2190,6 +2195,15 @@ is also available to Y.
         protocol_trace_prop X t -> protocol_trace_prop Y t.
     Local Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
 
+    Lemma VLSM_incl_trans
+      {SigX SigY SigZ: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY) (MZ : VLSM_class SigZ)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY) (Z := mk_vlsm MZ)
+      : VLSM_incl X Y -> VLSM_incl Y Z -> VLSM_incl X Z.
+    Proof.
+      firstorder.
+    Qed.
+
     Lemma VLSM_incl_in_futures
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
@@ -2251,6 +2265,56 @@ is also available to Y.
     Qed.
 
     (** VLSM inclusion specialized to finite trace. *)
+
+    Lemma VLSM_incl_finite_protocol_trace
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (Hincl : VLSM_incl_part MX MY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (s : vstate X)
+      (tr : list (vtransition_item X))
+      (Htr : finite_protocol_trace X s tr)
+      : finite_protocol_trace Y s tr.
+    Proof.
+      assert (Hptr : protocol_trace_prop X (Finite s tr)) by assumption.
+      cut (protocol_trace_prop Y (Finite s tr)). { intro. assumption. }
+      revert Hptr. apply Hincl.
+    Qed.
+
+    Lemma VLSM_incl_protocol_state
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (Hincl : VLSM_incl_part MX MY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (s : vstate X)
+      (Hs : protocol_state_prop X s)
+      : protocol_state_prop Y s.
+    Proof.
+      apply protocol_state_has_trace in Hs.
+      destruct Hs as [is [tr [Htr Hs]]].
+      apply (VLSM_incl_finite_protocol_trace _ MY) in Htr
+      ; [|assumption].
+      apply trace_is_protocol in Htr.
+      simpl in *.
+      rewrite Hs in Htr.
+      assumption.
+    Qed.
+
+    Lemma VLSM_incl_initial_state
+      {SigX SigY: VLSM_sign vtype}
+      (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+      (Hincl : VLSM_incl_part MX MY)
+      (X := mk_vlsm MX) (Y := mk_vlsm MY)
+      (is : vstate X)
+      : vinitial_state_prop X is -> vinitial_state_prop Y is.
+    Proof.
+      intro His.
+      cut (finite_protocol_trace Y is []). { intro Hpis. apply Hpis. }
+      assert (Hpis : finite_protocol_trace X is []).
+      { split; [|assumption]. constructor. apply initial_is_protocol. assumption. }
+      revert Hpis. apply VLSM_incl_finite_protocol_trace. assumption.
+    Qed.
+
     Lemma VLSM_incl_finite_trace
       {SigX SigY: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY)
@@ -2309,6 +2373,28 @@ is also available to Y.
 
 Notation VLSM_eq X Y := (VLSM_eq_part (machine X) (machine Y)).
 Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
+
+Lemma VLSM_eq_sym
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY)
+  : VLSM_eq X Y -> VLSM_eq Y X.
+Proof.
+  firstorder.
+Qed.
+
+Lemma VLSM_eq_trans
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY SigZ: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY) (MZ : VLSM_class SigZ)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY) (Z := mk_vlsm MZ)
+  : VLSM_eq X Y -> VLSM_eq Y Z -> VLSM_eq X Z.
+Proof.
+  firstorder.
+Qed.
 
 Lemma can_emit_incl
       [message : Type] [vtype : VLSM_type message] [SigX SigY : VLSM_sign vtype]
@@ -2498,7 +2584,7 @@ Context
     exact Hv.
   Qed.
 
-  Lemma VLSM_incl_protocol_state
+  Lemma basic_VLSM_incl_protocol_state
         (s : state)
         (om : option message)
         (Hps : protocol_prop X (s,om))
@@ -2508,7 +2594,7 @@ Context
     apply Hps.
   Qed.
 
-Lemma VLSM_incl_protocol_transition
+Lemma basic_VLSM_incl_protocol_transition
   (l : label)
   (is os : state)
   (iom oom : option message)
@@ -2518,7 +2604,7 @@ Proof.
   destruct Ht as [[[_om Hps] [[_s Hpm] Hv]] Ht].
   specialize (protocol_generated_valid X Hps Hpm Hv); intros Hpv.
   repeat split.
-  - apply VLSM_incl_protocol_state with _om. assumption.
+  - apply basic_VLSM_incl_protocol_state with _om. assumption.
   - apply Hprotocol_message in Hpv. assumption.
   - specialize (Hvalid l is iom Hpv).
     assumption.
@@ -2526,7 +2612,7 @@ Proof.
     rewrite <- Htransition; assumption.
 Qed.
 
-  Lemma VLSM_incl_finite_ptrace
+  Lemma basic_VLSM_incl_finite_protocol_trace
     (s : state)
     (ls : list transition_item)
     (Hpxt : finite_protocol_trace_from X s ls)
@@ -2535,12 +2621,12 @@ Qed.
     induction Hpxt.
     - apply (finite_ptrace_empty Y).
       destruct H as [m H].
-      apply VLSM_incl_protocol_state in H. assumption.
+      apply basic_VLSM_incl_protocol_state in H. assumption.
     - apply (finite_ptrace_extend Y); try assumption.
-      apply VLSM_incl_protocol_transition. assumption.
+      apply basic_VLSM_incl_protocol_transition. assumption.
   Qed.
 
-  Lemma VLSM_incl_infinite_ptrace
+  Lemma basic_VLSM_incl_infinite_protocol_trace
     (s : state)
     (ls : Stream transition_item)
     (Hpxt : infinite_protocol_trace_from X s ls)
@@ -2552,7 +2638,7 @@ Qed.
     inversion Hx; subst.
     specialize (H destination ls H3).
     constructor; try assumption.
-    apply VLSM_incl_protocol_transition.
+    apply basic_VLSM_incl_protocol_transition.
     assumption.
   Qed.
 
@@ -2562,10 +2648,10 @@ Qed.
     : VLSM_incl X Y.
   Proof.
     intros [s ls| s ss]; simpl; intros [Hxt Hinit].
-    - apply VLSM_incl_finite_ptrace in Hxt.
+    - apply basic_VLSM_incl_finite_protocol_trace in Hxt.
       split; try assumption.
       apply Hinitial_state. assumption.
-    - apply VLSM_incl_infinite_ptrace in Hxt.
+    - apply basic_VLSM_incl_infinite_protocol_trace in Hxt.
       split; try assumption.
       apply Hinitial_state. assumption.
   Qed.
@@ -2814,7 +2900,7 @@ Byzantine fault tolerance analysis. *)
 
 End pre_loaded_with_all_messages_vlsm.
 
-Lemma non_empty_protocol_trace_from_can_emit_in_state
+Lemma non_empty_protocol_trace_from_protocol_generated_prop
   `(X : VLSM message)
   (s : state)
   (m : message)
@@ -2848,4 +2934,41 @@ Proof.
     destruct Htr as [_ Htr].
     inversion Htr. clear Htr. subst. simpl in Hm. subst.
     eexists _, l1. apply H3.
+Qed.
+
+Lemma VLSM_incl_protocol_generated_prop
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY)
+  (Hincl : VLSM_incl X Y)
+  (s : state)
+  (m : message)
+  : protocol_generated_prop X s m -> protocol_generated_prop Y s m.
+Proof.
+  intro Hsm.
+  apply non_empty_protocol_trace_from_protocol_generated_prop.
+  apply non_empty_protocol_trace_from_protocol_generated_prop in Hsm.
+  destruct Hsm as [is [tr [item [Htr Hsm]]]].
+  exists is, tr, item.
+  split; [|assumption]. clear Hsm.
+  revert Htr.
+  apply VLSM_incl_finite_protocol_trace.
+  assumption.
+Qed.
+
+Lemma VLSM_incl_can_emit
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX SigY: VLSM_sign vtype}
+  (MX : VLSM_class SigX) (MY : VLSM_class SigY)
+  (X := mk_vlsm MX) (Y := mk_vlsm MY)
+  (Hincl : VLSM_incl X Y)
+  (m : message)
+  : can_emit X m -> can_emit Y m.
+Proof.
+  repeat rewrite can_emit_iff.
+  intros [s Hsm]. exists s. revert Hsm.
+  apply VLSM_incl_protocol_generated_prop. assumption.
 Qed.

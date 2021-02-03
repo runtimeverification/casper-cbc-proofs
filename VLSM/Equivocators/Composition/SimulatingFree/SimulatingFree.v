@@ -30,13 +30,13 @@ Context {message : Type}
   (equivocators_choice := equivocators_choice IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs index_listing finite_index)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocators_choice_update := equivocators_choice_update IM)
   (proper_equivocators_choice := proper_equivocators_choice IM)
   (not_equivocating_equivocators_choice := not_equivocating_equivocators_choice IM)
-  (equivocators_trace_project := equivocators_trace_project IM Hbs)
+  (equivocators_trace_project := equivocators_trace_project IM)
   .
 
 Local Tactic Notation "unfold_transition"  hyp(Ht) :=
@@ -44,6 +44,16 @@ Local Tactic Notation "unfold_transition"  hyp(Ht) :=
   unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
   unfold machine in Ht; unfold projT2 in Ht;
   unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
+
+Local Tactic Notation "unfold_equivocators_transition_item_project" := 
+(
+  simpl;
+  unfold equivocators_transition_item_project; simpl;
+  unfold composite_transition_item_projection; simpl;
+  unfold composite_transition_item_projection_from_eq; simpl;
+  unfold eq_rect_r; simpl
+).
+
 
 Lemma equivocators_trace_project_skip_full_replay_trace_init'
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
@@ -53,11 +63,10 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init'
   (eqvs : list equiv_index)
   : let app_tr :=
      apply_plan
-        (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-           finite_index) full_replay_state
+        (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) full_replay_state
         (map (initial_new_machine_transition_item IM Hbs index_listing finite_index is) eqvs)
   in fold_right
-    (equivocators_trace_project_folder IM Hbs index_listing finite_index)
+    (equivocators_trace_project_folder IM)
       (Some ([], eqv_choice)) (fst app_tr) = Some ([], eqv_choice)
     /\ (forall eqv,
       projT1 (snd (app_tr) (eqv)) >= projT1 (full_replay_state (eqv))
@@ -88,7 +97,8 @@ Proof.
   simpl in Heqa_app.
   unfold apply_plan in Heqa_app.
   simpl in Heqa_app.
-  inversion Heqa_app. subst. clear Heqa_app. simpl.
+  inversion Heqa_app. subst. clear Heqa_app.
+  unfold_equivocators_transition_item_project.
   rewrite state_update_eq.
   specialize (Heqv_choice x) as Heqv_choice_eqv.
   specialize (Hsize x) as Hsize_eqv.
@@ -127,11 +137,10 @@ Lemma equivocators_trace_project_skip_full_replay_trace_init
   (is : vstate equivocators_no_equivocations_vlsm)
   : let app_tr :=
      apply_plan
-        (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-           finite_index) full_replay_state
+        (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) full_replay_state
         (spawn_initial_state IM Hbs index_listing finite_index is)
   in fold_right
-    (equivocators_trace_project_folder IM Hbs index_listing finite_index)
+    (equivocators_trace_project_folder IM)
       (Some ([], eqv_choice)) (fst app_tr) = Some ([], eqv_choice)
     /\ forall eqv, projT1 (snd (app_tr) (eqv)) > projT1 (full_replay_state (eqv)).
 Proof.
@@ -156,7 +165,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
   (eqv_choice: equivocators_choice)
   (Heqv_choice: not_equivocating_equivocators_choice eqv_choice full_replay_state)
-  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
+  (tr : list (composite_transition_item equivocator_IM))
   (is_final : vstate equivocators_no_equivocations_vlsm)
   (His_final_size : forall eqv, projT1 (is_final (eqv)) > projT1 (full_replay_state (eqv)))
   : let app_tr :=
@@ -166,7 +175,7 @@ Lemma equivocators_trace_project_skip_full_replay_trace
             index_listing finite_index full_replay_state)
          tr)
   in fold_right
-    (equivocators_trace_project_folder IM Hbs index_listing finite_index)
+    (equivocators_trace_project_folder IM)
       (Some ([], eqv_choice)) (fst app_tr) = Some ([], eqv_choice)
     /\ forall eqv, projT1 (snd (app_tr) (eqv)) > projT1 (full_replay_state (eqv)).
 Proof.
@@ -205,7 +214,8 @@ Proof.
   specialize (Hsize eqv) as Hsize_eqv.
   destruct di as [s_di|j_di f_di].
   + simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-    simpl. rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
+    unfold_equivocators_transition_item_project.
+    rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
     rewrite state_update_eq.
     destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
     simpl in Hsize_eqv.
@@ -227,7 +237,8 @@ Proof.
         (j_di + S (projT1 (full_replay_state (eqv))))
       ).
     * simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-      simpl. rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
+      unfold_equivocators_transition_item_project.
+      rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
       rewrite state_update_eq.
       destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
       simpl in Hsize_eqv.
@@ -258,7 +269,8 @@ Proof.
         as (si', om') eqn:Ht.
       destruct f_di.
       -- simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-        simpl. rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
+        unfold_equivocators_transition_item_project.
+        rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
         rewrite state_update_eq.
         destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
         simpl in Hsize_eqv. unfold equivocator_state_extend at 1.
@@ -271,7 +283,8 @@ Proof.
         ++ subst eqv'. rewrite state_update_eq. simpl. lia.
         ++ rewrite state_update_neq by assumption. apply Hsize.
       -- simpl in Heqa_app. inversion Heqa_app. subst. clear Heqa_app.
-        simpl. rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
+        unfold_equivocators_transition_item_project.
+        rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
         rewrite state_update_eq.
         destruct (tr_final (eqv)) as (n_tr_final_eqv, s_tr_final_eqv) eqn:Htr_final_eqv.
         simpl in Hsize_eqv.
@@ -301,10 +314,10 @@ Qed.
 Lemma equivocators_trace_project_skip_full_replay_trace_full
   (full_replay_state : vstate equivocators_no_equivocations_vlsm)
   (is : vstate equivocators_no_equivocations_vlsm)
-  (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
+  (tr : list (composite_transition_item equivocator_IM))
   (eqv_choice: equivocators_choice)
   (Heqv_choice: not_equivocating_equivocators_choice eqv_choice full_replay_state)
-  : equivocators_trace_project index_listing finite_index eqv_choice
+  : equivocators_trace_project eqv_choice
       (replay_trace_from IM Hbs index_listing finite_index
          full_replay_state is tr) =
     Some ([], eqv_choice).
@@ -313,14 +326,12 @@ Proof.
   rewrite apply_plan_app.
   destruct
     (apply_plan
-      (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-        finite_index) full_replay_state
+      (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) full_replay_state
       (spawn_initial_state IM Hbs index_listing finite_index is))
     as (is_items, is_final) eqn:His.
   destruct
     (apply_plan
-      (Common.equivocators_no_equivocations_vlsm IM Hbs index_listing
-          finite_index) is_final
+      (Common.equivocators_no_equivocations_vlsm IM Hbs finite_index) is_final
       (map
           (update_euivocators_transition_item_descriptor IM Hbs
             index_listing finite_index full_replay_state) tr)
@@ -363,14 +374,14 @@ Lemma equivocators_protocol_vlsm_run_project
     (Hrun : vlsm_run_prop equivocators_no_equivocations_vlsm run)
     (eqv_choice : equivocators_choice)
     (Heqv : not_equivocating_equivocators_choice eqv_choice (fst (final run)))
-    (Hproject : equivocators_trace_project _ _ eqv_choice (transitions run)
+    (Hproject : equivocators_trace_project eqv_choice (transitions run)
       = Some (transitions runX, zero_choice _))
     (Hdestination : equivocators_state_project eqv_choice (fst (final run)) = fst (final runX))
     (Houtput : snd (final run) = snd (final runX)),
     equivocators_state_project (zero_choice _) (start run) = start runX.
 Proof.
   induction HrunX.
-  - specialize (lift_initial_to_equivocators_state IM Hbs index_listing finite_index is His) as Hs.
+  - specialize (lift_initial_to_equivocators_state IM Hbs finite_index is His) as Hs.
     remember (lift_to_equivocators_state IM is) as s.
     exists (@mk_proto_run _ (type equivocators_no_equivocations_vlsm) s [] (s, None)).
     split; [constructor; assumption|].
@@ -514,6 +525,7 @@ Proof.
     specialize (equal_f_dep Hstate_final_project (eqv)) as Hstate_final_project_eqv.
     unfold equivocators_state_project in Hstate_final_project_eqv.
     unfold Common.equivocators_state_project in Hstate_final_project_eqv.
+    unfold equivocator_state_descriptor_project in Hstate_final_project_eqv.
     rewrite Heqv_state_choice_eqv in Hstate_final_project_eqv.
     match type of Heqv_state_choice_i with
     | context [projT1 ?s] => destruct s as (n_eqv_state_run_eqv, s_eqv_state_run_eqv) eqn:Heqeqv_state_run_eqv
@@ -563,7 +575,8 @@ Proof.
         rewrite Hstate_final. clear -Hv.
         simpl in Hv. destruct Hv as [Hv _].
         assumption.
-      - unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
+      - split; [|exact I].
+        unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
         destruct (null_dec (transitions eqv_msg_run)).
         + right.
           apply (vlsm_run_no_transitions_output equivocators_no_equivocations_vlsm)
@@ -732,7 +745,7 @@ Proof.
     { subst last_prj. subst last_item.
       unfold equivocators_trace_project_folder.
       subst el.
-      unfold equivocators_transition_item_project.
+      unfold_equivocators_transition_item_project.
       simpl in Hproject.
       rewrite <- Hproject.
       rewrite Heqv_state_choice_eqv.
@@ -749,13 +762,13 @@ Proof.
       assumption.
     }
     rewrite H.
-    assert (equivocators_trace_project _ _ eqv_state_choice emsg_tr = Some ([], eqv_state_choice)).
+    assert (equivocators_trace_project eqv_state_choice emsg_tr = Some ([], eqv_state_choice)).
     {
       subst emsg_tr.
       apply equivocators_trace_project_skip_full_replay_trace_full. assumption.
     }
     specialize
-      (equivocators_trace_project_folder_additive IM Hbs _ finite_index
+      (equivocators_trace_project_folder_additive IM
         _ last_item _ _ _ H1
       ) as Hmsg_tr.
     simpl in Hmsg_tr.
@@ -764,7 +777,7 @@ Proof.
     end.
     clear Hmsg_tr.
     specialize
-      (equivocators_trace_project_folder_additive IM Hbs _ finite_index
+      (equivocators_trace_project_folder_additive IM
         _ last_item _ _ _ Hstate_project
       ) as Heqv_state.
     assumption.
@@ -776,10 +789,10 @@ Lemma equivocators_protocol_trace_project_rev
   (HtrX : finite_protocol_trace X isX trX)
   : exists
     (is : vstate equivocators_no_equivocations_vlsm)
-    (tr : list (vtransition_item equivocators_no_equivocations_vlsm))
+    (tr : list (composite_transition_item equivocator_IM))
     (Htr : finite_protocol_trace equivocators_no_equivocations_vlsm is tr)
     (eqv_choice : equivocators_choice)
-    (Hproject : equivocators_trace_project _ _ eqv_choice tr = Some (trX, zero_choice _)),
+    (Hproject : equivocators_trace_project eqv_choice tr = Some (trX, zero_choice _)),
     equivocators_state_project (zero_choice _) is = isX.
 Proof.
   destruct (trace_is_run X _ _ HtrX) as [runX [HrunX [_HstartX _HtrX]]].

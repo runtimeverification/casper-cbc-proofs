@@ -81,10 +81,10 @@ Lemma Full_composition_constraint_state_not_heavy
   : not_heavy s.
 Proof.
   specialize
-    (@initial_state_not_heavy message V message _ 
+    (@initial_state_not_heavy message V message _
       _ (validator_message_preceeds_dec C V)
       full_node_message_subject_of_observation
-      _ _ _ 
+      _ _ _
       finite_index IM_index free_observable_messages_index _
       free_composite_vlsm_observable_messaged_index
       free_observation_based_equivocation_evidence_index
