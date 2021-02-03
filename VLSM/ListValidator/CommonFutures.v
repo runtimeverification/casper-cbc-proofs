@@ -901,6 +901,143 @@ Context
       all : intuition.
   Qed.
   
+  Lemma wcobs_message_existing_same1
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (b : bool)
+    (i target : index)
+    (Hdif : i <> target)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
+    incl (wcobs_messages s target) (wcobs_messages s' target).
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    
+    intros e.
+    intros H.
+    - apply cobs_single_m in H.
+      destruct H as [k H].
+      destruct (decide (k = i)).
+      + subst k.
+        destruct H as [H' H].
+        apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H. 
+        apply cobs_single_m.
+        exists i.
+        unfold s'.
+        rewrite state_update_eq.
+        rewrite cons_clean_message_obs with (b0 := b) in H.
+        split;[intuition|].
+        intuition.
+        split; apply Hsnb.
+        intuition.
+      + apply cobs_single_m.
+        exists k.
+        unfold s'.
+        rewrite state_update_neq.
+        all : intuition.
+  Qed.
+  
+  Lemma wcobs_message_existing_same2
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (b : bool)
+    (i : index)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
+    incl (wcobs_messages s i) (wcobs_messages s' i).
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    intros e.
+    intros H.
+    - 
+      + apply cobs_single_m in H.
+        destruct H as [k [H' H]].
+        destruct (decide (i = k)).
+        * subst k. 
+          apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H.
+          apply cobs_single_m.
+          exists i.
+          unfold s'.
+          rewrite state_update_eq.
+          rewrite cons_clean_message_obs with (b0 := b) in H.
+          split;[intuition|].
+          intuition.
+          split; apply Hsnb.
+          intuition.
+        * apply cobs_single_m.
+          exists k.
+          unfold s'.
+          rewrite state_update_neq.
+          split;[intuition|].
+          all : intuition.
+  Qed.
+  
+  Lemma in_future_message_obs
+    (s s' : vstate X)
+    (Hprs : protocol_state_prop X s)
+    (target : index)
+    (Hf : in_futures X s s') 
+    (e : simp_lv_event)
+    (Hin : In e (wcobs_messages s target)) :
+    In e (wcobs_messages s' target).
+  Proof.
+    unfold in_futures in Hf.
+    destruct Hf as [tr [Hpr Hlst]].
+    generalize dependent s.
+    induction tr.
+    - intros. simpl in *. rewrite <- Hlst. intuition.
+    - intros.
+      inversion Hpr.
+      rewrite map_cons in Hlst.
+      rewrite unroll_last in Hlst.
+      assert (Hproto' := H3).
+      destruct H3 as [Hproto Htrans].
+      unfold transition in Htrans.
+      simpl in Htrans.
+      destruct l. simpl in *.
+      unfold constrained_composite_valid in Hproto.
+      unfold free_composite_valid in Hproto.
+      unfold vvalid in Hproto. unfold valid in Hproto. simpl in *.
+      unfold vtransition in Htrans.
+      unfold transition in Htrans. simpl in Htrans.
+      destruct a. simpl in *.
+      inversion H.
+      specialize (IHtr s0).
+      spec IHtr. {
+        apply protocol_transition_destination in Hproto'.
+        intuition.
+      }
+      spec IHtr. intuition.
+      spec IHtr. {
+        rewrite H6.
+        intuition.
+      }
+      apply IHtr.
+      destruct v eqn : eq_v.
+      + subst v.
+        inversion Htrans.
+        destruct (decide (x = target)).
+        * subst x.
+          apply wcobs_message_existing_same2. intuition. intuition.
+        * apply wcobs_message_existing_same1; intuition.
+      + inversion Htrans.
+        destruct iom eqn : eq_iom;[|intuition].
+        inversion H8.
+        specialize (cobs_message_existing_other_rt' s Hprs (snd m)) as Hex.
+        spec Hex. intuition.
+        specialize (Hex x (fst m) target).
+        spec Hex. intuition. simpl in Hex.
+        spec Hex. intuition.
+        unfold incl in Hex.
+        specialize (Hex e).
+        apply Hex.
+        intuition.
+  Qed.
+  
   End EquivObsUtils.
   
   Lemma ws_incl_cobs
@@ -2015,72 +2152,6 @@ Context
           -- split;[intuition|].
              intuition.
   Qed. *)
-  
-  Lemma in_future_message_obs
-    (s s' : vstate X)
-    (Hprs : protocol_state_prop X s)
-    (target : index)
-    (Hf : in_futures X s s') 
-    (e : simp_lv_event)
-    (Hin : In e (cobs_messages s target)) :
-    In e (cobs_messages s' target).
-  Proof.
-    unfold in_futures in Hf.
-    destruct Hf as [tr [Hpr Hlst]].
-    generalize dependent s.
-    induction tr.
-    - intros. simpl in *. rewrite <- Hlst. intuition.
-    - intros.
-      inversion Hpr.
-      rewrite map_cons in Hlst.
-      rewrite unroll_last in Hlst.
-      assert (Hproto' := H3).
-      destruct H3 as [Hproto Htrans].
-      unfold transition in Htrans.
-      simpl in Htrans.
-      destruct l. simpl in *.
-      unfold constrained_composite_valid in Hproto.
-      unfold free_composite_valid in Hproto.
-      unfold vvalid in Hproto. unfold valid in Hproto. simpl in *.
-      unfold vtransition in Htrans.
-      unfold transition in Htrans. simpl in Htrans.
-      destruct a. simpl in *.
-      inversion H.
-      specialize (IHtr s0).
-      spec IHtr. {
-        apply protocol_transition_destination in Hproto'.
-        intuition.
-      }
-      spec IHtr. intuition.
-      spec IHtr. {
-        rewrite H6.
-        intuition.
-      }
-      apply IHtr.
-      destruct v eqn : eq_v.
-      + subst v.
-        inversion Htrans.
-        destruct (decide (x = target)).
-        * subst x.
-          setoid_rewrite cobs_message_existing_same2.
-          apply set_union_iff.
-          left. intuition.
-          intuition.
-        * setoid_rewrite cobs_message_existing_same1.
-          all : intuition.
-      + inversion Htrans.
-        destruct iom eqn : eq_iom;[|intuition].
-        inversion H8.
-        specialize (@cobs_message_existing_other_rt' index_listing s Hprs (snd m)) as Hex.
-        spec Hex. intuition.
-        specialize (Hex x (fst m) target).
-        spec Hex. intuition. simpl in Hex.
-        spec Hex. intuition.
-        unfold incl in Hex.
-        specialize (Hex e).
-        apply Hex.
-        intuition.
-  Qed.
   
   Lemma ep_plan 
     (s : vstate X)
