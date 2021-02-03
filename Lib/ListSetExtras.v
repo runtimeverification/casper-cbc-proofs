@@ -798,6 +798,6 @@ Proof.
      unfold g in Hext.
      unfold g' in Hext.
      destruct (f a); destruct (f' a); (simpl in *; intuition congruence).
-Qed.  
+Qed.
 
 Unset Implicit Arguments.

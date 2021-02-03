@@ -5133,11 +5133,8 @@ Context
   Lemma eqv_aware_something
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
-    (Hnf : no_component_fully_equivocating s (GH s))
-    (res_send := send_phase_result s)
-    (res := common_future s) 
     (i : index) :
-    LE i res = (@equivocating_validators _ _ _ _ (Hbasic i) (res i)).
+    LE i s = (@equivocating_validators _ _ _ _ (Hbasic i) (s i)).
   Proof.
     unfold equivocating_validators.
     unfold LE. unfold wE.
@@ -5161,7 +5158,7 @@ Context
         destruct Heqj;[|intuition]. subst j.
         apply set_union_in_iterated.
         rewrite Exists_exists.
-        exists ((@simp_lv_observations index i index_listing _) (res i) (get_simp_event_subject e1)).
+        exists ((@simp_lv_observations index i index_listing _) (s i) (get_simp_event_subject e1)).
         split.
         * apply in_map_iff. exists (get_simp_event_subject e1). split;[intuition|apply in_listing].
         * intuition.
@@ -5177,7 +5174,7 @@ Context
         destruct Heqj;[|intuition]. subst j.
         apply set_union_in_iterated.
         rewrite Exists_exists.
-        exists ((@simp_lv_observations index i index_listing _) (res i) (get_simp_event_subject e2)).
+        exists ((@simp_lv_observations index i index_listing _) (s i) (get_simp_event_subject e2)).
         split.
         -- apply in_map_iff. exists (get_simp_event_subject e2). split;[intuition|apply in_listing].
         -- intuition.
@@ -5290,7 +5287,8 @@ Context
         b = true =>
        replace eqv with (LE j res) end.
    
-    2, 3 : (unfold res; apply eqv_aware_something; intuition).
+    2, 3 : (apply eqv_aware_something; apply common_future_result_protocol; intuition).
+
     unfold res.
     rewrite <- local_and_honest_equal by intuition.
     rewrite <- local_and_honest_equal by intuition.
@@ -5300,6 +5298,67 @@ Context
     rewrite eqv_aware_something2 with (j := j) by intuition.
     intuition.
   Qed.
-    
-     
+  
+  Lemma ncfe
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s) :
+    no_component_fully_equivocating s (GH s).
+  Proof.
+    unfold no_component_fully_equivocating.
+    intros.
+    unfold not_all_equivocating.
+    unfold no_equivocating_decisions.
+    destruct (s i) eqn : eq_si.
+    - apply protocol_state_component_no_bottom in eq_si; intuition.
+    - destruct (map decision
+      (get_no_equivocating_states (Something b is) (equivocating_validators (Something b is)))) eqn : eq_m.
+      + apply map_eq_nil in eq_m.
+        unfold get_no_equivocating_states in eq_m.
+        apply map_eq_nil in eq_m.
+        rewrite <- eq_si in eq_m.
+        rewrite <- eqv_aware_something in eq_m.
+        2 : intuition.
+        assert (LE
+        assert (forall (j : index), In j (LE i s)). {
+          intros.
+          admit.
+        }
+        specialize (ws_incl_wE s index_listing [i]) as Hincl.
+        spec Hincl. {
+          unfold incl. intros.
+          apply in_listing.
+        }
+        unfold LE in H0.
+        assert (forall (j : index), In j (GE s)). {
+          unfold GE. intros.
+          specialize (H0 j).
+          specialize (Hincl j H0).
+          intuition.
+        }
+        specialize (H1 i).
+        apply wH_wE' in H.
+        intuition.
+      + congruence.
+  Admitted.
+  
+  Theorem common_futures
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s) :
+    exists (s' : vstate X),
+    in_futures X s s' /\
+    GH s = GH s' /\
+    (forall (i j : index) (b : bool),
+     In i (GH s') ->
+     In j (GH s') ->
+     (est' i (s' i) b) <-> (est' j (s' j) b)).
+  Proof.
+    specialize (ncfe s Hpr) as Hncfe.
+    exists (common_future s).
+    split.
+    - apply common_future_in_futures; intuition.
+    - split.
+      + apply GH_eq2; intuition.
+      + apply honest_nodes_same_estimators; intuition.
+  Qed.  
+
 End Composition.
