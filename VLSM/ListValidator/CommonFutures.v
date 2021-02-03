@@ -2228,7 +2228,7 @@ Context
           unfold set_eq.
           inversion eq_trans. clear H3.
           assert (In (SimpObs Message' from so) (cobs res_long from)). {
-            specialize (in_future_message_obs s res_long Hpr from) as Hf.
+            specialize (@in_future_message_obs index_listing s res_long Hpr from) as Hf.
             spec Hf. {
               unfold in_futures.
               exists (fst (apply_plan X s a)).
@@ -4687,46 +4687,6 @@ Context
       intuition.
     Qed.
     
-    Lemma hh_something
-      (s : vstate X)
-      (Hpr : protocol_state_prop X s)
-      (res := receive_phase_result s) :
-      incl (HH res) (HH s).
-    Proof.
-      unfold incl. intros.
-      assert (~ In a (HE s)). {
-        intros contra.
-        unfold HE in contra.
-        apply GE_direct in contra.
-        unfold cequiv_evidence in contra.
-        unfold equivocation_evidence in contra.
-        setoid_rewrite hbo_cobs in contra.
-        
-        destruct contra as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
-        assert (In a (HE res)). {
-          unfold HE.
-          apply GE_direct.
-          unfold cequiv_evidence.
-          unfold equivocation_evidence.
-          setoid_rewrite hbo_cobs.
-          exists e1.
-          split.
-          - admit.
-          - split;[intuition|].
-            exists e2.
-            split.
-            + admit.
-            + split;intuition.
-        }
-        unfold HH in H.
-        apply wH_wE' in H.
-        intuition.
-      }
-      unfold HH.
-      apply wH_wE'.
-      intuition.
-    Admitted.
-    
     Definition common_future (s : vstate X) := receive_phase_result (send_phase_result s).
     
     Lemma common_future_in_futures
@@ -4816,6 +4776,89 @@ Context
       apply wE_eq_equality in He.
       intuition.
     Qed.
+    
+    Lemma hh_something
+      (s : vstate X)
+      (Hpr : protocol_state_prop X s)
+      (res := receive_phase_result s) :
+      incl (HH res) (HH s).
+    Proof.
+      unfold incl. intros.
+      assert (HsameGH : GH res = GH s). {
+        unfold res.
+        specialize (receive_phase_GE s Hpr) as Hseteq.
+        simpl in Hseteq.
+        apply filter_set_eq in Hseteq.
+        apply HE_eq_equiv.
+        intuition.
+      }
+      
+      assert (~ In a (HE s)). {
+        intros contra.
+        assert (contra' := contra).
+        unfold HE in contra.
+        apply GE_direct in contra.
+        unfold cequiv_evidence in contra.
+        unfold equivocation_evidence in contra.
+        setoid_rewrite hbo_cobs in contra.
+
+        destruct contra as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
+        
+        specialize (@in_future_message_obs (GH s) s res Hpr a) as Hfuture.
+        spec Hfuture. {
+          unfold res.
+          apply receive_phase_future.
+          intuition.
+        }
+        
+        assert (In a (HE res)). {
+          unfold HE.
+          apply GE_direct.
+          unfold cequiv_evidence.
+          unfold equivocation_evidence.
+          setoid_rewrite hbo_cobs.
+          unfold get_simp_event_subject_some in He1'.
+          inversion He1'.
+          exists e1.
+          split.
+          - setoid_rewrite cobs_messages_states in He1.
+            apply set_union_iff in He1.
+            destruct He1 as [He1|He1].
+            + apply cobs_single_s in He1.
+              destruct He1 as [k [Hk Hk']].
+              unfold simp_lv_state_observations in Hk'.
+              rewrite H1 in Hk'.
+              rewrite decide_False in Hk'.
+              intuition.
+              specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
+              spec Hincl. unfold incl. intros. apply in_listing.
+              destruct (decide (a = k)). 
+              * subst k. apply wH_wE' in Hk. intuition.
+              * intuition.
+            + setoid_rewrite cobs_messages_states.
+              apply set_union_iff.
+              right.
+              specialize (Hfuture e1).
+              inversion He1'. rewrite H1.
+              rewrite H1 in He1.
+              specialize (Hfuture He1).
+              unfold wcobs_messages.
+              rewrite HsameGH.
+              intuition.
+          - split;[intuition|].
+            exists e2.
+            split.
+            + admit.
+            + split;intuition.
+        }
+        unfold HH in H.
+        apply wH_wE' in H.
+        intuition.
+      }
+      unfold HH.
+      apply wH_wE'.
+      intuition.
+    Admitted.
    
   Lemma honest_receive_honest
     (s : vstate X)
