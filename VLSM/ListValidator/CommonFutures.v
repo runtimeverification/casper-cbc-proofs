@@ -646,6 +646,36 @@ Context
       + intuition.
   Qed.
   
+  Lemma wE_wH'
+    (s : vstate X)
+    (i : index) :
+    In i (wE s) <-> ~ In i (wH s).
+  Proof.
+    unfold wH.
+    unfold wE.
+    split; intros.
+    - apply filter_In in H.
+      intros contra.
+      apply filter_In in contra.
+      destruct H as [_ H].
+      destruct contra as [_ contra].
+      rewrite bool_decide_eq_true in H.
+      rewrite negb_true_iff in contra.
+      rewrite bool_decide_eq_false in contra.
+      intuition.
+    - apply filter_In.
+      split; [apply (proj2 Hfinite)|].
+      match goal with
+      |- ?e = _ =>
+        destruct e eqn : eq_d end.
+      + intuition.
+      + contradict H.
+        apply filter_In.
+        split;[apply in_listing|].
+        rewrite negb_true_iff.
+        intuition.
+  Qed.
+  
   Lemma wH_wE
     (s : vstate X) :
     set_eq (wH s) (set_diff decide_eq index_listing (wE s)).
@@ -5318,10 +5348,14 @@ Context
         rewrite <- eq_si in eq_m.
         rewrite <- eqv_aware_something in eq_m.
         2 : intuition.
-        assert (LE
         assert (forall (j : index), In j (LE i s)). {
           intros.
-          admit.
+          apply wE_wH'.
+          intros contra.
+          setoid_rewrite wH_wE in contra.
+          unfold LE in eq_m.
+          rewrite eq_m in contra.
+          intuition.
         }
         specialize (ws_incl_wE s index_listing [i]) as Hincl.
         spec Hincl. {
@@ -5339,7 +5373,7 @@ Context
         apply wH_wE' in H.
         intuition.
       + congruence.
-  Admitted.
+  Qed.
   
   Theorem common_futures
     (s : vstate X)
