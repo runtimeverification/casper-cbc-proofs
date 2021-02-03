@@ -750,10 +750,19 @@ Context
   
   Definition GE := @wE index_listing.
   Definition GH := @wH index_listing. 
-  
   Definition cobs (s : vstate X) := @wcobs index_listing s.
   Definition cobs_messages (s : vstate X) := @wcobs_messages index_listing s.
   Definition cobs_states (s : vstate X) := @wcobs_states index_listing s.
+  
+  Definition HE (s : vstate X) := @wE (GH s) s.
+  Definition HH (s : vstate X) := @wH (GH s) s.
+  
+  Definition hcobs (s : vstate X) := @wcobs (GH s) s.
+  Definition hcobs_messages (s : vstate X) := @wcobs_messages (GH s) s.
+  Definition hcobs_states (s : vstate X) := @wcobs_states (GH s) s.
+  
+  Definition LE (i : index) := (@wE [i]).
+  Definition LH (i : index) := (@wH [i]).
   
   Lemma cobs_message_existing_other_lf
     (s : vstate X)
@@ -1872,6 +1881,118 @@ Context
              intros contra.
              apply comparable_commutative in contra.
              intuition.
+      + apply in_cobs_messages in Hine2 as Het2.
+        simpl in Het2. subst et2. simpl in Hine2.
+        
+        exists e1. subst e1. simpl in *.
+        split.
+        * apply in_cobs_messages'.
+          unfold s'.
+          setoid_rewrite <- cobs_message_existing_other.
+          all :intuition.
+        * split;[intuition|].
+          exists e2. subst e2. simpl in *.
+          split.
+          -- apply in_cobs_messages'.
+             unfold s'.
+             setoid_rewrite <- cobs_message_existing_other. 
+             all : intuition.
+          -- split;[intuition|].
+             intuition.
+  Qed.
+  
+  Lemma HE_existing_different_rev
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)
+    (so : state)
+    (i j : index)
+    (Hin : In i (GH s))
+    (Hdif : i <> j)
+    (s' := state_update IM_index s i (update_state (s i) so j))
+    (Hfull : project (s i) j = project so j)
+    (Hhave : In (SimpObs Message' j so) (cobs s j)) :
+    incl (HE s) (HE s').
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    
+    assert (Hsonb : so <> Bottom). {
+        apply in_cobs_and_message in Hhave.
+        apply cobs_single_m in Hhave.
+        destruct Hhave as [k [_ Hhave]].
+        apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
+        all : intuition.
+    }
+  
+    unfold incl; intros v H.
+    unfold HE in *.
+    apply GE_direct in H as Hev.
+    apply GE_direct.
+    unfold cequiv_evidence in *.
+    unfold equivocation_evidence in *.
+    destruct Hev as [e1 [Hine1 [He1subj Hrem]]].
+    destruct Hrem as [e2 [Hine2 [He2subj Hcomp]]].
+    destruct e1 as [et1 ev1 es1] eqn : eq_e1. 
+    destruct e2 as [et2 ev2 es2] eqn : eq_e2.
+    apply hbo_cobs in Hine1. 
+    apply hbo_cobs in Hine2.
+    
+    setoid_rewrite hbo_cobs.
+    unfold get_simp_event_subject_some.
+    
+    assert (Hv : ev1 = v /\ ev2 = v). {
+      rewrite <- He2subj in He1subj.
+      unfold get_simp_event_subject_some in He1subj.
+      inversion He1subj.
+      unfold get_simp_event_subject_some in He2subj.
+      inversion He2subj.
+      intuition.
+    }
+    
+    destruct Hv as [Hv1 Hv2].
+    subst ev1. subst ev2.
+    
+    setoid_rewrite cobs_messages_states in Hine1.
+    setoid_rewrite cobs_messages_states in Hine2.
+    apply set_union_iff in Hine1.
+    apply set_union_iff in Hine2.
+    
+    assert (Hvnh : ~ In v (GH s)). {
+      assert (In v (GE s)). {
+        unfold GE.
+        specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
+        spec Hincl. unfold incl. intros. apply in_listing.
+        intuition.
+      }
+      apply wE_wH'.
+      intuition.
+    }
+    
+    destruct Hine1 as [Hine1|Hine1].
+    - apply in_cobs_states in Hine1 as Het1.
+      simpl in Het1. subst et1.
+      apply cobs_single_s in Hine1.
+      destruct Hine1 as [k [HkGH Hink]].
+      subst e1. simpl in Hink.
+      unfold simp_lv_state_observations in Hink.
+      rewrite decide_False in Hink. intuition.
+      destruct (decide (v = k));[subst k; intuition|].
+      intuition.
+    - apply in_cobs_messages in Hine1 as Het1.
+      simpl in Het1. subst et1. simpl in Hine1.
+      
+      destruct Hine2 as [Hine2|Hine2].
+      + apply in_cobs_states in Hine2 as Het2.
+        simpl in Het2. subst et2.
+        apply cobs_single_s in Hine2.
+        destruct Hine2 as [k [HkGH Hink]].
+        subst e1. simpl in Hink.
+        unfold simp_lv_state_observations in Hink.
+        rewrite decide_False in Hink. intuition.
+        destruct (decide (v = k));[subst k; intuition|].
+        intuition.
       + apply in_cobs_messages in Hine2 as Het2.
         simpl in Het2. subst et2. simpl in Hine2.
         
@@ -4621,16 +4742,6 @@ Context
     1, 2 : intuition.
     setoid_rewrite <- GH_eq1; intuition.
   Qed.
-  
-  Definition hcobs (s : vstate X) := @wcobs (GH s) s.
-  Definition hcobs_messages (s : vstate X) := @wcobs_messages (GH s) s.
-  Definition hcobs_states (s : vstate X) := @wcobs_states (GH s) s.
-  
-  Definition HE (s : vstate X) := @wE (GH s) s.
-  Definition HH (s : vstate X) := @wH (GH s) s.
-  
-  Definition LE (i : index) := (@wE [i]).
-  Definition LH (i : index) := (@wH [i]).
   
   Lemma all_projections_old1
     (s : vstate X)
