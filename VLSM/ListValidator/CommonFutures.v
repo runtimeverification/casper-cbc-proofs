@@ -4848,8 +4848,38 @@ Context
           - split;[intuition|].
             exists e2.
             split.
-            + admit.
-            + split;intuition.
+            unfold get_simp_event_subject_some in He2'.
+            inversion He2'.
+            + setoid_rewrite cobs_messages_states in He2.
+            apply set_union_iff in He2.
+            destruct He2 as [He2|He2].
+            * apply cobs_single_s in He2.
+              destruct He2 as [k [Hk Hk']].
+              unfold simp_lv_state_observations in Hk'.
+              rewrite H2 in Hk'.
+              rewrite decide_False in Hk'.
+              intuition.
+              specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
+              spec Hincl. unfold incl. intros. apply in_listing.
+              destruct (decide (a = k)). 
+              -- subst k. apply wH_wE' in Hk. intuition.
+              -- intuition.
+            * setoid_rewrite cobs_messages_states.
+              apply set_union_iff.
+              right.
+              specialize (Hfuture e2).
+              rewrite H2.
+              rewrite H2 in He2.
+              specialize (Hfuture He2).
+              unfold wcobs_messages.
+              rewrite HsameGH.
+              intuition.
+            + split.
+              -- unfold get_simp_event_subject_some.
+                 f_equal.
+                 inversion He2'.
+                 rewrite H2, H1. intuition.
+              -- intuition. 
         }
         unfold HH in H.
         apply wH_wE' in H.
@@ -4858,7 +4888,7 @@ Context
       unfold HH.
       apply wH_wE'.
       intuition.
-    Admitted.
+    Qed.
    
   Lemma honest_receive_honest
     (s : vstate X)
