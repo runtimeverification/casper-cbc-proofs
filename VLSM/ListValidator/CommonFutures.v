@@ -2037,122 +2037,6 @@ Context
              intuition.
   Qed.
   
-  (*
-  Lemma HE_existing_different_rev
-    (s : vstate X)
-    (Hpr : protocol_state_prop X s)
-    (so : state)
-    (i j : index)
-    (Hin : In i (GH s))
-    (Hdif : i <> j)
-    (s' := state_update IM_index s i (update_state (s i) so j))
-    (Hfull : project (s i) j = project so j)
-    (Hhave : In (SimpObs Message' j so) (hcobs s j)) :
-    incl (HE s) (HE s').
-  Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-    
-    assert (Hsonb : so <> Bottom). {
-        apply in_cobs_and_message in Hhave.
-        apply cobs_single_m in Hhave.
-        destruct Hhave as [k [_ Hhave]].
-        apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
-        all : intuition.
-    }
-  
-    unfold incl; intros v H.
-    unfold HE in *.
-    apply GE_direct in H as Hev.
-    apply GE_direct.
-    unfold cequiv_evidence in *.
-    unfold equivocation_evidence in *.
-    destruct Hev as [e1 [Hine1 [He1subj Hrem]]].
-    destruct Hrem as [e2 [Hine2 [He2subj Hcomp]]].
-    destruct e1 as [et1 ev1 es1] eqn : eq_e1. 
-    destruct e2 as [et2 ev2 es2] eqn : eq_e2.
-    apply hbo_cobs in Hine1. 
-    apply hbo_cobs in Hine2.
-    
-    setoid_rewrite hbo_cobs.
-    unfold get_simp_event_subject_some.
-    
-    assert (Hv : ev1 = v /\ ev2 = v). {
-      rewrite <- He2subj in He1subj.
-      unfold get_simp_event_subject_some in He1subj.
-      inversion He1subj.
-      unfold get_simp_event_subject_some in He2subj.
-      inversion He2subj.
-      intuition.
-    }
-    
-    destruct Hv as [Hv1 Hv2].
-    subst ev1. subst ev2.
-    
-    setoid_rewrite cobs_messages_states in Hine1.
-    setoid_rewrite cobs_messages_states in Hine2.
-    apply set_union_iff in Hine1.
-    apply set_union_iff in Hine2.
-    
-    assert (Hvnh : ~ In v (GH s)). {
-      assert (In v (GE s)). {
-        unfold GE.
-        specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
-        spec Hincl. unfold incl. intros. apply in_listing.
-        intuition.
-      }
-      apply wE_wH'.
-      intuition.
-    }
-    
-    destruct Hine1 as [Hine1|Hine1].
-    - apply in_cobs_states in Hine1 as Het1.
-      simpl in Het1. subst et1.
-      apply cobs_single_s in Hine1.
-      destruct Hine1 as [k [HkGH Hink]].
-      subst e1. simpl in Hink.
-      unfold simp_lv_state_observations in Hink.
-      rewrite decide_False in Hink. intuition.
-      destruct (decide (v = k));[subst k; intuition|].
-      intuition.
-    - apply in_cobs_messages in Hine1 as Het1.
-      simpl in Het1. subst et1. simpl in Hine1.
-      
-      destruct Hine2 as [Hine2|Hine2].
-      + apply in_cobs_states in Hine2 as Het2.
-        simpl in Het2. subst et2.
-        apply cobs_single_s in Hine2.
-        destruct Hine2 as [k [HkGH Hink]].
-        subst e1. simpl in Hink.
-        unfold simp_lv_state_observations in Hink.
-        rewrite decide_False in Hink. intuition.
-        destruct (decide (v = k));[subst k; intuition|].
-        intuition.
-      + apply in_cobs_messages in Hine2 as Het2.
-        simpl in Het2. subst et2. simpl in Hine2.
-        
-        exists e1. subst e1. simpl in *.
-        split.
-        * apply in_cobs_messages'.
-          unfold s'.
-          setoid_rewrite <- cobs_message_existing_other.
-          unfold hcobs in Hhave.
-          apply in_cobs_and_message in Hhave.
-          
-          all : intuition.
-        * split;[intuition|].
-          exists e2. subst e2. simpl in *.
-          split.
-          -- apply in_cobs_messages'.
-             unfold s'.
-             setoid_rewrite <- cobs_message_existing_other. 
-             all : intuition.
-          -- split;[intuition|].
-             intuition.
-  Qed. *)
-  
   Lemma ep_plan 
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -2779,7 +2663,7 @@ Context
     (Hsync : sync s (s' inter) to from = Some a) :
     let res := snd (apply_plan X s a) in
     finite_protocol_plan_from X s a /\
-    (project (res to) from = project (s' inter) from) /\ set_eq (GE res) (GE s).
+    (project (res to) from = project (s' inter) from).
    Proof. 
     generalize dependent s.
     induction a.
@@ -2812,8 +2696,6 @@ Context
           symmetry in eq_cs.
           apply (@eq_history_eq_project index index_listing Hfinite) in eq_cs.
           assumption.
-        + intuition.
-        + unfold res. intuition. 
     - intros. simpl in *.
       
       replace (a :: a0) with ([a] ++ a0). 2: auto.
@@ -2906,10 +2788,8 @@ Context
           apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
           unfold valid. simpl.
           repeat split.
-          assumption.
-          assumption.
-          assumption.
-        - assumption.
+          all : intuition.
+        - intuition.
       }
       
       subst input_a.
@@ -3022,9 +2902,7 @@ Context
       + unfold apply_plan. simpl.
         rewrite eq_vtrans. simpl.
         apply IHa.
-      + split.
-        destruct IHa as [_ IHa].
-        destruct IHa as [IHa _].
+      + destruct IHa as [_ IHa].
         rewrite <- IHa.
         f_equal.
         unfold apply_plan. simpl.
@@ -3044,68 +2922,6 @@ Context
         end.
         rewrite Hadd.
         reflexivity.
-        destruct IHa as [Iha1 [Iha2 Iha3]].
-        replace ({| label_a := label_a; input_a := Some (from, sa) |} :: a0) with
-                ([{| label_a := label_a; input_a := Some (from, sa) |}] ++ a0) by intuition.
-        rewrite apply_plan_cons.
-        match goal with
-        |- context[apply_plan X s ?a] =>
-          destruct (apply_plan X s a) as (tr_short, res_short) eqn : eq_short end.
-        match goal with
-        |- context[apply_plan X ?s ?a] =>
-          destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long end.
-        simpl.
-        
-        assert (res_short = s0). {
-           replace res_short with (snd (apply_plan X s [{| label_a := label_a; input_a := Some (from, sa) |}])).
-           unfold apply_plan. simpl.
-           rewrite eq_vtrans. simpl.
-           intuition.
-           match goal with
-           |- snd ?a = _ => 
-              replace a with (tr_short, res_short) by intuition end.
-           intuition.
-        }
-        
-        assert (snd (apply_plan X s0 a0) = res_long). {
-          rewrite <- H1.
-          match goal with
-          |- snd ?a = _ =>
-              replace a with (tr_long, res_long) by intuition end.
-          intuition.
-        }
-        
-        apply set_eq_tran with (s2 := GE res_short).
-        * rewrite <- H1 in Iha3 at 2.
-          rewrite H2 in Iha3.
-          intuition.
-        * rewrite H1.
-          specialize (GE_existing_different s Hpr sa to from Hdif Hecs) as Hexisting.
-          specialize (GE_existing_different_rev s Hpr sa to from Hdif Hecs) as Hexisting'.
-          
-          assert (s0 = (state_update IM_index s to (update_state (s to) sa from))). {
-            destruct H as [_ H].
-            unfold transition in H.
-            simpl in H. unfold vtransition in H. unfold transition in H. simpl in H.
-            inversion Hh.
-            rewrite <- H4 in H.
-            inversion H.
-            intuition.
-          }
-          
-          assert (In (SimpObs Message' from sa) (cobs s from)). {
-             rewrite <- Hhist in Hinsa.
-             apply (@in_history_in_observations index index_listing Hfinite) in Hinsa.
-             apply in_cobs_messages'.
-             apply cobs_single_m.
-             exists inter.
-             split;[apply in_listing|].
-             intuition.
-          }
-          
-          rewrite H3.
-          unfold set_eq.
-          split;[apply Hexisting; intuition| apply Hexisting'; intuition].
     Qed.
    
     Definition get_candidates 
@@ -3295,7 +3111,8 @@ Context
     Remark get_matching_state_correct1
       (s : vstate X)
       (to from : index) :
-      exists (inter : index), (get_matching_state s to from) = (s inter).
+      exists (inter : index), (get_matching_state s to from) = (s inter) /\
+      (inter = to \/ (In inter (GH s))).
     Proof.
       unfold get_matching_state.
       destruct (find (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))
@@ -3320,21 +3137,11 @@ Context
       (Hin : In to (GH s)) :
       exists (inter : index), In inter (GH s) /\ (get_matching_state s to from) = (s inter).
     Proof.
-      unfold get_matching_state.
-      destruct (find (fun s' : state => bool_decide (state_lt_ext from (project (s to) from) s'))
-      (get_topmost_candidates s from)) eqn : eq_find.
-      - apply find_some in eq_find.
-        destruct eq_find as [eq_find _].
-        unfold get_topmost_candidates in eq_find.
-        unfold get_maximal_elements in eq_find.
-        apply filter_In in eq_find.
-        destruct eq_find as [eq_find _].
-        unfold get_candidates in eq_find.
-        unfold component_list in eq_find.
-        apply in_map_iff in eq_find.
-        destruct eq_find as [inter Hinter].
-        exists inter. intuition.
-      - exists to. intuition.
+      specialize (get_matching_state_correct1 s to from) as H1.
+      destruct H1 as [inter Hinter].
+      exists inter. 
+      destruct Hinter as [Hmatch Hinter].
+      destruct Hinter;[subst to;intuition|intuition].
     Qed.
     
     Definition top_history
