@@ -231,10 +231,6 @@ Context
   Definition component_list (s : vstate X) (li : list index) :=
     List.map s li.
   
-  Definition obs 
-    (i : index) 
-    := (@lv_observations index i index_listing _).
-  
   Section EquivObsUtils.
   Context
   {ws : set index}.
@@ -2438,26 +2434,20 @@ Context
         intros j Hjli.
         * destruct (decide (j = i)).
           -- simpl.
-             rewrite e.
+             subst j.
              rewrite Hsame.
              rewrite H0.
              unfold apply_plan.
              unfold apply_plan_folder; simpl. 
              rewrite state_update_eq.
              rewrite <- update_consensus_clean with (value := (feasible_update_value (s i) i)).
-             rewrite (@project_same index index_listing).
+             rewrite (@project_same index index_listing Hfinite).
              reflexivity.
-             apply Hfinite.
-             apply protocol_state_component_no_bottom.
-             assumption.
+             apply protocol_state_component_no_bottom; intuition.
           -- destruct IHli as [_ [IHli _]].
              specialize (IHli j).
              spec_save IHli. {
-               destruct Hjli.
-               simpl in H0.
-               simpl in H3.
-               intuition.
-               assumption.
+               destruct Hjli;[intuition congruence|intuition].
              }
              specialize (Hindif j H3).
              rewrite <- Hindif.
@@ -2679,20 +2669,14 @@ Context
           apply complete_suffix_correct in eq_cs.
           assert (l = []). {
             inversion Hsync.
-            assert (length l = 0). {
-              assert (length (sync_plan to from (rev l)) = 0). {
-                apply length_zero_iff_nil. assumption.
-              }
-              unfold sync_plan in H.
-              rewrite map_length in H.
-              rewrite map_length in H.
-              rewrite rev_length in H.
-              assumption.
-            }
-            apply length_zero_iff_nil. assumption.
+            unfold sync_plan in H0.
+            apply map_eq_nil in H0.
+            apply map_eq_nil in H0.
+            destruct (decide (length l = 0)).
+            - apply length_zero_iff_nil in e. intuition.
+            - apply length_zero_iff_nil in H0. rewrite rev_length in H0. congruence.
           }
-          rewrite H in eq_cs.
-          simpl in eq_cs.
+          rewrite H in eq_cs. simpl in eq_cs.
           symmetry in eq_cs.
           apply (@eq_history_eq_project index index_listing Hfinite) in eq_cs.
           assumption.
@@ -2800,40 +2784,28 @@ Context
       apply protocol_transition_destination in H.
       assumption.
       
+      assert (Hs0 : s0 = (state_update IM_index s to (update_state (s to) sa from))). {
+        destruct H as [_ H].
+        unfold transition in H.
+        simpl in H. unfold vtransition in H. unfold transition in H. simpl in H.
+        inversion Hh.
+        rewrite <- H2 in H.
+        inversion H.
+        intuition.
+      }
+      
       assert (Honefold: get_history (s0 to) from = [sa] ++ get_history (s to) from). {
           assert (project (s0 to) from = sa). {
-              unfold protocol_transition in H.
-              unfold vtransition in eq_vtrans.
-              unfold transition in eq_vtrans.
-              inversion Hh.
-              rewrite <- H2 in eq_vtrans.
-              simpl in eq_vtrans.
-              unfold vtransition in eq_vtrans.
-              unfold transition in eq_vtrans.
-              simpl in eq_vtrans.
-              inversion eq_vtrans.
-              rewrite state_update_eq.
+              rewrite Hs0. rewrite state_update_eq.
               apply (@project_same index index_listing Hfinite).
-              apply protocol_state_component_no_bottom.
-              assumption.
+              apply protocol_state_component_no_bottom. intuition.
           }
-            rewrite <- H1. simpl.
+            subst sa.
             rewrite eq_cs.
-            rewrite <- H1.
             apply (@unfold_history_cons index index_listing Hfinite).
-            rewrite H1.
             apply (@no_bottom_in_history index index_listing Hfinite) in Hinsa.
             assumption.
         }
-        assert (Hs0 : s0 = (state_update IM_index s to (update_state (s to) sa from))). {
-            destruct H as [_ H].
-            unfold transition in H.
-            simpl in H. unfold vtransition in H. unfold transition in H. simpl in H.
-            inversion Hh.
-            rewrite <- H2 in H.
-            inversion H.
-            intuition.
-          }
         
       assert (Hneed : s0 inter = s inter). {
         rewrite Hs0.
@@ -3509,7 +3481,7 @@ Context
           }
           rewrite Heqs0 in H.
           specialize (get_matching_state_correct1 s to from) as Hinter.
-          destruct Hinter as [inter Heq_inter].
+          destruct Hinter as [inter [Heq_inter _]].
           rewrite Heq_inter in H.
           apply (@in_history_in_observations index index_listing Hfinite) in H.
           apply cobs_single_m.
