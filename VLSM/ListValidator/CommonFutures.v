@@ -78,8 +78,9 @@ Context
      * rewrite state_update_neq by intuition.
        intuition.
     + intuition. 
-  Qed.
+  Qed. 
   
+  (* TODO : see if all these can be unified *)
   Proposition self_projections_same_after_receives
     (s : vstate X)
     (Hpr : protocol_state_prop X s)

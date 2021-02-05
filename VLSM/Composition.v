@@ -1248,6 +1248,13 @@ All results from regular projections carry to these "free" projections.
       + rewrite state_update_neq; try assumption. apply IHHs.
   Qed.
   
+  (* The following results concern facts about applying a [vplan X] <<P>>
+     to a [vstate X] <<s'>>, knowing its effects on a different [vstate X] <<s>>
+     which shares some relevant features with <<s'>>. *)
+  
+  (* A transition on component <<i>> is protocol from <<s'>> if it is
+     protocol from <<s>> and their <<i>>'th components are equal *)
+     
   Lemma relevant_component_transition
     (s s' : vstate X)
     (l : vlabel X)
@@ -1271,6 +1278,8 @@ All results from regular projections carry to these "free" projections.
     rewrite <- Heq.
     assumption.
   Qed.
+  
+  (* The effect of the transition is also the same *)
   
   Lemma relevant_component_transition2
     (s s' : vstate X)
@@ -1338,6 +1347,9 @@ All results from regular projections carry to these "free" projections.
       intuition.
   Qed.
   
+  (* Transitioning on some index different from <<i>> does not affect 
+     component i. *)
+  
   Lemma irrelevant_components_one
     (s : state)
     (ai : vplan_item X)
@@ -1364,7 +1376,9 @@ All results from regular projections carry to these "free" projections.
     reflexivity.
     assumption.
   Qed.
-    
+  
+  (* Same as the previous result, but for multiple transitions. *)
+  
   Lemma irrelevant_components
     (s : state)
     (a : vplan X)
@@ -1401,6 +1415,8 @@ All results from regular projections carry to these "free" projections.
       intuition.
   Qed.
   
+  (* Same as relevant_components_one but for multiple transitions *)
+  
   Lemma relevant_components
     (s s' : vstate X)
     (Hprs' : protocol_state_prop X s')
@@ -1421,7 +1437,6 @@ All results from regular projections carry to these "free" projections.
       assumption.
       simpl. assumption.
     - simpl in *.
-      (* replace (a :: a0) with ([a] ++ a0) in *. 2: auto. *)
       apply finite_protocol_plan_from_app_iff in Hpr.
       destruct Hpr as [Hrem Hsingle].
       

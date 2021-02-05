@@ -648,8 +648,17 @@ Proof.
   reflexivity.
 Qed.
 
+(* For each element X of l1, exactly one occurrence of X is removed
+   from l2. If no such occurrence exists, nothing happens. *)
+
 Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
   fold_right (set_remove decide_eq) l2 l1.
+
+Example set_remove_list1 : set_remove_list [3;1;3] [1;1;2;3;3;3;3] = [1;2;3;3].
+Proof. intuition. Qed.
+
+Example set_remove_list2 : set_remove_list [4] [1;2;3] = [1;2;3].
+Proof. intuition. Qed.
 
 Lemma set_remove_list_1 
   `{EqDecision A} 
@@ -688,11 +697,20 @@ Proof.
   - exists a. intuition.
 Qed.
 
-Definition get_maximal_elements {A}
-  (preceeds : A -> A -> bool)
+(* Returns all elements X of l such that X does not compare less
+   than any other element w.r.t to the preceeds relation *)
+
+Definition get_maximal_elements
+  `(preceeds : A -> A -> bool)
   (l : list A)
   : list A :=
   filter (fun a => forallb (fun b => negb (preceeds a b)) l) l.
+
+Example get_maximal_elements1: get_maximal_elements Nat.ltb [1; 4; 2; 4] = [4;4].
+Proof. intuition. Qed.
+
+Example get_maximal_elements2 : get_maximal_elements Nat.leb [1; 4; 2; 4] = [].
+Proof. intuition. Qed. 
 
 Lemma set_prod_nodup `(s1: set A) `(s2: set B):
   NoDup s1 ->
