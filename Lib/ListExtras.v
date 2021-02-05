@@ -1643,13 +1643,8 @@ Fixpoint complete_prefix
   `{EqDecision A}
   (l pref : list A) : option (list A) :=
   match l, pref with
-  | [], [] => Some []
+  | l , [] => Some l
   | [], (b :: pref') => None
-  | (a :: l'), [] => let res' := complete_prefix l' [] in
-                     match res' with
-                     | None => None
-                     | Some s => Some (a :: s)
-                     end
   | (a :: l'), (b :: pref') => match (decide_eq a b) with
                                | right _ => None
                                | _ => let res' := complete_prefix l' pref' in
@@ -1699,10 +1694,8 @@ Proof.
       * specialize (IHl [] l).
         spec IHl.
         intuition.
-        unfold complete_prefix in IHl.
-        rewrite IHl.
-        rewrite H.
-        f_equal.
+        rewrite app_nil_l in H.
+        f_equal. intuition.
       * destruct (decide (a = a0)) eqn : eq_d.
         specialize (IHl pref suff).
         unfold complete_prefix in IHl.
