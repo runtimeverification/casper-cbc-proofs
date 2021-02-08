@@ -202,6 +202,9 @@ messages, implementing a limited equivocation tolerance policy.
     inversion He.
   Qed.
   Next Obligation.
+  inversion His.
+  Qed.
+  Next Obligation.
     unfold vtransition in Ht. simpl in Ht. destruct o; congruence.
   Qed.
 

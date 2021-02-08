@@ -20,13 +20,13 @@ Context
   {index : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
-  (i0 : index)
+  {i0 : Inhabited index}
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-  (X := composite_vlsm IM i0 constraint)
+  (X := composite_vlsm IM constraint)
   {CV : consensus_values}
   (ID : forall i : index, vdecision (IM i))
   (IE : forall i : index, Estimator (vstate (IM i)) C)
-  (DE : forall i : index, composite_projection_decision_estimator_property IM i0 constraint ID IE i)
+  (DE : forall i : index, composite_projection_decision_estimator_property IM constraint ID IE i)
   .
 
 (**
@@ -74,7 +74,7 @@ decisions.
 
 Lemma consistent_estimator_decisions
   (HCFE : HasCommonFutureEstimates)
-  : final_and_consistent IM i0 constraint ID.
+  : final_and_consistent IM constraint ID.
 Proof.
   unfold final_and_consistent; intros.
   specialize (in_futures_protocol_snd X s1 s2 Hfuture); intros Hps2.
@@ -83,11 +83,11 @@ Proof.
   ; intros HconsEst.
   specialize (in_futures_trans X s1 s2 (union s2) Hfuture HcmnFuture)
   ; intro HcmnFuture1.
-  specialize (in_futures_projection IM i0 constraint j s1 (union s2) HcmnFuture1)
+  specialize (in_futures_projection IM constraint j s1 (union s2) HcmnFuture1)
   ; intros HFuture1.
   assert (Dej := DE j).
   specialize (Dej (s1 j) c1 HDecided1 (union s2 j) HFuture1).
-  specialize (in_futures_projection IM i0 constraint k s2 (union s2) HcmnFuture)
+  specialize (in_futures_projection IM constraint k s2 (union s2) HcmnFuture)
   ; intros HFuture2.
   assert (Dek := DE k).
   specialize (Dek (s2 k) c2 HDecided2 (union s2 k) HFuture2).

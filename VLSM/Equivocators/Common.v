@@ -72,6 +72,31 @@ Definition mk_singleton_state
   :=
   existT _ 0 (fun _ => s).
 
+Definition is_singleton_state
+  (s : equivocator_state)
+  : Prop
+  := projT1 s = 0.
+
+Lemma is_singleton_state_dec
+  (s : equivocator_state)
+  : Decision (is_singleton_state s).
+Proof.
+  apply nat_eq_dec.
+Qed.
+
+Definition is_equivocating_state
+  (s : equivocator_state)
+  : Prop
+  := not (is_singleton_state s).
+
+Lemma is_equivocating_state_dec
+  (s : equivocator_state)
+  : Decision (is_equivocating_state s).
+Proof.
+  apply Decision_not.
+  apply is_singleton_state_dec.
+Qed.
+
 Definition equivocator_label : Type := @label message equivocator_type.
 
 Definition mk_label

@@ -22,16 +22,16 @@ Context {message : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (i0 : index)
-  (X := free_composite_vlsm IM i0)
+  {i0 : Inhabited index}
+  (X := free_composite_vlsm IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
   (equivocators_choice := equivocators_choice IM)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs i0 index_listing finite_index)
-  (equivocators_state_project := equivocators_state_project IM i0)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs index_listing finite_index)
+  (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocators_choice_update := equivocators_choice_update IM)
-  (proper_equivocators_choice := proper_equivocators_choice IM i0)
+  (proper_equivocators_choice := proper_equivocators_choice IM)
   .
 
 Definition equivocators_transition_item_project
@@ -181,7 +181,7 @@ Proof.
     exists eq_refl. exists eq_refl. exists Hproper.
     constructor.
     inversion Htr. subst. destruct H as [_om His].
-    apply (proj2 (equivocators_protocol_state_project IM Hbs i0 _ _ _ _ His) final_choice Hproper).
+    apply (proj2 (equivocators_protocol_state_project IM Hbs _ _ _ _ His) final_choice Hproper).
   - unfold equivocators_trace_project. simpl.
     inversion Htr. subst s' tl.
     specialize (IHtr _ H2).
@@ -254,7 +254,7 @@ Proof.
             (equivocators_state_project initial_choice'
             (state_update (Common.equivocator_IM IM) is (eqv) si'))
         ; [assumption|].
-        rewrite (equivocators_state_project_state_update_eqv IM i0).
+        rewrite (equivocators_state_project_state_update_eqv IM).
         apply functional_extensionality_dep_good.
         intro i'. destruct (decide (i' = (eqv))).
         ++ subst. rewrite state_update_eq. rewrite Heqv.
@@ -308,7 +308,7 @@ Proof.
                     (NewMachine (IM (eqv)) sdi)) is)
             ).
           { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM i0).
+            rewrite (equivocators_state_project_state_update_eqv IM).
             rewrite Heqv.
             unfold projT1. unfold projT2.
             destruct (le_lt_dec (S (S is_eqv_n)) (S is_eqv_n)); [lia|].
@@ -392,7 +392,7 @@ Proof.
                       (Existing (IM (eqv)) ieqv false)) is)
             ).
           { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM i0).
+            rewrite (equivocators_state_project_state_update_eqv IM).
             rewrite Heqv.
             unfold projT1. unfold projT2.
             destruct (le_lt_dec (S (S is_eqv_n)) ieqv); [lia|].
@@ -500,7 +500,7 @@ Proof.
                       (Existing (IM (eqv)) idi true)) is)
             ).
           { rewrite unroll_last. subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM i0).
+            rewrite (equivocators_state_project_state_update_eqv IM).
             rewrite Heqv.
             unfold projT1. unfold projT2.
             reflexivity.
@@ -582,7 +582,7 @@ Proof.
                       (Existing (IM (eqv)) ieqv false)) is)
             ).
           { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM i0).
+            rewrite (equivocators_state_project_state_update_eqv IM).
             rewrite Heqv.
             unfold projT1. unfold projT2.
             f_equal.
@@ -690,7 +690,7 @@ Proof.
                       (Existing (IM (eqv)) ieqv false)) is)
             ).
           { rewrite unroll_last. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM i0).
+            rewrite (equivocators_state_project_state_update_eqv IM).
             rewrite Heqv.
             unfold projT1. unfold projT2.
             reflexivity.
@@ -767,7 +767,7 @@ Proof.
                       (Existing (IM (eqv)) ieqv false)) is)
             ).
           { subst bsi'. simpl in *. rewrite Hfinal.
-            rewrite (equivocators_state_project_state_update_eqv IM i0).
+            rewrite (equivocators_state_project_state_update_eqv IM).
             rewrite Heqv.
             unfold projT1. unfold projT2.
             f_equal.

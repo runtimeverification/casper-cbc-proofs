@@ -17,6 +17,8 @@ VLSM/Equivocators/Composition/Common.v
 VLSM/Equivocators/Composition/Projections.v
 VLSM/Equivocators/Composition/SimulatingFree/FullReplayTraces.v
 VLSM/Equivocators/Composition/SimulatingFree/SimulatingFree.v
+VLSM/Equivocators/Composition/LimitedEquivocation/FixedEquivocation.v
+VLSM/Equivocators/Composition/LimitedEquivocation/LimitedEquivocation.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
 VLSM/ObservableEquivocation.v

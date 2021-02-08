@@ -35,14 +35,14 @@ Section ConstrainedValidators.
     (clients : Type)
     {clients_eq_dec : EqDecision clients}
     (index : Type := (V + clients)%type)
-    {i0 : index}
+    {i0 : Inhabited index}
     (indices : list index)
     (finite_index : Listing indices)
-    (FreeX := @VLSM_full_composed_free C V about_C about_V Hmeasurable Hrt Hestimator clients _ i0)
+    (FreeX := @VLSM_full_composed_free C V about_C about_V Hmeasurable Hrt Hestimator clients _ _)
     (free_equivocation_evidence := @composed_equivocation_evidence
       C V about_C about_V Hmeasurable Hrt Hestimator clients indices)
     (free_basic_equivocation := @composed_basic_observable_equivocation
-      C V about_C about_V Hmeasurable Hrt Hestimator clients _ i0 indices finite_index)
+      C V about_C about_V Hmeasurable Hrt Hestimator clients _ _ indices finite_index)
     .
 
 Existing Instance free_equivocation_evidence.
@@ -71,7 +71,7 @@ Definition Full_composition_constraint
   not_heavy s'.
 
 Definition Full_constrained_composition : VLSM message
-  := composite_vlsm IM_index i0 Full_composition_constraint.
+  := composite_vlsm IM_index Full_composition_constraint.
 
 Existing Instance observable_messages.
 
@@ -88,7 +88,7 @@ Proof.
       finite_index IM_index free_observable_messages_index _
       free_composite_vlsm_observable_messaged_index
       free_observation_based_equivocation_evidence_index
-      i0 Full_composition_constraint _ _ _ (composite_validators_nodup indices))
+      _ Full_composition_constraint _ _ _ (composite_validators_nodup indices))
     as Hinitial_not_heavy.
   destruct Hs as [_om Hs].
   inversion Hs; subst; simpl.

@@ -4,6 +4,7 @@ VOFILES = $(VFILES:.v=.vo)
 CSSFILES = resources/coqdoc.css resources/coqdocjs.css
 JSFILES = resources/config.js resources/coqdocjs.js
 HTMLFILES = resources/header.html resources/footer.html
+DEPFILES = resources/deps.png resources/map.html
 
 COQDOCDIR = docs/coqdoc
 COQDOCHTMLFLAGS = --toc --toc-depth 2 --index indexpage --html -s \
@@ -18,12 +19,12 @@ ALECTRYONDIR = docs/alectryon
 ALECTRYONHTMLFLAGS = --frontend coqdoc --webpage-style windowed
 ALECTRYONHTMLFILES = $(VFILES:.v=.alectryon.html)
 
-coqdoc: $(GLOBFILES) $(VFILES) $(CSSFILES) $(JSFILES) $(HTMLFILES)
+coqdoc: $(GLOBFILES) $(VFILES) $(CSSFILES) $(JSFILES) $(HTMLFILES) $(DEPFILES)
 	$(SHOW)'COQDOC -d $(COQDOCDIR)'
 	$(HIDE)mkdir -p $(COQDOCDIR)
 	$(HIDE)$(COQDOC) $(COQDOCHTMLFLAGS) $(COQDOCLIBS) -d $(COQDOCDIR) $(VFILES)
 	$(SHOW)'COPY resources'
-	$(HIDE)cp $(CSSFILES) $(JSFILES) $(COQDOCDIR)
+	$(HIDE)cp $(CSSFILES) $(JSFILES) $(DEPFILES) $(COQDOCDIR)
 .PHONY: coqdoc
 
 coq2html: $(GLOBFILES) $(VFILES)
@@ -34,9 +35,9 @@ coq2html: $(GLOBFILES) $(VFILES)
 	$(HIDE)cd VLSM && $(COQ2HTML) -base CasperCBC.VLSM -d ../$(COQ2HTMLDIR) *.v *.glob
 .PHONY: coq2html
 
-$(ALECTRYONHTMLFILES): %.alectryon.html: %.v %.glob %.vo $(ALECTRYONDIR)/toc.html
-	$(SHOW)'ALECTRYON --output-directory $(ALECTRYONDIR) $<'
-	$(HIDE)$(ALECTRYON) $(ALECTRYONHTMLFLAGS) $(COQDOCLIBS) --output-directory $(ALECTRYONDIR) $<
+$(ALECTRYONHTMLFILES): %.alectryon.html: %.v %.glob %.vo $(ALECTRYONDIR)/toc.html $(ALECTRYONDIR)/map.html $(ALECTRYONDIR)/deps.png
+	$(SHOW)'ALECTRYON --output-directory $(ALECTRYONDIR) --output $(ALECTRYONDIR)/$(addsuffix .html,$(addprefix CasperCBC.,$(subst /,.,$(basename $<))))'
+	$(HIDE)$(ALECTRYON) $(ALECTRYONHTMLFLAGS) $(COQDOCLIBS) --output-directory $(ALECTRYONDIR) --output $(ALECTRYONDIR)/$(addsuffix .html,$(addprefix CasperCBC.,$(subst /,.,$(basename $<)))) $<
 .PHONY: $(ALECTRYONHTMLFILES)
 
 alectryon: $(ALECTRYONHTMLFILES)
@@ -45,10 +46,34 @@ alectryon: $(ALECTRYONHTMLFILES)
 $(ALECTRYONDIR)/toc.html:
 	$(HIDE)mkdir -p $(@D)
 	$(HIDE)cat resources/alectryon_toc_header.html > $@
-	$(HIDE)for vfile in $(notdir $(basename $(VFILES))) ; do \
+	$(HIDE)for vfile in $(addprefix CasperCBC.,$(subst /,.,$(basename $(VFILES)))) ; do \
 	    echo "    <li><a href='$$vfile.html'>$$vfile</a></li>" >> $@; \
 	done
 	$(HIDE)cat resources/alectryon_toc_footer.html >> $@
 
+$(ALECTRYONDIR)/map.html: deps.map
+	$(HIDE)mkdir -p $(@D)
+	sed -e '/#include deps.map/r deps.map' resources/map_template.html > $(ALECTRYONDIR)/map.html
+
+$(ALECTRYONDIR)/deps.png: deps.dot
+	$(HIDE)mkdir -p $(@D)
+	dot -T png deps.dot > $(ALECTRYONDIR)/deps.png
+
+deps.dot: $(VFILES)
+	$(SHOW)'GENERATE deps.dot'
+	$(HIDE)./scripts/dotdeps.sh $(VFILES) > $@
+
+deps.map: deps.dot
+	dot -T cmap deps.dot | sed -e 's,>$$,/>,' > deps.map
+
+resources/deps.png: deps.dot
+	dot -T png deps.dot > resources/deps.png
+
+resources/map.html: deps.map
+	sed -e '/#include deps.map/r deps.map' resources/map_template.html > resources/map.html
+
 resources/index.html: resources/index.md
 	pandoc -s -o $@ $<
+
+clean::
+	$(HIDE)rm -f deps.dot deps.map $(DEPFILES) resources/index.html
