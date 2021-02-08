@@ -1098,6 +1098,15 @@ Context
   Definition LE (i : index) := (@wE [i]).
   Definition LH (i : index) := (@wH [i]).
   
+  Proposition Hsnb 
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s) :
+    forall (i : index), (s i) <> Bottom.
+  Proof.
+    intros i.
+    apply protocol_state_component_no_bottom. intuition.
+  Qed.
+  
   Lemma cobs_message_existing_same1
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -1107,11 +1116,6 @@ Context
     (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
     set_eq (cobs_messages s' target) (cobs_messages s target).
   Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-    
     apply set_eq_extract_forall.
     intros e.
     split; intros H.
@@ -1143,11 +1147,6 @@ Context
     (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
     set_eq (cobs_messages s' i) (set_union decide_eq (cobs_messages s i) [SimpObs Message' i (s i)]).
   Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-  
     apply set_eq_extract_forall.
     intros e.
     split; intros H.
@@ -1165,7 +1164,7 @@ Context
         destruct H as [H|H];[|right;intuition].
         apply set_union_iff in H.
         destruct H; left; apply cobs_single_m; exists i; (split;[apply in_listing|intuition]).
-        split; apply Hsnb.
+        split; apply Hsnb; intuition.
         intuition.
       + left.
         unfold s' in H.
@@ -1184,16 +1183,16 @@ Context
           rewrite (@project_same index index_listing).
           intuition.
           intuition.
-          apply Hsnb.
+          apply Hsnb; intuition.
         }
         split;[apply in_listing|]. 
         apply refold_simp_lv_observations1.
         unfold update_state.
         destruct (s i) eqn : eq_si.
-        specialize (Hsnb i). congruence.
+        specialize (Hsnb s Hpr i). congruence.
         congruence.
         rewrite H0.
-        apply Hsnb.
+        apply Hsnb; intuition.
         rewrite H0.
         intuition.
   Qed.
@@ -1209,11 +1208,6 @@ Context
     (Hcomp : ~ comparable simp_lv_event_lt (SimpObs State' v (s' v)) (SimpObs Message' v es2)) :
     @cequiv_evidence index_listing s v.
   Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-    
     unfold cequiv_evidence.
     unfold equivocation_evidence.
     setoid_rewrite hbo_cobs.
@@ -1242,7 +1236,7 @@ Context
                    apply comparable_commutative in contra.
                    rewrite state_update_eq in Hcomp.
                    intuition.
-                   split;apply Hsnb.
+                   split;apply Hsnb; intuition.
                    intuition.
                    simpl. congruence.
                    simpl. congruence.
@@ -1262,10 +1256,10 @@ Context
              simpl. left.
              rewrite (@project_same index index_listing Hfinite).
              intuition.
-             apply Hsnb.
+             apply Hsnb; intuition.
              rewrite (@project_same index index_listing Hfinite).
-             apply Hsnb.
-             apply Hsnb.
+             apply Hsnb; intuition.
+             apply Hsnb; intuition.
          - unfold s' in Hine2.
            setoid_rewrite cobs_message_existing_same1 in Hine2.
            2, 3 : intuition.
@@ -1296,11 +1290,6 @@ Context
     (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
     incl (GE s') (GE s).
   Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-
     unfold incl; intros v H.
     apply GE_direct in H as Hev.
     apply GE_direct.
@@ -1361,7 +1350,7 @@ Context
         setoid_rewrite hbo_cobs in Hev. intuition.
      - apply in_cobs_messages in Hine1 as Het1.
        simpl in Het1. subst et1.
-       destruct Hine2 as [Hine2|Hine2]. (* Copy paste below *)
+       destruct Hine2 as [Hine2|Hine2].
        + apply in_cobs_states in Hine2 as Het2.
          simpl in Het2. subst et2.
          apply unique_state_observation in Hine2.
@@ -1534,19 +1523,6 @@ Context
     (Hhave : In (SimpObs Message' j so) (cobs s j)) :
     incl (GE s') (GE s).
   Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-    
-    assert (Hsonb : so <> Bottom). {
-        apply in_cobs_and_message in Hhave.
-        apply cobs_single_m in Hhave.
-        destruct Hhave as [k [_ Hhave]].
-        apply (@in_message_observations_nb index index_listing Hfinite) in Hhave.
-        all : intuition.
-    }
-  
     unfold incl; intros v H.
     apply GE_direct in H as Hev.
     apply GE_direct.
@@ -1630,11 +1606,6 @@ Context
     (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b)) :
     incl (GE s) (GE s').
   Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-  
     unfold incl; intros v H.
     apply GE_direct in H as Hev.
     apply GE_direct.
@@ -1765,11 +1736,6 @@ Context
     (Hhave : In (SimpObs Message' j so) (cobs s j)) :
     incl (GE s) (GE s').
   Proof.
-    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
-      intros k.
-      apply protocol_state_component_no_bottom. intuition.
-    }
-    
     assert (Hsonb : so <> Bottom). {
         apply in_cobs_and_message in Hhave.
         apply cobs_single_m in Hhave.
@@ -1862,7 +1828,7 @@ Context
               rewrite (@project_different index index_listing Hfinite).
               intuition.
               intuition.
-              apply Hsnb.
+              apply Hsnb; intuition.
              } 
              
              rewrite <- H0.
@@ -1915,7 +1881,7 @@ Context
               rewrite (@project_different index index_listing Hfinite).
               intuition.
               intuition.
-              apply Hsnb.
+              apply Hsnb; intuition.
              } 
              
              rewrite <- H0.
