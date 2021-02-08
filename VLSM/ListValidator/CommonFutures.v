@@ -1642,35 +1642,6 @@ Context
           intuition.
     Qed.
     
-    Lemma message_providers_receive
-      (s : vstate X)
-      (i : index) :
-      incl (get_message_providers_from_plan (get_receives_for s (others i s) i)) [i].
-    Proof.
-      unfold incl. intros.
-      unfold get_message_providers_from_plan in H.
-      unfold messages_a in H.
-      apply in_map_iff in H.
-      destruct H as [psi [Heq Hinpsi]].
-      apply in_cat_option in Hinpsi.
-      destruct Hinpsi as [opsi [Hinopsi Heq_opsi]].
-      apply in_map_iff in Hinopsi.
-      destruct Hinopsi as [ai [Heq_ai Hinai]].
-      apply get_receives_for_info in Hinai.
-      
-      destruct Hinai as [_ [_ Hinai]].
-      destruct Hinai as [so [Heq_so Hinso]].
-      match type of Heq_so with
-      | ?a = _ =>
-        replace a with opsi in Heq_so by intuition end.
-      rewrite Heq_opsi in Heq_so.
-      inversion Heq_so.
-      rewrite H0 in Heq.
-      simpl in Heq.
-      subst a.
-      intuition.
-    Qed.
-    
     Lemma receive_for_is_receive_plan 
       (s : vstate X)
       (from : index)
@@ -1688,9 +1659,10 @@ Context
       (a : vplan X) 
       (Hpra : finite_protocol_plan_from X s a)
       (i j : index)
-      (providers := get_message_providers_from_plan a)
       (Hreceive : is_receive_plan a)
-      (Hj : ~ In j providers) 
+      (Hj : forall (ai : vplan_item X),
+            In ai a -> 
+            (exists (m : message), (input_a ai = Some m) /\ (fst m) <> j)) 
       (res := snd (apply_plan X s a)) :
       project (res i) j = project (s i) j.
     Proof.
@@ -1706,17 +1678,10 @@ Context
         specialize (IHa Hreceive_long); simpl.
         
         spec IHa. {
-          clear -Hj.
-          intros contra.
-          contradict Hj.
-          unfold providers.
-          unfold get_message_providers_from_plan in *.
-          unfold messages_a in *.
-          rewrite map_app.
-          rewrite cat_option_app.
-          rewrite map_app.
-          apply in_app_iff.
-          left. intuition.
+          intros.
+          specialize (Hj ai).
+          spec Hj. apply in_app_iff. left. intuition.
+          intuition.
         }
         
         rewrite <- IHa.
@@ -1767,18 +1732,11 @@ Context
               reflexivity.
               intuition.
               intros contra. {
-                clear -Hj contra.
-                unfold providers in Hj.
-                unfold get_message_providers_from_plan in Hj.
-                rewrite contra in Hj.
-                contradict Hj.
-                apply in_map_iff.
-                exists m. intuition.
-                unfold messages_a.
-                rewrite map_app.
-                rewrite cat_option_app.
-                rewrite in_app_iff.
-                right; simpl; intuition.
+                specialize (Hj {| label_a := label_a'; input_a := Some m |}).
+                simpl in Hj. 
+                spec Hj. apply in_app_iff. right. intuition.
+                destruct Hj as [m' [Hsome Hdif]].
+                inversion Hsome. subst m'. intuition.
               }
               clear -Hprtr.
               apply protocol_state_component_no_bottom.
@@ -1827,11 +1785,11 @@ Context
       destruct lj eqn : eq_lj.
       - destruct H0 as [_ Hd].
         discriminate Hd.
-      - intuition.
+      - split ;[|intuition].
         simpl in i.
         subst i.
         rewrite <- Hsame.
-        assumption.
+        intuition.
     Qed.
     
     Lemma relevant_components_lv
@@ -1842,7 +1800,9 @@ Context
       (Hrec : is_receive_plan a)
       (Hpr : finite_protocol_plan_from X s a)
       (f : index)
-      (Hli : incl (get_message_providers_from_plan a) [f])
+      (Hli : forall (ai : vplan_item X), 
+             In ai a -> (exists (m : message), 
+             input_a ai = Some m /\ fst m = f))
       (Hsame : forall (i : index), project (s i) f = project (s' i) f) :
       let res' := snd (apply_plan X s' a) in
       let res := snd (apply_plan X s a) in 
@@ -1873,16 +1833,9 @@ Context
         
         spec IHa. {
           clear -Hli.
-          unfold get_message_providers_from_plan in *.
-          unfold messages_a in *.
-          unfold incl in *.
-          rewrite map_app in Hli.
-          rewrite cat_option_app in Hli.
-          rewrite map_app in Hli.
-          intros.
-          specialize (Hli a0).
-          apply Hli.
-          apply in_app_iff; left; intuition.
+          intros. specialize (Hli ai). 
+          spec Hli. apply in_app_iff. left. intuition.
+          intuition.
         }
         
         simpl in IHa.
@@ -1919,6 +1872,7 @@ Context
         unfold apply_plan.
         unfold apply_plan_folder.
         specialize (Hrec_short x).
+        remember x as x'.
         destruct x as [label_x input_x].
         simpl.
         
@@ -1944,6 +1898,7 @@ Context
         unfold apply_plan in Hpr_short.
         unfold apply_plan_folder in Hpr_short.
         simpl in Hpr_short.
+        rewrite Heqx' in Hpr_short.
         rewrite trans in Hpr_short.
           
         inversion Hpr_short.
@@ -1960,7 +1915,7 @@ Context
         
         destruct label_x eqn : eq_label.
         { 
-          clear -Hrec_short eq_label.
+          subst x'.
           unfold is_receive_plan in Hrec_short.
           simpl in Hrec_short.
           spec Hrec_short. intuition.
@@ -1980,21 +1935,13 @@ Context
         }
        
        assert (Hm : fst m = f). {
-          clear -Hli eq_input.
-          unfold incl in Hli.
-          unfold get_message_providers_from_plan in Hli.
-          unfold messages_a in Hli.
-          rewrite map_app in Hli.
-          rewrite cat_option_app in Hli.
-          rewrite map_app in Hli.
-          specialize (Hli (fst m)).
-          spec Hli. {
-            simpl.
-            apply in_app_iff.
-            right.
-            intuition.
-          }
-          simpl in Hli.
+          simpl in *.
+          specialize (Hli x').
+          move Hli at bottom.
+          spec Hli. apply in_app_iff. right. intuition.
+          destruct Hli as [m' [Heqm' Heqf]].
+          rewrite Heqx' in Heqm'.
+          simpl in Heqm'. inversion Heqm'.
           intuition.
        }
        
@@ -2007,34 +1954,25 @@ Context
                     (snd (apply_plan X s' a), Some m)
                     (state_update IM_index (snd (apply_plan X s' a)) j
                     (update_state (snd (apply_plan X s' a) j) (snd m) (fst m)), None)). {
-             split.
-             - destruct Hprotocol_trans as [Hprotocol_trans tmp].
-               specialize (relevant_component_transition_lv res_long res_long') as Hrel.
-               specialize (Hrel Hprs_long Hprs'_long (existT (fun n : index => vlabel (IM_index n)) j receive)).
-               specialize (Hrel m).
-               rewrite H1 in Hrel.
-               apply Hrel.
-               simpl.
-               specialize (Iha_proj j).
-               move Iha_proj at bottom.
-               rewrite Hm.
-               symmetry.
-               rewrite <- H1.
-               assumption.
-               assumption.
-            - unfold transition.
-              unfold vlabel.
-              unfold machine.
-              simpl.
-              reflexivity.
+             split;[|intuition].
+             destruct Hprotocol_trans as [Hprotocol_trans tmp].
+             specialize (relevant_component_transition_lv res_long res_long') as Hrel.
+             specialize (Hrel Hprs_long Hprs'_long (existT (fun n : index => vlabel (IM_index n)) j receive) m).
+             rewrite H1 in Hrel.
+             apply Hrel. simpl.
+             specialize (Iha_proj j).
+             rewrite Hm.
+             symmetry.
+             rewrite <- H1.
+             all : intuition.
             }
-            
+            rewrite Heqx'. simpl.
             apply finite_ptrace_extend.
             apply finite_ptrace_empty.
             apply protocol_transition_destination in H10.
-            assumption.
-            assumption.
+            all : intuition.
         + intros.
+          subst x'. simpl in *.
           specialize (Iha_proj i).
          * inversion trans.
            inversion trans'.
@@ -2177,32 +2115,19 @@ Context
           assumption.
           assumption.
           assumption.
-          
-          intros contra.
-          
-          unfold get_message_providers_from_plan in contra.
-          rewrite in_map_iff in contra.
-          destruct contra as [m [Hfs Hinm]].
-          unfold messages_a in Hinm.
-          apply in_cat_option in Hinm.
-          destruct Hinm as [Hom [Hinom Hsome]].
-          rewrite in_map_iff in Hinom.
-          destruct Hinom as [ai [Hinput Hinconcat]].
-          rewrite in_concat in Hinconcat.
-          destruct Hinconcat as [a [Hina Hina2]].
-          apply in_map_iff in Hina.
-          destruct Hina as [j [Heq_rec Heqfrom]].
-          rewrite <- Heq_rec in Hina2.
-          apply get_receives_for_info in Hina2.
-          destruct Hina2 as [_ [Hina2 Hina2']].
-          destruct Hina2' as [so [Hm Hso]].
-          rewrite Hinput in Hm.
-          rewrite Hsome in Hm.
-          inversion Hm.
-          rewrite H2 in Hfs. simpl in Hfs.
-          subst j. 
-          apply in_rev in Heqfrom.
-          intuition.
+          intros.
+          apply in_concat in H1.
+          destruct H1 as [le [Hinle Hinai]].
+          apply in_map_iff in Hinle.
+          destruct Hinle as [k [Hgr Hink]].
+          rewrite <- Hgr in Hinai.
+          apply get_receives_for_info in Hinai.
+          destruct Hinai as [_ [_ Hinai]].
+          destruct Hinai as [so [Hinso Hinso']].
+          exists (k, so). split;[intuition|].
+          simpl. 
+          destruct (decide (k = x));[|intuition].
+          subst x. apply in_rev in Hink. intuition.
         }
         
         assert (Hsource: finite_protocol_plan_from X s (get_receives_for s (others x s) x)). {
@@ -2215,7 +2140,13 @@ Context
         specialize (relevant_components_lv s res_long Hprs Hprs_long (get_receives_for s (others x s) x)) as Hrel.
         specialize (Hrel Hrec_short Hsource x).
         
-        spec Hrel. apply message_providers_receive.
+        spec Hrel. {
+          intros.
+          apply get_receives_for_info in H1.
+          destruct H1 as [_ [_ H1]].
+          destruct H1 as [so [Heqso Heqso']].
+          exists (x, so). intuition.
+        }
         
         spec Hrel. {
           intros.
@@ -2270,16 +2201,18 @@ Context
                 }
                 rewrite <- IHproject.
                 unfold get_receives_all.
-                replace (snd (apply_plan X s (concat (map (fun i1 : index => get_receives_for s (others i1 s) i1) lfrom)))) with res_long.
+                replace (snd (apply_plan X s (concat (map (fun i1 : index => get_receives_for s (others i1 s) i1) lfrom)))) with res_long by intuition.
                 rewrite H.
                 apply receives_neq.
                 assumption.
                 assumption.
                 assumption.
-                rewrite message_providers_receive.
-                intros contra.
-                simpl in contra.
-                all : intuition.
+                intros.
+                apply get_receives_for_info in H4.
+                destruct H4 as [_ [_ H4]].
+                destruct H4 as [so [Heqso Heqso']].
+                exists (x, so). intuition.
+                intuition.
     Qed.
     
     Definition receive_phase_plan (s : vstate X) := (get_receives_all s index_listing).
@@ -2425,6 +2358,7 @@ Context
     Proof.
       apply HE_eq_equiv.
       specialize (send_phase_GE s Hpr Hnf) as He.
+      unfold GE in He.
       apply wE_eq_equality in He.
       intuition.
     Qed.
@@ -2439,6 +2373,7 @@ Context
     Proof.
       apply HE_eq_equiv.
       specialize (common_future_no_extra_equivocation s Hpr Hnf) as He.
+      unfold GE in He.
       apply wE_eq_equality in He.
       intuition.
     Qed.
@@ -2454,6 +2389,7 @@ Context
       apply HE_eq_equiv.
       specialize (receive_phase_GE res_send) as He.
       spec He. apply send_phase_result_protocol; intuition.
+      unfold GE in He.
       apply wE_eq_equality in He.
       intuition.
     Qed.
@@ -2484,8 +2420,7 @@ Context
         setoid_rewrite hbo_cobs' in contra.
 
         destruct contra as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
-        
-        specialize (@in_future_message_obs (GH s) s res Hpr a) as Hfuture.
+        specialize (@in_future_message_obs _ _ _ _ _ _ _ (GH s) s res Hpr a) as Hfuture.
         spec Hfuture. {
           unfold res.
           apply receive_phase_future.
@@ -2514,7 +2449,7 @@ Context
               specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
               spec Hincl. unfold incl. intros. apply in_listing.
               destruct (decide (a = k)). 
-              * subst k. apply wH_wE' in Hk. intuition.
+              * subst k. unfold GH in Hk. apply wH_wE' in Hk. intuition.
               * intuition.
             + setoid_rewrite cobs_messages_states.
               apply set_union_iff.
@@ -2543,7 +2478,7 @@ Context
               specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
               spec Hincl. unfold incl. intros. apply in_listing.
               destruct (decide (a = k)). 
-              -- subst k. apply wH_wE' in Hk. intuition.
+              -- subst k. unfold GH in Hk. apply wH_wE' in Hk. intuition.
               -- intuition.
             * setoid_rewrite cobs_messages_states.
               apply set_union_iff.
@@ -2739,7 +2674,7 @@ Context
   Proof.
     intros.
     assert (H' := H).
-    apply cobs_single_m in H.
+    apply (@cobs_single_m _ _ index_listing Hfinite _ _ _ _) in H.
     destruct H as [k [Hink Hine]].
     
     assert (Hspr : protocol_state_prop X res_send). {
@@ -2774,7 +2709,7 @@ Context
         rewrite <- Hproject in Hine.
         apply refold_simp_lv_observations1.
         apply protocol_state_component_no_bottom; intuition.
-        apply cobs_single_m in H'.
+        apply (@cobs_single_m _ _ index_listing Hfinite _ _ _ _) in H'.
         destruct H' as [inter2 Hrest].
         destruct Hrest as [_ Hrest].
         apply (@in_message_observations_nb index index_listing Hfinite) in Hrest.
@@ -2827,7 +2762,7 @@ Context
     In e (simp_lv_message_observations (res i) target).
   Proof.
     intros.
-    apply cobs_single_m in H.
+    apply (@cobs_single_m _ _ index_listing Hfinite _ _ _ _) in H.
     destruct H as [j [HjGH Hine]].
     apply (@refold_simp_lv_observations2 index index_listing Hfinite).
     apply protocol_state_component_no_bottom; apply common_future_result_protocol; intuition.
@@ -3246,7 +3181,7 @@ Context
      unfold get_no_equivocating_states.
      apply map_ext_in.
      intros.
-     - specialize (@wH_wE (GH res) res) as Hdiff.
+     - specialize (@wH_wE _ _ _ _ _ _ _ (GH res) res) as Hdiff.
        unfold HE in H0.
        destruct Hdiff as [_ Hdiff].
        specialize (Hdiff a H0).
@@ -3348,6 +3283,7 @@ Context
           intuition.
         }
         specialize (H1 i).
+        unfold GH in H.
         apply wH_wE' in H.
         intuition.
       + congruence.
