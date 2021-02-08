@@ -26,8 +26,6 @@ Section EquivocationAwareValidator.
     {Rindex : ReachableThreshold index}
     (eqv := @simp_lv_basic_equivocation index index_self index_listing Hfinite idec Mindex Rindex)
     .
-  Check @equivocating_validators.
-  Print equivocating_validators.
 
   Existing Instance eqv.
 

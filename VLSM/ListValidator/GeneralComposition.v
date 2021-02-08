@@ -44,16 +44,14 @@ Context
     (s i) <> Bottom.
   Proof.
     apply (@protocol_prop_no_bottom index i _ _ (est i)).
-    apply (protocol_state_projection IM_index i0 constraint i) in Hprs.
+    apply (protocol_state_projection IM_index constraint i) in Hprs.
     unfold protocol_state_prop in Hprs.
     destruct Hprs as [om Hprs] in Hprs.
-    apply (proj_pre_loaded_with_all_messages_protocol_prop IM_index i0 constraint i) in Hprs.
+    apply (proj_pre_loaded_with_all_messages_protocol_prop IM_index constraint i) in Hprs.
     unfold protocol_state_prop.
     exists om.
     assumption.
   Qed.
-  
-  Check observation_based_equivocation_evidence.
   (*
   Definition composed_eqv_evidence
   : observation_based_equivocation_evidence (vstate X) index lv_event 

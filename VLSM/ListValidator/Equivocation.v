@@ -3765,8 +3765,6 @@ Context
     Definition get_simp_event_subject_some 
       (e : simp_lv_event) :=
       Some (get_simp_event_subject e).
-      
-    Check state_observable_events_instance.
     
     Program Instance simp_lv_observable_events :
       observable_events (@state index index_listing) simp_lv_event := 

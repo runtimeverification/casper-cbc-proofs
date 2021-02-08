@@ -2689,6 +2689,7 @@ Byzantine fault tolerance analysis. *)
     exists om.
     apply pre_loaded_with_all_messages_protocol_prop.
     intuition.
+  Qed.
   (* end hide *)
 
   Lemma any_message_is_protocol_in_preloaded (om: option message):

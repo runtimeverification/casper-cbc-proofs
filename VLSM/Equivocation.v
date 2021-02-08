@@ -1822,7 +1822,7 @@ Section Composite.
            (s i) m)) :
     protocol_message_prop X m.
     Proof.
-    specialize (protocol_state_projection IM i0 constraint i _ Hs) as Hsi.
+    specialize (protocol_state_projection IM constraint i _ Hs) as Hsi.
     destruct Hs as [_om Hs].
     apply protocol_is_trace in Hs as Hs'.
     destruct Hs' as [Hs' | [is [tr [Htr [Hs' H_om]]]]].
@@ -1832,14 +1832,14 @@ Section Composite.
     - destruct Hsi as [_omsi Hsi].
 
       (* apply protocol_is_trace in Hsi as Hsproji'. *)
-      apply (proj_pre_loaded_with_all_messages_protocol_prop IM i0 constraint i) in Hsi as Hsi3.
+      apply (proj_pre_loaded_with_all_messages_protocol_prop IM constraint i) in Hsi as Hsi3.
       
       assert (Hsi' : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i))
         by (exists _omsi; assumption). 
         
       apply (@proper_sent _ (IM i) (has_been_sent_capabilities i) _ Hsi' m) in Hsent.
       unfold selected_message_exists_in_all_preloaded_traces in Hsent.
-      specialize (finite_ptrace_projection IM i0 constraint i is) as Hbs.
+      specialize (finite_ptrace_projection IM constraint i is) as Hbs.
       destruct Htr as [Htr Hinit].
       spec Hbs.
       apply initial_is_protocol. 
@@ -1849,10 +1849,10 @@ Section Composite.
       apply protocol_message_projection_rev with (j := i).
       apply can_emit_protocol.
       assert (finite_protocol_trace (pre_loaded_with_all_messages_vlsm (IM i)) (is i) 
-              (finite_trace_projection_list IM i0 constraint i tr)). {
+              (finite_trace_projection_list IM constraint i tr)). {
           specialize (@proj_pre_loaded_with_all_messages_incl message index IndEqDec IM i0 constraint i) as Htemp.
           unfold VLSM_incl in Htemp.
-          specialize (Htemp (Finite (is i) (finite_trace_projection_list IM i0 constraint i tr))).
+          specialize (Htemp (Finite (is i) (finite_trace_projection_list IM constraint i tr))).
           spec Htemp.
           unfold protocol_trace_prop.
           unfold finite_protocol_trace.
@@ -1860,7 +1860,7 @@ Section Composite.
           unfold protocol_trace_prop in Htemp.
           assumption.
       }
-      specialize (Hsent (is i) (finite_trace_projection_list IM i0 constraint i tr) H).
+      specialize (Hsent (is i) (finite_trace_projection_list IM constraint i tr) H).
       spec Hsent.
       specialize (@finite_trace_projection_last_state message index IndEqDec IM i0 constraint i) as Hlast.
       specialize (Hlast is tr Htr).
@@ -1876,8 +1876,8 @@ Section Composite.
       inversion Hs'.
       inversion eq_t.
       f_equal.
-      specialize (@can_emit_from_protocol_trace message (composite_vlsm_constrained_projection IM i0 constraint i)) as Htemp'.
-      specialize (Htemp' (is i) m (finite_trace_projection_list IM i0 constraint i tr)).
+      specialize (@can_emit_from_protocol_trace message (composite_vlsm_constrained_projection IM constraint i)) as Htemp'.
+      specialize (Htemp' (is i) m (finite_trace_projection_list IM constraint i tr)).
       spec Htemp'. unfold finite_protocol_trace. intuition. specialize (Hinit i). assumption.
       spec Htemp'. assumption.
       assumption.
@@ -1892,7 +1892,7 @@ Section Composite.
            (s i) m)) :
     protocol_message_prop X m.
     Proof.
-    specialize (protocol_state_projection IM i0 constraint i _ Hs) as Hsi.
+    specialize (protocol_state_projection IM constraint i _ Hs) as Hsi.
     destruct Hs as [_om Hs].
     apply protocol_is_trace in Hs as Hs'.
     destruct Hs' as [Hs' | [is [tr [Htr [Hs' H_om]]]]].
@@ -1900,14 +1900,14 @@ Section Composite.
       specialize (has_been_received_initially_false (IM i) _ Hs' m) as Hnotreceived.
       congruence.
     - destruct Hsi as [_omsi Hsi].
-      apply (proj_pre_loaded_with_all_messages_protocol_prop IM i0 constraint i) in Hsi as Hsi3.
+      apply (proj_pre_loaded_with_all_messages_protocol_prop IM constraint i) in Hsi as Hsi3.
       
       assert (Hsi' : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (s i))
         by (exists _omsi; assumption).
         
       apply (@proper_received _ (IM i) (has_been_received_capabilities i) _ Hsi' m) in Hreceived.
       unfold selected_message_exists_in_all_preloaded_traces in Hreceived.
-      specialize (finite_ptrace_projection IM i0 constraint i is) as Hbs.
+      specialize (finite_ptrace_projection IM constraint i is) as Hbs.
       destruct Htr as [Htr Hinit].
       spec Hbs.
       apply initial_is_protocol. 
@@ -1916,10 +1916,10 @@ Section Composite.
       specialize (Hbs tr Htr).
       apply protocol_message_projection_rev with (j := i).
       assert (finite_protocol_trace (pre_loaded_with_all_messages_vlsm (IM i)) (is i) 
-              (finite_trace_projection_list IM i0 constraint i tr)). {
+              (finite_trace_projection_list IM constraint i tr)). {
           specialize (@proj_pre_loaded_with_all_messages_incl message index IndEqDec IM i0 constraint i) as Htemp.
           unfold VLSM_incl in Htemp.
-          specialize (Htemp (Finite (is i) (finite_trace_projection_list IM i0 constraint i tr))).
+          specialize (Htemp (Finite (is i) (finite_trace_projection_list IM constraint i tr))).
           spec Htemp.
           unfold protocol_trace_prop.
           unfold finite_protocol_trace.
@@ -1927,7 +1927,7 @@ Section Composite.
           unfold protocol_trace_prop in Htemp.
           assumption.
       }
-      specialize (Hreceived (is i) (finite_trace_projection_list IM i0 constraint i tr) H).
+      specialize (Hreceived (is i) (finite_trace_projection_list IM constraint i tr) H).
       spec Hreceived.
       specialize (@finite_trace_projection_last_state message index IndEqDec IM i0 constraint i) as Hlast.
       specialize (Hlast is tr Htr).
@@ -1944,8 +1944,8 @@ Section Composite.
       inversion Hs'.
       inversion eq_t.
       f_equal.
-      specialize (@protocol_message_from_protocol_trace_receive _ (composite_vlsm_constrained_projection IM i0 constraint i)) as Htemp'.
-      specialize (Htemp' (is i) m (finite_trace_projection_list IM i0 constraint i tr)).
+      specialize (@protocol_message_from_protocol_trace_receive _ (composite_vlsm_constrained_projection IM constraint i)) as Htemp'.
+      specialize (Htemp' (is i) m (finite_trace_projection_list IM constraint i tr)).
       spec Htemp'. unfold finite_protocol_trace. intuition. specialize (Hinit i). assumption.
       spec Htemp'. assumption.
       assumption.

@@ -771,19 +771,6 @@ Then <<X1>> is trace-included into <<X2>>.
           f_equal.
           apply state_update_twice.
     Qed.
-    
-    Lemma protocol_message_prop_composite_free_lift
-      (j : index)
-      (m : message)
-      (Hp : protocol_message_prop (IM j) m)
-      : protocol_message_prop free_composite_vlsm m.
-    Proof.
-      unfold protocol_message_prop in *.
-      destruct Hp as [s Hprop].
-      apply protocol_prop_composite_free_lift in Hprop.
-      exists (lift_to_composite_state j s).
-      assumption.
-    Qed.
 
 (**
 If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_composite_state] of @sj@, then
@@ -802,6 +789,19 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
       remember (fun _ : message => False) as P.
       apply (protocol_prop_composite_free_lift_generalized_initial P P); [|assumption].
       intro m. exact id.
+    Qed.
+    
+    Lemma protocol_message_prop_composite_free_lift
+      (j : index)
+      (m : message)
+      (Hp : protocol_message_prop (IM j) m)
+      : protocol_message_prop free_composite_vlsm m.
+    Proof.
+      unfold protocol_message_prop in *.
+      destruct Hp as [s Hprop].
+      apply protocol_prop_composite_free_lift in Hprop.
+      exists (lift_to_composite_state j s).
+      assumption.
     Qed.
 
     Lemma can_emit_composite_free_lift

@@ -23,7 +23,7 @@ Require Import
 Section Composition.
 Context
   {index : Type}
-  {i0 : index}
+  {i0 : Inhabited index}
   {index_listing : list index}
   {Hfinite : Listing index_listing}
   {idec : EqDecision index}
@@ -33,7 +33,7 @@ Context
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec (est' i))
   (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec (est' i))
   (has_been_received_capabilities := fun i : index => @has_been_received_lv index i index_listing Hfinite idec (est' i))
-  (X := composite_vlsm IM_index i0 (free_constraint IM_index))
+  (X := composite_vlsm IM_index (free_constraint IM_index))
   (preX := pre_loaded_with_all_messages_vlsm X)
   (Hevents_set' := fun (i : index) => @simp_lv_observable_events index i index_listing _)
   (Hstate_events_set := fun (i : index) => @simp_lv_state_observations index i index_listing _)
@@ -633,7 +633,7 @@ Context
         - subst input_a.
           apply option_protocol_message_Some.
           destruct (decide (inter = from)).
-          + specialize (sent_component_protocol_composed IM_index i0 (free_constraint IM_index) has_been_sent_capabilities (fun m => Some (fst m)) s') as Hope.
+          + specialize (sent_component_protocol_composed IM_index (free_constraint IM_index) has_been_sent_capabilities (fun m => Some (fst m)) s') as Hope.
             spec Hope. assumption.
             specialize (Hope inter (from, sa)).
             apply Hope.
@@ -650,7 +650,7 @@ Context
             rewrite <- e.
             assumption.
             unfold state_eqb. rewrite eq_dec_if_true. all : auto.
-          + specialize (received_component_protocol_composed IM_index i0 (free_constraint IM_index) (fun m => Some (fst m)) has_been_received_capabilities s') as Hope.
+          + specialize (received_component_protocol_composed IM_index (free_constraint IM_index) (fun m => Some (fst m)) has_been_received_capabilities s') as Hope.
             spec Hope. assumption.
             specialize (Hope inter (from, sa)).
             apply Hope.
