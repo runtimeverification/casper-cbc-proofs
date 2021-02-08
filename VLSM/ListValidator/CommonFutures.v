@@ -1132,26 +1132,7 @@ Context
         rewrite state_update_neq in H.
         apply cobs_single_m.
         exists k. all : intuition.
-    - apply cobs_single_m in H.
-      destruct H as [k H].
-      destruct (decide (k = i)).
-      + subst k.
-        destruct H as [_ H].
-        apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H. 
-        apply cobs_single_m.
-        exists i.
-        unfold s'.
-        rewrite state_update_eq.
-        rewrite cons_clean_message_obs with (b0 := b) in H.
-        split;[apply in_listing|].
-        intuition.
-        split; apply Hsnb.
-        intuition.
-      + apply cobs_single_m.
-        exists k.
-        unfold s'.
-        rewrite state_update_neq.
-        all : intuition.
+    - apply wcobs_message_existing_same1; intuition.
   Qed.
   
   Lemma cobs_message_existing_same2
@@ -1190,28 +1171,9 @@ Context
         unfold s' in H.
         rewrite state_update_neq in H by intuition.
         apply cobs_single_m. exists k. intuition.
-    - apply set_union_iff in H.
+    -  apply set_union_iff in H.
       destruct H as [H | H].
-      + apply cobs_single_m in H.
-        destruct H as [k [_ H]].
-        destruct (decide (i = k)).
-        * subst k. 
-          apply (@old_incl_new index index_listing Hfinite) with (so := (s i)) (i := i) in H.
-          apply cobs_single_m.
-          exists i.
-          unfold s'.
-          rewrite state_update_eq.
-          rewrite cons_clean_message_obs with (b0 := b) in H.
-          split;[apply in_listing|].
-          intuition.
-          split; apply Hsnb.
-          intuition.
-        * apply cobs_single_m.
-          exists k.
-          unfold s'.
-          rewrite state_update_neq.
-          split;[apply in_listing|].
-          all : intuition.
+      + apply wcobs_message_existing_same2; intuition.
       + apply cobs_single_m.
         exists i.
         unfold s'.
@@ -1236,6 +1198,96 @@ Context
         intuition.
   Qed.
   
+  Lemma GE_existing_same_state_message
+    (s : vstate X)
+    (es2 : state)
+    (Hprs : protocol_state_prop X s)
+    (b : bool)
+    (i v : index)
+    (s' := state_update IM_index s i (update_consensus (update_state (s i) (s i) i) b))
+    (Hine2 : In (SimpObs Message' v es2) (cobs_messages s' v)) 
+    (Hcomp : ~ comparable simp_lv_event_lt (SimpObs State' v (s' v)) (SimpObs Message' v es2)) :
+    @cequiv_evidence index_listing s v.
+  Proof.
+    assert (Hsnb : forall (k : index), (s k) <> Bottom). {
+      intros k.
+      apply protocol_state_component_no_bottom. intuition.
+    }
+    
+    unfold cequiv_evidence.
+    unfold equivocation_evidence.
+    setoid_rewrite hbo_cobs.
+    destruct (decide (i = v)).
+    - subst i.
+      unfold s' in Hine2.
+      setoid_rewrite cobs_message_existing_same2 in Hine2.
+      2 : intuition.
+      apply set_union_iff in Hine2.
+      destruct Hine2 as [Hine2|Hine2].
+      + exists (SimpObs State' v (s v)).
+        split.
+            * simpl.
+              apply in_cobs_states'.
+              apply state_obs_present.
+              apply in_listing.
+            * split; [simpl;intuition|].
+                exists (SimpObs Message' v es2).
+                split.
+                -- simpl. apply in_cobs_messages'. intuition.
+                -- split;[simpl;intuition|].
+                   intros contra.
+                   apply comparable_commutative in contra.
+                   apply (@state_obs_stuff index v index_listing Hfinite) with (so := (s v)) (i := v) (b := b) in contra.
+                   unfold s' in Hcomp.
+                   apply comparable_commutative in contra.
+                   rewrite state_update_eq in Hcomp.
+                   intuition.
+                   split;apply Hsnb.
+                   intuition.
+                   simpl. congruence.
+                   simpl. congruence.
+          +  destruct Hine2; [|intuition].
+             inversion H.
+             subst es2.
+             contradict Hcomp.
+             unfold comparable.
+             right. right.
+             unfold simp_lv_event_lt.
+             rewrite decide_True by intuition.
+             unfold s'.
+             rewrite state_update_eq.
+             unfold state_lt'.
+             rewrite history_disregards_cv.
+             rewrite (@unfold_history_cons index index_listing Hfinite).
+             simpl. left.
+             rewrite (@project_same index index_listing Hfinite).
+             intuition.
+             apply Hsnb.
+             rewrite (@project_same index index_listing Hfinite).
+             apply Hsnb.
+             apply Hsnb.
+         - unfold s' in Hine2.
+           setoid_rewrite cobs_message_existing_same1 in Hine2.
+           2, 3 : intuition.
+           exists (SimpObs State' v (s v)).
+             split.
+             * simpl.
+                apply in_cobs_states'.
+                apply state_obs_present.
+                apply in_listing.
+             * split; [simpl;intuition|].
+                exists (SimpObs Message' v es2).
+                split.
+                -- simpl. apply in_cobs_messages'. intuition.
+                -- split;[simpl;intuition|].
+                   intros contra.
+                   apply comparable_commutative in contra.
+                   unfold s' in Hcomp.
+                   rewrite state_update_neq in Hcomp.
+                   apply comparable_commutative in contra.
+                   all : intuition.
+  Qed.
+  
   Lemma GE_existing_same
     (s : vstate X)
     (Hprs : protocol_state_prop X s)
@@ -1248,7 +1300,7 @@ Context
       intros k.
       apply protocol_state_component_no_bottom. intuition.
     }
-  
+
     unfold incl; intros v H.
     apply GE_direct in H as Hev.
     apply GE_direct.
@@ -1280,6 +1332,7 @@ Context
     setoid_rewrite cobs_messages_states in Hine2.
     apply set_union_iff in Hine1.
     apply set_union_iff in Hine2.
+    simpl in *.
     destruct Hine1 as [Hine1|Hine1].
     - apply in_cobs_states in Hine1 as Het1.
       simpl in Het1.
@@ -1300,166 +1353,23 @@ Context
         unfold comparable in Hcomp.
         contradict Hcomp.
         left. intuition.
-      + (* State and message *)
+      + (*State and message *)
         apply in_cobs_messages in Hine2 as Het2.
-        simpl in Het2.
-        subst et2.
-        simpl in Hine1, Hine2.
-        destruct (decide (i = v)).
-        * subst i.
-          unfold s' in Hine2.
-          setoid_rewrite cobs_message_existing_same2 in Hine2.
-          2 : intuition.
-          apply set_union_iff in Hine2.
-          destruct Hine2 as [Hine2|Hine2].
-          -- exists (SimpObs State' v (s v)).
-             split.
-             ++ simpl.
-                apply in_cobs_states'.
-                apply state_obs_present.
-                apply in_listing.
-             ++ split; [simpl;intuition|].
-                exists e2.
-                subst e2.
-                split.
-                ** simpl. apply in_cobs_messages'. intuition.
-                ** split;[simpl;intuition|].
-                   intros contra.
-                   apply comparable_commutative in contra.
-                   apply (@state_obs_stuff index v index_listing Hfinite) with (so := (s v)) (i := v) (b := b) in contra.
-                   unfold s' in Hcomp.
-                   apply comparable_commutative in contra.
-                   rewrite state_update_eq in Hcomp.
-                   intuition.
-                   split;apply Hsnb.
-                   intuition.
-                   simpl. congruence.
-                   simpl. congruence.
-          -- destruct Hine2; [|intuition].
-             inversion H0.
-             subst es2.
-             contradict Hcomp.
-             unfold comparable.
-             right. right.
-             unfold simp_lv_event_lt.
-             rewrite decide_True by intuition.
-             unfold s'.
-             rewrite state_update_eq.
-             unfold state_lt'.
-             rewrite history_disregards_cv.
-             rewrite (@unfold_history_cons index index_listing Hfinite).
-             simpl. left.
-             rewrite (@project_same index index_listing Hfinite).
-             intuition.
-             apply Hsnb.
-             rewrite (@project_same index index_listing Hfinite).
-             apply Hsnb.
-             apply Hsnb.
-         * unfold s' in Hine2.
-           setoid_rewrite cobs_message_existing_same1 in Hine2.
-           2, 3 : intuition.
-           exists (SimpObs State' v (s v)).
-             split.
-             ++ simpl.
-                apply in_cobs_states'.
-                apply state_obs_present.
-                apply in_listing.
-             ++ split; [simpl;intuition|].
-                exists e2.
-                subst e2.
-                split.
-                ** simpl. apply in_cobs_messages'. intuition.
-                ** split;[simpl;intuition|].
-                   intros contra.
-                   apply comparable_commutative in contra.
-                   unfold s' in Hcomp.
-                   rewrite state_update_neq in Hcomp.
-                   apply comparable_commutative in contra.
-                   all : intuition.
+        simpl in Het2. subst et2.
+        specialize (GE_existing_same_state_message s es2 Hprs b i v Hine2 Hcomp) as Hev.
+        unfold cequiv_evidence in Hev. unfold equivocation_evidence in Hev.
+        setoid_rewrite hbo_cobs in Hev. intuition.
      - apply in_cobs_messages in Hine1 as Het1.
        simpl in Het1. subst et1.
-       simpl in Hine1, Hine2.
        destruct Hine2 as [Hine2|Hine2]. (* Copy paste below *)
        + apply in_cobs_states in Hine2 as Het2.
-         simpl in Het2.
-         subst et2.
+         simpl in Het2. subst et2.
          apply unique_state_observation in Hine2.
-         apply in_cobs_messages in Hine1 as Het1.
-         simpl in Het1.
-         simpl in Hine1, Hine2.
-        destruct (decide (i = v)).
-        * subst i.
-          unfold s' in Hine1.
-          inversion Hine2.
-          subst es2.
-          setoid_rewrite cobs_message_existing_same2 in Hine1.
-          2 : intuition.
-          apply set_union_iff in Hine1.
-          destruct Hine1 as [Hine1|Hine1].
-          -- exists (SimpObs State' v (s v)).
-             split.
-             ++ simpl.
-                apply in_cobs_states'.
-                apply state_obs_present.
-                apply in_listing.
-             ++ split; [simpl;intuition|].
-                exists e1.
-                subst e1.
-                split.
-                ** simpl. apply in_cobs_messages'. intuition.
-                ** split;[simpl;intuition|].
-                   intros contra.
-                   apply comparable_commutative in contra.
-                   apply (@state_obs_stuff index v index_listing Hfinite) with (so := (s v)) (i := v) (b := b) in contra.
-                   unfold s' in Hcomp.
-                   rewrite state_update_eq in Hcomp.
-                   intuition.
-                   split;apply Hsnb.
-                   intuition.
-                   simpl. congruence.
-                   simpl. congruence.
-          -- destruct Hine1; [|intuition].
-             inversion H0.
-             subst es1.
-             contradict Hcomp.
-             unfold comparable.
-             right. left.
-             unfold simp_lv_event_lt.
-             rewrite decide_True by intuition.
-             unfold s'.
-             rewrite state_update_eq.
-             unfold state_lt'.
-             rewrite history_disregards_cv.
-             rewrite (@unfold_history_cons index index_listing Hfinite).
-             simpl. left.
-             rewrite (@project_same index index_listing Hfinite).
-             intuition.
-             apply Hsnb.
-             rewrite (@project_same index index_listing Hfinite).
-             apply Hsnb.
-             apply Hsnb.
-         * unfold s' in Hine1.
-           setoid_rewrite cobs_message_existing_same1 in Hine1.
-           2, 3 : intuition.
-           exists (SimpObs State' v (s v)).
-             split.
-             ++ simpl.
-                apply in_cobs_states'.
-                apply state_obs_present.
-                apply in_listing.
-             ++ split; [simpl;intuition|].
-                exists e1.
-                subst e1.
-                split.
-                ** simpl. apply in_cobs_messages'. intuition.
-                ** split;[simpl;intuition|].
-                   intros contra.
-                   inversion Hine2.
-                   subst es2.
-                   unfold s' in Hcomp.
-                   rewrite state_update_neq in Hcomp.
-                   apply comparable_commutative in contra.
-                   all : intuition.
+         inversion Hine2. subst es2.
+         rewrite comparable_commutative in Hcomp.
+         specialize (GE_existing_same_state_message s es1 Hprs b i v Hine1 Hcomp) as Hev.
+         unfold cequiv_evidence in Hev. unfold equivocation_evidence in Hev.
+         setoid_rewrite hbo_cobs in Hev. intuition.
        + apply in_cobs_messages in Hine2 as Het2.
          simpl in Het2. subst et2.
          destruct (decide (i = v)).
