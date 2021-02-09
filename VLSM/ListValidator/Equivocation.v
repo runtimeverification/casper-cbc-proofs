@@ -3732,14 +3732,6 @@ Context
           intuition.
     Qed.
     
-    Lemma lv_observations_other 
-      (s : state)
-      (target : index)
-      (Hdif : target <> index_self) :
-      lv_observations s target = lv_received_observations s target.
-    Proof.
-    Admitted.
-    
     Lemma simp_lv_observations_other 
       (s : state)
       (target : index)
@@ -4063,60 +4055,6 @@ Context
         exists s'.
         intuition.
     Qed.
-    
-    Lemma unfold_lv_observations
-      (s : state)
-      (target : index)
-      (Hdif : target <> index_self)
-      (e : lv_event) 
-      (Hnb : s <> Bottom /\ (get_event_state e) <> Bottom) :
-      In e (lv_observations s target) <->
-      (e = Obs Received target (project s target)) \/
-      (exists (i : index), (In e (lv_observations (project s i) target))).
-    Proof.
-      rewrite lv_observations_other by intuition.
-      destruct e as [et ev es].
-      
-      split; intros.
-      - apply in_lv_received in H as Hrec.
-        assert (et = Received) by intuition.
-        assert (ev = target) by intuition.
-        subst et; subst ev.
-        apply raw_received in H as Hraw. 2 : intuition.
-        apply unfold_raw_observations in Hraw. 2 : intuition.
-        destruct Hraw.
-        + left. rewrite H0. intuition.
-        + right.
-          destruct H0 as [i Hini].
-          exists i.
-          apply raw_received in Hini.
-          rewrite lv_observations_other.
-          all : intuition.
-      - assert (et = Received /\ ev = target). {
-          destruct H.
-          - inversion H.
-            intuition.
-          - destruct H as [i Hini].
-            rewrite lv_observations_other in Hini by intuition.
-            apply in_lv_received in Hini.
-            intuition.
-        }
-        destruct H0 as [Het Hev].
-        subst et; subst ev.
-        
-        apply raw_received. intuition.
-        destruct H.
-        + apply refold_raw_observations1.
-          intuition.
-          inversion H.
-          intuition. 
-        + apply refold_raw_observations2. intuition.
-          destruct H as [i Hini].
-          exists i.
-          apply raw_received. intuition.
-          rewrite lv_observations_other in Hini by intuition.
-          intuition.
-   Qed.
    
    Lemma in_message_observations_nb
     (s : state)
@@ -4504,8 +4442,63 @@ Context
           apply refold_simp_lv_observations2;[intuition|..].
           exists k. intuition.
   Qed.
-  
+
   Lemma state_obs_stuff
+    (s so : state)
+    (Hnb : s <> Bottom /\ so <> Bottom)
+    (i : index)
+    (Hfull : project s i = project so i)
+    (s' := update_state s so i)
+    (s_obs := (SimpObs State' index_self s))
+    (s'_obs := (SimpObs State' index_self s')) 
+    (e : simp_lv_event)
+    (Hns : get_simp_event_type e <> State') 
+    (Hsubj : get_simp_event_subject e = index_self)
+    (Hcomp: comparable simp_lv_event_lt e s_obs) :
+    comparable simp_lv_event_lt e s'_obs.
+  Proof.
+    simpl in *.
+    unfold s' in *.
+    unfold s'_obs in *.
+    unfold s_obs in *.
+    destruct e as [et ev es].
+    unfold comparable in *.
+    destruct Hcomp.
+    - simpl in *.
+      inversion H.
+      congruence.
+    - right.
+      destruct H.
+      + left.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns. congruence. 
+        * unfold state_lt' in *.
+          destruct (decide (i = ev)).
+          -- subst i.
+             rewrite unfold_history_cons; rewrite (@project_same index index_listing Hfinite) by intuition.
+             rewrite <- eq_history_eq_project in Hfull.
+             rewrite <- Hfull.
+             simpl. right. intuition.
+             intuition.
+          -- rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
+             rewrite unfold_history_cons in H.
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+             apply non_empty_history_nb_project with (so := es).
+             intuition.
+      + right.
+        unfold simp_lv_event_lt in *.
+        rewrite decide_True in * by intuition.
+        destruct et eqn : eq_et.
+        * simpl in Hns.
+          congruence.
+        * intuition. 
+  Qed.
+  
+  Lemma state_obs_stuff_cons
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
     (i : index)
@@ -4561,236 +4554,6 @@ Context
         * simpl in Hns.
           congruence.
         * intuition. 
-  Qed.
-  
-  Lemma state_obs_stuff_no_cons
-    (s so : state)
-    (Hnb : s <> Bottom /\ so <> Bottom)
-    (i : index)
-    (Hfull : project s i = project so i)
-    (s' := update_state s so i)
-    (s_obs := (SimpObs State' index_self s))
-    (s'_obs := (SimpObs State' index_self s')) 
-    (e : simp_lv_event)
-    (Hns : get_simp_event_type e <> State') 
-    (Hsubj : get_simp_event_subject e = index_self)
-    (Hcomp: comparable simp_lv_event_lt e s_obs) :
-    comparable simp_lv_event_lt e s'_obs.
-  Proof.
-    simpl in *.
-    unfold s' in *.
-    unfold s'_obs in *.
-    unfold s_obs in *.
-    destruct e as [et ev es].
-    unfold comparable in *.
-    destruct Hcomp.
-    - simpl in *.
-      inversion H.
-      congruence.
-    - right.
-      destruct H.
-      + left.
-        unfold simp_lv_event_lt in *.
-        rewrite decide_True in * by intuition.
-        destruct et eqn : eq_et.
-        * simpl in Hns. congruence. 
-        * unfold state_lt' in *.
-          destruct (decide (i = ev)).
-          -- subst i.
-             rewrite unfold_history_cons; rewrite (@project_same index index_listing Hfinite) by intuition.
-             rewrite <- eq_history_eq_project in Hfull.
-             rewrite <- Hfull.
-             simpl. right. intuition.
-             intuition.
-          -- rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
-             rewrite unfold_history_cons in H.
-             intuition.
-             apply non_empty_history_nb_project with (so := es).
-             intuition.
-             apply non_empty_history_nb_project with (so := es).
-             intuition.
-      + right.
-        unfold simp_lv_event_lt in *.
-        rewrite decide_True in * by intuition.
-        destruct et eqn : eq_et.
-        * simpl in Hns.
-          congruence.
-        * intuition. 
-  Qed.
-  
-  (*
-  Lemma state_obs_stuff'
-    (s so : state)
-    (Hnb : s <> Bottom /\ so <> Bottom)
-    (i : index)
-    (Hfull : project s i = project so i)
-    (s' := (update_state s so i))
-    (st : simp_lv_event_type)
-    (s_obs := (SimpObs st index_self s))
-    (s'_obs := (SimpObs st index_self s')) 
-    (e : simp_lv_event)
-    (Hns : get_simp_event_type e <> State') 
-    (Hsubj : get_simp_event_subject e = index_self)
-    (Hcomp: comparable simp_lv_event_lt e s_obs) :
-    comparable simp_lv_event_lt e s'_obs.
-  Proof.
-    simpl in *.
-    unfold s' in *.
-    unfold s'_obs in *.
-    unfold s_obs in *.
-    destruct e as [et ev es].
-    unfold comparable in *.
-    destruct Hcomp.
-    - simpl in *.
-      inversion H.
-      congruence.
-    - right.
-      destruct H.
-      + left.
-        unfold simp_lv_event_lt in *.
-        rewrite decide_True in * by intuition.
-        destruct et eqn : eq_et.
-        * simpl in Hns. congruence. 
-        * unfold state_lt' in *.
-          destruct (decide (i = ev)).
-          -- subst i.
-             rewrite unfold_history_cons; rewrite (@project_same index index_listing Hfinite) by intuition.
-             rewrite <- eq_history_eq_project in Hfull.
-             rewrite <- Hfull.
-             simpl. right. intuition.
-             intuition.
-          -- rewrite unfold_history_cons; rewrite (@project_different index index_listing Hfinite) by intuition.
-             rewrite unfold_history_cons in H.
-             intuition.
-             apply non_empty_history_nb_project with (so := es).
-             intuition.
-             apply non_empty_history_nb_project with (so := es).
-             intuition.
-      + right.
-        unfold simp_lv_event_lt in *.
-        rewrite decide_True in * by intuition.
-        destruct et eqn : eq_et.
-        * simpl in Hns.
-          congruence.
-        * intuition. 
-  Qed. *)
-    
-  Lemma self_update_j
-    (s : state)
-    (Hnb : s <> Bottom)
-    (j : index)
-    (Hdif : index_self <> j)
-    (b : bool)
-    (s' := (update_consensus (update_state s s index_self) b)) :
-    set_eq (lv_observations s' j) (lv_observations s j).
-  Proof.
-    unfold set_eq.
-    unfold incl.
-    
-    assert (Hnb' : s' <> Bottom). {
-      intros contra.
-      unfold s' in contra.
-      unfold update_consensus in contra.
-      destruct (update_state s s index_self) eqn : eq_su.
-      + unfold update_state in eq_su.
-        destruct s; congruence.
-      + congruence.
-    }
-    
-    assert (Hproj_j: project s j = project s' j). {
-      unfold s'.
-      rewrite <- update_consensus_clean with (value := b).
-      rewrite (@project_different index index_listing).
-      all : intuition.
-    }
-    
-    assert (Hproj_self : project s' index_self = s). {
-      unfold s'.
-      rewrite <- update_consensus_clean with (value := b).
-      rewrite (@project_same index index_listing).
-      all : intuition.
-    }
-    
-    assert (Hes' : forall (e : lv_event), In e (lv_observations s' j) -> get_event_state e <> Bottom). {
-      intros.
-      specialize (get_event_state_nb s' (get_event_state e) j e) as Hsubj_nb.
-      apply Hsubj_nb.
-      rewrite lv_observations_other in H.
-      apply in_lv_received in H.
-      left.
-      rewrite lv_event_comp_eq at 1.
-      f_equal.
-      all : intuition.
-    }
-    
-    assert (Hes : forall (e : lv_event), In e (lv_observations s j) -> get_event_state e <> Bottom). {
-      intros.
-      specialize (get_event_state_nb s (get_event_state e) j e) as Hsubj_nb.
-      apply Hsubj_nb.
-      rewrite lv_observations_other in H.
-      apply in_lv_received in H.
-      left.
-      rewrite lv_event_comp_eq at 1.
-      f_equal.
-      all : intuition.
-    }
-    
-    split; intros e He.
-    - specialize (unfold_lv_observations s' j) as Hunf.
-      spec Hunf. {
-        intuition.
-      }
-      specialize (Hunf e).
-
-      spec Hunf. {
-        split.
-        - apply Hnb'.
-        - apply Hes'.
-          intuition.
-      }
-      apply Hunf in He as He'.
-      destruct He' as [He'|He'].
-      + apply unfold_lv_observations. intuition.
-        split. intuition.
-        apply Hes'.
-        intuition.
-        rewrite Hproj_j.
-        left; intuition.
-      + destruct He' as [k Hink].
-        destruct (decide (k = index_self)).
-        * rewrite e0 in Hink.
-          rewrite Hproj_self in Hink.
-          intuition.
-        * unfold s' in Hink.
-          rewrite <- update_consensus_clean with (value := b) in Hink.
-          rewrite (@project_different index index_listing) in Hink.
-          specialize (unfold_lv_observations s j) as Hunf2.
-          spec Hunf2. {
-            intuition.
-          }
-          specialize (Hunf2 e).
-          spec Hunf2. {
-            split; [assumption|(apply Hes'; intuition)].
-          }
-          apply Hunf2.
-          right.
-          exists k.
-          intuition.
-          all : intuition.
-    - specialize (unfold_lv_observations s' j) as Hunf.
-      spec Hunf. {
-        intuition.
-      }
-      specialize (Hunf e).
-      spec Hunf. {
-        split; [assumption|(apply Hes; intuition)].
-      }
-      destruct Hunf as [_ Hunf].
-      apply Hunf.
-      right.
-      exists index_self.
-      rewrite Hproj_self.
-      intuition.
   Qed.
 
 End Equivocation.

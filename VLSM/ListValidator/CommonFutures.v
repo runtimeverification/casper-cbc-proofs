@@ -19,8 +19,35 @@ Require Import
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.
- 
-Section Composition.
+
+Section CommonFutures.
+
+(* The Common Futures Theorem for List Validators.
+  
+   The following is an informal sketch of the Common Futures Theorem for List Validators.
+
+   Consider a composition <<X>> of List Validator nodes, each using an [equivocation_aware_estimator].
+   The aim is to prove that given any protocol [vstate X] <<s>>, there exists a [vstate X] <<s'>>
+   such that:
+   (1) <<s'>> is a future state of <<s>>.
+   (2) The set of honest nodes in <<s'>> is identical to the set of honest nodes in <<s>>.
+       Formally, we have <<set_eq (GH s') (GH s)>>.
+   (3) All honest nodes have the same estimator in <<s'>>
+   
+   We will focus on the strategy for achieving (3), noting along the way that we're not breaking (1)
+   or (2). We achieve (3) by making sure that all estimators of honest nodes take the same input
+   in <<s'>>. Given that they are [equivocation_aware_estimator]s and, thus, ignore nodes
+   which they can locally prove equivocating, we can further split this goal in two:
+   (3.1) The honest nodes should see the same set of equivocating nodes locally. 
+   (3.2) For each honest-appearing node <<h>>, all honest nodes have identical projections onto
+       <<h>>
+       
+   The most natural way to achieve (3.1) is for honest nodes to share observations
+   such that the set of equivocators they each see locally in <<s'>> is the set of equivocators
+   they could see in <<s>> if they were to put all their local observations together.
+*) 
+  
+
 Context
   {index : Type}
   {i0 : Inhabited index}
@@ -3309,4 +3336,4 @@ Context
       + apply honest_nodes_same_estimators; intuition.
   Qed.  
 
-End Composition.
+End CommmonFutures.
