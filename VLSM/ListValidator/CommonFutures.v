@@ -638,7 +638,7 @@ Context
         - subst input_a.
           apply option_protocol_message_Some.
           destruct (decide (inter = from)).
-          + specialize (sent_component_protocol_composed IM_index (free_constraint IM_index) has_been_sent_capabilities (fun m => Some (fst m)) s') as Hope.
+          + specialize (sent_component_protocol_composed IM_index (free_constraint IM_index) Hfinite has_been_sent_capabilities (fun m => Some (fst m)) s') as Hope.
             spec Hope. assumption.
             specialize (Hope inter (from, sa)).
             apply Hope.
@@ -655,7 +655,7 @@ Context
             rewrite <- e.
             assumption.
             unfold state_eqb. rewrite eq_dec_if_true. all : auto.
-          + specialize (received_component_protocol_composed IM_index (free_constraint IM_index) (fun m => Some (fst m)) has_been_received_capabilities s') as Hope.
+          + specialize (received_component_protocol_composed IM_index (free_constraint IM_index) Hfinite (fun m => Some (fst m)) has_been_received_capabilities s') as Hope.
             spec Hope. assumption.
             specialize (Hope inter (from, sa)).
             apply Hope.
@@ -3339,4 +3339,4 @@ Context
       + apply honest_nodes_same_estimators; intuition.
   Qed.  
 
-End CommmonFutures.
+End CommonFutures.

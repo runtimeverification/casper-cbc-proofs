@@ -1177,24 +1177,12 @@ Proof.
       * apply IHl. exists a'. split; try assumption.
 Qed.
 
-Definition cat_option
-  {A : Type} :
-  list (option A) -> list A :=
-  fold_right 
-    (fun h tl =>
-     match h with
-     | None => tl
-     | Some a => a :: tl
-     end
-    )
-  []. 
-  
-Local Lemma cat_option_map_option
-  {A : Type} :
-  cat_option = @map_option (option A) A id.
-Proof.
-  auto.
-Qed.
+(* Unpack list of [option A] into list of [A] *)
+Definition cat_option {A : Type} : list (option A) -> list A := 
+  @map_option (option A) A id.
+
+Example cat_option1 : cat_option [Some 1; Some 5; None; Some 6; None] = [1; 5; 6].
+Proof. intuition. Qed.
   
 Lemma cat_option_length
   {A : Type}
@@ -1202,7 +1190,6 @@ Lemma cat_option_length
     (Hfl : Forall (fun a => a <> None) l)
   : length (cat_option l) = length l.
 Proof.
-  rewrite cat_option_map_option.
   apply map_option_length; intuition.
 Qed.
 
@@ -1229,7 +1216,6 @@ Lemma cat_option_nth
   (dummya : A)
   : Some (nth i (cat_option l) dummya) = (nth i l (Some dummya)).
 Proof.
-  rewrite cat_option_map_option.
   specialize (@map_option_nth (option A) A id l). simpl in *.
   intros. 
   unfold id in *.
@@ -1243,7 +1229,6 @@ Lemma in_cat_option
   (a : A)
   : In a (cat_option l) <-> exists b : (option A), In b l /\ b = Some a.
 Proof.
-  rewrite cat_option_map_option.
   apply in_map_option.
 Qed.
 
