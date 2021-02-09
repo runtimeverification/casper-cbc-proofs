@@ -27,7 +27,7 @@ Section CommonFutures.
    The following is an informal sketch of the Common Futures Theorem for List Validators.
 
    Consider a composition <<X>> of List Validator nodes, each using an [equivocation_aware_estimator].
-   The aim is to prove that given any protocol [vstate X] <<s>>, there exists a [vstate X] <<s'>>
+   The aim is to prove that for any given protocol [vstate X] <<s>>, there exists a [vstate X] <<s'>>
    such that:
    (1) <<s'>> is a future state of <<s>>.
    (2) The set of honest nodes in <<s'>> is identical to the set of honest nodes in <<s>>.
@@ -36,15 +36,17 @@ Section CommonFutures.
    
    We will focus on the strategy for achieving (3), noting along the way that we're not breaking (1)
    or (2). We achieve (3) by making sure that all estimators of honest nodes take the same input
-   in <<s'>>. Given that they are [equivocation_aware_estimator]s and, thus, ignore nodes
-   which they can locally prove equivocating, we can further split this goal in two:
+   in <<s'>>. Given that they are [equivocation_aware_estimator]s and, thus, ignore projections onto
+   nodes which they can locally prove equivocating, we can further split this goal in two:
    (3.1) The honest nodes should see the same set of equivocating nodes locally. 
-   (3.2) For each honest-appearing node <<h>>, all honest nodes have identical projections onto
+   (3.2) For each locally-honest-appearing node <<h>>, all honest nodes have identical projections onto
        <<h>>
        
-   The most natural way to achieve (3.1) is for honest nodes to share observations
-   such that the set of equivocators they each see locally in <<s'>> is the set of equivocators
-   they could see in <<s>> if they were to put all their local observations together.
+   The most natural way to achieve (3.1) is to assure that for all honest nodes <<i>>, 
+   << set_eq (LH [i] s') (HH s') >>, i.e the set of locally-honest-looking nodes for each node
+   is equal to the set of nodes which would seem honest if we were to unite all observations
+   from honest nodes. << incl (HH s') (LH [i] s') >> holds trivially for any <<s'>>. For the other
+   direction, we will require honest nodes to share observations among themselves.
 *) 
   
 
@@ -70,30 +72,6 @@ Context
   
   Local Notation hbo_cobs' := (@hbo_cobs index i0 index_listing Hfinite idec Mindex Rindex).
   Local Notation in_listing := (proj2 Hfinite).
-  
-  Definition others (i : index) (s : vstate X) := 
-    set_remove idec i (GH s).
-      
-  Lemma NoDup_others
-    (i : index) (s : vstate X) :
-    NoDup (others i s).
-  Proof.
-    unfold others.
-    apply set_remove_nodup.
-    apply GH_NoDup.
-  Qed.
-    
-  Lemma others_correct
-    (i : index)
-    (s : vstate X) :
-     ~ In i (others i s).
-  Proof.
-    unfold others.
-    intros contra.
-    apply set_remove_2 in contra.
-    intuition.
-    apply GH_NoDup.
-  Qed.
     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
@@ -2025,6 +2003,31 @@ Context
           -- rewrite state_update_neq.
              rewrite state_update_neq.
              all : intuition.
+    Qed.
+    
+      
+    Definition others (i : index) (s : vstate X) := 
+      set_remove idec i (GH s).
+      
+    Lemma NoDup_others
+      (i : index) (s : vstate X) :
+      NoDup (others i s).
+    Proof.
+      unfold others.
+      apply set_remove_nodup.
+      apply GH_NoDup.
+    Qed.
+    
+    Lemma others_correct
+      (i : index)
+      (s : vstate X) :
+      ~ In i (others i s).
+    Proof.
+      unfold others.
+      intros contra.
+      apply set_remove_2 in contra.
+      intuition.
+      apply GH_NoDup.
     Qed.
     
     Definition get_receives_all
