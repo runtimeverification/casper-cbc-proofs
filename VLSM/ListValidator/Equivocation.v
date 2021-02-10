@@ -33,7 +33,6 @@ Context
   
   Local Notation get_history' := (@get_history index index_listing idec).
   Local Notation last_sent' := (@last_sent index index_self index_listing idec).
-  (* Definition list_message_equivocation_evidence : message_equivocation_evidence message index. *)
   
   Definition state_eqb (s1 s2 : state) : bool :=
     match @state_eq_dec _ index_listing s1 s2 with
@@ -3033,7 +3032,7 @@ Context
       unfold state_gt in H.
       intuition.
     Qed.
-
+    (*
     Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
       match s with
       | Bottom => []
@@ -4475,6 +4474,6 @@ Context
           rewrite <- Hobs in Hse; simpl in Hse.
           rewrite <- Hse.
           intuition.
-    Qed.
+    Qed. *)
 
 End Equivocation.
