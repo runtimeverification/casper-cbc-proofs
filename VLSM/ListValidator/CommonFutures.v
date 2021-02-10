@@ -50,7 +50,7 @@ Section CommonFutures.
    direction, we will require honest nodes to share observations among themselves. This gives an initial
    structure of our common future-finding algorithm:
    
-   Send Phase' : All nodes in <<GH s>> do a send/update operation.
+   Send Phase : All nodes in <<GH s>> do a send/update operation.
    Receive Phase' : All nodes in <<GH s>> receive all messages sent in the Send Phase.
    
    The point is that by sending and receiving these messages, honest nodes will be up-to-date
@@ -58,6 +58,30 @@ Section CommonFutures.
    the observations held at that point as well. We can show that this process is protocol and
    that the new observations introduced into the pool can't really contain new information and thus
    do not alter <<GH s>> (or even <<HH s>>).
+   
+   What about (3.2)? Our current algorithm doesn't necessarily solve (3.2), because there
+   may exist nodes in <<(HH s)>> which are outside of << (GH s)>> and projections onto
+   these indices remain unaffected by our algorithm (so if they weren't precisely equal
+   in the beginning, we have a problem).
+   
+   The solution is to generalize the Receive Phase as such:
+   
+   Receive Phase : For all <<i>> in <<GH s>>, for all <<j>>, <<i>> will receive the message
+                   <<(j, top_s)>> where <<top_s>> is a state satisfying the following:
+                   - there exists <<k>> in <<GH s>> such that <<project (s k) j = top_s>>.
+                   - there is no other projection of this form which is greater than <<top_s>>
+                   - it is valid for <<i>> to receive <<top_s>>.
+   
+   In other words, each honest <<i>> tries to update its <<j>> component to the freshest/most advanced
+   projection any honest validator has onto <<j>>. If there are several such maximal projections
+   (which can happen if <<j>> is equivocating), we select an arbitrary one that we can receive.
+   Note that it can happen that <<i>> sticks to its own projection onto <<j>>.
+   
+   In the end what happens is that if <<j>> is in <<HH s'>>, then there can be a single topmost
+   projection, so everyone received the same thing. So if these projections should differ, we
+   can obtain a contradiction. Note also that our new Receive Phase still does what it did
+   initially for the honest validators: if <<j>> is in <<GH s>>, the topmost projection is simply
+   the message sent in the sending phase.
 *) 
   
 
