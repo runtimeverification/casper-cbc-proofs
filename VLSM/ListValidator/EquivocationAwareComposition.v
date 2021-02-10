@@ -1130,6 +1130,11 @@ Context
     intuition.
   Qed.
   
+  (* GH := the set of globally honest validators: no evidence of equiv. exists at all.
+     HH := the set of honest-looking-for-the-honest validators: members of GH have
+     no evidence of equiv. regarding these validators.
+     LH i := the set of locally honest validators (<<ws>> is a singleton). *)
+  
   Definition GE := @wE index_listing.
   Definition GH := @wH index_listing. 
   Definition cobs (s : vstate X) := @wcobs index_listing s.
@@ -1146,7 +1151,7 @@ Context
   Definition LE (i : index) := (@wE [i]).
   Definition LH (i : index) := (@wH [i]).
 
-  Lemma GH_NoDup  
+  Remark GH_NoDup  
     (s : vstate X) :
     NoDup (GH s).
   Proof.
@@ -1244,6 +1249,10 @@ Context
         rewrite H0.
         intuition.
   Qed.
+  
+  (* The following set of results allow us to conclude that our
+     common future-finding procedure maintains the same set of globally
+     honest validators. *)
   
   Lemma GE_existing_same_state_message
     (s : vstate X)
