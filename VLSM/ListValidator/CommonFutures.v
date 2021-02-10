@@ -47,7 +47,17 @@ Section CommonFutures.
    << set_eq (LH [i] s') (HH s') >>, i.e the set of locally-honest-looking nodes for each node
    is equal to the set of nodes which would seem honest if we were to unite all observations
    from honest nodes. << incl (HH s') (LH [i] s') >> holds trivially for any <<s'>>. For the other
-   direction, we will require honest nodes to share observations among themselves.
+   direction, we will require honest nodes to share observations among themselves. This gives an initial
+   structure of our common future-finding algorithm:
+   
+   Send Phase' : All nodes in <<GH s>> do a send/update operation.
+   Receive Phase' : All nodes in <<GH s>> receive all messages sent in the Send Phase.
+   
+   The point is that by sending and receiving these messages, honest nodes will be up-to-date
+   regarding each other, hence knowing what state everyone was back in <<s>> and thus obtaining
+   the observations held at that point as well. We can show that this process is protocol and
+   that the new observations introduced into the pool can't really contain new information and thus
+   do not alter <<GH s>> (or even <<HH s>>).
 *) 
   
 
