@@ -14,6 +14,15 @@ Require Import
   VLSM.ListValidator.Observations
   .
 
+(* This is a version of the List Validator node which uses an
+   "equivocation aware" estimator. 
+   
+   This estimator ignores projections onto indices
+   that correspond to validators that can be proven equivocating using
+   the node's local observations.
+   
+   See [ListValidator.v] for the traditional LV estimator. *)
+
 Section EquivocationAwareValidator.
 
   Context
@@ -63,7 +72,10 @@ Section EquivocationAwareValidator.
     | Bottom => True
     | Something c some => in_mode_b (mode decisions) b = true 
     end.
-    
+ 
+  (* If at least one projection is non-equivocating,
+     the estimator is non-empty (it relates to either true or false). *)
+     
   Lemma ea_estimator_total 
     (s : state)
     (b : bool)

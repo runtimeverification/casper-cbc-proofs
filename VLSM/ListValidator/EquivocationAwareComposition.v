@@ -20,6 +20,15 @@ Require Import
   CBC.Common
   CBC.Equivocation.
  
+(* This file describes a free composition <X> of List Validator nodes, each using
+   an [equivocation_aware_estimator]. Also see:
+   
+   - [Observations.v] for the observation model used here
+   - [EquivocationAwareListValidator.v] for the used estimators
+   - [Equivocation.v] and [ListValidator.v] for some general
+     facts about List Validators.
+*)
+ 
 Section Composition.
 Context
   {index : Type}
@@ -43,6 +52,10 @@ Context
   
   Local Notation in_listing := (proj2 Hfinite).
   
+  (* We begin with some basic facts about the given composition. *)
+  
+  (* Protocol states are never bottom *)
+  
   Proposition Hsnb 
     (s : vstate X)
     (Hpr : protocol_state_prop X s) :
@@ -51,6 +64,9 @@ Context
     intros i.
     apply protocol_state_component_no_bottom. intuition.
   Qed.
+  
+  (* Applying a protocol plan of receive transitions do not alter the nodes'
+     self-projections (i.e, <<project (s i) i >> *)
   
   Proposition self_projections_same_after_receive
     (s : vstate X)
@@ -139,6 +155,9 @@ Context
      rewrite Hres_long.
      intuition.
   Qed.
+  
+  (* Applying a plan of send/update transitions does not alter
+     non-self projections. *)
   
   Proposition non_self_projections_same_after_send
     (s : vstate X)
@@ -236,6 +255,13 @@ Context
     List.map s li.
   
   Section EquivObsUtils.
+  
+  (* Here we instantiate the observation-based equivocation model for our composition.
+     The implicit <<ws>> stands for "witness set" and it means, in short, that we only
+     take into account validators in <<ws>> when gathering observations for the composite state.
+     Note that these observations can concern anyone, but they can only be taken from local
+     observations of validators in <<ws>>. *)
+  
   Context
   {ws : set index}.
   
@@ -262,6 +288,10 @@ Context
     simp_lv_event_lt_dec
     get_simp_event_subject_some.
   
+  (* The honest set: Validators for which there is no evidence of equivocation.
+     Note that some of these may actually be equivocating if we were to
+     take into account observations originating outside of <<ws>> *) 
+  
   Definition wH (s : vstate X) : set index := 
     List.filter (fun i : index => negb (
     @bool_decide _ (@composite_observable_events_equivocation_evidence_dec
@@ -274,7 +304,9 @@ Context
       simp_lv_event_lt
       simp_lv_event_lt_dec
       get_simp_event_subject_some s i))) index_listing.
-    
+  
+  (* The equivocating set : Validators for which there is evidence of equivocation. *)
+  
   Definition wE (s : vstate X) : set index := 
     List.filter (fun i : index => 
     @bool_decide _ (@composite_observable_events_equivocation_evidence_dec
@@ -287,6 +319,8 @@ Context
       simp_lv_event_lt
       simp_lv_event_lt_dec
       get_simp_event_subject_some s i)) index_listing.
+  
+  (* Shorthands for the union of observations. *)
   
   Definition wcobs := 
     (composite_state_events_fn ws IM_index Hstate_events_fn).
@@ -364,7 +398,7 @@ Context
       + intuition.
   Qed.
   
-  Lemma in_cobs_messages
+  Remark in_cobs_messages
     (s : vstate X)
     (target : index)
     (e : simp_lv_event)
@@ -377,7 +411,7 @@ Context
     intuition.
   Qed.
   
-  Lemma in_cobs_states
+  Remark in_cobs_states
     (s : vstate X)
     (target : index)
     (e : simp_lv_event)
@@ -390,7 +424,7 @@ Context
     intuition.
   Qed.
   
-  Lemma cobs_messages_states
+  Remark cobs_messages_states
     (s : vstate X)
     (target : index) :
     set_eq (wcobs s target) (set_union decide_eq (wcobs_states s target) (wcobs_messages s target)).
@@ -423,7 +457,7 @@ Context
          intuition.
   Qed.
   
-  Lemma in_cobs_and_message
+  Remark in_cobs_and_message
     (s : vstate X)
     (target : index)
     (e : simp_lv_event)
@@ -438,7 +472,7 @@ Context
     - intuition.
   Qed.
   
-  Lemma in_cobs_states'
+  Remark in_cobs_states'
     (s : vstate X)
     (target : index)
     (e : simp_lv_event)
@@ -450,7 +484,7 @@ Context
     left. intuition.
   Qed.
   
-  Lemma in_cobs_messages'
+  Remark in_cobs_messages'
     (s : vstate X)
     (target : index)
     (e : simp_lv_event)
@@ -468,6 +502,9 @@ Context
     _ decide_eq 
     simp_lv_event_lt simp_lv_event_lt_dec 
     get_simp_event_subject_some ce).
+  
+  (* There's at most one state observation
+     regarding a fixed validator. *)
   
   Lemma unique_state_observation 
     (s : vstate X)
@@ -487,6 +524,9 @@ Context
     - intuition.
   Qed.
   
+  (* And if said validator is in <<ws>>,
+     it's always there. *)
+  
   Lemma state_obs_present
     (s : vstate X)
     (i : index)
@@ -501,7 +541,7 @@ Context
     intuition.
   Qed.
   
-  Lemma GE_direct 
+  Remark GE_direct 
     (s : vstate X)
     (i : index) :
     In i (wE s) <-> (cequiv_evidence s i).
@@ -521,7 +561,11 @@ Context
       intuition.
   Qed.
   
-  Lemma hbo_cobs
+  (* Shortcircuiting the lengthy translation
+     between the observation typeclass and
+     the above definitions. *)
+  
+  Remark hbo_cobs
     (s : vstate X)
     (e : simp_lv_event) :
     has_been_observed s e <->
@@ -576,6 +620,9 @@ Context
      + intuition.
   Qed.
   
+  (* We have actual equality due to these
+     sets being the results of [filter]s. *)
+  
   Remark wE_eq_equality
     (s s' : vstate X) :
     set_eq (wE s) (wE s') -> (wE s) = (wE s').
@@ -597,7 +644,7 @@ Context
     intuition.
   Qed.
   
-  Lemma wH_wE'
+  Remark wH_wE'
     (s : vstate X)
     (i : index) :
     In i (wH s) <-> ~ In i (wE s).
@@ -625,7 +672,7 @@ Context
       + intuition.
   Qed.
   
-  Lemma wE_wH'
+  Remark wE_wH'
     (s : vstate X)
     (i : index) :
     In i (wE s) <-> ~ In i (wH s).
@@ -655,7 +702,7 @@ Context
         intuition.
   Qed.
   
-  Lemma wH_wE
+  Remark wH_wE
     (s : vstate X) :
     set_eq (wH s) (set_diff decide_eq index_listing (wE s)).
   Proof.
@@ -672,13 +719,25 @@ Context
       intuition. 
   Qed.
   
-  Lemma HE_eq_equiv
+  Remark HE_eq_equiv
     (s s' : vstate X) :
     (wH s) = (wH s') <-> (wE s) = (wE s').
   Proof.
     unfold wH. unfold wE.
     symmetry. apply filter_complement.
   Qed.
+  
+  (* We start to describe what happens to observations
+     when doing composite updates. Some results
+     that don't hold for arbitrary <<ws>> live outside
+     this section. *)
+     
+  (* If the update value is already present as the
+     underlying state of some observation regarding
+     <<j>>, then we produce no new observations 
+     
+     IF the update is on a projection which is NOT equal
+     to the subject of observation. *)
   
   Lemma cobs_message_existing_other_lf
     (s : vstate X)
@@ -774,6 +833,8 @@ Context
       intuition.
   Qed.
   
+  (* We also don't lose any observations in the above conditions. *)
+  
   Lemma cobs_message_existing_other_rt
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -822,6 +883,9 @@ Context
      all : intuition.
   Qed.
   
+  (* This also happens if <<so>> is not present in our obs, but 
+     it's also not bottom *)
+  
   Lemma cobs_message_existing_other_rt'
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -860,6 +924,8 @@ Context
      rewrite state_update_neq.
      all : intuition.
   Qed.
+  
+  (* Combining the above. *)
   
   Lemma cobs_message_existing_other
     (s : vstate X)
