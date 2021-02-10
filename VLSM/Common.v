@@ -1145,30 +1145,6 @@ traces.
       assumption.
     Qed.
     
-     Lemma protocol_message_from_protocol_trace_receive
-      (si : state)
-      (m : message)
-      (tr : list transition_item)
-      (Hprotocol: finite_protocol_trace si tr)
-      (Hm : List.Exists (fun elem : transition_item => input elem = Some m) tr) :
-      protocol_message_prop m.
-    Proof.
-      rewrite Exists_exists in Hm.
-      destruct Hm as [x [Hin Hinput]].
-      apply in_split in Hin.
-      destruct Hin as [l1 [l2 Hconcat]].
-      destruct Hprotocol.
-      specialize (protocol_transition_to si x tr l1 l2 Hconcat H).
-      intros.
-      simpl in H1.
-      unfold protocol_transition in H1.
-      unfold protocol_valid in H1.
-      destruct H1 as [[_ [H1 _]] _].
-      unfold option_protocol_message_prop in H1.
-      unfold protocol_message_prop.
-      rewrite Hinput in H1.
-      assumption.
-    Qed.
     (* End Hide *)
 
 (**
