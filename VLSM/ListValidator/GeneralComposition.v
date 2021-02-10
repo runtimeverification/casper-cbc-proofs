@@ -13,6 +13,7 @@ Require Import
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
+  VLSM.ListValidator.Observations
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.

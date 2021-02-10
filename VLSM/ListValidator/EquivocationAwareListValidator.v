@@ -11,6 +11,7 @@ Require Import
   VLSM.Common
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
+  VLSM.ListValidator.Observations
   .
 
 Section EquivocationAwareValidator.

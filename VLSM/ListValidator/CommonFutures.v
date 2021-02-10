@@ -13,6 +13,7 @@ Require Import
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
+  VLSM.ListValidator.Observations
   VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ListValidator.EquivocationAwareComposition
   VLSM.ListValidator.GeneralComposition
