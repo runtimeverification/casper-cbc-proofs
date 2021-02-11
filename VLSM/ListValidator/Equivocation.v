@@ -1757,7 +1757,7 @@ Context
           unfold finite_protocol_trace in Htr.
           destruct Htr as [Htr Hinitial].
 
-          rewrite Exists_exists.
+          unfold trace_has_message. rewrite Exists_exists.
           exists target.
           split.
           * rewrite Hsplit.
@@ -2014,7 +2014,7 @@ Context
               assumption.
           }
 
-        rewrite Exists_exists.
+        unfold trace_has_message. rewrite Exists_exists.
         destruct H0 as [prefix [suffix [target [Hconcat [Hproject Hno_earlier]]]]].
 
         exists target.
@@ -2121,7 +2121,7 @@ Context
           specialize (H start tr Hprotocol_tr).
           assert (Hlst := last_error_destination_last tr s Hdest start).
           specialize (H Hlst).
-          rewrite Exists_exists in H.
+          unfold trace_has_message in H. rewrite Exists_exists in H.
           destruct H as [x [Hin Hm]].
           apply in_split in Hin.
           destruct Hin as [l1 [l2 Hconcat]].
@@ -2225,7 +2225,8 @@ Context
       unfold has_not_been_sent_prop.
       unfold no_traces_have_message_prop.
       unfold selected_message_exists_in_no_preloaded_trace,
-          specialized_selected_message_exists_in_no_trace.
+          specialized_selected_message_exists_in_no_trace,
+          trace_has_message.
       split.
       - intros.
         unfold not_send_oracle in H.
@@ -2306,6 +2307,7 @@ Context
             }
 
             specialize (H0 H3 eq_refl).
+            unfold trace_has_message in H0.
             rewrite Exists_exists in H0.
             simpl in H0.
             destruct H0 as [x [Hfalse Hother]].
@@ -2315,7 +2317,7 @@ Context
             assert (Hlst := last_error_destination_last tr s Hdest start).
             specialize (H start tr Htr Hlst).
             specialize (H0 start tr Htr Hlst).
-            rewrite Exists_exists in H0.
+            unfold trace_has_message in H0. rewrite Exists_exists in H0.
             destruct H0 as [x [Hin Hm]].
             rewrite <- Forall_Exists_neg in H.
             rewrite Forall_forall in H.
@@ -2334,7 +2336,8 @@ Context
       unfold has_not_been_received_prop.
       unfold no_traces_have_message_prop.
       unfold selected_message_exists_in_no_preloaded_trace,
-          specialized_selected_message_exists_in_no_trace.
+          specialized_selected_message_exists_in_no_trace,
+          trace_has_message.
       split.
       - intros.
         unfold not_receive_oracle in H.
@@ -2417,6 +2420,7 @@ Context
             }
 
             specialize (H0 H3 eq_refl).
+            unfold trace_has_message in H0.
             rewrite Exists_exists in H0.
             simpl in H0.
             destruct H0 as [x [Hfalse Hother]].
@@ -2426,6 +2430,7 @@ Context
             assert (Hlst := last_error_destination_last tr s Hdest start).
             specialize (H start tr Htr Hlst).
             specialize (H0 start tr Htr Hlst).
+            unfold trace_has_message in H0.
             rewrite Exists_exists in H0.
             destruct H0 as [x [Hin Hm]].
             rewrite <- Forall_Exists_neg in H.
@@ -2700,6 +2705,7 @@ Context
         assert (Hlst := last_error_destination_last tr s Hdest si).
 
         specialize (H0 Hlst).
+        unfold trace_has_message in H0.
         rewrite Exists_exists in H0.
         destruct H0 as [x [Hin_x Houtput]].
         apply in_split in Hin_x.

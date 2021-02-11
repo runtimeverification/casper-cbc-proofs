@@ -1019,11 +1019,11 @@ Section proper_sent_received.
     (tr : list transition_item)
     (Htr : finite_protocol_trace bvlsm s tr)
     (m1 m2 : message)
-    (Hm1 : Equivocation.trace_has_message vlsm (field_selector output) m1 tr)
-    (Hm2 : Equivocation.trace_has_message vlsm (field_selector output) m2 tr)
+    (Hm1 : trace_has_message (field_selector output) m1 tr)
+    (Hm2 : trace_has_message (field_selector output) m2 tr)
     : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
   Proof.
-    unfold Equivocation.trace_has_message in *.
+    unfold trace_has_message in *.
     apply Exists_exists in Hm1. destruct Hm1 as [item1 [Hitem1 Hm1]].
     apply Exists_exists in Hm2. destruct Hm2 as [item2 [Hitem2 Hm2]].
     apply in_split in Hitem1.

@@ -122,7 +122,7 @@ Definition free_equivocating_vlsm_composition : VLSM message
 
 Definition seeded_free_equivocators_composition
   (messageSet : message -> Prop)
-  := vlsm_add_initial_messages free_equivocating_vlsm_composition
+  := pre_loaded_with_vlsm free_equivocating_vlsm_composition
       (fun m => messageSet m \/ vinitial_message_prop X m).
 
 Context

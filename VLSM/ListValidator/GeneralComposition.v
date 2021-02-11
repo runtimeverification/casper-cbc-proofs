@@ -193,7 +193,7 @@ Context
       destruct om as [m|] eqn : eq_om.
       + destruct Hvalid as [_ [_ Hcvalid]].
         unfold constrained_composite_valid in Hcvalid.
-        unfold free_composite_valid in Hcvalid.
+        unfold composite_valid in Hcvalid.
         unfold vvalid in Hcvalid.
         unfold valid in Hcvalid.
         unfold machine in Hcvalid.
@@ -218,7 +218,7 @@ Context
       + inversion Ht.
         destruct Hvalid as [_ [_ Hcvalid]].
           unfold constrained_composite_valid in Hcvalid.
-          unfold free_composite_valid in Hcvalid.
+          unfold composite_valid in Hcvalid.
           unfold vvalid in Hcvalid.
           unfold valid in Hcvalid.
           unfold machine in Hcvalid.
@@ -278,7 +278,7 @@ Context
           assumption.
           assumption.
        + unfold constrained_composite_valid in Hvalid.
-         unfold free_composite_valid in Hvalid.
+         unfold composite_valid in Hvalid.
          unfold vvalid in Hvalid.
          unfold valid in Hvalid.
          unfold machine in Hvalid.

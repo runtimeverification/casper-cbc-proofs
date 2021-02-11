@@ -461,7 +461,7 @@ messages, implementing a limited equivocation tolerance policy.
     unfold selected_message_exists_in_no_preloaded_trace,
        specialized_selected_message_exists_in_no_trace.
     split.
-    - intros.
+    - intros. unfold trace_has_message.
       rewrite <- Forall_Exists_neg.
       apply Forall_forall.
       intros item Hitem Hm.
