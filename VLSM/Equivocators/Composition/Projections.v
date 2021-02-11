@@ -487,7 +487,7 @@ Qed.
 Lemma seeded_equivocators_incl_preloaded
   : VLSM_incl SeededXE PreFreeE.
 Proof.
-  apply seeded_equivocators_incl_preloaded.
+  apply composite_no_equivocation_vlsm_with_pre_loaded_incl_pre_loaded_with_all_messages.
 Qed.
 
 Lemma preloaded_equivocators_protocol_trace_from_project
@@ -921,7 +921,7 @@ Proof.
     ) as Hproject.
   spec Hproject.
   { apply VLSM_incl_finite_trace; [|assumption].
-    specialize (false_seeded_composite_no_equivocation_vlsm equivocator_IM (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index)
+    specialize (pre_loaded_with_false_composite_no_equivocation_vlsm_eq equivocator_IM (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index)
       as Heq.
     match goal with
     |- VLSM_incl_part ?m1 ?m2 =>

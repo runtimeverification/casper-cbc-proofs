@@ -93,7 +93,7 @@ Definition seeded_equivocators_no_equivocation_vlsm
   (seed : message -> Prop)
   : VLSM message
   :=
-  seeded_composite_no_equivocation_vlsm equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index seed.
+  composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index seed.
 
 Lemma equivocators_initial_state_size
   (is : vstate equivocators_no_equivocations_vlsm)
