@@ -21,6 +21,15 @@ Require Import
   CBC.Common
   CBC.Equivocation.
 
+(* 
+Also see:
+   - [Observations.v] for the observation model used here
+   - [EquivocationAwareListValidator.v] for the used estimators
+   - [EquivocationAwareComposition.v] for results concerning this type of composition
+   - [Equivocation.v] and [ListValidator.v] for some general
+     facts about List Validators. *)
+     
+
 Section CommonFutures.
 
 (* The Common Futures Theorem for List Validators.
@@ -33,7 +42,7 @@ Section CommonFutures.
    (1) <<s'>> is a future state of <<s>>.
    (2) The set of honest nodes in <<s'>> is identical to the set of honest nodes in <<s>>.
        Formally, we have <<set_eq (GH s') (GH s)>>.
-   (3) All honest nodes have the same estimator in <<s'>>
+   (3) All honest nodes have the same estimator in <<s'>>.
    
    We will focus on the strategy for achieving (3), noting along the way that we're not breaking (1)
    or (2). We achieve (3) by making sure that all estimators of honest nodes take the same input
@@ -43,7 +52,7 @@ Section CommonFutures.
    (3.2) For each locally-honest-appearing node <<h>>, all honest nodes have identical projections onto
        <<h>>
        
-   The most natural way to achieve (3.1) is to assure that for all honest nodes <<i>>, 
+   The most natural way to achieve (3.1) is to ensure that for all honest nodes <<i>>, 
    << set_eq (LH [i] s') (HH s') >>, i.e the set of locally-honest-looking nodes for each node
    is equal to the set of nodes which would seem honest if we were to unite all observations
    from honest nodes. << incl (HH s') (LH [i] s') >> holds trivially for any <<s'>>. For the other
@@ -54,13 +63,13 @@ Section CommonFutures.
    Receive Phase' : All nodes in <<GH s>> receive all messages sent in the Send Phase.
    
    The point is that by sending and receiving these messages, honest nodes will be up-to-date
-   regarding each other, hence knowing what state everyone was back in <<s>> and thus obtaining
+   regarding each other, hence knowing what state everyone had back in <<s>> and thus obtaining
    the observations held at that point as well. We can show that this process is protocol and
    that the new observations introduced into the pool can't really contain new information and thus
    do not alter <<GH s>> (or even <<HH s>>).
    
    What about (3.2)? Our current algorithm doesn't necessarily solve (3.2), because there
-   may exist nodes in <<(HH s)>> which are outside of << (GH s)>> and projections onto
+   may exist nodes in <<(HH s)>> which are outside of <<(GH s)>> and projections onto
    these indices remain unaffected by our algorithm (so if they weren't precisely equal
    in the beginning, we have a problem).
    
@@ -73,7 +82,7 @@ Section CommonFutures.
                    - it is valid for <<i>> to receive <<top_s>>.
    
    In other words, each honest <<i>> tries to update its <<j>> component to the freshest/most advanced
-   projection any honest validator has onto <<j>>. If there are several such maximal projections
+   projection any honest validator has onto <<j>>. If there are several different maximal projections
    (which can happen if <<j>> is equivocating), we select an arbitrary one that we can receive.
    Note that it can happen that <<i>> sticks to its own projection onto <<j>>.
    
@@ -108,6 +117,9 @@ Context
   Local Notation hbo_cobs' := (@hbo_cobs index i0 index_listing Hfinite idec Mindex Rindex).
   Local Notation in_listing := (proj2 Hfinite).
     
+  (* Returns a boolean <<b>> such that it is valid to perform an update transition
+     using <<b>> in state <<s who>> *)
+     
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
     | Bottom => false
@@ -116,6 +128,9 @@ Context
                         | false => true
                         end
     end.
+  
+  (* Such a boolean doesn't exist if a node sees everyone as equivocating, so we need a hypothesis
+     to exclude this possibility. *)
   
   Definition not_all_equivocating
     (s : (@state index index_listing))
@@ -162,6 +177,8 @@ Context
   Definition feasible_update_composite (s : vstate X) (who : index) : vplan_item X :=
     lift_to_composite_plan_item IM_index who (feasible_update_single (s who) who).
   
+  (* Updates using the feasible value are protocol. *)
+  
   Lemma feasible_update_protocol 
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
@@ -206,6 +223,8 @@ Context
     rewrite Heqproj in Hj.
     intuition.
   Qed.
+  
+  (* Main lemma about the sending phase. *)
   
   Lemma chain_updates_protocol
     (s : vstate X)
@@ -445,6 +464,8 @@ Context
           assumption.
   Qed.
   
+  (* Some wrappers for clarity of expoisition going forward. *)
+  
   Definition send_phase_plan (s : vstate X) : vplan X :=
     chain_updates (GH s) s.
  
@@ -459,7 +480,7 @@ Context
     (s : vstate X) :=
     fst (send_phase s).
   
-  Lemma send_phase_protocol
+  Remark send_phase_protocol
     (s : vstate X)
     (Hprs : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s)) :
@@ -487,7 +508,7 @@ Context
     all : intuition.
   Qed.
   
-  Lemma send_phase_GE
+  Remark send_phase_GE
     (s : vstate X)
     (Hprs : protocol_state_prop X s)
     (Hnf : no_component_fully_equivocating s (GH s)) :
@@ -502,7 +523,7 @@ Context
     unfold send_phase. intuition.
   Qed.
   
-  Lemma send_phase_future 
+  Remark send_phase_future 
     (s : vstate X)
     (Hnf : no_component_fully_equivocating s (GH s))
     (Hspr : protocol_state_prop _ s) :
@@ -567,9 +588,17 @@ Context
   Definition lift_to_receive_item (to from : index) (s : state): vplan_item (IM_index to) :=
     @Build_plan_item _ (type (IM_index to)) receive (Some (from, s)).
   
+  (* Construct a [vplan X] such that <s to> will receive the messages 
+     in <ls>. *)
+  
   Definition sync_plan (to from : index) (ls : list state) : (vplan X) := 
     let tmp := List.map (lift_to_receive_item to from) ls in
     List.map (lift_to_composite_plan_item IM_index to) tmp.
+  
+  (* Construct a plan which syncs up <<project (s to) from>> with 
+     <<project s' from>> via receiving messages. If the states' <<from>> histories
+     don't match, None is returned. 
+     See [Lib/ListExtras.v] for [complete_suffix]. *) 
   
   Definition sync (s : vstate X) (s': state) (to from : index) : option (vplan X) :=
     let history_s := get_history (s to) from in
@@ -580,7 +609,11 @@ Context
     | Some ss => let rem_plan := sync_plan to from (rev ss) in
                  Some rem_plan
     end.
-   
+  
+  (*The syncing plan is protocol and it does what is expected.
+    Note the index <<inter>>, which denotes the validator which
+    owns the projection we will choose to sync to. *)
+  
   Lemma one_sender_receive_protocol
     (s s': vstate X)
     (Hpr : protocol_state_prop X s)
@@ -835,6 +868,8 @@ Context
         reflexivity.
     Qed.
    
+   (* We look for suitable projections among the honest validators *)
+   
     Definition get_candidates 
       (s : vstate X) :
       list state 
@@ -844,12 +879,18 @@ Context
     Existing Instance state_lt'_dec.
     Existing Instance state_lt_ext_dec.
     
+    (* Retain only projections which are maximal, i.e, no other projections
+       compare greater to them. *)
+    
     Definition get_topmost_candidates
       (s : vstate X)
       (target : index) :
       list state 
       :=
       get_maximal_elements (fun s s' => bool_decide (state_lt_ext target (project s target) (project s' target))) (get_candidates s).
+    
+    (* If <<i>> is honest, all candidate projections onto <<i>> compare less than
+       <<(s i)>> *)
     
     Lemma honest_self_projections_maximal1
       (s : vstate X)
@@ -903,7 +944,9 @@ Context
       apply wH_wE' in Hhonest. intuition.
   Qed.
   
-    Lemma honest_self_projections_maximal2
+  (* Similar statement, stating a <= relation with <<project (s i) i>>. *)
+  
+  Lemma honest_self_projections_maximal2
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (i j : index)
@@ -950,13 +993,13 @@ Context
         apply in_app_iff. right. intuition.
   Qed.
     
-    Lemma honest_always_candidate_for_self
+  Lemma honest_always_candidate_for_self
       (s : vstate X)
       (Hpr : protocol_state_prop X s)
       (i : index)
       (Hhonest : In i (GH s)) :
       In (s i) (get_topmost_candidates s i).
-    Proof.
+  Proof.
      - unfold get_topmost_candidates.
       unfold get_maximal_elements.
       apply filter_In.
@@ -1009,7 +1052,11 @@ Context
     destruct Hh;[intuition congruence|].
     intuition.
   Qed.
-    
+  
+  (* Find the state we want to sync to.
+     Choose a candidate for which syncing is valid. If none exists, default to your
+     own projection. *)
+     
     Definition get_matching_state
       (s : vstate X)
       (to from : index) : state :=
@@ -1055,6 +1102,11 @@ Context
       destruct Hinter as [Hmatch Hinter].
       destruct Hinter;[subst to;intuition|intuition].
     Qed.
+    
+    (* The following results are used to show that there exists at least
+       one maximal candidate. We do this by relating the comparison operator
+       to comparing history lengths between candidates. The maximal candidate
+       will have the longest <<from>> history. *)
     
     Definition top_history
       (s : vstate X)
@@ -1381,6 +1433,9 @@ Context
         intuition. 
     Qed.
     
+    (* Results of this type are useful for quickly unpacking
+       information about the constructed plan. *)
+       
     Remark get_matching_plan_info
       (s : vstate X)
       (from to : index)
@@ -1430,6 +1485,9 @@ Context
         + contradict Hin.
     Qed.
     
+    (* Construct a plan in which indices in <<li>> sync their
+       <<from>> projections. *)
+    
     Definition get_receives_for
       (s : vstate X)
       (li : list index)
@@ -1437,7 +1495,7 @@ Context
       let matching_plans := List.map (get_matching_plan s from) li in
       List.concat matching_plans.
       
-    Definition get_receives_for_info
+    Remark get_receives_for_info
       (s : vstate X)
       (li : list index)
       (from : index)
@@ -1692,7 +1750,9 @@ Context
       apply get_receives_for_info in H.
       intuition.
     Qed.
-    
+    (* Receiving plans which don't involve the <<j>>'th components of nodes
+       leave them unaffected. *)
+       
     Lemma receives_neq
       (s : vstate X)
       (Hpr : protocol_state_prop X s)
@@ -2039,7 +2099,6 @@ Context
              rewrite state_update_neq.
              all : intuition.
     Qed.
-    
       
     Definition others (i : index) (s : vstate X) := 
       set_remove idec i (GH s).

@@ -728,16 +728,9 @@ Context
   Qed.
   
   (* We start to describe what happens to observations
-     when doing composite updates. Some results
+     when doing composite updates (similarly to results in [Observations.v]). Some results
      that don't hold for arbitrary <<ws>> live outside
      this section. *)
-     
-  (* If the update value is already present as the
-     underlying state of some observation regarding
-     <<j>>, then we produce no new observations 
-     
-     IF the update is on a projection which is NOT equal
-     to the subject of observation. *)
   
   Lemma cobs_message_existing_other_lf
     (s : vstate X)
@@ -833,8 +826,6 @@ Context
       intuition.
   Qed.
   
-  (* We also don't lose any observations in the above conditions. *)
-  
   Lemma cobs_message_existing_other_rt
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -883,9 +874,6 @@ Context
      all : intuition.
   Qed.
   
-  (* This also happens if <<so>> is not present in our obs, but 
-     it's also not bottom *)
-  
   Lemma cobs_message_existing_other_rt'
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
@@ -924,8 +912,6 @@ Context
      rewrite state_update_neq.
      all : intuition.
   Qed.
-  
-  (* Combining the above. *)
   
   Lemma cobs_message_existing_other
     (s : vstate X)
