@@ -141,7 +141,8 @@ Section Full.
     + exists None.
       assert (Heq : exist (fun s : CBC.Definitions.state => locally_sorted s) Empty Hs = proj1_sig s0)
         by (simpl; apply exist_eq; reflexivity).
-      rewrite Heq; clear Heq. constructor.
+      rewrite Heq; clear Heq.
+      apply protocol_initial_state;apply proj2_sig.
     + specialize (protocol_state_sorted j H0); intros Hsj.
       specialize (protocol_state_sorted s H); intros Hss.
       remember (Some (c, v, (exist _ j Hsj))) as om.
@@ -171,7 +172,8 @@ Section Full.
       remember (add_message_sorted (c,v,sj) sj) as sj'.
       specialize (protocol_generated (VLSM_full_client1) None ss _om Pss sj' (Some (c,v,sj))); intros Pss'.
       assert (Pcvj : protocol_prop (VLSM_full_client1) (sj', Some (c, v, sj))).
-      { specialize (protocol_generated (VLSM_full_client1) (Some (c,v)) sj _omj Psj (proj1_sig s0) None (protocol_initial_state (VLSM_full_client1) s0)); intros Pcvj'.
+      { specialize (protocol_generated (VLSM_full_client1) (Some (c,v)) sj _omj Psj (proj1_sig s0) None (protocol_initial_state _ (proj2_sig _))).
+        intros Pcvj'.
         assert (Hvj' : valid_client (Some (c, v)) (sj, None)).
         { subst. simpl. split; auto. unfold valid_estimate in H2. unfold estimator in H2; simpl in H2. unfold estimator_proj1 in H2.
           rewrite (make_already_sorted_state j Hsj) in H2. assumption.
@@ -200,10 +202,7 @@ Section Full.
     generalize dependent om. generalize dependent s.
     induction P; intros.
     - inversion Heqsom; subst; clear Heqsom.
-       destruct is as [is His]. simpl in s. unfold s in *. clear s.
-       rewrite His in *. unfold sorted_state0. simpl in Hin. inversion Hin.
-    - inversion Heqsom; subst; clear Heqsom. unfold s in *; clear s.
-      unfold s0 in Hin; simpl in Hin. inversion Hin.
+      rewrite Hs in *. unfold sorted_state0. simpl in Hin. inversion Hin.
     - unfold transition in Heqsom; simpl in Heqsom.
       destruct l as [[c0 v0] |]; destruct om as [msg|].
       + specialize (IHP1 s _om eq_refl).
@@ -216,7 +215,7 @@ Section Full.
         simpl in *.
         repeat rewrite in_state_add_in_sorted_iff in Hin.
         destruct Hin as [Heq | [Heq | Hin]]; try (inversion Heq; subst; clear Heq).
-        * inversion P2; try (destruct im as [m Him]; contradiction).
+        * inversion P2;[contradiction|].
           { destruct l as [[c1' v1']|]; destruct om as [msg|].
           - destruct s as [j1' Hj1'].
             inversion H0; subst; clear H0.
@@ -248,7 +247,7 @@ Section Full.
                   P1
                   (proj1_sig s0)
                   None
-                  (protocol_initial_state (VLSM_full_client1) s0)
+                  (protocol_initial_state (VLSM_full_client1) (proj2_sig s0))
               ).
             simpl in PG.
             replace Hj with Hj0; try apply proof_irrelevance. apply PG.
@@ -271,7 +270,7 @@ Section Full.
                 P1
                 (proj1_sig s0)
                 None
-                (protocol_initial_state (VLSM_full_client1) s0)
+                (protocol_initial_state (VLSM_full_client1) (proj2_sig s0))
                 Hv
             ).
           simpl in PG.
@@ -288,7 +287,7 @@ Section Full.
         destruct Hin as [Heq | Hin]; try (inversion Heq; subst; clear Heq).
         * simpl. simpl in Hv. destruct Hv as [Hincl Hnh].
           { split.
-          - inversion P2; try (destruct im as [m Him]; inversion Him).
+          - inversion P2;[contradiction|].
             destruct l as [[c1' v1']|]; destruct om as [msg|].
             + destruct s0 as [j1' Hj1'].
               inversion H0; subst; clear H0.
@@ -320,7 +319,7 @@ Section Full.
     (P : (protocol_prop VLSM_full_client1) (s, Some m))
     : in_state m (proj1_sig s).
   Proof.
-    inversion P; try (destruct im as [im Him]; inversion Him).
+    inversion P;[contradiction|].
     destruct l as [[c0 v0] |]; destruct om as [msg|]
     ; inversion H0; subst; clear H0
     ; destruct s0 as [j0 Hj0]
@@ -344,10 +343,8 @@ Section Full.
       as som.
     generalize dependent om. generalize dependent s.
     induction P; intros.
-    - destruct is as [is His]. unfold s in *. clear s.
-      simpl in Heqsom. rewrite His in Heqsom. inversion Heqsom; subst; clear Heqsom.
+    - simpl in Hs. rewrite Hs in Heqsom. inversion Heqsom; subst; clear Heqsom.
       constructor.
-    - destruct im as [m Him]. inversion Him.
     - assert (P0 : protocol_prop (VLSM_full_client1) (s0, om0)).
       { unfold vstate. rewrite <- Heqsom.
         apply (protocol_generated (VLSM_full_client1)) with _om _s; try assumption.

@@ -114,61 +114,26 @@ Context
       (s : protocol_state preX) :
       (proj1_sig s) <> Bottom.
     Proof.
-      destruct s.
+      destruct s as [x H].
       simpl.
-      destruct p.
+      destruct H as [x0 H].
+      change x with (fst (x, x0)).
       remember (x, x0) as gigi.
-      generalize dependent x0.
-      generalize dependent x.
+      clear x x0 Heqgigi.
       induction H.
-      - intros.
-        simpl in *.
-        destruct is.
-        simpl in *.
-        unfold initial_state_prop in i.
-        destruct i.
-        unfold s.
-        inversion Heqgigi.
-        subst.
-        discriminate.
-      - intros.
-        simpl in *.
-        unfold s.
-        inversion Heqgigi.
-        unfold s.
-        discriminate.
+      - simpl. 
+        destruct Hs.
+        congruence.
       - destruct l eqn : eq.
         + intros.
           simpl in *.
-          inversion Heqgigi.
           unfold update_consensus.
           unfold update_state.
-          assert (dif : s <> Bottom). {
-            apply IHprotocol_prop1 with (x0 := _om).
-            reflexivity.
-          }
-          destruct s.
-          * assumption.
-          * simpl in *.
-            discriminate.
-         + intros.
-           simpl in *.
-           assert (dif : s <> Bottom). {
-            apply IHprotocol_prop1 with (x0 := _om).
-            reflexivity.
-          }
-          destruct om.
-          inversion Heqgigi.
-          * unfold update_state.
-            destruct s.
-            assumption.
-            discriminate.
-          * inversion Heqgigi.
-            destruct s.
-            elim dif.
-            reflexivity.
-            rewrite <- H2.
-            discriminate.
+          destruct s;congruence.
+        + intros.
+          simpl in *.
+          destruct s;[congruence|].
+          destruct om;simpl;discriminate.
     Qed.
 
     Lemma protocol_prop_no_bottom :

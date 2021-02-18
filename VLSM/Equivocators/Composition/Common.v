@@ -352,26 +352,10 @@ Proof.
   revert om. revert es.
   induction Hes; simplify_dep_elim.
   - split.
-    + exists (proj1_sig (vs0 X)). apply (protocol_initial_state X).
-    + destruct is as [is His]. unfold s. simpl.
-      intros.
-      specialize (equivocators_initial_state_project _ His eqv_choice Heqv) as HisX.
-      remember (equivocators_state_project eqv_choice is) as isX.
-      change isX with (proj1_sig (exist _ _ HisX)).
-      exists None.
-      apply protocol_initial_state.
-  - split.
-    + exists (proj1_sig (vs0 X)). unfold om0. clear om0.
-      destruct im as [im Him]. simpl.
-      apply equivocators_initial_message in Him.
-      apply (protocol_initial_message X (exist _ im Him)).
-    + destruct s0 as [is His]. unfold s. simpl. clear s.
-      intros.
-      specialize (equivocators_initial_state_project _ His eqv_choice Heqv) as HisX.
-      remember (equivocators_state_project eqv_choice is) as isX.
-      change isX with (proj1_sig (exist _ _ HisX)).
-      exists None.
-      apply protocol_initial_state.
+    + apply option_initial_message_is_protocol. assumption.
+    + intros.
+      specialize (equivocators_initial_state_project _ Hs eqv_choice Heqv) as HsX.
+      apply initial_is_protocol. assumption.
   - specialize (IHHes1 s _om JMeq_refl). apply proj2 in IHHes1.
     specialize (IHHes2 _s om0 JMeq_refl). apply proj1 in IHHes2.
     simpl in x.

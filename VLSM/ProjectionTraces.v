@@ -362,12 +362,8 @@ Proof.
   specialize (finite_ptrace_projection start); intro Hproj.
   assert (Hstartj : initial_state_prop (start j)) by apply Hinit.
   remember (exist _ (start j) Hstartj) as istartj.
-  assert (Hpstartj : protocol_state_prop Xj (start j)).
-  { exists None.
-    specialize (protocol_initial_state Xj istartj) as Hpinit.
-    subst.
-    assumption.
-  }
+  assert (Hpstartj : protocol_state_prop Xj (start j))
+    by (apply initial_is_protocol;assumption).
   specialize (Hproj Hpstartj _ Htrace).
   specialize (trace_is_run Xj (start j) (finite_trace_projection_list transitions)) as Hrun.
   specialize (Hrun (conj Hproj Hstartj)).

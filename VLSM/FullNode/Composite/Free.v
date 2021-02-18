@@ -222,17 +222,10 @@ Proof.
   generalize dependent om.
   generalize dependent s.
   induction Hsom; intros; inversion Heqsom; subst; clear Heqsom.
-  - unfold s in *; clear s. destruct is as [is His]. simpl in *.
-    specialize (His v).
+  - simpl in *.
+    specialize (Hs v).
     destruct v
-    ; simpl in Hm; inversion His
-    ; rewrite H0 in Hm
-    ; inversion Hm
-    .
-  - unfold s in *; clear s. destruct s0 as [is His]. simpl in *.
-    specialize (His v).
-    destruct v
-    ; simpl in Hm; inversion His
+    ; simpl in Hm; inversion Hs
     ; rewrite H0 in Hm
     ; inversion Hm
     .
