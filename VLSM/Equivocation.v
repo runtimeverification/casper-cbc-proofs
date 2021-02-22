@@ -1802,6 +1802,72 @@ Section Composite.
     let (s', om') := (vtransition X l som) in
     not_heavy s'.
 
+    (* begin hide *)
+  Lemma sent_component_protocol_composed
+    (s : vstate X)
+    (Hs : protocol_state_prop X s)
+    (i : index)
+    (m : message)
+    (Hsent : (@has_been_sent _ _ (has_been_sent_capabilities i)
+           (s i) m)) :
+    protocol_message_prop X m.
+  Proof.
+    assert (Hcomp : has_been_sent X s m) by (exists i; intuition).
+    assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
+      (apply pre_loaded_with_all_messages_protocol_state_prop; intuition).
+    
+    apply protocol_state_has_trace in Hs as H'.
+    destruct H' as [is [tr [Hpr Hlast]]].
+    assert (Hpr_pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) is tr). {
+      (* There's probably a shortcut for this, but where is it? *)
+      specialize (@vlsm_incl_pre_loaded_with_all_messages_vlsm _ X) as Hincl.
+      unfold VLSM_incl in Hincl.
+      specialize (Hincl (Finite is tr) Hpr).
+      unfold protocol_trace_prop in Hincl.
+      intuition.
+    }
+    
+    specialize (@proper_sent _ X _ s H m) as Hprop.
+    unfold has_been_sent_prop in Hprop.
+    unfold all_traces_have_message_prop in Hprop.
+    apply Hprop in Hcomp.
+    specialize (Hcomp is tr Hpr_pre Hlast).
+    destruct Hpr as [Hpr His].
+    apply protocol_trace_output_is_protocol with (is0 := is) (tr0 := tr); intuition.
+  Qed.
+
+  Lemma received_component_protocol_composed
+    (s : vstate X)
+    (Hs : protocol_state_prop X s)
+    (i : index)
+    (m : message)
+    (Hreceived : (@has_been_received _ _ (has_been_received_capabilities i)
+           (s i) m)) :
+    protocol_message_prop X m.
+  Proof.
+    assert (Hcomp : has_been_received X s m) by (exists i; intuition).
+    assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
+      (apply pre_loaded_with_all_messages_protocol_state_prop; intuition).
+    
+    apply protocol_state_has_trace in Hs as H'.
+    destruct H' as [is [tr [Hpr Hlast]]].
+    assert (Hpr_pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) is tr). {
+      specialize (@vlsm_incl_pre_loaded_with_all_messages_vlsm _ X) as Hincl.
+      unfold VLSM_incl in Hincl.
+      specialize (Hincl (Finite is tr) Hpr).
+      unfold protocol_trace_prop in Hincl.
+      intuition.
+    }
+    
+    specialize (@proper_received _ X _ s H m) as Hprop.
+    unfold has_been_received_prop in Hprop.
+    unfold all_traces_have_message_prop in Hprop.
+    apply Hprop in Hcomp.
+    specialize (Hcomp is tr Hpr_pre Hlast).
+    destruct Hpr as [Hpr His].
+    apply protocol_trace_input_is_protocol with (is0 := is) (tr0 := tr); intuition. 
+  Qed.
+     (* end hide *)
 End Composite.
 
 Section cannot_resend_message.

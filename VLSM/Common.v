@@ -1133,7 +1133,6 @@ traces.
       (Hprotocol: finite_protocol_trace si tr)
       (Hm : List.Exists (fun elem : transition_item => output elem = Some m) tr) :
       can_emit m.
-
     Proof.
       rewrite Exists_exists in Hm.
       destruct Hm as [x [Hin Houtput]].
@@ -2707,6 +2706,18 @@ Byzantine fault tolerance analysis. *)
         by exact I.
       apply (protocol_initial_message pre_loaded_with_all_messages_vlsm (exist _ m Him)).
     - apply (protocol_generated pre_loaded_with_all_messages_vlsm) with _om _s; assumption.
+  Qed.
+  
+  Lemma pre_loaded_with_all_messages_protocol_state_prop
+    (s : state)
+    (Hps : protocol_state_prop X s)
+    : protocol_state_prop pre_loaded_with_all_messages_vlsm s.
+  Proof.
+    unfold protocol_state_prop in *.
+    destruct Hps as [om Hprs].
+    exists om.
+    apply pre_loaded_with_all_messages_protocol_prop.
+    intuition.
   Qed.
   (* end hide *)
 

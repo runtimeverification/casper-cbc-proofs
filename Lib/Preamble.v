@@ -6,6 +6,10 @@ Tactic Notation "spec" hyp(H) :=
   match type of H with ?a -> _ =>
   let H1 := fresh in (assert (H1: a);
   [|generalize (H H1); clear H H1; intro H]) end.
+Tactic Notation "spec_save" hyp(H) :=
+  match type of H with ?a -> _ =>
+  let H1 := fresh in (assert (H1: a);
+  [|generalize (H H1); clear H; intro H]) end.
 Tactic Notation "spec" hyp(H) constr(a) :=
   (generalize (H a); clear H; intro H).
 Tactic Notation "spec" hyp(H) constr(a) constr(b) :=
@@ -387,6 +391,15 @@ Definition comparable
   : Prop
   :=
   a = b \/ R a b \/ R b a.
+  
+Lemma comparable_commutative
+   {A : Type}
+   (R : A -> A -> Prop)
+   (a b : A) :
+   comparable R a b <-> comparable R b a.
+Proof.
+  firstorder.
+Qed.
 
 Definition comparableb
   `{EqDecision A}
