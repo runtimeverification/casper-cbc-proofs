@@ -12,7 +12,7 @@ Definition set_eq {A} (s1 s2 : set A) : Prop :=
 Lemma set_eq_extract_forall
   {A : Type}
   (l1 l2 : set A)
-  : set_eq l1 l2 <-> forall a, (In a l1 -> In a l2) /\ (In a l2 -> In a l1).
+  : set_eq l1 l2 <-> forall a, (In a l1 <-> In a l2).
 Proof.
   unfold set_eq. unfold incl. apply forall_and_commute.
 Qed.

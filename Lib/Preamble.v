@@ -87,9 +87,8 @@ Qed.
 Lemma forall_and_commute
   {A : Type}
   (P Q : A -> Prop)
-  : (forall a, P a) /\ (forall a, Q a) <-> forall a, P a /\ Q a.
+  : ((forall a, P a) /\ (forall a, Q a)) <-> forall a, P a /\ Q a.
 Proof.
-  clear.
   firstorder.
 Qed.
 

@@ -1953,7 +1953,7 @@ Context
              intuition.
   Qed.
   
-  Lemma ep_plan 
+  Lemma receive_plan_preserves_equivocation 
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
     (a : vplan X)

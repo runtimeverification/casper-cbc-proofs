@@ -349,7 +349,6 @@ Context
       }
       
       simpl in IHli.
-      
       split.
       + apply finite_protocol_plan_from_app_iff.
         split.
@@ -362,8 +361,7 @@ Context
         * rewrite Heqs' in IHli at 1.
           unfold chain_updates in IHli.
           rewrite Hchain; intuition.
-      +
-        unfold res; simpl.
+      + unfold res; simpl.
         replace (feasible_update_composite s i :: chain_updates li s) with 
                 ([feasible_update_composite s i] ++ chain_updates li s) by intuition.
         rewrite apply_plan_app.
@@ -2373,7 +2371,7 @@ Context
       (res_receive := receive_phase_result s) :
       set_eq (GE res_receive) (GE s).
     Proof.
-      specialize (ep_plan s Hprs (receive_phase_plan s)) as Hep.
+      specialize (receive_plan_preserves_equivocation s Hprs (receive_phase_plan s)) as Hep.
       spec Hep. apply receive_phase_protocol. intuition. 
       spec Hep. {
         intros.
