@@ -32,7 +32,7 @@ Context
   (MachineDescriptor := MachineDescriptor X)
   .
 
-Local Tactic Notation "unfold_transition"  hyp(H) :=
+Local Ltac unfold_transition H :=
   ( unfold transition in H; unfold equivocator_vlsm in H
   ; unfold Common.equivocator_vlsm in H
   ; unfold mk_vlsm in H; unfold machine in H
@@ -257,12 +257,14 @@ Proof.
       * inversion e. subst ni. clear e.
         eexists _. eexists _. split; [reflexivity|]. split; [repeat split|].
         -- unfold equivocator_state_descriptor_project.
+          unfold equivocator_state_project.
           destruct (le_lt_dec (S n) n); [lia|]. simpl. f_equal. apply of_nat_ext.
         -- intros.
           destruct Hv as [Heqv Hv].
           split; [assumption|].
           intros.
           unfold equivocator_state_descriptor_project in Hsx.
+          unfold equivocator_state_project in Hsx.
           simpl.
           unfold fst in Hv.
           unfold vvalid in Hv.
@@ -311,11 +313,13 @@ Proof.
         eexists _. eexists _. split; [reflexivity|].
         split; [repeat split|].
         -- unfold equivocator_state_descriptor_project.
+          unfold equivocator_state_project.
           destruct (le_lt_dec (S ni) n); [lia|]. simpl. f_equal. apply of_nat_ext.
         -- intros.  destruct Hv as [Heqv Hv].
           split; [assumption|].
           intros. simpl.
           unfold equivocator_state_descriptor_project in Hsx.
+          unfold equivocator_state_project in Hsx.
           unfold fst in Hv.
           unfold vvalid in Hv.
           unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.

@@ -106,29 +106,45 @@ Proof.
   assumption.
 Qed.
 
-Definition equivocators_choice : Type := forall (eqv : equiv_index), MachineDescriptor (IM eqv).
+(**
+An indexed set of [MachineDescriptor]s, one for each equivocating machine in
+the composition.
 
-Definition proper_equivocators_choice
-  (eqv_choice : equivocators_choice)
+This will be used to project [composite_state]s and [composite_transition_item]s
+from the composition of equivocators to the composition of their corresponding
+nodes.
+*)
+Definition equivocator_descriptors : Type := forall (eqv : equiv_index), MachineDescriptor (IM eqv).
+
+
+(**
+Generalizes the [proper_descriptor] definition to [equivocator_descriptors].
+Basically, an indexed set is proper w.r.t. a [composite_state] one can obtain
+through it a valid projection of the [composite_state] to the non-equivocating
+universe.
+*)
+Definition proper_equivocator_descriptors
+  (eqv_descriptors : equivocator_descriptors)
   (s : vstate equivocators_free_vlsm)
   : Prop
   := forall
     (eqv : equiv_index),
-    proper_descriptor (IM eqv) (eqv_choice eqv) (s eqv).
+    proper_descriptor (IM eqv) (eqv_descriptors eqv) (s eqv).
 
-Definition not_equivocating_equivocators_choice
-  (eqv_choice : equivocators_choice)
+(** Same as above, but disallowing equivocation. *)
+Definition not_equivocating_equivocator_descriptors
+  (eqv_descriptors : equivocator_descriptors)
   (s : vstate equivocators_free_vlsm)
   : Prop
   := forall
     (eqv : equiv_index),
-    not_equivocating_descriptor (IM eqv) (eqv_choice eqv) (s eqv).
+    not_equivocating_descriptor (IM eqv) (eqv_descriptors eqv) (s eqv).
 
-Lemma not_equivocating_equivocators_choice_proper
-  (eqv_choice : equivocators_choice)
+Lemma not_equivocating_equivocator_descriptors_proper
+  (eqv_descriptors : equivocator_descriptors)
   (s : vstate equivocators_free_vlsm)
-  (Hne : not_equivocating_equivocators_choice eqv_choice s)
-  : proper_equivocators_choice eqv_choice s.
+  (Hne : not_equivocating_equivocator_descriptors eqv_descriptors s)
+  : proper_equivocator_descriptors eqv_descriptors s.
 Proof.
   intro eqv. apply not_equivocating_descriptor_proper. apply Hne.
 Qed.
@@ -140,26 +156,26 @@ Definition zero_choice
 
 Lemma zero_choice_not_equivocating
   (s : vstate equivocators_free_vlsm)
-  : not_equivocating_equivocators_choice zero_choice s.
+  : not_equivocating_equivocator_descriptors zero_choice s.
 Proof.
   intro eqv. simpl. lia.
 Qed.
 
 Lemma zero_choice_proper
   (s : vstate equivocators_free_vlsm)
-  : proper_equivocators_choice zero_choice s.
+  : proper_equivocator_descriptors zero_choice s.
 Proof.
-  apply not_equivocating_equivocators_choice_proper. apply zero_choice_not_equivocating.
+  apply not_equivocating_equivocator_descriptors_proper. apply zero_choice_not_equivocating.
 Qed.
 
-Lemma proper_equivocators_choice_state_update_eqv
-  (eqv_choice : equivocators_choice)
+Lemma proper_equivocator_descriptors_state_update_eqv
+  (eqv_descriptors : equivocator_descriptors)
   (s : vstate equivocators_free_vlsm)
   (eqv : equiv_index)
   (si : vstate (equivocator_IM eqv))
-  (Hsi_proper : proper_descriptor (IM eqv) (eqv_choice eqv) (s eqv))
-  (Hproper : proper_equivocators_choice eqv_choice (state_update equivocator_IM s eqv si))
-  : proper_equivocators_choice eqv_choice s.
+  (Hsi_proper : proper_descriptor (IM eqv) (eqv_descriptors eqv) (s eqv))
+  (Hproper : proper_equivocator_descriptors eqv_descriptors (state_update equivocator_IM s eqv si))
+  : proper_equivocator_descriptors eqv_descriptors s.
 Proof.
   intro eqv'.
   specialize (Hproper eqv').
@@ -169,12 +185,12 @@ Proof.
 Qed.
 
 Definition equivocators_state_project
-  (eqv_choice : equivocators_choice)
+  (eqv_descriptors : equivocator_descriptors)
   (s : vstate equivocators_free_vlsm)
   (eqv : index)
   : vstate (IM eqv)
   :=
-  equivocator_state_descriptor_project (IM eqv) (s eqv) (eqv_choice eqv).
+  equivocator_state_descriptor_project (IM eqv) (s eqv) (eqv_descriptors eqv).
 
 Definition lift_to_equivocators_state
   (s : vstate X)
@@ -195,11 +211,11 @@ Proof.
 Qed.
 
 (**
-A very useful operation on [equivocators_choice]s is updating the state corresponding
+A very useful operation on [equivocator_descriptors]s is updating the state corresponding
 to a component:
 *)
-Definition equivocators_choice_update
-  (s : equivocators_choice)
+Definition equivocator_descriptors_update
+  (s : equivocator_descriptors)
   (i : equiv_index)
   (si : MachineDescriptor (IM i))
   (j : equiv_index)
@@ -211,64 +227,64 @@ Definition equivocators_choice_update
   end.
 
 (**
-The next few results describe several properties of the [equivocators_choice_update] operation.
+The next few results describe several properties of the [equivocator_descriptors_update] operation.
 *)
-Lemma equivocators_choice_update_neq
-  (s : equivocators_choice)
+Lemma equivocator_descriptors_update_neq
+  (s : equivocator_descriptors)
   (i : equiv_index)
   (si : MachineDescriptor (IM i))
   (j : equiv_index)
   (Hneq : j <> i)
-  : equivocators_choice_update s i si j = s j.
+  : equivocator_descriptors_update s i si j = s j.
 Proof.
-  unfold equivocators_choice_update. destruct (decide (j = i)); congruence.
+  unfold equivocator_descriptors_update. destruct (decide (j = i)); congruence.
 Qed.
 
-Lemma equivocators_choice_update_eq
-  (s : equivocators_choice)
+Lemma equivocator_descriptors_update_eq
+  (s : equivocator_descriptors)
   (i : equiv_index)
   (si : MachineDescriptor (IM i))
-  : equivocators_choice_update s i si i = si.
+  : equivocator_descriptors_update s i si i = si.
 Proof.
-  unfold equivocators_choice_update.
+  unfold equivocator_descriptors_update.
   rewrite eq_dec_refl. reflexivity.
 Qed.
 
-Lemma equivocators_choice_update_id
-  (s : equivocators_choice)
+Lemma equivocator_descriptors_update_id
+  (s : equivocator_descriptors)
   (i : equiv_index)
   (si : MachineDescriptor (IM i))
   (Heq : s i = si)
-  : equivocators_choice_update s i si = s.
+  : equivocator_descriptors_update s i si = s.
 Proof.
   apply functional_extensionality_dep_good.
   intro j.
   destruct (decide (j = i)).
-  - subst. apply equivocators_choice_update_eq.
-  - apply equivocators_choice_update_neq. assumption.
+  - subst. apply equivocator_descriptors_update_eq.
+  - apply equivocator_descriptors_update_neq. assumption.
 Qed.
 
-Lemma equivocators_choice_update_twice
-  (s : equivocators_choice)
+Lemma equivocator_descriptors_update_twice
+  (s : equivocator_descriptors)
   (i : equiv_index)
   (si si': MachineDescriptor (IM i))
-  : equivocators_choice_update (equivocators_choice_update s i si) i si'
-  = equivocators_choice_update s i si'.
+  : equivocator_descriptors_update (equivocator_descriptors_update s i si) i si'
+  = equivocator_descriptors_update s i si'.
 Proof.
   apply functional_extensionality_dep_good.
   intro j.
   destruct (decide (j = i)).
-  - subst. rewrite equivocators_choice_update_eq. symmetry. apply equivocators_choice_update_eq.
-  - repeat rewrite equivocators_choice_update_neq by assumption.
+  - subst. rewrite equivocator_descriptors_update_eq. symmetry. apply equivocator_descriptors_update_eq.
+  - repeat rewrite equivocator_descriptors_update_neq by assumption.
     reflexivity.
 Qed.
 
 Lemma equivocators_state_project_state_update_eqv
-  (eqv_choice : equivocators_choice)
+  (eqv_descriptors : equivocator_descriptors)
   (s : vstate equivocators_free_vlsm)
   (eqv : equiv_index)
   (seqv : vstate (equivocator_IM eqv))
-  : let si :=  match eqv_choice eqv with
+  : let si :=  match eqv_descriptors eqv with
     | NewMachine _ sn => sn
     | Existing _ i _ =>
       match le_lt_dec (S (projT1 seqv)) i with
@@ -276,8 +292,8 @@ Lemma equivocators_state_project_state_update_eqv
       | right l => projT2 seqv (of_nat_lt l)
       end
     end in
-  equivocators_state_project eqv_choice (state_update equivocator_IM s eqv seqv)
-  = state_update IM (equivocators_state_project eqv_choice s) eqv si.
+  equivocators_state_project eqv_descriptors (state_update equivocator_IM s eqv seqv)
+  = state_update IM (equivocators_state_project eqv_descriptors s) eqv si.
 Proof.
   apply functional_extensionality_dep.
   intro ieqv.
@@ -286,24 +302,27 @@ Proof.
   match goal with
     |- context [decide ?d] => destruct (decide d)
     end; [|reflexivity].
-  inversion e. subst. unfold eq_rect_r.
+  subst. unfold eq_rect_r.
   elim_eq_rect. unfold eq_rect.
-  destruct seqv as (n, bs).
-  reflexivity.
+  unfold equivocator_state_descriptor_project.
+  unfold equivocator_state_project.
+  destruct seqv as (n, bs). unfold projT1. unfold projT2.
+  destruct (eqv_descriptors eqv); [reflexivity|].
+  destruct (le_lt_dec (S n) n0); reflexivity.
 Qed.
 
 Lemma equivocators_initial_state_project
   (es : vstate equivocators_free_vlsm)
   (Hes : vinitial_state_prop equivocators_free_vlsm es)
-  (eqv_choice : equivocators_choice)
-  (Heqv : proper_equivocators_choice eqv_choice es)
-  : vinitial_state_prop X (equivocators_state_project eqv_choice es).
+  (eqv_descriptors : equivocator_descriptors)
+  (Heqv : proper_equivocator_descriptors eqv_descriptors es)
+  : vinitial_state_prop X (equivocators_state_project eqv_descriptors es).
 Proof.
   intro eqv. specialize (Hes eqv).
   unfold equivocator_IM in Hes.
   unfold equivocators_state_project.
   specialize (Heqv eqv).
-  destruct (eqv_choice eqv) as [sn | i fi]; [assumption|].
+  destruct (eqv_descriptors eqv) as [sn | i fi]; [assumption|].
   destruct Hes as [Hzero Hes].
   destruct (es eqv) as (n, bs). simpl in Heqv.
   destruct (le_lt_dec (S n) i); [lia|].

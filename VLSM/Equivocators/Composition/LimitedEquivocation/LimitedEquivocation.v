@@ -26,11 +26,11 @@ Context {message : Type}
   (X := free_composite_vlsm IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
-  (equivocators_choice := equivocators_choice IM)
+  (equivocator_descriptors := equivocator_descriptors IM)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
-  (equivocators_choice_update := equivocators_choice_update IM)
-  (proper_equivocators_choice := proper_equivocators_choice IM)
+  (equivocator_descriptors_update := equivocator_descriptors_update IM)
+  (proper_equivocator_descriptors := proper_equivocator_descriptors IM)
   {Hmeasurable : Measurable index}
   (equivocating : set index)
   {reachable_threshold : ReachableThreshold index}

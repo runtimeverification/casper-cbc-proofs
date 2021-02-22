@@ -360,7 +360,7 @@ Section Simple.
       split; [|assumption].
       destruct Htr as [Htr Hinit].
       split; [|assumption].
-      apply (VLSM_incl_finite_trace (machine vlsm) (machine pre_vlsm)).
+      apply (VLSM_incl_finite_protocol_trace_from (machine vlsm) (machine pre_vlsm)).
       - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
       - clear -Htr.
         simpl in *. destruct vlsm. destruct s. simpl. assumption.
@@ -386,7 +386,7 @@ Section Simple.
       spec Hsm;[|assumption].
       destruct Htr as [Htr Hinit].
       split; [|assumption].
-      apply (VLSM_incl_finite_trace (machine vlsm) (machine pre_vlsm)).
+      apply (VLSM_incl_finite_protocol_trace_from (machine vlsm) (machine pre_vlsm)).
       - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
       - clear -Htr.
         simpl in *. destruct vlsm. destruct s. simpl. assumption.
@@ -1203,7 +1203,7 @@ Definition no_additional_equivocations
   {message : Type}
   (vlsm : VLSM message)
   {Hbo : has_been_observed_capability vlsm}
-  (initial_dec : forall m, Decision (vinitial_message_prop vlsm m))
+  (initial_dec : vdecidable_initial_messages_prop vlsm)
   : RelDecision (no_additional_equivocations vlsm).
 Proof.
   intros s m. apply Decision_or; [|apply initial_dec].

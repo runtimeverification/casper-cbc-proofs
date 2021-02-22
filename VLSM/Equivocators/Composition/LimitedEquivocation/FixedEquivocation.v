@@ -75,11 +75,11 @@ Context
   (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
   (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
   (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
-  (equivocators_choice := equivocators_choice IM)
+  (equivocator_descriptors := equivocator_descriptors IM)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
-  (equivocators_choice_update := equivocators_choice_update IM)
-  (proper_equivocators_choice := proper_equivocators_choice IM)
+  (equivocator_descriptors_update := equivocator_descriptors_update IM)
+  (proper_equivocator_descriptors := proper_equivocator_descriptors IM)
   (equivocating : set index)
   (Hi0_equiv : equivocating <> [])
   .
@@ -274,15 +274,15 @@ Existing Instance equivocators_free_Hbs.
 Lemma fixed_equivocators_initial_state_project
   (es : vstate XE)
   (Hes : vinitial_state_prop XE es)
-  (eqv_choice : equivocators_choice IM)
-  (Heqv : proper_equivocators_choice IM eqv_choice es)
-  : vinitial_state_prop X (equivocators_state_project IM eqv_choice es).
+  (eqv_descriptors : equivocator_descriptors IM)
+  (Heqv : proper_equivocator_descriptors IM eqv_descriptors es)
+  : vinitial_state_prop X (equivocators_state_project IM eqv_descriptors es).
 Proof.
   intro eqv. specialize (Hes eqv).
   unfold equivocator_IM in Hes.
   unfold equivocators_state_project.
   specialize (Heqv eqv).
-  destruct (eqv_choice eqv) as [sn | i fi]; [assumption|].
+  destruct (eqv_descriptors eqv) as [sn | i fi]; [assumption|].
   destruct Hes as [Hzero Hes].
   destruct (es eqv) as (n, bs). simpl in Heqv.
   destruct (le_lt_dec (S n) i); [lia|].
@@ -303,18 +303,18 @@ Proof.
 Qed.
 
 Lemma equivocators_protocol_trace_project
-  (final_choice : equivocators_choice IM)
+  (final_choice : equivocator_descriptors IM)
   (is : vstate XE)
   (tr : list (vtransition_item XE))
   (final_state := last (map destination tr) is)
-  (Hproper : proper_equivocators_choice IM final_choice final_state)
+  (Hproper : proper_equivocator_descriptors IM final_choice final_state)
   (Htr : finite_protocol_trace XE is tr)
   : exists
     (trX : list (vtransition_item X))
-    (initial_choice : equivocators_choice IM)
+    (initial_choice : equivocator_descriptors IM)
     (isX := equivocators_state_project IM initial_choice is)
     (final_stateX := last (map destination trX) isX),
-    proper_equivocators_choice IM initial_choice is /\
+    proper_equivocator_descriptors IM initial_choice is /\
     equivocators_trace_project IM final_choice tr = Some (trX, initial_choice) /\
     equivocators_state_project IM final_choice final_state = final_stateX /\
     finite_protocol_trace X isX trX.
@@ -365,7 +365,7 @@ Proof.
       specialize (Hx _ eq_refl).
       destruct Hx as [Hvx Htx].
       exists (trX' ++ [item]), initial_choice. subst foldx.
-      rewrite equivocators_trace_project_folder_additive with (trX := trX') (eqv_choice := initial_choice)
+      rewrite equivocators_trace_project_folder_additive with (trX := trX') (eqv_descriptors := initial_choice)
       ; [|assumption].
       split; [assumption|].
       split; [reflexivity|].
@@ -415,7 +415,7 @@ Proof.
       assert
         (Htr' : finite_protocol_trace FreeE is tr').
       {  split; [|assumption].
-        apply VLSM_incl_finite_trace; [apply equivocators_fixed_equivocations_vlsm_incl_free|].
+        apply VLSM_incl_finite_protocol_trace_from; [apply equivocators_fixed_equivocations_vlsm_incl_free|].
         assumption.
       }
       spec Hall Htr'.
@@ -424,7 +424,7 @@ Proof.
         (Htr'pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm FreeE) is tr').
       { split; [|assumption].
         specialize (vlsm_incl_pre_loaded_with_all_messages_vlsm FreeE) as Hincl.
-        apply (VLSM_incl_finite_trace _ _ Hincl). apply Htr'.
+        apply (VLSM_incl_finite_protocol_trace_from _ _ Hincl). apply Htr'.
       }
       destruct (equivocators_trace_project_output_reflecting_inv IM _ _ (proj1 Htr'pre) _ Hall)
         as [final_choice_m [initial_choice_m [trXm [Hfinal_choice_m [Hproject_trXm Hex]]]]].
