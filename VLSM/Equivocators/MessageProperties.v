@@ -128,7 +128,7 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
         In item tr /\
         exists (dfinal dfirst : MachineDescriptor),
           proper_descriptor X dfirst bs /\
-          proper_descriptor X dfinal (last (map destination btr) bs) /\
+          not_equivocating_descriptor X dfinal (last (map destination btr) bs) /\
           equivocator_vlsm_trace_project _ btr dfinal = Some (tr, dfirst).
 Proof.
   specialize (preloaded_equivocator_vlsm_protocol_trace_project_inv2 X bs btr) as Hinv2.
@@ -217,7 +217,7 @@ Lemma equivocator_vlsm_trace_project_output_reflecting_inv
   : exists
     (j i : MachineDescriptor)
     (Hi : proper_descriptor X i is)
-    (Hj : proper_descriptor X j (last (map destination tr) is))
+    (Hj : not_equivocating_descriptor X j (last (map destination tr) is))
     (trX: list (vtransition_item X))
     (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
     ,

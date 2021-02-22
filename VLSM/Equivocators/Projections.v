@@ -81,6 +81,34 @@ Definition equivocator_vlsm_transition_item_project
     end
   end.
 
+
+Lemma equivocators_vlsm_transition_item_project_zero_descriptor
+  (item : vtransition_item equivocator_vlsm)
+  s
+  (Ht : vtransition equivocator_vlsm (l item) (s, input item) = (destination item, output item))
+  (Hv : vvalid equivocator_vlsm (l item) (s, input item))
+  : exists oitem, equivocator_vlsm_transition_item_project item (Existing _ 0 false) = Some (oitem, Existing _ 0 false).
+Proof.
+  unfold equivocator_vlsm_transition_item_project.
+  destruct item.
+  destruct l as (l, dl). destruct destination as (ndest, bdest).
+  destruct (le_lt_dec (S ndest) 0); [lia|].
+  destruct dl as [ndl | idl fdl]
+  ; [destruct (nat_eq_dec 1 (S ndest))| destruct fdl; [destruct (nat_eq_dec 1 (S ndest))| destruct (nat_eq_dec idl 0)]]
+  ; simpl in Ht; unfold vtransition in Ht; unfold_transition Ht; unfold snd in Ht
+  ; destruct Hv as [Hidl _].
+  - inversion Ht. subst. destruct s; inversion H0. lia.
+  - exists None. reflexivity.
+  - destruct (le_lt_dec (S (projT1 s)) idl); [lia|].
+    match type of Ht with
+    | (let (_, _) := ?t in _) = _ => destruct t
+    end.
+    inversion Ht. subst. destruct s; inversion H0. lia.
+  - exists None. reflexivity.
+  - subst idl. eexists _. reflexivity.
+  - exists None. reflexivity.
+Qed.
+
 (**
 An injectivity result for [equivocator_vlsm_transition_item_project].
 *)

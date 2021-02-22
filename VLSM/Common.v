@@ -1138,11 +1138,11 @@ traces.
       (m : message)
       (tr : list transition_item)
       (Hprotocol: finite_protocol_trace si tr)
-      (Hm : List.Exists (fun elem : transition_item => output elem = Some m) tr) :
+      (Hm : trace_has_message (field_selector output) m tr) :
       can_emit m.
 
     Proof.
-      rewrite Exists_exists in Hm.
+      apply Exists_exists in Hm.
       destruct Hm as [x [Hin Houtput]].
       apply in_split in Hin.
       destruct Hin as [l1 [l2 Hconcat]].
@@ -1154,7 +1154,7 @@ traces.
       exists (last (List.map destination l1) si, input x).
       exists (l x).
       exists (destination x).
-      rewrite <- Houtput.
+      replace (Some m) with (output x) by assumption.
       assumption.
     Qed.
     (* End Hide *)

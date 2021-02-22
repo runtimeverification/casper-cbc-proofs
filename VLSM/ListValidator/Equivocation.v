@@ -2266,7 +2266,7 @@ Context
              specialize (can_emit_from_protocol_trace preX start m tr Htr).
              intros.
              apply H2.
-             rewrite Exists_exists.
+             apply Exists_exists.
              exists x.
              split.
              assumption.

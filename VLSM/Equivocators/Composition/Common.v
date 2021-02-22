@@ -71,6 +71,30 @@ Definition equivocating_indices
   :=
   filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
 
+Lemma equivocators_transition_reflects_equivocating_indices
+  (index_listing : list index)
+  (s: composite_state equivocator_IM)
+  (iom oom: option message)
+  (l: _composite_label equivocator_IM)
+  (s0: composite_state equivocator_IM)
+  (Ht: composite_transition equivocator_IM l (s0, iom) = (s, oom))
+  : incl (equivocating_indices index_listing s0) (equivocating_indices index_listing s).
+Proof.
+  intros i Hi.
+  apply filter_In. apply filter_In in Hi.
+  split; [apply Hi|]. destruct Hi as [_ Hi].
+  apply bool_decide_eq_true. apply bool_decide_eq_true in Hi.
+  intro Hsi. elim Hi. clear Hi. unfold is_singleton_state in *.
+  simpl in *.
+  destruct l as (j, lj).
+  destruct (vtransition (equivocator_IM j) lj (s0 j, iom)) as (sj', om') eqn:Htj.
+  inversion Ht. subst. clear Ht.
+  destruct (decide (i = j)); [|rewrite state_update_neq in Hsi; assumption].
+  subst. rewrite state_update_eq in Hsi.
+  revert Hsi. apply equivocator_transition_reflects_singleton_state with iom oom lj.
+  assumption.
+Qed.
+
 Context
   {index_listing : list index}
   (finite_index : Listing index_listing)
