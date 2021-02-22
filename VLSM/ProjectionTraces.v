@@ -236,7 +236,7 @@ Lemma finite_trace_projection_last_state
   : lstj = lstx j.
 Proof.
   apply preloaded_finite_trace_projection_last_state.
-  apply VLSM_incl_finite_trace; [|assumption].
+  apply VLSM_incl_finite_protocol_trace_from; [|assumption].
   apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
 Qed.
 

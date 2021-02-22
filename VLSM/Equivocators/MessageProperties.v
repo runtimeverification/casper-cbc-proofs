@@ -56,7 +56,7 @@ Proof.
     + apply equivocator_transition_item_project_inv_messages in Hitem'.
       destruct Hitem' as [_ [_ [_ [_ [_ Ha]]]]].
       inversion Hjbs; subst.
-      * left. unfold field_selector. simpl in Ha. simpl.  rewrite Ha. assumption.
+      * left. simpl in Ha. simpl.  rewrite Ha. assumption.
       * specialize (IHtr H0 i' eq_refl). right. assumption.
     + specialize (IHtr Hjbs i' eq_refl). right. assumption.
 Qed.

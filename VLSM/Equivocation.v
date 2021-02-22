@@ -351,7 +351,7 @@ Section Simple.
       split; [|assumption].
       destruct Htr as [Htr Hinit].
       split; [|assumption].
-      apply (VLSM_incl_finite_trace (machine vlsm) (machine pre_vlsm)).
+      apply (VLSM_incl_finite_protocol_trace_from (machine vlsm) (machine pre_vlsm)).
       - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
       - clear -Htr.
         simpl in *. destruct vlsm. destruct s. simpl. assumption.
@@ -377,7 +377,7 @@ Section Simple.
       spec Hsm;[|assumption].
       destruct Htr as [Htr Hinit].
       split; [|assumption].
-      apply (VLSM_incl_finite_trace (machine vlsm) (machine pre_vlsm)).
+      apply (VLSM_incl_finite_protocol_trace_from (machine vlsm) (machine pre_vlsm)).
       - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
       - clear -Htr.
         simpl in *. destruct vlsm. destruct s. simpl. assumption.
@@ -1194,7 +1194,7 @@ Definition no_additional_equivocations
   {message : Type}
   (vlsm : VLSM message)
   {Hbo : has_been_observed_capability vlsm}
-  (initial_dec : forall m, Decision (vinitial_message_prop vlsm m))
+  (initial_dec : vdecidable_initial_messages_prop vlsm)
   : RelDecision (no_additional_equivocations vlsm).
 Proof.
   intros s m. apply Decision_or; [|apply initial_dec].
@@ -1793,6 +1793,72 @@ Section Composite.
     let (s', om') := (vtransition X l som) in
     not_heavy s'.
 
+    (* begin hide *)
+  Lemma sent_component_protocol_composed
+    (s : vstate X)
+    (Hs : protocol_state_prop X s)
+    (i : index)
+    (m : message)
+    (Hsent : (@has_been_sent _ _ (has_been_sent_capabilities i)
+           (s i) m)) :
+    protocol_message_prop X m.
+  Proof.
+    assert (Hcomp : has_been_sent X s m) by (exists i; intuition).
+    assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
+      (apply pre_loaded_with_all_messages_protocol_state_prop; intuition).
+    
+    apply protocol_state_has_trace in Hs as H'.
+    destruct H' as [is [tr [Hpr Hlast]]].
+    assert (Hpr_pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) is tr). {
+      (* There's probably a shortcut for this, but where is it? *)
+      specialize (@vlsm_incl_pre_loaded_with_all_messages_vlsm _ X) as Hincl.
+      unfold VLSM_incl in Hincl.
+      specialize (Hincl (Finite is tr) Hpr).
+      unfold protocol_trace_prop in Hincl.
+      intuition.
+    }
+    
+    specialize (@proper_sent _ X _ s H m) as Hprop.
+    unfold has_been_sent_prop in Hprop.
+    unfold all_traces_have_message_prop in Hprop.
+    apply Hprop in Hcomp.
+    specialize (Hcomp is tr Hpr_pre Hlast).
+    destruct Hpr as [Hpr His].
+    apply protocol_trace_output_is_protocol with (is0 := is) (tr0 := tr); intuition.
+  Qed.
+
+  Lemma received_component_protocol_composed
+    (s : vstate X)
+    (Hs : protocol_state_prop X s)
+    (i : index)
+    (m : message)
+    (Hreceived : (@has_been_received _ _ (has_been_received_capabilities i)
+           (s i) m)) :
+    protocol_message_prop X m.
+  Proof.
+    assert (Hcomp : has_been_received X s m) by (exists i; intuition).
+    assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
+      (apply pre_loaded_with_all_messages_protocol_state_prop; intuition).
+    
+    apply protocol_state_has_trace in Hs as H'.
+    destruct H' as [is [tr [Hpr Hlast]]].
+    assert (Hpr_pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) is tr). {
+      specialize (@vlsm_incl_pre_loaded_with_all_messages_vlsm _ X) as Hincl.
+      unfold VLSM_incl in Hincl.
+      specialize (Hincl (Finite is tr) Hpr).
+      unfold protocol_trace_prop in Hincl.
+      intuition.
+    }
+    
+    specialize (@proper_received _ X _ s H m) as Hprop.
+    unfold has_been_received_prop in Hprop.
+    unfold all_traces_have_message_prop in Hprop.
+    apply Hprop in Hcomp.
+    specialize (Hcomp is tr Hpr_pre Hlast).
+    destruct Hpr as [Hpr His].
+    apply protocol_trace_input_is_protocol with (is0 := is) (tr0 := tr); intuition. 
+  Qed.
+     (* end hide *)
 End Composite.
 
 Section cannot_resend_message.
@@ -1859,11 +1925,11 @@ Qed.
       trace_has_message (field_selector input) m' tr ->
       ~trace_has_message (field_selector output) m' tr ->
       P m')
-    : finite_protocol_trace (pre_loaded_with_vlsm X Q) is tr.
+    : finite_protocol_trace (pre_loaded_vlsm X Q) is tr.
   Proof.
     split; [|apply Htr].
     induction tr using rev_ind; intros.
-    - apply (finite_ptrace_empty  (pre_loaded_with_vlsm X Q)).
+    - apply (finite_ptrace_empty  (pre_loaded_vlsm X Q)).
       apply initial_is_protocol. apply Htr.
     - assert (Htr' := Htr).
       destruct Htr as [Htr Hinit].
@@ -1891,7 +1957,7 @@ Qed.
         split; [subst; reflexivity|].
         apply Exists_app. left. assumption.
       }
-      apply (finite_protocol_trace_from_app_iff ((pre_loaded_with_vlsm X Q) )).
+      apply (finite_protocol_trace_from_app_iff ((pre_loaded_vlsm X Q) )).
       split; [assumption|].
       apply finite_ptrace_last_pstate in IHtr as Hlst.
       match type of Hx with
@@ -1902,8 +1968,8 @@ Qed.
       end.
       change [x] with ([] ++ [x]).
       inversion Hx. subst s' tl. clear Hx H2.
-      apply (extend_right_finite_trace_from (pre_loaded_with_vlsm X Q)).
-      + apply (finite_ptrace_empty (pre_loaded_with_vlsm X Q)).
+      apply (extend_right_finite_trace_from (pre_loaded_vlsm X Q)).
+      + apply (finite_ptrace_empty (pre_loaded_vlsm X Q)).
         assumption.
       + simpl. split; [|apply H3]. split; [assumption|].
         destruct (id H3) as [[_ [_ Hv]] _]. simpl in *.
@@ -1931,7 +1997,7 @@ Qed.
           apply Exists_app. right. constructor. subst. reflexivity.
         * spec Htrm n.
           apply protocol_message_prop_iff. left.
-          cut (vinitial_message_prop ((pre_loaded_with_vlsm X Q)) m).
+          cut (vinitial_message_prop ((pre_loaded_vlsm X Q)) m).
           { intro Hm. exists (exist _ m Hm). reflexivity. }
           right. apply Hpq. assumption.
   Qed.
@@ -1988,7 +2054,7 @@ Section full_node_constraint.
       exists m, om = Some m /\
       exists (i : index), admissible_index s i /\
       can_emit
-        (pre_loaded_with_vlsm (IM i) (no_additional_equivocations X s))
+        (pre_loaded_vlsm (IM i) (no_additional_equivocations X s))
         m.
 
   Lemma lift_preloaded_protocol_prop_to_projection
@@ -2004,14 +2070,14 @@ Section full_node_constraint.
       no_additional_equivocations X s m')
     (Hsim: protocol_generated_prop (pre_loaded_with_all_messages_vlsm (IM i)) si m)
     : protocol_generated_prop
-      (pre_loaded_with_vlsm (IM i) (no_additional_equivocations X s))
+      (pre_loaded_vlsm (IM i) (no_additional_equivocations X s))
       si m.
   Proof.
     apply non_empty_protocol_trace_from_protocol_generated_prop in Hsim.
     destruct Hsim as [is [tr [item [Htr [Hitem [Hlsts Hlstm]]]]]].
     cut
       (finite_protocol_trace
-        (pre_loaded_with_vlsm (IM i) (no_additional_equivocations X s))
+        (pre_loaded_vlsm (IM i) (no_additional_equivocations X s))
         is tr).
     { intro Hf. apply non_empty_protocol_trace_from_protocol_generated_prop.
       exists is, tr, item.
@@ -2080,7 +2146,7 @@ Section seeded_composite_vlsm_no_equivocation.
 (** ** Pre-loading a VLSM composition with no equivocations constraint
 
 When adding initial messages to a VLSM composition with a no equivocation
-constraint, we cannot simply use the [pre_loaded_with_vlsm] construct
+constraint, we cannot simply use the [pre_loaded_vlsm] construct
 because the no-equivocation constraint must also be altered to reflect that
 the newly added initial messages are safe to be received at all times.
 *)
@@ -2129,7 +2195,7 @@ the newly added initial messages are safe to be received at all times.
       (load : message -> Prop)
       : VLSM message
       :=
-      pre_loaded_with_vlsm
+      pre_loaded_vlsm
         (composite_vlsm IM (no_equivocations_additional_constraint_with_pre_loaded load))
         load.
     
@@ -2141,14 +2207,14 @@ the newly added initial messages are safe to be received at all times.
   Proof.
     unfold composite_no_equivocation_vlsm_with_pre_loaded.
     match goal with
-    |- VLSM_incl (pre_loaded_with_vlsm ?v _) _ =>
+    |- VLSM_incl (pre_loaded_vlsm ?v _) _ =>
       specialize (pre_loaded_with_all_messages_vlsm_is_pre_loaded_with_True v) as Hprev
     end.
     apply VLSM_eq_incl_iff in Hprev. apply proj2 in Hprev.
     match type of Hprev with
     | VLSM_incl (mk_vlsm ?m) _ => apply VLSM_incl_trans with m
     end
-    ; [apply pre_loaded_with_vlsm_incl; intros; exact I|].
+    ; [apply pre_loaded_vlsm_incl; intros; exact I|].
     match type of Hprev with
     | VLSM_incl _ (mk_vlsm ?m) => apply VLSM_incl_trans with m
     end
@@ -2170,7 +2236,7 @@ the newly added initial messages are safe to be received at all times.
     unfold NoeqvPreLoadedWithFalse.
     unfold composite_no_equivocation_vlsm_with_pre_loaded.
     match goal with
-    |- VLSM_eq (pre_loaded_with_vlsm ?m _) _ => specialize (vlsm_is_pre_loaded_with_False m) as Heq
+    |- VLSM_eq (pre_loaded_vlsm ?m _) _ => specialize (vlsm_is_pre_loaded_with_False m) as Heq
     end.
     apply VLSM_eq_sym in Heq.
     match type of Heq with

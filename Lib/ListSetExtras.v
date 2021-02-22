@@ -1,3 +1,4 @@
+Require Import Bool.
 Require Import Coq.Lists.ListSet.
 Require Import List.
 Import ListNotations.
@@ -300,6 +301,26 @@ Proof.
     + left. assumption.
     + right. apply IHss.
       exists x. split; assumption.
+Qed.
+
+Lemma set_union_iterated_incl
+  `{EqDecision A}
+  (ss ss': list (set A))
+  (Hincl : incl ss ss')
+  :
+  incl 
+  (fold_right (set_union decide_eq) nil ss)
+  (fold_right (set_union decide_eq) nil ss').
+Proof.
+  unfold incl.
+  intros.
+  apply set_union_in_iterated in H.
+  apply set_union_in_iterated.
+  rewrite Exists_exists in *.
+  destruct H as [x Heqx].
+  exists x.
+  unfold incl in Hincl.
+  intuition.
 Qed.
 
 Lemma set_union_empty_left `{EqDecision A}  : forall (s : list A),
@@ -641,6 +662,70 @@ Proof.
   reflexivity.
 Qed.
 
+(* For each element X of l1, exactly one occurrence of X is removed
+   from l2. If no such occurrence exists, nothing happens. *)
+
+Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
+  fold_right (set_remove decide_eq) l2 l1.
+
+Example set_remove_list1 : set_remove_list [3;1;3] [1;1;2;3;3;3;3] = [1;2;3;3].
+Proof. intuition. Qed.
+
+Example set_remove_list2 : set_remove_list [4] [1;2;3] = [1;2;3].
+Proof. intuition. Qed.
+
+Lemma set_remove_list_1 
+  `{EqDecision A} 
+  (a : A)
+  (l1 l2 : list A)
+  (Hin : In a (set_remove_list l1 l2)) :
+  In a l2.
+Proof.
+  unfold set_remove_list in Hin.
+  induction l1.
+  - simpl in Hin; intuition.
+  - simpl in Hin.
+    apply set_remove_1 in Hin.
+    apply IHl1 in Hin.
+    assumption.
+Qed. 
+
+Definition forallb_false {A}
+  (l : list A)
+  (Hne : l <> [])
+  (f : A -> bool) :
+  forallb f l = false -> 
+  exists (a : A), In a l /\ (f a) = false.
+Proof.
+  intros.
+  induction l;[congruence|].
+  simpl in H.
+  destruct (f a) eqn : eqfa.
+  - simpl in H. 
+    destruct l.
+    + simpl in H. congruence.
+    + spec IHl. congruence.
+      specialize (IHl H).
+      destruct IHl as [a' [Hina' Heqa']].
+      exists a'. intuition.
+  - exists a. intuition.
+Qed.
+
+(* Returns all elements X of l such that X does not compare less
+   than any other element w.r.t to the preceeds relation *)
+
+Definition get_maximal_elements
+  `(preceeds : A -> A -> bool)
+  (l : list A)
+  : list A :=
+  filter (fun a => forallb (fun b => negb (preceeds a b)) l) l.
+
+Example get_maximal_elements1: get_maximal_elements Nat.ltb [1; 4; 2; 4] = [4;4].
+Proof. intuition. Qed.
+
+Example get_maximal_elements2 : get_maximal_elements Nat.leb [1; 4; 2; 4] = [].
+Proof. intuition. Qed. 
+
 Lemma set_prod_nodup `(s1: set A) `(s2: set B):
   NoDup s1 ->
   NoDup s2 ->
@@ -776,5 +861,67 @@ Qed.
 Add Parametric Morphism A : (@In A)
   with signature @eq A ==> @incl A ==> Basics.impl as In_incl.
 Proof. firstorder. Qed.
+
+Lemma set_union_iterated_preserves_prop
+  `{EqDecision A}
+  (ss : list (set A))
+  (P : A -> Prop)
+  (Hp : forall (s : set A), forall (a : A), (In s ss /\ In a s) -> P a) :
+  forall (a : A), In a (fold_right (set_union decide_eq) nil ss) -> P a.
+Proof.
+  intros.
+  apply set_union_in_iterated in H. rewrite Exists_exists in H.
+  destruct H as [s [Hins Hina]].
+  apply Hp with (s := s).
+  intuition.
+Qed.
+
+Lemma filter_set_eq `{EqDecision X}
+   (l : list X) 
+   (f g : X -> bool)
+   (resf := filter f l)
+   (resg := filter g l) :
+   set_eq resf resg -> resf = resg.
+Proof.
+  intros.
+  unfold resf, resg in *.
+  apply filter_ext_in. intros.
+  unfold set_eq in H.
+  destruct H as [H H'].
+  unfold incl in *.
+  specialize (H a). specialize (H' a).
+  assert (f a = true <-> g a = true). {
+    split; intros.
+    - spec H. apply filter_In. intuition.
+      apply filter_In in H. intuition.
+    - spec H'. apply filter_In. intuition.
+      apply filter_In in H'. intuition.
+  }
+  specialize (eq_true_iff_eq (f a) (g a) H1).
+  intuition.
+Qed.
+
+Lemma filter_complement `{EqDecision X}
+   (l : list X) 
+   (f f' : X -> bool)
+   (g := (fun (x : X) => negb (f x)))
+   (g' := (fun (x : X) => negb (f' x))) :
+   filter f l = filter f' l <-> 
+   filter g l = filter g' l.
+Proof.
+   split; intros.
+   - specialize (ext_in_filter f f' l H) as Hext.
+     apply filter_ext_in.
+     intros.
+     unfold g. unfold g'.
+     specialize (Hext a H0).
+     rewrite Hext. intuition.
+   - specialize (ext_in_filter g g' l H) as Hext.
+     apply filter_ext_in. intros.
+     specialize (Hext a H0). 
+     unfold g in Hext.
+     unfold g' in Hext.
+     destruct (f a); destruct (f' a); (simpl in *; intuition congruence).
+Qed.
 
 Unset Implicit Arguments.

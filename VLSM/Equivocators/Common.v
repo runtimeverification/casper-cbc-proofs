@@ -127,6 +127,7 @@ Projecting an [equivocator_state] over a [MachineDescriptor].
 This is extracted from the original [equivocators_state_project] to allow
 factoring out the proofs by proving properties at this level.
 *)
+
 Definition equivocator_state_descriptor_project
   (s : equivocator_state)
   (descriptor : MachineDescriptor)
@@ -135,11 +136,10 @@ Definition equivocator_state_descriptor_project
   match descriptor with
   | NewMachine sn => sn
   | Existing j _ =>
-    let (n, bs) := s in
-    match (le_lt_dec (S n) j) with
-    | right lt_in => bs (of_nat_lt lt_in)
-    | left _ => bs F1
-    end
+    match equivocator_state_project s j with
+    | Some sj => sj
+    | None => projT2 s F1
+    end 
   end.
 
 Definition equivocator_state_update
@@ -201,20 +201,6 @@ Program Definition equivocator_state_extend
 Next Obligation.
   lia.
 Defined.
-
-Lemma equivocator_state_extend_project_last
-  (bs : equivocator_state)
-  (s : vstate X)
-  (ns := projT1 bs)
-  : let ext := equivocator_state_extend bs s in
-    forall (l : S ns < S (projT1 ext)), projT2 ext (of_nat_lt l) = s.
-Proof.
-  unfold ns. clear ns.
-  destruct bs as (ns, sbs). simpl. intro l.
-  rewrite to_nat_of_nat.
-  destruct (nat_eq_dec (S ns) (S ns)); [|lia].
-  reflexivity.
-Qed.
 
 (** The original state index is present in any equivocator state*)
 Lemma Hzero (s : equivocator_state) : 0 < S (projT1 s).
@@ -318,7 +304,13 @@ Context
   (MachineDescriptor := MachineDescriptor X)
   .
 
- (** Whether a descriptor can be used when projecting a state*)
+ (** Whether a [MachineDescriptor] can be used to project an
+ [equivocator_state] to a regular [state].
+ The [NewMachine] descriptor signals that an equivocation has occured
+ starting a new machine, thus we require the argument to be initial.
+ For an [Existing] descriptor, the index of the descriptor must
+ refer to an existing machine in the current state.
+ *)
 Definition proper_descriptor
   (d : MachineDescriptor)
   (s : vstate equivocator_vlsm)
@@ -328,6 +320,7 @@ Definition proper_descriptor
   | Existing _ i _ => i < S (projT1 s)
   end.
 
+(** Same as above, but disallowing equivocation. *)
 Definition not_equivocating_descriptor
   (d : MachineDescriptor)
   (s : vstate equivocator_vlsm)
@@ -348,7 +341,7 @@ Proof.
   assumption.
 Qed.
 
-Local Tactic Notation "unfold_transition"  hyp(H) :=
+Local Ltac unfold_transition H :=
   ( unfold transition in H; unfold equivocator_vlsm in H
   ; unfold Common.equivocator_vlsm in H
   ; unfold mk_vlsm in H; unfold machine in H
@@ -609,6 +602,7 @@ Proof.
   remember (equivocator_state_extend X s sn) as ext.
   destruct ext as (n, bs).
   unfold projT1. unfold equivocator_state_descriptor_project.
+  unfold equivocator_state_project.
   destruct (le_lt_dec (S n) n); [lia|].
   destruct s as (nsi, bsi). unfold equivocator_state_extend in Heqext.
   inversion Heqext. subst.
@@ -631,6 +625,7 @@ Proof.
   destruct l as (li, new). simpl in Hnew. subst new.
   inversion Ht. subst.
   unfold equivocator_state_descriptor_project.
+  unfold equivocator_state_project.
   unfold equivocator_state_extend.
   unfold equivocator_state_extend in Hni.
   destruct s as (nsi', bsi').
@@ -664,6 +659,7 @@ Proof.
     as (si'', om'').
   inversion Ht. subst. clear Ht.
   unfold equivocator_state_descriptor_project.
+  unfold equivocator_state_project.
   unfold equivocator_state_extend.
   unfold equivocator_state_extend in Hni.
   destruct s as (nsi', bsi').
@@ -698,6 +694,7 @@ Proof.
     as (si'', om'').
   inversion Ht. subst. clear Ht.
   unfold equivocator_state_descriptor_project.
+  unfold equivocator_state_project.
   destruct s as (nsi', bsi').
   simpl in Hieqvi, l.
   unfold equivocator_state_update in *.

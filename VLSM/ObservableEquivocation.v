@@ -838,7 +838,7 @@ Proof.
   spec Hv is pre.
   assert (Hincl : VLSM_incl X Pre)
     by apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
-  specialize (VLSM_incl_finite_trace _ _ Hincl) as Htr_incl.
+  specialize (VLSM_incl_finite_protocol_trace_from _ _ Hincl) as Htr_incl.
   spec Hv.
   { split; [|assumption].
     apply Htr_incl. clear -Hpre.

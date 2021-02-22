@@ -26,18 +26,18 @@ Context {message : Type}
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   {i0 : Inhabited index}
   (X := free_composite_vlsm IM)
-  (equivocators_choice := equivocators_choice IM)
+  (equivocator_descriptors := equivocator_descriptors IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
   (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
-  (equivocators_choice_update := equivocators_choice_update IM)
-  (proper_equivocators_choice := proper_equivocators_choice IM)
+  (equivocator_descriptors_update := equivocator_descriptors_update IM)
+  (proper_equivocator_descriptors := proper_equivocator_descriptors IM)
   (equivocators_trace_project := equivocators_trace_project IM)
   .
 
-Local Tactic Notation "unfold_transition"  hyp(Ht) :=
+Local Ltac unfold_transition Ht :=
   ( unfold transition in Ht; unfold Common.equivocator_IM in Ht;
   unfold equivocator_vlsm in Ht; unfold mk_vlsm in Ht;
   unfold machine in Ht; unfold projT2 in Ht;
@@ -748,15 +748,15 @@ Lemma replay_trace_from_full_replay_state_project
   (Htr : finite_protocol_trace_from equivocators_no_equivocations_vlsm is tr)
   (tr_full_replay_is_tr := replay_trace_from full_replay_state is tr)
   (last_full_replay_is_tr := last (map destination tr_full_replay_is_tr) full_replay_state)
-  (eqv_choice : equivocators_choice)
-  (Heqv_choice : proper_equivocators_choice eqv_choice full_replay_state)
-  : proper_equivocators_choice eqv_choice last_full_replay_is_tr /\
-    equivocators_state_project eqv_choice last_full_replay_is_tr =
-    equivocators_state_project eqv_choice  full_replay_state.
+  (eqv_descriptors : equivocator_descriptors)
+  (Heqv_descriptors : proper_equivocator_descriptors eqv_descriptors full_replay_state)
+  : proper_equivocator_descriptors eqv_descriptors last_full_replay_is_tr /\
+    equivocators_state_project eqv_descriptors last_full_replay_is_tr =
+    equivocators_state_project eqv_descriptors  full_replay_state.
 Proof.
-  assert (Heqv_choice' : proper_equivocators_choice eqv_choice last_full_replay_is_tr); [|split;[assumption|]].
-  - intro eqv. specialize (Heqv_choice eqv). unfold proper_descriptor in *.
-    destruct (eqv_choice eqv); [assumption|].
+  assert (Heqv_descriptors' : proper_equivocator_descriptors eqv_descriptors last_full_replay_is_tr); [|split;[assumption|]].
+  - intro eqv. specialize (Heqv_descriptors eqv). unfold proper_descriptor in *.
+    destruct (eqv_descriptors eqv); [assumption|].
     destruct (proj2 (replay_trace_from_state_correspondence full_replay_state _ His _ Htr) eqv)
       as [Hsize _]. unfold last_full_replay_is_tr. unfold tr_full_replay_is_tr.
     lia.
@@ -764,28 +764,29 @@ Proof.
     intros eqv.
     unfold equivocators_state_project. unfold Common.equivocators_state_project.
     unfold equivocator_state_descriptor_project.
-    spec Heqv_choice eqv.
-    spec Heqv_choice' eqv.
+    unfold equivocator_state_project.
+    spec Heqv_descriptors eqv.
+    spec Heqv_descriptors' eqv.
     unfold proper_descriptor in *.
-    destruct (eqv_choice eqv); [reflexivity|].
+    destruct (eqv_descriptors eqv); [reflexivity|].
     destruct (last_full_replay_is_tr (eqv)) as (last_full_replay_is_tr_size, last_full_replay_is_tr_s)
       eqn:Hlast_full_replay_is_tr_eqv.
     destruct (full_replay_state (eqv)) as (full_replay_state_size, full_replay_state_s)
       eqn:Hfull_replay_state_eqv.
-    simpl in Heqv_choice, Heqv_choice'.
+    simpl in Heqv_descriptors, Heqv_descriptors'.
     destruct (le_lt_dec (S last_full_replay_is_tr_size) n); [lia|].
     destruct (le_lt_dec (S full_replay_state_size) n); [lia|].
     destruct (proj2 (replay_trace_from_state_correspondence full_replay_state _ His _ Htr) eqv)
       as [_ [_ Hstate_pre]].
     rewrite Hfull_replay_state_eqv in Hstate_pre.
-    specialize (Hstate_pre n Heqv_choice).
+    specialize (Hstate_pre n Heqv_descriptors).
     unfold last_full_replay_is_tr in *. unfold tr_full_replay_is_tr in *.
     rewrite Hlast_full_replay_is_tr_eqv in Hstate_pre.
     unfold projT1,projT2 in Hstate_pre.
     destruct Hstate_pre as [Hi Hstate_pre].
-    replace (of_nat_lt Hi) with (of_nat_lt Heqv_choice') in * by apply of_nat_ext.
-    replace (of_nat_lt l) with (of_nat_lt Heqv_choice') in * by apply of_nat_ext.
-    replace (of_nat_lt l0) with (of_nat_lt Heqv_choice) in * by apply of_nat_ext.
+    replace (of_nat_lt Hi) with (of_nat_lt Heqv_descriptors') in * by apply of_nat_ext.
+    replace (of_nat_lt l) with (of_nat_lt Heqv_descriptors') in * by apply of_nat_ext.
+    replace (of_nat_lt l0) with (of_nat_lt Heqv_descriptors) in * by apply of_nat_ext.
     assumption.
 Qed.
 
@@ -1021,7 +1022,7 @@ Proof.
   spec Heqv.
   {
     split;[|assumption].
-    apply (VLSM_incl_finite_trace); [|assumption].
+    apply (VLSM_incl_finite_protocol_trace_from); [|assumption].
     apply constraint_subsumption_incl.
     intro. intros. exact I.
   }
