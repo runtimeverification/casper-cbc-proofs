@@ -109,6 +109,20 @@ Section apply_plans.
     rewrite Ha' in Hadd.
     rewrite Hadd. rewrite rev_app_distr. reflexivity.
   Qed.
+  
+  Lemma apply_plan_cons
+    (start : vstate X)
+    (ai : vplan_item X)
+    (a' : vplan X)
+    : apply_plan start (ai :: a') =
+      let (aitems, afinal) := apply_plan start [ai] in
+      let (a'items, a'final) := apply_plan afinal a' in
+       (aitems ++ a'items, a'final).
+  Proof.
+    replace (ai :: a') with ([ai] ++ a').
+    apply apply_plan_app.
+    intuition.
+  Qed.
 
   Definition finite_protocol_plan_from
     (s : vstate X)
@@ -130,6 +144,30 @@ Section apply_plans.
     destruct (apply_plan afinal b) as (bitems, bfinal).
     rewrite Happ. simpl. clear Happ. subst afinal.
     apply finite_protocol_trace_from_app_iff.
+  Qed.
+  
+  Lemma finite_protocol_plan_empty
+    (s : vstate X)
+    (Hpr : protocol_state_prop X s)  :
+    finite_protocol_plan_from s [].
+  Proof.
+    unfold finite_protocol_plan_from. simpl.
+    apply finite_ptrace_empty.
+    assumption.
+  Qed.
+    
+  Lemma apply_plan_last_protocol
+    (s : vstate X)
+    (Hprs : protocol_state_prop X s)
+    (a : vplan X)
+    (Hpra : finite_protocol_plan_from s a)
+    (after_a := apply_plan s a) :
+    protocol_state_prop X (snd after_a).
+  Proof.
+    unfold after_a.
+    rewrite <- apply_plan_last.
+    apply finite_ptrace_last_pstate.
+    assumption.
   Qed.
 
   Definition transition_item_to_plan_item
@@ -162,14 +200,8 @@ Section apply_plans.
     unfold transition_item_to_plan_item. simpl. unfold apply_plan.
     simpl.
     destruct H3 as [_ Ht].
-    replace
-      (@vtransition message X l
-      (@pair (@vstate message X) (option message)
-         (@last (@state message (@type message X))
-            (@map (@transition_item message (@type message X))
-               (@state message (@type message X))
-               (@destination message (@type message X)) tr) s) iom))
-      with (s0, oom).
+    match goal with
+    |- context[vtransition X l ?lst] => replace (vtransition X l lst) with (s0, oom) end.
     reflexivity.
   Qed.
 
@@ -264,5 +296,78 @@ Section apply_plans.
         destruct Hinput_ai as [_s Hinput_a0].
         apply protocol_generated with _oma _s; assumption.
   Qed.
-
+  
+  Lemma finite_protocol_plan_from_one
+    (s : vstate X)
+    (a : plan_item) :
+    let res := vtransition X (label_a a) (s, input_a a) in 
+    finite_protocol_plan_from s [a] <-> protocol_transition X (label_a a) (s, input_a a) res.
+  Proof.
+    split; 
+    intros; 
+    destruct a; 
+    unfold apply_plan in *; simpl in *;
+    unfold finite_protocol_plan_from in *; 
+    unfold apply_plan in *; simpl in *;
+    destruct (vtransition X label_a0 (s, input_a0)) as [dest output] eqn : eq_trans; simpl in *.
+    - inversion H.
+      assumption.
+    - apply finite_ptrace_extend.
+      apply finite_ptrace_empty.
+      apply protocol_transition_destination in H; intuition.
+      assumption.
+  Qed.
+  
+  Definition preserves
+    (a : vplan X)
+    (P : vstate X -> Prop) :
+    Prop :=
+    forall (s : vstate X),
+    (P s -> protocol_state_prop X s -> finite_protocol_plan_from s a -> P (snd (apply_plan s a))).
+    
+  Definition ensures
+    (a : vplan X)
+    (P : vstate X -> Prop) : 
+    Prop :=
+    forall (s : vstate X),
+    (protocol_state_prop X s -> P s -> finite_protocol_plan_from s a).
+   
+   (* If some property of a state guarantees a plan `b` applied to the state is protocol,
+      and this property is preserved by the application of some other plan `a`,
+      then these two plans can be composed and the application of `a ++ b` will also
+      be protocol. *)
+   
+   Lemma plan_independence
+    (a b : vplan X)
+    (Pb : vstate X -> Prop) 
+    (s : state)
+    (Hpr : protocol_state_prop X s)
+    (Ha : finite_protocol_plan_from s a)
+    (Hhave : Pb s)
+    (Hensures : ensures b Pb)
+    (Hpreserves : preserves a Pb) :
+   finite_protocol_plan_from s (a ++ b).
+   Proof.
+    unfold ensures in *.
+    unfold preserves in *.
+    apply finite_protocol_plan_from_app_iff.
+    split. 
+    - assumption.
+    - remember (snd (apply_plan s a)) as s'.
+      specialize (Hensures s').
+      apply Hensures.
+      rewrite Heqs'.
+      apply apply_plan_last_protocol.
+      intuition.
+      intuition.
+      rewrite Heqs'.
+      apply Hpreserves.
+      all : intuition.
+   Qed.
+   
+   Definition messages_a 
+    (a : vplan X) : 
+    list message := 
+    ListExtras.cat_option (List.map input_a a).
+    
 End apply_plans.

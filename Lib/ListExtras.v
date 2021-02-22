@@ -1,4 +1,5 @@
 Require Import Coq.Bool.Bool.
+Require Import Arith.
 Require Import List ListSet.
 Require Import Lia.
 Import ListNotations.
@@ -40,6 +41,7 @@ Definition last_error {S} (l : list S) : option S :=
   | [] => None
   | a :: t => Some (last t a)
   end.
+
 
 Lemma unfold_last_hd {S} : forall (random a b : S) (l : list S),
   last (a :: (b :: l)) random = last (b :: l) random.
@@ -109,6 +111,18 @@ Proof.
   rewrite map_cons.
   repeat rewrite unroll_last.
   apply IHt.
+Qed.
+
+Lemma last_error_some {S} 
+  (l : list S)
+  (s random : S)
+  (Herr : last_error l = Some s) :
+  last l random = s.
+Proof.
+  destruct l.
+  - simpl in *. discriminate Herr.
+  - simpl in Herr. inversion Herr.
+    apply unroll_last.
 Qed.
 
 Lemma incl_empty : forall A (l : list A),
@@ -1135,7 +1149,6 @@ Proof.
   assumption.
 Qed.
 
-
 Lemma in_map_option
   {A B : Type}
   (f : A -> option B)
@@ -1162,6 +1175,61 @@ Proof.
     + simpl. destruct (f a) eqn:Hfa.
       * right. apply IHl. exists a'. split; try assumption.
       * apply IHl. exists a'. split; try assumption.
+Qed.
+
+(* Unpack list of [option A] into list of [A] *)
+Definition cat_option {A : Type} : list (option A) -> list A := 
+  @map_option (option A) A id.
+
+Example cat_option1 : cat_option [Some 1; Some 5; None; Some 6; None] = [1; 5; 6].
+Proof. intuition. Qed.
+  
+Lemma cat_option_length
+  {A : Type}
+  (l : list (option A))
+    (Hfl : Forall (fun a => a <> None) l)
+  : length (cat_option l) = length l.
+Proof.
+  apply map_option_length; intuition.
+Qed.
+
+Lemma cat_option_app
+  {A : Type}
+  (l1 l2 : list (option A)) :
+  cat_option (l1 ++ l2) = cat_option l1 ++ cat_option l2.
+Proof.
+  induction l1.
+  - simpl in *. intuition.
+  - destruct a eqn : eq_a;
+      simpl in *;
+      rewrite IHl1;
+      reflexivity.
+Qed.
+
+Lemma cat_option_nth
+  {A : Type}
+  (l : list (option A))
+  (Hfl : Forall (fun a => a <> None) l)
+  (n := length l)
+  (i : nat)
+  (Hi : i < n)
+  (dummya : A)
+  : Some (nth i (cat_option l) dummya) = (nth i l (Some dummya)).
+Proof.
+  specialize (@map_option_nth (option A) A id l). simpl in *.
+  intros. 
+  unfold id in *.
+  apply H.
+  all : intuition.
+Qed.
+
+Lemma in_cat_option
+  {A : Type}
+  (l : list (option A))
+  (a : A)
+  : In a (cat_option l) <-> exists b : (option A), In b l /\ b = Some a.
+Proof.
+  apply in_map_option.
 Qed.
 
 Lemma map_option_incl
@@ -1433,6 +1501,286 @@ Proof.
         right. left. exists suf1'. simpl. f_equal. assumption.
       * destruct Hlt as [suf2' Hlt].
         right. right. exists suf2'. simpl. f_equal. assumption.
+Qed.
+
+Lemma list_max_exists
+   (l : list nat) 
+   (nz : list_max l > 0) :
+   In (list_max l) l.
+Proof.
+  induction l.
+  - simpl in nz. lia.
+  - simpl in *.
+    destruct (a <=? (list_max l)) eqn : eq_leb.
+    + assert (Init.Nat.max a (list_max l) = list_max l). {
+         apply max_r.
+         apply Nat.leb_le.
+         assumption.
+      }
+      rewrite H in *.
+      right.
+      apply IHl.
+      assumption.
+    + assert (Init.Nat.max a (list_max l) = a). {
+        apply leb_iff_conv in eq_leb.
+        apply max_l.
+        lia.
+      }
+      rewrite H in *.
+      left.
+      reflexivity. 
+Qed.
+
+Lemma list_max_exists2
+   (l : list nat) 
+   (Hne : l <> []) :
+   In (list_max l) l.
+Proof.
+  destruct (list_max l) eqn : eq_max.
+  - destruct l;[intuition congruence|].
+    specialize (list_max_le (n :: l) 0) as Hle.
+    destruct Hle as [Hle _].
+    rewrite eq_max in Hle. spec Hle. apply le_refl.
+    rewrite Forall_forall in Hle.
+    specialize (Hle n). spec Hle. intuition.
+    simpl. lia.
+  - specialize (list_max_exists l) as Hmax.
+    spec Hmax. lia. rewrite <- eq_max. intuition.
+Qed.
+
+(* Returns all values which occur with maximum frequency in the given list.
+   Note that these values are returned with their original multiplicity. *)
+
+Definition mode
+  `{EqDecision A}
+  (l : list A) : list A  :=
+  let mode_value := list_max (List.map (count_occ decide_eq l) l) in
+  filter (fun a => beq_nat (count_occ decide_eq l a) mode_value) l.
+
+Example mode1 : mode [1; 1; 2; 3; 3] = [1; 1; 3; 3].
+Proof. intuition. Qed.
+
+Lemma mode_not_empty
+  `{EqDecision A}
+  (l : list A)
+  (Hne : l <> []) :
+  mode l <> []. 
+Proof.
+  destruct l.
+  elim Hne. reflexivity.
+  remember (a :: l) as l'.
+  remember (List.map (count_occ decide_eq l') l') as occurrences.
+  
+  assert (Hmaxp: list_max occurrences > 0). {
+    rewrite Heqoccurrences.
+    rewrite Heql'.
+    simpl.
+    rewrite decide_True.
+    lia.
+    reflexivity.
+  }
+  
+  assert (exists a, (count_occ decide_eq l' a) = list_max occurrences). {
+    assert (In (list_max occurrences) occurrences). {
+      apply list_max_exists.
+      rewrite Heqoccurrences.
+      rewrite Heql'.
+      rewrite Heqoccurrences in Hmaxp.
+      rewrite Heql' in Hmaxp.
+      assumption.
+    }
+    rewrite Heqoccurrences in H.
+    rewrite in_map_iff in H.
+    destruct H as [x [Heq Hin]].
+    exists x.
+    rewrite Heqoccurrences.
+    assumption.
+  }
+  
+  assert (exists a, In a (mode l')). {
+    destruct H.
+    exists x.
+    specialize (count_occ_In decide_eq l' x).
+    intros.
+    destruct H0 as [_ H1].
+    rewrite H in H1.
+    specialize (H1 Hmaxp).
+    unfold mode.
+    apply filter_In.
+    split.
+    assumption.
+    rewrite Heqoccurrences in H.
+    rewrite H.
+    symmetry.
+    apply beq_nat_refl.
+  }
+  destruct H.
+  intros contra.
+  rewrite contra in H0.
+  destruct H0.
+  intuition.
+Qed.
+
+(* Computes the list suff which satisfies <<pref ++ suff = l>> or
+   reports that no such list exists. *)
+
+Fixpoint complete_prefix 
+  `{EqDecision A}
+  (l pref : list A) : option (list A) :=
+  match l, pref with
+  | l , [] => Some l
+  | [], (b :: pref') => None
+  | (a :: l'), (b :: pref') => match (decide_eq a b) with
+                               | right _ => None
+                               | _ => let res' := complete_prefix l' pref' in
+                                      match res' with
+                                      | None => None
+                                      | Some s => Some s
+                                      end
+                               end
+  end.
+
+Example complete_prefix_some : complete_prefix [1;2;3;4] [1;2] = Some [3;4].
+Proof. intuition. Qed.
+Example complete_prefix_none : complete_prefix [1;2;3;4] [1;3] = None.
+Proof. intuition. Qed.
+
+Lemma complete_prefix_empty 
+  `{EqDecision A}
+  (l : list A) :
+  complete_prefix l [] = Some l.
+Proof.
+  induction l.
+  - simpl. reflexivity.
+  - simpl.
+    destruct (complete_prefix l []).
+    inversion IHl.
+    reflexivity.
+    discriminate IHl.
+Qed.
+
+Lemma complete_prefix_correct 
+  `{EqDecision A}
+  (l pref suff : list A) :
+  l = pref ++ suff <->
+  complete_prefix l pref = Some suff.
+Proof.
+  split.
+  - generalize dependent suff.
+    generalize dependent pref.
+    induction l.
+    + intros. simpl in *.
+      destruct pref; destruct suff;
+      try reflexivity;
+      try discriminate H.
+    + intros.
+      unfold complete_prefix.
+      destruct pref.
+      * specialize (IHl [] l).
+        spec IHl.
+        intuition.
+        rewrite app_nil_l in H.
+        f_equal. intuition.
+      * destruct (decide (a = a0)) eqn : eq_d.
+        specialize (IHl pref suff).
+        unfold complete_prefix in IHl.
+        rewrite IHl.
+        reflexivity.
+        simpl in H.
+        inversion H.
+        reflexivity.
+        inversion H.
+        elim n. assumption.
+   - generalize dependent suff.
+     generalize dependent pref.
+     induction l; intros.
+     + destruct pref; destruct suff;
+       try intuition;
+       try discriminate H.
+     + destruct pref eqn : eq_pref.
+       rewrite complete_prefix_empty in H.
+       inversion H.
+       intuition.
+       simpl.
+       simpl in H.
+       destruct (decide (a = a0)).
+       destruct (complete_prefix l l0) eqn : eq_cp.
+       inversion H.
+       rewrite e.
+       f_equal.
+       specialize (IHl l0 suff).
+       spec IHl.
+       rewrite eq_cp.
+       f_equal. assumption.
+       assumption.
+       discriminate H.
+       discriminate H.
+Qed.
+
+(* Computes the list pref which satisfies <<pref ++ suff = l>> or
+   reports that no such list exists. *)
+
+Definition complete_suffix 
+  `{EqDecision A}
+  (l suff : list A) : option (list A) :=
+  let res := complete_prefix (rev l) (rev suff) in
+  match res with
+  | None => None
+  | Some ls => Some (rev ls)
+  end.
+  
+Example complete_suffix_some : complete_suffix [1;2;3;4] [3;4] = Some [1;2].
+Proof. intuition. Qed.
+  
+Lemma complete_suffix_correct 
+  `{EqDecision A}
+  (l pref suff : list A) :
+  l = pref ++ suff <->
+  complete_suffix l suff = Some pref.
+Proof.
+  unfold complete_suffix.
+  split.
+  - intros.
+    destruct (complete_prefix (rev l) (rev suff)) eqn : eq_c.
+    apply complete_prefix_correct in eq_c.
+    rewrite H in eq_c.
+    rewrite rev_app_distr in eq_c.
+    assert (l0 = rev pref). {
+      apply app_inv_head in eq_c.
+      symmetry.
+      assumption.
+    }
+    rewrite H0.
+    f_equal.
+    apply rev_involutive.
+    assert (rev l = rev suff ++ rev pref). {
+      apply rev_eq_app.
+      rewrite rev_involutive.
+      assumption.
+    }
+    apply complete_prefix_correct in H0.
+    rewrite eq_c in H0.
+    discriminate H0.
+  - destruct (complete_prefix (rev l) (rev suff)) eqn : eq_c.
+    intros.
+    inversion H.
+    apply complete_prefix_correct in eq_c.
+    apply rev_eq_app in eq_c.
+    rewrite rev_involutive in eq_c.
+    assumption.
+    intros.
+    discriminate H.
+Qed.
+
+Lemma complete_suffix_empty 
+  `{EqDecision A}
+  (l : list A) :
+  complete_suffix l [] = Some l.
+Proof.
+  unfold complete_suffix. simpl.
+  rewrite complete_prefix_empty.
+  f_equal. 
+  apply rev_involutive.
 Qed.
 
 (** elements belonging to first type in a list of a sum type *)

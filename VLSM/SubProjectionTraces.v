@@ -397,7 +397,7 @@ Lemma finite_trace_sub_projection_last_state
   : lstj = composite_state_sub_projection lstx.
 Proof.
   apply preloaded_finite_trace_sub_projection_last_state.
-  apply VLSM_incl_finite_trace with (machine X); [|assumption].
+  apply VLSM_incl_finite_protocol_trace_from with (machine X); [|assumption].
   apply X_incl_Pre.
 Qed.
 
