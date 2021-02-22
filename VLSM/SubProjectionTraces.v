@@ -74,7 +74,7 @@ Definition free_sub_vlsm_composition : VLSM message
 
 Definition seeded_free_sub_composition
   (messageSet : message -> Prop)
-  := pre_loaded_with_vlsm free_sub_vlsm_composition
+  := pre_loaded_vlsm free_sub_vlsm_composition
       (fun m => messageSet m \/ composite_initial_message_prop IM m).
 
 Local Lemma i0 : Inhabited index.
@@ -497,18 +497,18 @@ Proof.
     ) as Hincl.
   spec Hincl; [intros s Hs l om H; exact I|].
   match goal with
-  |- context [pre_loaded_with_vlsm ?v _] =>
+  |- context [pre_loaded_vlsm ?v _] =>
     apply VLSM_incl_trans with (machine (pre_loaded_with_all_messages_vlsm v))
   end
   ; [| apply Hincl].
   clear Hincl.
   match goal with
   |- context [pre_loaded_with_all_messages_vlsm ?v] =>
-    apply VLSM_incl_trans with (machine (pre_loaded_with_vlsm v (fun m => True)))
+    apply VLSM_incl_trans with (machine (pre_loaded_vlsm v (fun m => True)))
   end.
   - match goal with
-    |- context [pre_loaded_with_vlsm ?v _] => 
-      apply (pre_loaded_with_vlsm_incl v seed (fun m => True))
+    |- context [pre_loaded_vlsm ?v _] => 
+      apply (pre_loaded_vlsm_incl v seed (fun m => True))
     end.
     intuition.
   - match goal with

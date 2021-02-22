@@ -471,7 +471,7 @@ Context
   (FreeE := free_composite_vlsm equivocator_IM)
   (PreFreeE := pre_loaded_with_all_messages_vlsm FreeE)
   (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs finite_index seed)
-  (SeededX := pre_loaded_with_vlsm X seed)
+  (SeededX := pre_loaded_vlsm X seed)
   .
 
 Lemma seeded_equivocators_initial_message

@@ -721,15 +721,15 @@ Then <<X1>> is trace-included into <<X2>>.
       (j : index)
       (sj : vstate (IM j))
       (om : option message)
-      (Hp : protocol_prop (pre_loaded_with_vlsm (IM j) P) (sj, om))
+      (Hp : protocol_prop (pre_loaded_vlsm (IM j) P) (sj, om))
       (s := lift_to_composite_state j sj)
-      : protocol_prop (pre_loaded_with_vlsm free_composite_vlsm Q) (s, om).
+      : protocol_prop (pre_loaded_vlsm free_composite_vlsm Q) (s, om).
     Proof.
       remember (sj, om) as sjom.
       generalize dependent om. generalize dependent sj.
       induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom
       ; unfold s0; clear s0.
-      - assert (Hinit : vinitial_state_prop (pre_loaded_with_vlsm free_composite_vlsm Q) (lift_to_composite_state j s)).
+      - assert (Hinit : vinitial_state_prop (pre_loaded_vlsm free_composite_vlsm Q) (lift_to_composite_state j s)).
         { intro i. unfold lift_to_composite_state.
           destruct (decide (i = j)).
           - subst; rewrite state_update_eq. unfold s. destruct is. assumption.
@@ -741,12 +741,12 @@ Then <<X1>> is trace-included into <<X2>>.
         }
         remember (exist _ _ Hinit) as six.
         replace (lift_to_composite_state j s) with (proj1_sig six) by (subst; reflexivity).
-        apply (protocol_initial_state (pre_loaded_with_vlsm free_composite_vlsm Q)).
+        apply (protocol_initial_state (pre_loaded_vlsm free_composite_vlsm Q)).
       -
         destruct im as [m Hjm]; simpl in om.
-        cut (vinitial_message_prop (pre_loaded_with_vlsm free_composite_vlsm Q) m).
+        cut (vinitial_message_prop (pre_loaded_vlsm free_composite_vlsm Q) m).
         { intro Hinit.
-          replace (lift_to_composite_state j s) with (proj1_sig (vs0 (pre_loaded_with_vlsm free_composite_vlsm Q)))
+          replace (lift_to_composite_state j s) with (proj1_sig (vs0 (pre_loaded_vlsm free_composite_vlsm Q)))
           ; try (symmetry; apply state_update_id; reflexivity).
           unfold om. clear om.
           change m with (proj1_sig (exist _ m Hinit)).
@@ -759,8 +759,8 @@ Then <<X1>> is trace-included into <<X2>>.
         replace
           (@pair composite_state (option message) (lift_to_composite_state j sj) om0)
           with
-          (vtransition (pre_loaded_with_vlsm free_composite_vlsm Q) (existT _ j l) (lift_to_composite_state j s, om)).
-        + apply (protocol_generated (pre_loaded_with_vlsm free_composite_vlsm Q)) with _om (lift_to_composite_state j _s)
+          (vtransition (pre_loaded_vlsm free_composite_vlsm Q) (existT _ j l) (lift_to_composite_state j s, om)).
+        + apply (protocol_generated (pre_loaded_vlsm free_composite_vlsm Q)) with _om (lift_to_composite_state j _s)
           ; [assumption | assumption|].
           split; [|exact I].
           simpl. unfold lift_to_composite_state. rewrite state_update_eq. assumption.
@@ -810,8 +810,8 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
       (PimpliesQ : forall m, P m -> Q m)
       (j : index)
       (m : message)
-      (Htrj : can_emit (pre_loaded_with_vlsm (IM j) P) m)
-      : can_emit (pre_loaded_with_vlsm free_composite_vlsm Q) m.
+      (Htrj : can_emit (pre_loaded_vlsm (IM j) P) m)
+      : can_emit (pre_loaded_vlsm free_composite_vlsm Q) m.
     Proof.
       destruct Htrj as [(s,om) [l [s' [[[_om Hs] [[_s Hom] Hv]] Ht]]]].
       exists ((lift_to_composite_state j s), om).

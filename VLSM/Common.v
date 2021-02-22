@@ -108,7 +108,7 @@ function and a [valid]ity condition.
     : VLSM message
     := existT _ T (existT _ S M).
 
-  Definition pre_loaded_with_vlsm
+  Definition pre_loaded_vlsm
     {message : Type}
     (X : VLSM message)
     (initial : message -> Prop)
@@ -164,7 +164,7 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
       := List.Exists (message_selector msg) tr.
 
   (** 'proto_run's are used for an alternative definition of 'protocol_prop' which
-  takes intro account transitions. See 'vlsm_run_prop'.
+  takes into account transitions. See 'vlsm_run_prop'.
   *)
   Record proto_run : Type := mk_proto_run
     { start : state
@@ -2845,10 +2845,10 @@ Byzantine fault tolerance analysis. *)
     apply H.
   Qed.
 
-  Lemma pre_loaded_with_vlsm_incl
+  Lemma pre_loaded_vlsm_incl
     (P Q : message -> Prop)
     (PimpliesQ : forall m : message, P m -> Q m)
-    : VLSM_incl (pre_loaded_with_vlsm X P) (pre_loaded_with_vlsm X Q).
+    : VLSM_incl (pre_loaded_vlsm X P) (pre_loaded_vlsm X Q).
   Proof.
     destruct X as (T, (S, M)). intro Hpincl.
     apply basic_VLSM_incl; simpl; intros; [assumption| ..].
@@ -2859,10 +2859,10 @@ Byzantine fault tolerance analysis. *)
   Qed.
 
   Lemma pre_loaded_with_all_messages_vlsm_is_pre_loaded_with_True
-    : VLSM_eq pre_loaded_with_all_messages_vlsm (pre_loaded_with_vlsm X (fun m => True)).
+    : VLSM_eq pre_loaded_with_all_messages_vlsm (pre_loaded_vlsm X (fun m => True)).
   Proof.
     unfold pre_loaded_with_all_messages_vlsm.
-    unfold pre_loaded_with_vlsm.
+    unfold pre_loaded_vlsm.
     apply VLSM_eq_incl_iff.
     split.
     - apply
@@ -2876,7 +2876,7 @@ Byzantine fault tolerance analysis. *)
   Qed.
 
   Lemma vlsm_is_pre_loaded_with_False
-    : VLSM_eq X (pre_loaded_with_vlsm X (fun m => False)).
+    : VLSM_eq X (pre_loaded_vlsm X (fun m => False)).
   Proof.
     destruct X as (T, (S, M)). intro Hpp.
     apply VLSM_eq_incl_iff. simpl.
@@ -2891,7 +2891,7 @@ Byzantine fault tolerance analysis. *)
 
   Lemma vlsm_is_pre_loaded_with_False_protocol_prop
   (som : vstate X * option message)
-  : protocol_prop X som <-> protocol_prop  (pre_loaded_with_vlsm X (fun m => False)) som.
+  : protocol_prop X som <-> protocol_prop  (pre_loaded_vlsm X (fun m => False)) som.
   Proof.
     pose proof vlsm_is_pre_loaded_with_False as Heq.
     destruct X as (T, (S, M)).

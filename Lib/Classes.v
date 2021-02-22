@@ -378,12 +378,19 @@ Qed.
 
 (** destructs a dec_sig element into a dec_exist construct
 *)
+
+Lemma dec_sig_to_exist {A} P {P_dec: forall (x:A), Decision (P x)}
+            (a: dec_sig P): exists a' (e: P a'), a = dec_exist _ a' e.
+Proof.
+  destruct a as (x,e).
+  exists x, (bool_decide_eq_true_1 _ e).
+  apply dec_sig_eq_iff.
+  reflexivity.
+Qed.
+
 Ltac destruct_dec_sig  a a' e H :=
   match type of a with dec_sig ?P =>
-  assert (H : exists a' (e: P a'), a = dec_exist _ a' e)
-    by (destruct a as (x,e); exists x, (bool_decide_eq_true_1 _ e)
-      ; apply dec_sig_eq_iff; reflexivity)
-  ; destruct H as [a' [e H]]
+  pose proof (dec_sig_to_exist P a) as [a' [e H]]
   end.
 
 Lemma dec_sig_eq_dec
@@ -408,22 +415,11 @@ Lemma dec_sig_sigT_eq
   : existT (fun pa : dec_sig P => F (proj1_sig pa)) pa1 b1
   = existT (fun pa : dec_sig P => F (proj1_sig pa)) pa2 b2.
 Proof.
-  subst.
-  unfold dec_exist in *.
-  assert (Heq : decide_True true false e1 = decide_True true false e2).
-  { apply  bool_decide_eq_true_proof_irrelevance. }
-  unfold pa1, pa2.
-  assert
-    (Heq' : forall be1 be2, be1 = be2 -> 
-      existT (fun pa : dec_sig P => F (proj1_sig pa))
-        (exist (fun a0 : A => bool_decide (P a0) = true) a be1)
-        b2
-      =
-      existT (fun pa : dec_sig P => F (proj1_sig pa))
-        (exist (fun a0 : A => bool_decide (P a0) = true) a be2)
-        b2
-    ); [|apply Heq' ; assumption].
-  intros. subst. reflexivity.
+  subst b2 pa1 pa2.
+  unfold dec_exist.
+  replace (decide_True true false e1) with (decide_True true false e2)
+  ; [reflexivity|].
+  apply bool_decide_eq_true_proof_irrelevance.
 Qed.
 
 Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
