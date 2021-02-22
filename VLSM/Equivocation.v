@@ -2268,3 +2268,28 @@ the newly added initial messages are safe to be received at all times.
   Qed.
 
 End seeded_composite_vlsm_no_equivocation.
+
+Section has_been_sent_irrelevance.
+
+  Context 
+    {message : Type}
+    (X : VLSM message)
+    (Hbs1 : has_been_sent_capability X)
+    (Hbs2 : has_been_sent_capability X)
+    (has_been_sent1 := @has_been_sent _ X Hbs1)
+    (has_been_sent2 := @has_been_sent _ X Hbs2)
+    .
+  
+  Lemma has_been_sent_irrelevance
+    (s : state)
+    (m : message)
+    (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
+    : has_been_sent1 s m -> has_been_sent2 s m.
+  Proof.
+    intro H.
+    apply proper_sent in H; [|assumption].
+    apply proper_sent; [assumption|].
+    assumption.
+  Qed.
+
+End has_been_sent_irrelevance.

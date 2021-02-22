@@ -2242,9 +2242,9 @@ is also available to Y.
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       (Hincl : VLSM_incl X Y)
       (s1 s2 : vstate X)
-      (Hfuture: in_futures X s1 s2)
-      : in_futures Y s1 s2.
+      : in_futures X s1 s2 -> in_futures Y s1 s2.
     Proof.
+      intro Hfuture.
       apply in_futures_witness in Hfuture.
       destruct Hfuture as [[tr Htr] [n1 [n2 [Hle [Hs1 Hs2]]]]].
       simpl in Hs1. simpl in Hs2.
@@ -2305,9 +2305,9 @@ is also available to Y.
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       (s : vstate X)
       (tr : list (vtransition_item X))
-      (Htr : finite_protocol_trace X s tr)
-      : finite_protocol_trace Y s tr.
+      : finite_protocol_trace X s tr -> finite_protocol_trace Y s tr.
     Proof.
+      intro Htr.
       assert (Hptr : protocol_trace_prop X (Finite s tr)) by assumption.
       cut (protocol_trace_prop Y (Finite s tr)). { intro. assumption. }
       revert Hptr. apply Hincl.
@@ -2319,9 +2319,9 @@ is also available to Y.
       (Hincl : VLSM_incl_part MX MY)
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       (s : vstate X)
-      (Hs : protocol_state_prop X s)
-      : protocol_state_prop Y s.
+      : protocol_state_prop X s -> protocol_state_prop Y s.
     Proof.
+      intro Hs.
       apply protocol_state_has_trace in Hs.
       destruct Hs as [is [tr [Htr Hs]]].
       apply (VLSM_incl_finite_protocol_trace _ MY) in Htr
@@ -2354,9 +2354,9 @@ is also available to Y.
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       (s : vstate X)
       (tr : list (vtransition_item X))
-      (Htr : finite_protocol_trace_from X s tr)
-      : finite_protocol_trace_from Y s tr.
+      : finite_protocol_trace_from X s tr -> finite_protocol_trace_from Y s tr.
     Proof.
+      intro Htr.
       apply finite_protocol_trace_from_complete_left in Htr.
       destruct Htr as [is [pre [Htr Hlst]]].
       apply (VLSM_incl_finite_protocol_trace _ MY) in Htr; [|assumption].
@@ -2873,6 +2873,15 @@ Byzantine fault tolerance analysis. *)
       (basic_VLSM_incl (VLSM_class_pre_loaded_with_messages (projT2 (projT2 X))
                                                         (fun _ : message => True)) pre_loaded_with_all_messages_vlsm_machine ); intros; [assumption| | apply H |reflexivity].
       apply initial_message_is_protocol;exact I.
+  Qed.
+
+  Lemma pre_loaded_vlsm_incl_pre_loaded_with_all_messages
+    (P : message -> Prop)
+    : VLSM_incl (pre_loaded_vlsm X P) pre_loaded_with_all_messages_vlsm.
+  Proof.
+    apply VLSM_incl_trans with (machine (pre_loaded_vlsm X (fun _ => True))).
+    - apply (pre_loaded_vlsm_incl P (fun _ => True)). intros. exact I.
+    - apply VLSM_eq_incl_iff. apply pre_loaded_with_all_messages_vlsm_is_pre_loaded_with_True.
   Qed.
 
   Lemma vlsm_is_pre_loaded_with_False
