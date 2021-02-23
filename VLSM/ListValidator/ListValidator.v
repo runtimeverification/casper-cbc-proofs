@@ -467,18 +467,18 @@ Definition global_decisions (s : state) : list (option bool) :=
  **)
 
 Definition in_mode (modes : list (option bool)) (b : bool) : Prop :=
-  match (inb (option_eq_dec) (Some b) modes) with
+  match (inb decide_eq (Some b) modes) with
   | true => True
-  | false => (inb (option_eq_dec) None modes) = true
+  | false => (inb decide_eq None modes) = true
   end.
 
 Global Instance in_mode_dec : RelDecision in_mode.
 Proof.
   unfold RelDecision; intros modes b.
   unfold in_mode.
-  destruct (inb option_eq_dec (Some b) modes) eqn : eq_b.
+  destruct (inb decide_eq (Some b) modes) eqn : eq_b.
   - left. intuition.
-  - destruct (inb option_eq_dec None modes); intuition.
+  - destruct (inb decide_eq None modes); intuition.
 Qed. 
 
 Definition estimator (s : state) (b : bool) : Prop :=

@@ -123,7 +123,8 @@ Context
   Definition feasible_update_value (s : (@state index index_listing)) (who : index) : bool :=
     match s with
     | Bottom => false
-    | Something c is => match (@equivocation_aware_estimatorb index who index_listing Hfinite decide_eq _ _ s false) with
+    | Something c is => match @bool_decide (@equivocation_aware_estimator index who index_listing Hfinite decide_eq _ _ s false) 
+                                           (equivocation_aware_estimator_dec s false) with
                         | true => false
                         | false => true
                         end
@@ -152,21 +153,17 @@ Context
   Proof.
    destruct (feasible_update_value s who) eqn : eq_fv.
    - unfold feasible_update_value in eq_fv.
-     destruct s.
-     discriminate eq_fv.
-     destruct (equivocation_aware_estimatorb (Something b is)) eqn : eq_ewb.
-     discriminate eq_fv.
-     apply ea_estimator_total in eq_ewb.
-     assumption.
-     assumption.
+     destruct s;[intuition congruence|].
+     destruct (bool_decide (equivocation_aware_estimator (Something b is) false)) eqn : eq_ewb.
+     + intuition congruence.
+     + rewrite bool_decide_eq_false in eq_ewb.
+       apply ea_estimator_total in eq_ewb.
+       all : intuition.
    - unfold feasible_update_value in eq_fv.
-     destruct s.
-     simpl.
-     apply I.
-     destruct (equivocation_aware_estimatorb (Something b is) false) eqn : eq_ewb.
-     unfold equivocation_aware_estimator. 
-     assumption.
-     discriminate eq_fv.
+     destruct s;[intuition|].
+     destruct (bool_decide (equivocation_aware_estimator (Something b is) false)) eqn : eq_ewb.
+     rewrite bool_decide_eq_true in eq_ewb. intuition.
+     intuition congruence.
   Qed.
   
   Definition feasible_update_single (s : (@state index index_listing)) (who : index) : plan_item :=
@@ -3338,20 +3335,8 @@ Context
     specialize (Hlocal j H0) as Hlocalj.
     unfold res.
     
-    match goal with
-    |- in_mode_b
-      (mode
-      (no_equivocating_decisions (common_future s i) ?eqv))
-        b = true <-> _ =>
-       replace eqv with (LE i res) end.
-    
-    match goal with
-    |- _ <-> in_mode_b
-      (mode
-      (no_equivocating_decisions (common_future s j) ?eqv))
-        b = true =>
-       replace eqv with (LE j res) end.
-   
+    replace (equivocating_validators (common_future s i)) with (LE i res).
+    replace (equivocating_validators (common_future s j)) with (LE j res).
     2, 3 : (apply eqv_aware_something; apply common_future_result_protocol; intuition).
 
     unfold res.

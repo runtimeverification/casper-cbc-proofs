@@ -64,6 +64,14 @@ Section EquivocationAwareValidator.
     | Bottom => True
     | Something c some => in_mode (mode decisions) b
     end.
+  
+  Global Instance equivocation_aware_estimator_dec : RelDecision equivocation_aware_estimator.
+  Proof.
+    unfold RelDecision. intros s b.
+    unfold equivocation_aware_estimator.
+    destruct s;[left; intuition|].
+    apply in_mode_dec.
+  Qed.
  
   (* If at least one projection is non-equivocating,
      the estimator is non-empty (it relates to either true or false). *)
@@ -83,7 +91,9 @@ Section EquivocationAwareValidator.
              (Something b0 is) 
              (equivocating_validators (Something b0 is))))
              as modes.
-             
+    
+    destruct (inb decide_eq (Some b) modes) eqn : eq_inb; [intuition|].
+   
     assert (Hsome : exists (ob : option bool), In ob (modes)). {
       assert (modes <> []) by (rewrite Heqmodes; apply mode_not_empty; intuition).
       destruct modes;[intuition congruence|].
@@ -92,47 +102,11 @@ Section EquivocationAwareValidator.
     
     destruct Hsome as [ob Hob].
     destruct ob eqn : eq_ob.
-    - 
+    - destruct (inb decide_eq (Some (negb b)) modes) eqn : eq_inb2;[intuition|].
+      apply in_correct in Hob.
+      destruct b; destruct b1; simpl in *; intuition congruence.
+    - apply in_correct in Hob. intuition congruence. 
   Qed.
-  
-  (*
-    unfold equivocation_aware_estimator in Hnotb.
-    destruct s;[intuition|].
-    unfold in_mode in Hnotb.
-    remember (no_equivocating_decisions (Something b0 is) (equivocating_validators (Something b0 is))) as d.
-    destruct (inb option_eq_dec (Some b) (mode d)) eqn : eq_b; [intuition|].
-    assert (inb option_eq_dec (Some (negb b)) (mode d) = true). {  
-      apply in_correct' in eq_b.
-      apply in_correct.
-      assert (mode d <> []). {
-        apply mode_not_empty.
-        assumption.
-      }
-      assert (exists x, In x (mode d)). {
-        destruct (mode d).
-        elim H.
-        reflexivity.
-        exists o.
-        intuition.
-      }
-      destruct H0 as [x Hin].
-      destruct x.
-      + destruct (decide ((negb b) = b1)).
-        rewrite <- e in Hin.
-        assumption.
-        destruct b; destruct b1;
-        simpl. contradiction.
-        simpl. assumption.
-        simpl. assumption.
-        simpl. contradiction.
-      + contradiction.
-    }
-    unfold equivocation_aware_estimatorb.
-    rewrite <- Heqd.
-    unfold in_mode_b.
-    rewrite H.
-    reflexivity.
-  Qed. *)
 
   Definition VLSM_equivocation_aware_list : VLSM message
     :=
