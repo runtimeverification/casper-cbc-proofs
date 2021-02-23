@@ -487,7 +487,7 @@ Qed.
 Lemma seeded_equivocators_incl_preloaded
   : VLSM_incl SeededXE PreFreeE.
 Proof.
-  apply composite_no_equivocation_vlsm_with_pre_loaded_incl_pre_loaded_with_all_messages.
+  apply seeded_equivocators_incl_preloaded.
 Qed.
 
 Lemma preloaded_equivocators_protocol_trace_from_project
@@ -791,14 +791,17 @@ Proof.
       rewrite Hstate_project in Hvx, Htx.
       destruct input as [input|]
       ; [|repeat split; [assumption| apply option_protocol_message_None |assumption| assumption]].
-      simpl in Hc.
+
+      destruct Hc as [Hc _].
+      apply or_comm in Hc.
       specialize (seeded_equivocators_initial_message input) as Hinput.
       unfold vinitial_message_prop in Hinput at 1. simpl in Hinput.
-      destruct Hc as [Hc _]. apply or_comm in Hc.
       destruct Hc as [Hinit_input | Hno_equiv]
       ; [apply Hinput in Hinit_input|]
       ; [repeat split; [assumption| |assumption|assumption]|].
-      { apply initial_message_is_protocol. assumption. }
+      { apply protocol_message_prop_iff. left. exists (exist _ _ Hinit_input).
+        reflexivity.
+      }
       clear Hinput.
       assert
         (Hs_free : protocol_state_prop PreFreeE (last (map Common.destination tr') is)).
@@ -921,7 +924,7 @@ Proof.
     ) as Hproject.
   spec Hproject.
   { apply VLSM_incl_finite_protocol_trace_from; [|assumption].
-    specialize (pre_loaded_with_false_composite_no_equivocation_vlsm_eq equivocator_IM (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index)
+    specialize (false_composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index)
       as Heq.
     match goal with
     |- VLSM_incl_part ?m1 ?m2 =>

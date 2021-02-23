@@ -30,7 +30,6 @@ VLSM/FullNode/Composite/LimitedEquivocation.v
 VLSM/ListValidator/ListValidator.v
 VLSM/ListValidator/Equivocation.v
 VLSM/ListValidator/GeneralComposition.v
-VLSM/ListValidator/NoEquivocationComposition.v
 VLSM/ListValidator/EquivocationAwareListValidator.v
 VLSM/Liveness.v
 VLSM/Liveness/SimpleFragileProtocol.v
