@@ -320,30 +320,6 @@ The inductive definition has three cases:
       : protocol_prop (s,None)
       := protocol_initial s Hs None I.
 
-    Inductive protocol_prop_old : state * option message -> Prop :=
-    | protocol_initial_state_old
-        (is : initial_state)
-        (s : state := proj1_sig is)
-      : protocol_prop_old (s, None)
-    | protocol_initial_message_old
-        (im : initial_message)
-        (s : state := proj1_sig s0)
-        (om : option message := Some (proj1_sig im))
-      : protocol_prop_old (s, om)
-    | protocol_generated_old
-        (l : label)
-        (s : state)
-        (_om : option message)
-        (Hps : protocol_prop_old (s, _om))
-        (_s : state)
-        (om : option message)
-        (Hpm : protocol_prop_old (_s, om))
-        (Hv : valid l (s, om))
-      : protocol_prop_old (transition l (s, om)).
-
-    Axiom protocol_prop_definitions : forall som,
-        protocol_prop som = protocol_prop_old som.
-
 (**
 
 The [protocol_state_prop]erty and the [protocol_message_prop]erty are now
@@ -1359,7 +1335,8 @@ It inherits some previously introduced definitions, culminating with the
     | empty_run_initial_message
         (im : message)
         (Him : initial_message_prop im)
-        (s : state := proj1_sig s0)
+        (s : state)
+        (Hs : initial_state_prop s)
       : vlsm_run_prop {| start := s; transitions := []; final := (s, Some im) |}
     | extend_run
         (state_run : proto_run)
@@ -1433,26 +1410,22 @@ It inherits some previously introduced definitions, culminating with the
       induction Hr; simpl in *.
       - replace is with (proj1_sig (exist _ is His)) by reflexivity.
         constructor. assumption. exact I.
-      - replace im with (proj1_sig (exist _ im Him)) by reflexivity.
-        constructor. apply proj2_sig. assumption.
+      - apply protocol_initial;assumption.
       - unfold om in *; clear om. unfold s in *; clear s.
         destruct (final state_run) as [s _om].
         destruct (final msg_run) as [_s om].
         specialize (protocol_generated l1 s _om IHHr1 _s om IHHr2 Hv). intro. assumption.
     Qed.
 
-    (* TODO: this runs into [emtpy_run_initial_message] being
-       specialized to only apply to state s0
-     *)
     Lemma protocol_is_run
           (som' : state * option message)
           (Hp : protocol_prop som')
       : exists vr : vlsm_run, (som' = final (proj1_sig vr)).
     Proof.
-      rewrite protocol_prop_definitions in Hp.
       induction Hp.
-      - exists (exist _ _ (empty_run_initial_state _ (proj2_sig is))); reflexivity.
-      - exists (exist _ _ (empty_run_initial_message _ (proj2_sig im))); reflexivity.
+      - destruct om as [m|].
+        + exists (exist _ _ (empty_run_initial_message _ Hom _ Hs)); reflexivity.
+        + exists (exist _ _ (empty_run_initial_state _ Hs)); reflexivity.
       - destruct IHHp1 as [[state_run Hsr] Heqs]. destruct IHHp2 as [[msg_run Hmr] Heqm].
         specialize (extend_run state_run Hsr). simpl. intros Hvr.
         specialize (Hvr msg_run Hmr l1). simpl in Heqs. simpl in Heqm.
@@ -1469,8 +1442,8 @@ It inherits some previously introduced definitions, culminating with the
       induction Hr; simpl.
       - split;[|assumption].
         constructor. apply initial_is_protocol; assumption.
-      - split;[|apply proj2_sig].
-        constructor. apply initial_is_protocol. apply proj2_sig.
+      - split;[|assumption].
+        constructor. apply initial_is_protocol. assumption.
       - destruct IHHr1 as [Htr Hinit].
         split; try assumption.
         apply extend_right_finite_trace_from; try assumption.

@@ -272,6 +272,16 @@ Definition equivocator_vlsm
   :=
   mk_vlsm equivocator_vlsm_machine.
 
+
+Lemma mk_singleton_initial_state
+  (s : vstate X)
+  : vinitial_state_prop X s ->
+    vinitial_state_prop equivocator_vlsm (mk_singleton_state s).
+  Proof.
+    intro Hs.
+    split;[reflexivity|assumption].
+  Qed.
+
 End equivocator_vlsm.
 
 Section equivocator_vlsm_protocol_state_projections.
