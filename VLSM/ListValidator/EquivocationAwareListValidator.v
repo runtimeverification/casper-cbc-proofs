@@ -56,21 +56,13 @@ Section EquivocationAwareValidator.
     | Bottom => []
     | _ => List.map decision (get_no_equivocating_states s eqv_validators)
     end.
-    
-  Definition equivocation_aware_estimatorb (s : state) (b : bool) : bool :=
-    let eqv_validators := equivocating_validators s in
-    let decisions := no_equivocating_decisions s eqv_validators in
-    match s with
-    | Bottom => true
-    | Something c some => in_mode_b (mode decisions) b 
-    end.
 
   Definition equivocation_aware_estimator (s : state) (b : bool) : Prop :=
     let eqv_validators := equivocating_validators s in
     let decisions := no_equivocating_decisions s eqv_validators in
     match s with
     | Bottom => True
-    | Something c some => in_mode_b (mode decisions) b = true 
+    | Something c some => in_mode (mode decisions) b
     end.
  
   (* If at least one projection is non-equivocating,
@@ -80,19 +72,37 @@ Section EquivocationAwareValidator.
     (s : state)
     (b : bool)
     (Hne : no_equivocating_decisions s (equivocating_validators s) <> [])
-    (Hnotb : equivocation_aware_estimatorb s b = false) :
-    equivocation_aware_estimatorb s (negb b) = true.
+    (Hnotb : ~ equivocation_aware_estimator s b) :
+    equivocation_aware_estimator s (negb b).
   Proof.
-    unfold equivocation_aware_estimatorb in Hnotb.
-    destruct s.
-    discriminate Hnotb.
-    unfold in_mode_b in Hnotb.
+    unfold equivocation_aware_estimator in *.
+    destruct s;[intuition|].
+    unfold in_mode in *.
+    remember (mode
+             (no_equivocating_decisions 
+             (Something b0 is) 
+             (equivocating_validators (Something b0 is))))
+             as modes.
+             
+    assert (Hsome : exists (ob : option bool), In ob (modes)). {
+      assert (modes <> []) by (rewrite Heqmodes; apply mode_not_empty; intuition).
+      destruct modes;[intuition congruence|].
+      exists o. simpl. left. intuition.
+    }
+    
+    destruct Hsome as [ob Hob].
+    destruct ob eqn : eq_ob.
+    - 
+  Qed.
+  
+  (*
+    unfold equivocation_aware_estimator in Hnotb.
+    destruct s;[intuition|].
+    unfold in_mode in Hnotb.
     remember (no_equivocating_decisions (Something b0 is) (equivocating_validators (Something b0 is))) as d.
-    destruct (inb option_eq_dec (Some b) (mode d)) eqn : eq_b.
-    discriminate Hnotb.
+    destruct (inb option_eq_dec (Some b) (mode d)) eqn : eq_b; [intuition|].
     assert (inb option_eq_dec (Some (negb b)) (mode d) = true). {  
       apply in_correct' in eq_b.
-      apply in_correct' in Hnotb.
       apply in_correct.
       assert (mode d <> []). {
         apply mode_not_empty.
@@ -122,7 +132,7 @@ Section EquivocationAwareValidator.
     unfold in_mode_b.
     rewrite H.
     reflexivity.
-  Qed.
+  Qed. *)
 
   Definition VLSM_equivocation_aware_list : VLSM message
     :=
