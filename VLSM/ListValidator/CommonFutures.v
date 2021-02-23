@@ -1299,8 +1299,7 @@ Context
     Definition get_matching_plan
       (s : vstate X)
       (from to : index) : vplan X :=
-      let s' := get_matching_state s to from in
-      match (sync s s' to from) with
+      match (sync s (get_matching_state s to from) to from) with
       | None => []
       | Some a => a
       end.

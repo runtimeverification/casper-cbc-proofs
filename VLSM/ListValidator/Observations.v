@@ -36,7 +36,7 @@ Context
   Local Notation last_sent' := (@last_sent index index_self index_listing idec).
   Local Notation unfold_history_cons' := (@unfold_history_cons index index_listing Hfinite).
   
-  (* Observations will consist of an observation type, an index and a state.
+  (** Observations will consist of an observation type, an index and a state.
      When talking about "raw" observations, we refer to the underlying states.
      Raw observations regarding a certain validator <<target> 
      are extracted by traversing the state recursively and collecting
@@ -70,7 +70,7 @@ Context
     destruct (depth s); destruct s; intuition.
   Qed.
   
-  (* It is sufficient to call [get_raw_observations'] with depth 
+  (** It is sufficient to call [get_raw_observations'] with depth 
      to <<(depth s)>> *)
     
   Lemma get_observations_depth_redundancy
@@ -240,7 +240,7 @@ Context
        lia.
   Qed.
   
-  (* Some useful shortcuts for relating observations of states and their projections. *)
+  (** Some useful shortcuts for relating observations of states and their projections. *)
   
   Lemma unfold_raw_observations
     (s s': state)
@@ -414,7 +414,7 @@ Context
         intuition.
     Qed.
     
-    (* The simplified observation model (or event) has two types of observations:
+    (** The simplified observation model (or event) has two types of observations:
        - Message observations (we do not distinguish between Sent and Received *
        - State observations (in practice, these will be observations of the 
          current state of a certain validator) *)
@@ -427,31 +427,16 @@ Context
       solve_decision.
     Defined.
     
-    (* Each observation as a type, a validator (the subject of its observation)
-       and an underlying state *) 
-    
-    Inductive simp_lv_event : Type :=
-      SimpObs: simp_lv_event_type -> index -> (@state index index_listing) -> simp_lv_event.
+    Record simp_lv_event : Type := SimpObs {
+      get_simp_event_type : simp_lv_event_type;
+      get_simp_event_subject : index;
+      get_simp_event_state : (@state index index_listing);
+    }.
     
     Global Instance simp_event_eq_dec : EqDecision simp_lv_event.
       solve_decision.
     Defined. 
     
-    Definition get_simp_event_subject (e : simp_lv_event) : index :=
-    match e with 
-      SimpObs type subject state => subject
-    end.
-    
-    Definition get_simp_event_type (e : simp_lv_event) :=
-      match e with
-       SimpObs type subject state => type
-      end.
-      
-    Definition get_simp_event_state (e : simp_lv_event) :=
-      match e with
-        SimpObs type subject state => state
-      end.
-      
     Definition simp_lv_event_comp_eq 
       (e : simp_lv_event) :
       e = SimpObs (get_simp_event_type e) (get_simp_event_subject e) (get_simp_event_state e).
@@ -461,7 +446,7 @@ Context
       reflexivity.
     Qed.
     
-    (* Comparing two events defaults to comparing their underlying states
+    (** Comparing two events defaults to comparing their underlying states
        using the [state_lt'] relation defined in [Equivocation.v], except
        for the case in which the lhs is a state observation and the
        rhs is a message observation, which returns False. This is done because
@@ -490,12 +475,12 @@ Context
       - destruct type1 eqn : eq1; destruct type2 eqn : eq2.
         + exact (state_lt'_dec subject1 state1 state2).
         + right; auto.
-        + exact (state_lt'_dec subject1 state1 state2).
+        + exact (state_lt'_dec subject1 state1 state2). 
         + exact (state_lt'_dec subject1 state1 state2).
       - right. auto.
     Qed.
     
-    (* State observations concerning target can only be provided by <<target>> itself *)
+    (** State observations concerning target can only be provided by <<target>> itself *)
       
     Definition simp_lv_state_observations (s : state) (target : index) : set simp_lv_event :=
       match decide_eq target index_self with
@@ -503,7 +488,7 @@ Context
       | right _ => []
       end.
     
-    (* Message observations consist simply of all the raw observations in the state, tagged
+    (** Message observations consist simply of all the raw observations in the state, tagged
        with the appropriate type and subject *)
     
     Definition simp_lv_message_observations (s : state) (target : index) : set simp_lv_event :=
@@ -523,7 +508,7 @@ Context
       intuition.
     Qed.
     
-    (* A variety of shortcuts. *)
+    (** A variety of shortcuts. *)
     
     Remark in_simp_lv_message_observations
       (s : state)
@@ -642,7 +627,7 @@ Context
       (e : simp_lv_event) :=
       Some (get_simp_event_subject e).
     
-    (* Instantiation of the observable equivocation typeclasses
+    (** Instantiation of the observable equivocation typeclasses
        using our newly defined observation type. *)
     
     Program Instance simp_lv_observable_events :
@@ -760,7 +745,7 @@ Context
       intuition.
     Qed.
    
-   (* Similar shortcuts as done for raw observations. *)
+   (** Similar shortcuts as done for raw observations. *)
    
    Lemma unfold_simp_lv_observations
       (s : state)
@@ -831,7 +816,7 @@ Context
      exists i; intuition.
    Qed.
   
-  (* [get_history] is the backbone of our [has_been_sent] and [has_been_received] capabilities,
+  (** [get_history] is the backbone of our [has_been_sent] and [has_been_received] capabilities,
      so the following is a simple way of showing that send/received messages
      are present as observations *)
   
@@ -876,11 +861,11 @@ Context
          intuition.
   Qed.
   
-  (* The following lemmas describes what happens to observations in a given state <<s>>
+  (** The following lemmas describes what happens to observations in a given state <<s>>
      when it undergoes an update. We will be talking mostly about message observations,
      because they are persistent, while state observations are transient. *)
   
-  (* Doing a valid update keeps all the existing observations. *)
+  (** Doing a valid update keeps all the existing observations. *)
   
   Lemma old_incl_new
     (s so : state)
@@ -964,7 +949,7 @@ Context
           intuition.
     Qed.
     
-   (* The message observations present in the update value <<so>> will
+   (** The message observations present in the update value <<so>> will
       end up in the message observations of the updated state (<<s'>>*)
     
    Lemma received_incl_new
@@ -1003,7 +988,7 @@ Context
     intuition.
    Qed.
    
-   (* A message observation of the updated state <<s'>> is either
+   (** A message observation of the updated state <<s'>> is either
       - an observation of the old state <<s>>
       - an observation of the update value <<so>>
       
@@ -1050,7 +1035,7 @@ Context
           intuition.
    Qed.
    
-   (* A message observation of the updated state <<s'>> is either
+   (** A message observation of the updated state <<s'>> is either
       - an observation of the old state <<s>>
       - an observation of the update value <<so>>
       - the observation (Message' i so)
@@ -1096,7 +1081,7 @@ Context
           intuition.
   Qed. 
    
-   (* The above holds in general regardless of relation between
+   (** The above holds in general regardless of relation between
       <<i>> and <<j>>. *)
    
    Lemma new_incl_rest
@@ -1146,7 +1131,7 @@ Context
           exists k. intuition.
   Qed.
   
-  (* If a message observation <<e>> compares with a state observation
+  (** If a message observation <<e>> compares with a state observation
      <(State' index_self s)>, it will also compare to the state
      observation of its updated version,
      <(State' index_self s'> *)
@@ -1206,7 +1191,7 @@ Context
         * intuition. 
   Qed.
   
-  (* Same with an update_consensus inserted.
+  (** Same with an update_consensus inserted.
      The silly duplication will be taken care of shortly. :) *)
   
   Lemma state_obs_stuff_cons
@@ -1267,7 +1252,7 @@ Context
         * intuition. 
   Qed.
   
-  (* The following concerns the complete observation model, which distinguishes between sent
+  (** The following concerns the complete observation model, which distinguishes between sent
      and received message observations. It was written before we decided to opt for the
      simplified type in the common futures theorem. *)
      
