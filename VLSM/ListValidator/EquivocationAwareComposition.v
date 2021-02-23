@@ -20,7 +20,7 @@ Require Import
   CBC.Common
   CBC.Equivocation.
  
-(* This file describes a free composition <X> of List Validator nodes, each using
+(**   This file describes a free composition <X> of List Validator nodes, each using
    an [equivocation_aware_estimator]. Also see:
    
    - [Observations.v] for the observation model used here
@@ -52,9 +52,9 @@ Context
   
   Local Notation in_listing := (proj2 Hfinite).
   
-  (* We begin with some basic facts about the given composition. *)
+  (**  We begin with some basic facts about the given composition. *)
   
-  (* Protocol states are never bottom *)
+  (**  Protocol states are never bottom *)
   
   Proposition Hsnb 
     (s : vstate X)
@@ -65,7 +65,7 @@ Context
     apply protocol_state_component_no_bottom. intuition.
   Qed.
   
-  (* Applying a protocol plan of receive transitions do not alter the nodes'
+  (**  Applying a protocol plan of receive transitions do not alter the nodes'
      self-projections (i.e, <<project (s i) i >> *)
   
   Proposition self_projections_same_after_receive
@@ -156,7 +156,7 @@ Context
      intuition.
   Qed.
   
-  (* Applying a plan of send/update transitions does not alter
+  (**  Applying a plan of send/update transitions does not alter
      non-self projections. *)
   
   Proposition non_self_projections_same_after_send
@@ -251,12 +251,11 @@ Context
      intuition.
   Qed.
   
-  Definition component_list (s : vstate X) (li : list index) :=
-    List.map s li.
+  Local Notation component_list s li := (List.map s li).
   
   Section EquivObsUtils.
   
-  (* Here we instantiate the observation-based equivocation model for our composition.
+  (** Here we instantiate the observation-based equivocation model for our composition.
      The implicit <<ws>> stands for "witness set" and it means, in short, that we only
      take into account validators in <<ws>> when gathering observations for the composite state.
      Note that these observations can concern anyone, but they can only be taken from local
@@ -288,7 +287,7 @@ Context
     simp_lv_event_lt_dec
     get_simp_event_subject_some.
   
-  (* The honest set: Validators for which there is no evidence of equivocation.
+  (** The honest set: Validators for which there is no evidence of equivocation.
      Note that some of these may actually be equivocating if we were to
      take into account observations originating outside of <<ws>> *) 
   
@@ -305,7 +304,7 @@ Context
       simp_lv_event_lt_dec
       get_simp_event_subject_some s i))) index_listing.
   
-  (* The equivocating set : Validators for which there is evidence of equivocation. *)
+  (** The equivocating set : Validators for which there is evidence of equivocation. *)
   
   Definition wE (s : vstate X) : set index := 
     List.filter (fun i : index => 
@@ -320,7 +319,7 @@ Context
       simp_lv_event_lt_dec
       get_simp_event_subject_some s i)) index_listing.
   
-  (* Shorthands for the union of observations. *)
+  (** Shorthands for the union of observations. *)
   
   Definition wcobs := 
     (composite_state_events_fn ws IM_index Hstate_events_fn).
@@ -503,7 +502,7 @@ Context
     simp_lv_event_lt simp_lv_event_lt_dec 
     get_simp_event_subject_some ce).
   
-  (* There's at most one state observation
+  (** There's at most one state observation
      regarding a fixed validator. *)
   
   Lemma unique_state_observation 
@@ -524,7 +523,7 @@ Context
     - intuition.
   Qed.
   
-  (* And if said validator is in <<ws>>,
+  (** And if said validator is in <<ws>>,
      it's always there. *)
   
   Lemma state_obs_present
@@ -561,7 +560,7 @@ Context
       intuition.
   Qed.
   
-  (* Shortcircuiting the lengthy translation
+  (** Shortcircuiting the lengthy translation
      between the observation typeclass and
      the above definitions. *)
   
@@ -620,7 +619,7 @@ Context
      + intuition.
   Qed.
   
-  (* We have actual equality due to these
+  (** We have actual equality due to these
      sets being the results of [filter]s. *)
   
   Remark wE_eq_equality
@@ -727,7 +726,7 @@ Context
     symmetry. apply filter_complement.
   Qed.
   
-  (* We start to describe what happens to observations
+  (** We start to describe what happens to observations
      when doing composite updates (similarly to results in [Observations.v]). Some results
      that don't hold for arbitrary <<ws>> live outside
      this section. *)
@@ -1116,7 +1115,7 @@ Context
     intuition.
   Qed.
   
-  (* GH := the set of globally honest validators: no evidence of equiv. exists at all.
+  (** GH := the set of globally honest validators: no evidence of equiv. exists at all.
      HH := the set of honest-looking-for-the-honest validators: members of GH have
      no evidence of equiv. regarding these validators.
      LH i := the set of locally honest validators (<<ws>> is a singleton). *)
@@ -1236,7 +1235,7 @@ Context
         intuition.
   Qed.
   
-  (* The following set of results allow us to conclude that our
+  (** The following set of results allow us to conclude that our
      common future-finding procedure maintains the same set of globally
      honest validators. *)
   
@@ -1374,7 +1373,7 @@ Context
       inversion Hine1.
       subst es1.
       destruct Hine2 as [Hine2|Hine2]. 
-      + (* State and state : immediate contradiction *)
+      + (** State and state : immediate contradiction *)
         apply in_cobs_states in Hine2 as Het2.
         simpl in Het2.
         subst et2.

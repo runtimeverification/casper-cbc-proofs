@@ -21,7 +21,7 @@ Require Import
   CBC.Common
   CBC.Equivocation.
 
-(* 
+(** 
 Also see:
    - [Observations.v] for the observation model used here
    - [EquivocationAwareListValidator.v] for the used estimators
@@ -32,7 +32,8 @@ Also see:
 
 Section CommonFutures.
 
-(* The Common Futures Theorem for List Validators.
+(** 
+   ** The Common Futures Theorem for List Validators.
   
    The following is an informal sketch of the Common Futures Theorem for List Validators.
 
@@ -116,6 +117,7 @@ Context
   
   Local Notation hbo_cobs' := (@hbo_cobs index i0 index_listing Hfinite idec Mindex Rindex).
   Local Notation in_listing := (proj2 Hfinite).
+  Local Notation component_list s li := (List.map s li).
     
   (* Returns a boolean <<b>> such that it is valid to perform an update transition
      using <<b>> in state <<s who>> *)
@@ -303,9 +305,9 @@ Context
         simpl in Heqs'.
         rewrite Heqs'.
         split.
-        - apply @GE_existing_same.
+        + apply @GE_existing_same.
           intuition.
-        - apply @GE_existing_same_rev.
+        + apply @GE_existing_same_rev.
           intuition.
           unfold GE.
           rewrite <- wH_wE'.
@@ -327,8 +329,8 @@ Context
       spec IHli. {
         intros.
         destruct (decide (i1 = i)).
-        - rewrite e in H0; intuition.
-        - specialize (Hindif i1 H0).
+        + rewrite e in H0; intuition.
+        + specialize (Hindif i1 H0).
           rewrite Hindif.
           apply Hnf.
           simpl.
@@ -439,9 +441,7 @@ Context
             rewrite Heqnew_s.
             rewrite Heqnew_si.
             unfold set_eq.
-            split.
-            - apply Hexist.
-            - apply Hexist'. 
+            split;[apply Hexist|apply Hexist']. 
           }
           
           assert (Hge_long : set_eq (GE res_long) (GE res_short)). {
@@ -459,7 +459,7 @@ Context
           assumption.
   Qed.
   
-  (* Some wrappers for clarity of expoisition going forward. *)
+  (** Some wrappers for clarity of expoisition going forward. *)
   
   Definition send_phase_plan (s : vstate X) : vplan X :=
     chain_updates (GH s) s.
@@ -583,14 +583,14 @@ Context
   Definition lift_to_receive_item (to from : index) (s : state): vplan_item (IM_index to) :=
     @Build_plan_item _ (type (IM_index to)) receive (Some (from, s)).
   
-  (* Construct a [vplan X] such that <s to> will receive the messages 
+  (** Construct a [vplan X] such that <s to> will receive the messages 
      in <ls>. *)
   
   Definition sync_plan (to from : index) (ls : list state) : (vplan X) := 
     let tmp := List.map (lift_to_receive_item to from) ls in
     List.map (lift_to_composite_plan_item IM_index to) tmp.
   
-  (* Construct a plan which syncs up <<project (s to) from>> with 
+  (** Construct a plan which syncs up <<project (s to) from>> with 
      <<project s' from>> via receiving messages. If the states' <<from>> histories
      don't match, None is returned. 
      See [Lib/ListExtras.v] for [complete_suffix]. *) 
@@ -605,7 +605,7 @@ Context
                  Some rem_plan
     end.
   
-  (*The syncing plan is protocol and it does what is expected.
+  (** The syncing plan is protocol and it does what is expected.
     Note the index <<inter>>, which denotes the validator which
     owns the projection we will choose to sync to. *)
   
@@ -863,7 +863,7 @@ Context
         reflexivity.
     Qed.
    
-   (* We look for suitable projections among the honest validators *)
+   (** We look for suitable projections among the honest validators *)
    
     Definition get_candidates 
       (s : vstate X) :
@@ -874,7 +874,7 @@ Context
     Existing Instance state_lt'_dec.
     Existing Instance state_lt_ext_dec.
     
-    (* Retain only projections which are maximal, i.e, no other projections
+    (** Retain only projections which are maximal, i.e, no other projections
        compare greater to them. *)
     
     Definition get_topmost_candidates
@@ -884,7 +884,7 @@ Context
       :=
       get_maximal_elements (fun s s' => bool_decide (state_lt_ext target (project s target) (project s' target))) (get_candidates s).
     
-    (* If <<i>> is honest, all candidate projections onto <<i>> compare less than
+    (** If <<i>> is honest, all candidate projections onto <<i>> compare less than
        <<(s i)>> *)
     
     Lemma honest_self_projections_maximal1
@@ -939,7 +939,7 @@ Context
       apply wH_wE' in Hhonest. intuition.
   Qed.
   
-  (* Similar statement, stating a <= relation with <<project (s i) i>>. *)
+  (** Similar statement, stating a <= relation with <<project (s i) i>>. *)
   
   Lemma honest_self_projections_maximal2
     (s : vstate X)
@@ -1048,7 +1048,7 @@ Context
     intuition.
   Qed.
   
-  (* Find the state we want to sync to.
+  (** Find the state we want to sync to.
      Choose a candidate for which syncing is valid. If none exists, default to your
      own projection. *)
      
@@ -1098,7 +1098,7 @@ Context
       destruct Hinter;[subst to;intuition|intuition].
     Qed.
     
-    (* The following results are used to show that there exists at least
+    (** The following results are used to show that there exists at least
        one maximal candidate. We do this by relating the comparison operator
        to comparing history lengths between candidates. The maximal candidate
        will have the longest <<from>> history. *)
@@ -1428,7 +1428,7 @@ Context
         intuition. 
     Qed.
     
-    (* Results of this type are useful for quickly unpacking
+    (** Results of this type are useful for quickly unpacking
        information about the constructed plan. *)
        
     Remark get_matching_plan_info
@@ -1480,7 +1480,7 @@ Context
         + contradict Hin.
     Qed.
     
-    (* Construct a plan in which indices in <<li>> sync their
+    (** Construct a plan in which indices in <<li>> sync their
        <<from>> projections. *)
     
     Definition get_receives_for
@@ -1745,7 +1745,7 @@ Context
       apply get_receives_for_info in H.
       intuition.
     Qed.
-    (* Receiving plans which don't involve the <<j>>'th components of nodes
+    (** Receiving plans which don't involve the <<j>>'th components of nodes
        leave them unaffected. *)
        
     Lemma receives_neq
@@ -2098,7 +2098,7 @@ Context
     Definition others (i : index) (s : vstate X) := 
       set_remove idec i (GH s).
       
-    Lemma NoDup_others
+    Remark NoDup_others
       (i : index) (s : vstate X) :
       NoDup (others i s).
     Proof.
@@ -2107,7 +2107,7 @@ Context
       apply GH_NoDup.
     Qed.
     
-    Lemma others_correct
+    Remark others_correct
       (i : index)
       (s : vstate X) :
       ~ In i (others i s).

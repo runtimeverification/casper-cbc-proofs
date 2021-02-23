@@ -670,7 +670,7 @@ Proof.
   reflexivity.
 Qed.
 
-(* For each element X of l1, exactly one occurrence of X is removed
+(** For each element X of l1, exactly one occurrence of X is removed
    from l2. If no such occurrence exists, nothing happens. *)
 
 Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
