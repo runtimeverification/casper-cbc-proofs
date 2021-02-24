@@ -277,8 +277,8 @@ Section vlsm_message_equivocation_evidence.
         (s : state)
         (tr : list transition_item)
         (Htr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s tr)
-        (Hm1 : trace_has_message X (field_selector input) m1 tr)
-        (Hm2 : trace_has_message X (field_selector input) m2 tr)
+        (Hm1 : trace_has_message (field_selector input) m1 tr)
+        (Hm2 : trace_has_message (field_selector input) m2 tr)
         : equivocation_in_trace X m1 tr
         \/ equivocation_in_trace X m2 tr
     }.
@@ -400,7 +400,7 @@ Instance observable_messages
 
 Definition message_observation_based_equivocation_evidence
   : @observation_based_equivocation_evidence state validator message _ _ _ message_preceeds_dec sender.
-Proof. split. Defined.  
+Proof. split. Defined.
 
 Local Instance message_observation_based_equivocation_evidence_dec
   : RelDecision (@equivocation_evidence _ _ _ _ _ _ _ _ message_observation_based_equivocation_evidence).

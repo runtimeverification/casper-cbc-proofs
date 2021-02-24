@@ -280,6 +280,15 @@ Proof. apply bool_decide_eq_false. Qed.
 Lemma bool_decide_eq_false_2 P `{!Decision P}: ~P -> bool_decide P = false.
 Proof. apply bool_decide_eq_false. Qed.
 
+Lemma bool_decide_eq_true_proof_irrelevance
+  `{!Decision P}
+  (p q : bool_decide P = true)
+  : p = q.
+Proof.
+  apply Eqdep_dec.UIP_dec.
+  apply Bool.bool_dec.
+Qed.
+
 Instance comparison_eq_dec : EqDecision comparison.
 Proof. solve_decision. Defined.
 
@@ -364,9 +373,25 @@ Lemma dec_sig_eq_iff
 Proof.
   apply eq_sig_hprop_iff.
   intro x.
-  apply Eqdep_dec.UIP_dec.
-  apply Bool.bool_dec.
+  apply bool_decide_eq_true_proof_irrelevance.
 Qed.
+
+(** destructs a dec_sig element into a dec_exist construct
+*)
+
+Lemma dec_sig_to_exist {A} P {P_dec: forall (x:A), Decision (P x)}
+            (a: dec_sig P): exists a' (e: P a'), a = dec_exist _ a' e.
+Proof.
+  destruct a as (x,e).
+  exists x, (bool_decide_eq_true_1 _ e).
+  apply dec_sig_eq_iff.
+  reflexivity.
+Qed.
+
+Ltac destruct_dec_sig  a a' e H :=
+  match type of a with dec_sig ?P =>
+  pose proof (dec_sig_to_exist P a) as [a' [e H]]
+  end.
 
 Lemma dec_sig_eq_dec
   `{P_dec : forall x: A, Decision (P x)}
@@ -376,6 +401,25 @@ Proof.
   intros x y.
   apply (Decision_iff (iff_sym (dec_sig_eq_iff _ _))).
   apply EqDecA.
+Qed.
+
+Lemma dec_sig_sigT_eq
+  {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)}
+  (F : A -> Type)
+  (a : A)
+  (b1 b2 : F a)
+  (e1 e2 : P a)
+  (pa1 := dec_exist _ a e1)
+  (pa2 := dec_exist _ a e2)
+  (Heqb : b1 = b2)
+  : existT (fun pa : dec_sig P => F (proj1_sig pa)) pa1 b1
+  = existT (fun pa : dec_sig P => F (proj1_sig pa)) pa2 b2.
+Proof.
+  subst b2 pa1 pa2.
+  unfold dec_exist.
+  replace (decide_True true false e1) with (decide_True true false e2)
+  ; [reflexivity|].
+  apply bool_decide_eq_true_proof_irrelevance.
 Qed.
 
 Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):

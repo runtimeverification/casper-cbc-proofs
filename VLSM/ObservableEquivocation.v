@@ -383,7 +383,7 @@ Proof.
   unfold trace_generated_event.
   apply
     (Decision_iff
-      (P := Exists 
+      (P := Exists
         (fun t =>
           match t with
           (prefix, item, _) =>
@@ -838,7 +838,7 @@ Proof.
   spec Hv is pre.
   assert (Hincl : VLSM_incl X Pre)
     by apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
-  specialize (VLSM_incl_finite_trace _ _ Hincl) as Htr_incl.
+  specialize (VLSM_incl_finite_protocol_trace_from _ _ Hincl) as Htr_incl.
   spec Hv.
   { split; [|assumption].
     apply Htr_incl. clear -Hpre.
@@ -907,7 +907,6 @@ Context
   {index : Type}
   `{EqDecision index}
   (index_listing : list index)
-  (finite_index : Listing index_listing)
   (IM : index -> VLSM message)
   (Hstate_events_fn : forall (i : index), vstate (IM i) -> validator -> set event)
   (Hstate_validators : forall (i : index), vstate (IM i) -> set validator)

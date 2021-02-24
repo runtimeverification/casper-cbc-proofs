@@ -31,36 +31,6 @@ Context
   .
 
 (**
-If [equivocator_vlsm_transition_item_project] produces a transition item,
-then that item has the same [input] and [output] as the argument item.
-*)
-Lemma equivocator_transition_item_project_inv_messages
-  (item : vtransition_item equivocator_vlsm)
-  (itemX : vtransition_item X)
-  (idescriptor odescriptor : MachineDescriptor)
-  (Hitem : equivocator_vlsm_transition_item_project _ item idescriptor = Some (Some itemX, odescriptor))
-  : exists
-    (i : nat)
-    (is_equiv : bool)
-    (Hdescriptor : idescriptor = Existing _ i is_equiv),
-    input item = input itemX /\ output item = output itemX.
-Proof.
-  unfold equivocator_vlsm_transition_item_project in Hitem.
-  destruct idescriptor as [s|j fj]; [congruence|].
-  exists j. exists fj. exists eq_refl.
-  destruct item.
-  destruct destination as (n, bs).
-  destruct l as (lx, descriptorx).
-  destruct (le_lt_dec (S n) j); [congruence|].
-  destruct descriptorx as [s | i' [|]] eqn:Hl; simpl.
-  - destruct (nat_eq_dec (S j) (S n)); congruence.
-  - destruct (nat_eq_dec (S j) (S n)); [|congruence].
-    inversion Hitem. subst. repeat split; reflexivity.
-  - destruct (nat_eq_dec i' j); [|congruence].
-    inversion Hitem. subst. repeat split; reflexivity.
-Qed.
-
-(**
 If a projection of an [equivocator_vlsm] trace [output]s a message, then
 the original trace must do so too.
 *)
@@ -70,8 +40,8 @@ Lemma equivocator_vlsm_trace_project_output_reflecting
   (j i : MachineDescriptor)
   (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
   (m : message)
-  (Hjbs: Exists (fun elem : vtransition_item X => output elem = Some m) trX)
-  : Exists (fun elem : transition_item => output elem = Some m) tr.
+  (Hjbs: Exists (field_selector output m) trX)
+  : Exists (field_selector output m) tr.
 Proof.
   generalize dependent i. generalize dependent trX.
   induction tr; intros.
@@ -84,9 +54,9 @@ Proof.
       eqn:Hitem'
     ; inversion HtrX; subst; clear HtrX.
     + apply equivocator_transition_item_project_inv_messages in Hitem'.
-      destruct Hitem' as [_ [_ [_ [_ Ha]]]].
+      destruct Hitem' as [_ [_ [_ [_ [_ Ha]]]]].
       inversion Hjbs; subst.
-      * left. rewrite Ha. assumption.
+      * left. simpl in Ha. simpl.  rewrite Ha. assumption.
       * specialize (IHtr H0 i' eq_refl). right. assumption.
     + specialize (IHtr Hjbs i' eq_refl). right. assumption.
 Qed.
@@ -157,8 +127,13 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
       /\ exists (tr : list (vtransition_item X)),
         In item tr /\
         exists (dfinal dfirst : MachineDescriptor),
+          proper_descriptor X dfirst bs /\
+          proper_descriptor X dfinal (last (map destination btr) bs) /\
           equivocator_vlsm_trace_project _ btr dfinal = Some (tr, dfirst).
 Proof.
+  specialize (preloaded_equivocator_vlsm_protocol_trace_project_inv2 X bs btr) as Hinv2.
+  spec Hinv2. { intro contra. subst. inversion Hitem. }
+  spec Hinv2 Hbtr.
   apply in_split in Hitem.
   destruct Hitem as [bprefix [bsuffix Heq]].
   subst btr.
@@ -218,9 +193,15 @@ Proof.
   subst lbitem.
   simpl in Htr.
   exists (prefix ++ itemx :: suffix).
+  specialize (Hinv2 _ _ _ _ Htr).
+  destruct Hinv2 as [Hdfinal Hdinitial].
   split.
   - apply in_app_iff. right. left. reflexivity.
-  - eexists _. eexists _. apply Htr.
+  - eexists _. eexists _. repeat split; [..|apply Htr]; [|assumption].
+    clear -Hdinitial.
+    destruct dfirst as [sn | j fj].
+    + destruct Hdinitial as [_ [_ Hsn]]. assumption.
+    + destruct Hdinitial as [Hdinitial _]. assumption.
 Qed.
 
 (**
@@ -232,13 +213,15 @@ Lemma equivocator_vlsm_trace_project_output_reflecting_inv
   (tr: list (vtransition_item equivocator_vlsm))
   (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr)
   (m : message)
-  (Hbbs : Exists (fun elem : transition_item => output elem = Some m) tr)
+  (Hbbs : Exists (field_selector output m) tr)
   : exists
     (j i : MachineDescriptor)
+    (Hi : proper_descriptor X i is)
+    (Hj : proper_descriptor X j (last (map destination tr) is))
     (trX: list (vtransition_item X))
     (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
     ,
-    Exists (fun elem : vtransition_item X => output elem = Some m) trX.
+    Exists (field_selector output m) trX.
 Proof.
   apply Exists_exists in Hbbs.
   destruct Hbbs as [item [Hin Houtput]].
@@ -252,11 +235,14 @@ Proof.
     (preloaded_equivocator_vlsm_trace_project_protocol_item
        _ _ Htr _ Hin _ _ Hsndl)
     as Hitem.
-  destruct Hitem as [itemx [[d Hitemx] [trx [Hinx [ifinal [ifirst Htrx]]]]]].
-  exists ifinal. exists ifirst. exists trx. exists Htrx.
+  destruct Hitem as [itemx [[d Hitemx] [trx [Hinx [ifinal [ifirst [Hifirst [Hifinal Htrx]]]]]]]].
+  exists ifinal. exists ifirst. split; [assumption|].
+  split; [assumption|].
+  exists trx. exists Htrx.
   apply Exists_exists. exists itemx. split; [assumption|].
   apply equivocator_transition_item_project_inv_messages in Hitemx.
-  destruct Hitemx as [_ [_ [_ [_ Hitemx]]]].
+  destruct Hitemx as [_ [_ [_ [_ [_ Hitemx]]]]].
+  simpl in *.
   congruence.
 Qed.
 
@@ -308,13 +294,13 @@ Proof.
   split.
   - intros [bis [btr [Hbtr [Hlast Hsome]]]].
     destruct (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Hbtr) _ Hsome)
-      as [j [i [trX [Hproject Hsomex]]]].
+      as [j [i [_ [_ [trX [Hproject Hsomex]]]]]].
     destruct j as [sj | j fj];
       [solve[rewrite equivocator_vlsm_trace_project_on_new_machine in Hproject
       ; inversion Hproject; subst; inversion Hsomex]|].
     assert (Hntr : btr <> []) by (intro contra; subst; inversion Hsome).
     specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr Hbtr _ _ _ _ Hproject)
+      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr (proj1 Hbtr) _ _ _ _ Hproject)
       as HpreX.
     simpl in *.
     rewrite Hlast in HpreX. destruct HpreX as [Hj Hi].
@@ -333,8 +319,9 @@ Proof.
       - destruct Hi as [Hlastx HtrX].
         symmetry in Hlastx.
         exists sn. exists trX. exists HtrX. exists Hlastx. assumption.
-      - destruct Hi as [Hi [Hlastx HtrX]].
-        exists (projT2 bis (of_nat_lt Hi)). exists trX. exists HtrX.
+      - destruct Hi as [Hi [Hlastx [HtrX HinitX]]].
+        specialize (HinitX (proj2 Hbtr)).
+        exists (projT2 bis (of_nat_lt Hi)). exists trX. exists (conj HtrX HinitX).
         symmetry in Hlastx. exists Hlastx.
         assumption.
     }
@@ -342,7 +329,7 @@ Proof.
     intros bis btr Hbtr Hlast.
     subst s.
     destruct
-      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ Hbtr _ Hj false)
+      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ (proj1 Hbtr) _ Hj false)
       as [trX [di [Hproject Hdi]]].
     apply
       (equivocator_vlsm_trace_project_output_reflecting  _ _ _ _ Hproject m).
@@ -350,9 +337,9 @@ Proof.
     + destruct Hdi as [Hlast HtrX].
       symmetry in Hlast.
       apply (Hall _ _ HtrX Hlast).
-    + destruct Hdi as [Hi [Hlast HtrX]].
+    + destruct Hdi as [Hi [Hlast [HtrX HinitX]]]. specialize (HinitX (proj2 Hbtr)).
       symmetry in Hlast.
-      apply (Hall _ _ HtrX Hlast).
+      apply (Hall _ _ (conj HtrX HinitX) Hlast).
   - intro Hall.
     destruct Hs as [om Hs].
     apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
@@ -380,7 +367,7 @@ Proof.
     destruct Hbbs as [j Hjbs].
     apply (proper_sent X) in Hjbs
     ; [|apply (preloaded_equivocator_state_project_protocol_state _ _ Hs j)].
-    specialize (preloaded_equivocator_vlsm_project_protocol_trace _ start tr Htr) as Hpre.
+    specialize (preloaded_equivocator_vlsm_project_protocol_trace _ start tr (proj1 Htr)) as Hpre.
     assert (Hj := of_nat_to_nat_inv j).
     simpl in *.
     rewrite Hlast in Hpre.
@@ -395,10 +382,10 @@ Proof.
       spec Hjbs sn trX HtrX HlastX.
       apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ nj false) (NewMachine _ sn)
       ; assumption.
-    + destruct Hdi as [Hi [HlastX HtrX]].
+    + destruct Hdi as [Hi [HlastX [HtrX HinitX]]]. specialize (HinitX (proj2 Htr)).
       symmetry in HlastX.
       rewrite Hj in HlastX.
-      spec Hjbs (projT2 start (of_nat_lt Hi)) trX HtrX HlastX.
+      spec Hjbs (projT2 start (of_nat_lt Hi)) trX (conj HtrX HinitX) HlastX.
       apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ nj false) (Existing _ i fi)
       ; assumption.
   - intro Hbbs. assert (Hbbs' := Hbbs).
@@ -411,14 +398,14 @@ Proof.
     spec Hbbs is tr Htr Hlst.
     destruct
       (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Htr) _ Hbbs)
-      as [j [i [trX [HtrX Hjbs]]]].
+      as [j [i [_ [_ [trX [HtrX Hjbs]]]]]].
     assert (Hntr : tr <> []) by (intro contra; subst; inversion Hbbs).
     destruct j as [sj | j fj]
     ; [rewrite equivocator_vlsm_trace_project_on_new_machine in HtrX
       ; inversion HtrX; subst; inversion Hjbs
       |].
     specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr Htr _ _ _ _ HtrX)
+      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr (proj1 Htr) _ _ _ _ HtrX)
       as HpreX.
     simpl in *.
     rewrite Hlst in HpreX. simpl in HpreX.
@@ -441,9 +428,9 @@ Proof.
     + destruct Hi as [Hlstx Htrx].
       exists sn. exists trX. exists Htrx. symmetry in Hlstx. exists Hlstx.
       assumption.
-    + destruct Hi as [Hi [Hlstx Htrx]].
+    + destruct Hi as [Hi [Hlstx [Htrx HinitX]]]. specialize (HinitX (proj2 Htr)).
       exists (projT2 is (of_nat_lt Hi)).
-      exists trX. exists Htrx.
+      exists trX. exists (conj Htrx HinitX).
       symmetry in Hlstx. exists Hlstx.
       assumption.
 Qed.
@@ -537,7 +524,7 @@ Proof.
       exists is. exists tr. exists Htr. exists Hlst.
       subst s.
       destruct
-        (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ Htr _ Hi false)
+        (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ (proj1 Htr) _ Hi false)
         as [trX [di Hdi]].
       destruct di as [sn | i fi].
       * destruct Hdi as [Hproject [Hlast HtrX]].
@@ -545,16 +532,16 @@ Proof.
         ; [assumption|].
         symmetry in Hlast.
         apply (Hm _ _ HtrX Hlast).
-      * destruct Hdi as [Hproject [Hi' [Hlast HtrX]]].
+      * destruct Hdi as [Hproject [Hi' [Hlast [HtrX HinitX]]]]. specialize (HinitX (proj2 Htr)).
         apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ ni false) (Existing _ i fi)
         ; [assumption|].
         symmetry in Hlast.
-        apply (Hm _ _ HtrX Hlast).
+        apply (Hm _ _ (conj HtrX HinitX) Hlast).
   - intros [[m' Hm] Heq]. simpl in Heq. subst m'.
     destruct Hm as [is [tr [Htr [Hlst Hexists]]]].
     destruct
       (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Htr) _ Hexists)
-      as [ifinal [istart [trX [Hproject HexistsX]]]].
+      as [ifinal [istart [_ [_ [trX [Hproject HexistsX]]]]]].
     assert (Hntr : tr <> []) by (intro contra; subst; inversion Hexists).
     destruct ifinal as [sfinal | i ffinal]
     ; [
@@ -562,7 +549,7 @@ Proof.
       ; inversion Hproject; subst; inversion HexistsX
       |].
     specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr Htr _ _ _ _ Hproject)
+      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr (proj1 Htr) _ _ _ _ Hproject)
       as HpreX.
     simpl in *.
     rewrite Hlst in HpreX.
@@ -579,9 +566,9 @@ Proof.
       * destruct Histart as [Hlast HtrX].
         exists sstart. exists trX. exists HtrX. symmetry in Hlast. exists Hlast.
         assumption.
-      * destruct Histart as [Histart [Hlast HtrX]].
+      * destruct Histart as [Histart [Hlast [HtrX HinitX]]]. specialize (HinitX (proj2 Htr)).
         exists (projT2 is (of_nat_lt Histart)).
-        exists trX. exists HtrX.
+        exists trX. exists (conj HtrX HinitX).
         symmetry in Hlast. exists Hlast.
         assumption.
 Qed.

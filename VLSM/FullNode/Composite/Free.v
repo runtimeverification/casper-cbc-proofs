@@ -470,11 +470,11 @@ Lemma full_composed_free_sent_messages_comparable
   (Htr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s tr)
   (m1 m2 : message)
   (Hvalidator : sender m1 = sender m2)
-  (Hm1 : Equivocation.trace_has_message VLSM_full_composed_free (field_selector output) m1 tr)
-  (Hm2 : Equivocation.trace_has_message VLSM_full_composed_free (field_selector output) m2 tr)
+  (Hm1 : trace_has_message (field_selector output) m1 tr)
+  (Hm2 : trace_has_message (field_selector output) m2 tr)
   : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
 Proof.
-  unfold Equivocation.trace_has_message in *.
+  unfold trace_has_message in *.
   apply Exists_exists in Hm1. destruct Hm1 as [item1 [Hitem1 Hm1]].
   apply Exists_exists in Hm2. destruct Hm2 as [item2 [Hitem2 Hm2]].
   apply in_split in Hitem1.
@@ -672,7 +672,7 @@ Program Instance composed_basic_observable_equivocation
   := @composed_observable_basic_equivocation
       message V message message_eq message_preceeds message_preceeds_dec
       full_node_message_subject_of_observation index indices finite_index IM_index
-      free_observable_messages_index 
+      free_observable_messages_index
       Hmeasurable Hrt
       composite_validators
       composite_validators_nodup _.
@@ -688,7 +688,7 @@ Next Obligation.
             (Exists
               (fun e2 =>
                 full_node_message_subject_of_observation e2 = Some v /\
-                ~ comparable message_preceeds e1 e2) 
+                ~ comparable message_preceeds e1 e2)
               (state_union s)))
           (state_union s)
         )

@@ -71,6 +71,7 @@ types <<[@label _ (IT n) | n <- index]>>.
 
     Definition composite_state := @state message composite_type.
     Definition composite_label := @label message composite_type.
+    Definition composite_transition_item : Type := @transition_item message composite_type.
 
 (**
 A very useful operation on [composite_state]s is updating the state corresponding
@@ -322,10 +323,10 @@ component:
 
 (**
 Given a [composite_label] <<(i, li)>> and a [composite_state]-message
-pair <<(s, om)>>, [free_composite_valid]ity is defined as [valid]ity in
+pair <<(s, om)>>, [composite_valid]ity is defined as [valid]ity in
 the <<i>>th component <<IM i>>.
 *)
-    Definition free_composite_valid
+    Definition composite_valid
       (l : composite_label)
       (som : composite_state * option message)
       : Prop
@@ -340,7 +341,7 @@ directly on [composite_label]s and [composite_state]s, thus being able to
 impose a global condition.
 
 [constrained_composite_valid]ity interposes such a <<constraint>> on top of
-the [free_composite_valid]ity.
+the [composite_valid]ity.
 *)
 
     Definition constrained_composite_valid
@@ -348,7 +349,7 @@ the [free_composite_valid]ity.
       (l : composite_label)
       (som : composite_state * option message)
       :=
-      free_composite_valid l som /\ constraint l som.
+      composite_valid l som /\ constraint l som.
 
     Definition composite_vlsm_machine
       (constraint : composite_label -> composite_state * option message -> Prop)
@@ -492,7 +493,7 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
           protocol_state_prop (pre_loaded_with_all_messages_vlsm free_composite_vlsm) s ->
           forall (l : composite_label) (om : option message),
             constraint1 l (s, om) -> constraint2 l (s, om).
-    
+
     Lemma preloaded_constraint_subsumption_weaker
         (constraint1 constraint2 : composite_label -> composite_state * option message -> Prop)
         : constraint_subsumption constraint1 constraint2 -> preloaded_constraint_subsumption constraint1 constraint2.
@@ -717,9 +718,9 @@ Then <<X1>> is trace-included into <<X2>>.
       (j : index)
       (sj : vstate (IM j))
       (om : option message)
-      (Hp : protocol_prop (vlsm_add_initial_messages (IM j) P) (sj, om))
+      (Hp : protocol_prop (pre_loaded_vlsm (IM j) P) (sj, om))
       (s := lift_to_composite_state j sj)
-      : protocol_prop (vlsm_add_initial_messages free_composite_vlsm Q) (s, om).
+      : protocol_prop (pre_loaded_vlsm free_composite_vlsm Q) (s, om).
     Proof.
       remember (sj, om) as sjom.
       generalize dependent om. generalize dependent sj.
@@ -743,8 +744,8 @@ Then <<X1>> is trace-included into <<X2>>.
         replace
           (@pair composite_state (option message) (lift_to_composite_state j sj) om0)
           with
-          (vtransition (vlsm_add_initial_messages free_composite_vlsm Q) (existT _ j l) (lift_to_composite_state j s, om)).
-        + apply (protocol_generated (vlsm_add_initial_messages free_composite_vlsm Q)) with _om (lift_to_composite_state j _s)
+          (vtransition (pre_loaded_vlsm free_composite_vlsm Q) (existT _ j l) (lift_to_composite_state j s, om)).
+        + apply (protocol_generated (pre_loaded_vlsm free_composite_vlsm Q)) with _om (lift_to_composite_state j _s)
           ; [assumption | assumption|].
           split; [|exact I].
           simpl. unfold lift_to_composite_state. rewrite state_update_eq. assumption.
@@ -769,8 +770,8 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
       (s := lift_to_composite_state j sj)
       : protocol_prop free_composite_vlsm (s, om).
     Proof.
-      apply vlsm_is_add_initial_False_protocol_prop.
-      apply vlsm_is_add_initial_False_protocol_prop in Hp.
+      apply vlsm_is_pre_loaded_with_False_protocol_prop.
+      apply vlsm_is_pre_loaded_with_False_protocol_prop in Hp.
       remember (fun _ : message => False) as P.
       apply (protocol_prop_composite_free_lift_generalized_initial P P); [|assumption].
       intro m. exact id.
@@ -794,8 +795,8 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
       (PimpliesQ : forall m, P m -> Q m)
       (j : index)
       (m : message)
-      (Htrj : can_emit (vlsm_add_initial_messages (IM j) P) m)
-      : can_emit (vlsm_add_initial_messages free_composite_vlsm Q) m.
+      (Htrj : can_emit (pre_loaded_vlsm (IM j) P) m)
+      : can_emit (pre_loaded_vlsm free_composite_vlsm Q) m.
     Proof.
       destruct Htrj as [(s,om) [l [s' [[[_om Hs] [[_s Hom] Hv]] Ht]]]].
       exists ((lift_to_composite_state j s), om).
@@ -1513,7 +1514,7 @@ All results from regular projections carry to these "free" projections.
     split; [intuition|intuition|..].
     unfold valid in *; simpl in *.
     unfold constrained_composite_valid in *.
-    unfold free_composite_valid in *.
+    unfold composite_valid in *.
     unfold free_constraint in *; simpl.
     unfold vvalid in *.
     destruct l.
@@ -1873,3 +1874,39 @@ This instantiates the regular composition using the [bool] type as an <<index>>.
     := composite_vlsm_free_projection binary_IM second.
 
 End binary_free_composition.
+
+Section composite_decidable_initial_message.
+
+(** ** Composite decidable initial message
+
+Here we show that if the [initial_message_prop]erty is decidable for every
+component, then it is decidable for a finite composition as well.
+
+*)
+
+Context
+  {message : Type}
+  {index : Type}
+  {IndEqDec : EqDecision index}
+  (IM : index -> VLSM message)
+  {i0 : Inhabited index}
+  {index_listing : list index}
+  (finite_index : Listing index_listing).
+
+Lemma composite_decidable_initial_message
+  (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
+  : decidable_initial_messages_prop (composite_sig IM).
+Proof.
+  intro m. simpl. unfold composite_initial_message_prop.
+  apply
+    (Decision_iff
+      (P := List.Exists (fun i => vinitial_message_prop (IM i) m) index_listing)
+    ).
+  - rewrite <- exists_finite by (apply finite_index).
+    split; intros [i Hm]; exists i.
+    + exists (exist _ _ Hm). reflexivity.
+    + destruct Hm as [[im Hinit] Him]. subst. assumption.
+  - apply @Exists_dec. intro i. apply Hdec_init.
+Qed.
+
+End composite_decidable_initial_message.
