@@ -446,8 +446,7 @@ Lemma [basic_VLSM_inclusion]
       : protocol_prop X2 (s, om).
     Proof.
       induction Hps.
-      - apply (protocol_initial_state X2 is).
-      - apply (protocol_initial_message X2).
+      - apply (protocol_initial X2);assumption.
       - apply (protocol_generated X2) with _om _s; try assumption.
         apply constraint_subsumption_protocol_valid.
         apply protocol_generated_valid with _om _s; assumption.
@@ -533,8 +532,7 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
       : protocol_prop X2 (s, om).
     Proof.
       induction Hps.
-      - apply (protocol_initial_state X2 is).
-      - apply (protocol_initial_message X2).
+      - apply (protocol_initial X2);assumption.
       - apply (protocol_generated X2) with _om _s; try assumption.
         apply preloaded_constraint_subsumption_protocol_valid.
         apply protocol_generated_valid with _om _s; assumption.
@@ -582,9 +580,8 @@ Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
       : protocol_prop (pre_loaded_with_all_messages_vlsm X2) (s, om).
     Proof.
       induction Hps.
-      - apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X2) is).
-      - apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm X2)).
-      - apply (protocol_generated (pre_loaded_with_all_messages_vlsm X2)) with _om _s; try assumption.
+      - apply (protocol_initial (pre_loaded_with_all_messages_vlsm X2));assumption.
+      - apply (protocol_generated (pre_loaded_with_all_messages_vlsm X2)) with _om _s;[assumption..|].
         apply preloaded_constraint_subsumption_preloaded_protocol_valid.
         destruct Hv as [Hv Hc1].
         repeat split; try assumption.
@@ -729,31 +726,19 @@ Then <<X1>> is trace-included into <<X2>>.
       generalize dependent om. generalize dependent sj.
       induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom
       ; unfold s0; clear s0.
-      - assert (Hinit : vinitial_state_prop (pre_loaded_vlsm free_composite_vlsm Q) (lift_to_composite_state j s)).
+      - apply protocol_initial.
         { intro i. unfold lift_to_composite_state.
           destruct (decide (i = j)).
-          - subst; rewrite state_update_eq. unfold s. destruct is. assumption.
-          - rewrite state_update_neq; try assumption.
+          - subst; rewrite state_update_eq. assumption.
+          - rewrite state_update_neq by assumption.
             unfold composite_s0. simpl. unfold vs0.
-            destruct s0 as [s0 Hinit].
-            simpl.
-            apply Hinit.
+            apply proj2_sig.
         }
-        remember (exist _ _ Hinit) as six.
-        replace (lift_to_composite_state j s) with (proj1_sig six) by (subst; reflexivity).
-        apply (protocol_initial_state (pre_loaded_vlsm free_composite_vlsm Q)).
-      -
-        destruct im as [m Hjm]; simpl in om.
-        cut (vinitial_message_prop (pre_loaded_vlsm free_composite_vlsm Q) m).
-        { intro Hinit.
-          replace (lift_to_composite_state j s) with (proj1_sig (vs0 (pre_loaded_vlsm free_composite_vlsm Q)))
-          ; try (symmetry; apply state_update_id; reflexivity).
-          unfold om. clear om.
-          change m with (proj1_sig (exist _ m Hinit)).
-          apply protocol_initial_message.
+        destruct om0 as [m|];[|exact I].
+        { simpl in Hom |- *.
+          destruct Hom;[left|right;apply PimpliesQ;assumption].
+          exists j. exists (exist _ _ H). reflexivity.
         }
-        destruct Hjm as [Hjm | HPm]; [|right; apply PimpliesQ; assumption].
-        left. exists j. exists (exist _ m Hjm). reflexivity.
       - specialize (IHHp1 s _om eq_refl).
         specialize (IHHp2 _s om eq_refl).
         replace
@@ -858,8 +843,8 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
       - remember (state_update s i si) as s'.
         assert (Hs' : vinitial_state_prop free_composite_vlsm s')
           by (subst; apply composite_free_update_initial_state_with_initial; assumption).
-        exists None. replace s' with (proj1_sig (exist _ _ Hs')) by reflexivity.
-        apply protocol_initial_state.
+        apply initial_is_protocol.
+        assumption.
       - destruct Ht as [[Hps [Hom Hv]] Ht].
         unfold transition in Ht. simpl in Ht.
         destruct Hv as [Hv _]. simpl in Hv.
@@ -928,9 +913,7 @@ Proof.
   clearbody som;clear s om.
   induction Hproto.
   - apply preloaded_protocol_initial_state.
-    exact (proj2_sig is i).
-  - apply preloaded_protocol_initial_state.
-    exact (proj2_sig (vs0 (IM i))).
+    apply (Hs i).
   - destruct l as [j lj].
     cbn.
     rewrite (surjective_pairing (vtransition (IM j) lj (s j, om))).
@@ -1179,16 +1162,10 @@ following result is not surprising.
       (HpmX : option_protocol_message_prop X iom)
       : option_protocol_message_prop Xj iom.
     Proof.
-      exists (proj1_sig (vs0 Xj)).
-      destruct iom as [im|].
-      - specialize (protocol_initial_message Xj ); intro Hinit.
-        assert (Hpim : protocol_message_prop X im)
-          by assumption.
-        assert (Hini : vinitial_message_prop Xj im)
-          by (exists (exist _ im Hpim); reflexivity).
-        specialize (Hinit (exist _ im Hini)); simpl in Hinit.
-        assumption.
-      - apply (protocol_initial_state Xj).
+      apply option_initial_message_is_protocol.
+      destruct iom as [m|];[|exact I].
+      exists (exist _ m HpmX).
+      reflexivity.
     Qed.
 
 (**
@@ -1200,40 +1177,18 @@ the initial ones available from <<X>>.
       (Hpmj: option_protocol_message_prop Xj iom)
       : option_protocol_message_prop X iom.
     Proof.
+      destruct iom as [m|];[|apply option_protocol_message_None].
       destruct Hpmj as [sj Hpmj].
       inversion Hpmj; subst.
-      - exists (proj1_sig (vs0 X)).
-        apply (protocol_initial_state X).
-      - destruct im as [im Him].
-        unfold om in *; simpl in *; clear om.
-        destruct Him as [[m Hpm] Heq].
-        subst; assumption.
+      - destruct Hom as [pm <-]. apply proj2_sig.
       - destruct Hv as [sX [Heqs Hv]].
         subst s.
-        destruct
-          (vtransition X
-            (@existT index (fun n : index => vlabel (IM n)) j l)
-            (@pair (@state message (@composite_type message index IM))
-               (option message) sX om))
-          as [s' om'] eqn:Heqsom'.
-        assert (Ht := Heqsom').
-        unfold vtransition in Heqsom'. simpl in Heqsom'.
-        replace
-          (@vtransition message (IM j) l
-            (@pair (@vstate message (IM j)) (option message) (sX j) om)
-          )
-          with
-          (sj, iom)
-          in Heqsom'.
-        inversion Heqsom'; subst.
-        exists (state_update IM sX j sj).
-        replace
-          (@pair (@state message (@type message X)) (option message)
-            (@state_update message index _ IM sX j sj) om')
-          with
-          (vtransition X (existT (fun n : index => vlabel (IM n)) j l) (sX, om)).
-        apply (protocol_prop_valid_out X).
-        assumption.
+        set (lX := existT (fun n => vlabel (IM n)) j l) in Hv.
+        apply protocol_prop_valid_out in Hv.
+        simpl in Hv.
+        unfold vstate in Hv. 
+        rewrite H0 in Hv.
+        eexists; exact Hv.
     Qed.
 
 (**
@@ -1249,11 +1204,8 @@ the [pre_loaded_with_all_messages_vlsm] associated to <<IM j>>, we prove that th
       : protocol_prop PreLoaded (s, om).
     Proof.
       induction Hps.
-      - apply (protocol_initial_state PreLoaded is).
-      - destruct im as [m Him]. simpl in om0. clear Him.
-        assert (Him : vinitial_message_prop (pre_loaded_with_all_messages_vlsm X) m)
-          by exact I.
-        apply (protocol_initial_message PreLoaded (exist _ m Him)).
+      - apply (protocol_initial PreLoaded).
+        assumption. destruct om0;exact I.
       - apply (protocol_generated PreLoaded) with _om _s; try assumption.
         apply projection_valid_implies_valid. assumption.
     Qed.
@@ -1338,17 +1290,9 @@ We can now finally prove the main result for this section:
     generalize dependent om. generalize dependent s.
     induction Hp; intros; inversion Heqsom; subst; clear Heqsom.
     - exists None.
-      destruct is as [is' Hinit].
-      unfold s in *; simpl in *.
-      specialize (lift_to_composite_state_initial is' Hinit)
-      ; intro HinitX.
-      remember (lift_to_composite_state IM j is') as initX.
-      replace initX with (proj1_sig (exist _ initX HinitX)); try reflexivity.
-      apply (protocol_initial_state X).
-    - replace (lift_to_composite_state IM j s) with (proj1_sig (vs0 X)).
-      + exists None. apply (protocol_initial_state X).
-      + unfold lift_to_composite_state.
-        rewrite state_update_id; reflexivity.
+      apply (protocol_initial X);[|exact I].
+      apply lift_to_composite_state_initial.
+      assumption.
     - specialize (IHHp1 s _om eq_refl).
       exists om0.
       replace
@@ -1543,12 +1487,9 @@ All results from regular projections carry to these "free" projections.
         exists li'. exists (s i, om). exists om'.
         repeat split; try assumption.
         exists (proj1_sig (vs0 (pre_loaded_with_all_messages_vlsm (IM i)))).
-        destruct om as [m|].
-        * assert (Him : vinitial_message_prop  (pre_loaded_with_all_messages_vlsm (IM i)) m)
-            by exact I.
-          pose (exist _ m Him) as im.
-          apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm (IM i)) im).
-        * apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm (IM i))).
+        apply protocol_initial.
+        apply proj2_sig.
+        destruct om;exact I.
       + rewrite state_update_neq; try assumption. apply IHHs.
   Qed.
   
@@ -1831,11 +1772,7 @@ All results from regular projections carry to these "free" projections.
     rewrite state_update_eq.
     repeat split; try assumption.
     - apply preloaded_composed_protocol_state. assumption.
-    - destruct om1 as [m1|]; exists (proj1_sig (vs0 (IM il))).
-      + assert (Hm1 : vinitial_message_prop (pre_loaded_with_all_messages_vlsm (IM il)) m1) by exact I.
-        replace m1 with (proj1_sig (exist _ m1 Hm1)) by reflexivity.
-        apply (protocol_initial_message (pre_loaded_with_all_messages_vlsm (IM il))).
-      + apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm (IM il))).
+    - apply any_message_is_protocol_in_preloaded.
   Qed.
 
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_neq

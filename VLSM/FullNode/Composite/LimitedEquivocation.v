@@ -92,12 +92,8 @@ Proof.
     as Hinitial_not_heavy.
   destruct Hs as [_om Hs].
   inversion Hs; subst; simpl.
-  - unfold s0.
-    apply Hinitial_not_heavy.
-    destruct is. assumption.
-  - unfold s0.
-    apply Hinitial_not_heavy.
-    destruct Common.s0. assumption.
+  - apply Hinitial_not_heavy.
+    assumption.
   - destruct Hv as [Hv Hctr].
     unfold Full_composition_constraint in Hctr.
     unfold vtransition in Hctr.
@@ -133,14 +129,8 @@ Proof.
   generalize dependent om.
   generalize dependent s.
   induction Hsom; intros; inversion Heqsom; subst; clear Heqsom.
-  - unfold s in *; clear s. destruct is as [is His]. simpl in *.
-    specialize (His i).
-    destruct i; inversion His; simpl in Hm
-    ; rewrite H0 in Hm
-    ; inversion Hm.
-  - unfold s in *; clear s. destruct s0 as [is His]. simpl in *.
-    specialize (His i).
-    destruct i; inversion His; simpl in Hm
+  - specialize (Hs i).
+    destruct i; inversion Hs; simpl in Hm
     ; rewrite H0 in Hm
     ; inversion Hm.
   - assert (Hpsom0 : option_protocol_message_prop Full_constrained_composition om0).

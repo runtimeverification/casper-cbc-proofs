@@ -396,8 +396,16 @@ Proof.
     ; [|exists Hproject; exists eq_refl; assumption].
     apply functional_extensionality_dep_good.
     reflexivity.
-  - destruct s0 as (is, His) eqn:Hs0. simpl.
-    pose (vs0 equivocators_no_equivocations_vlsm) as vsz.
+  - rename s into is, Hs into His.
+    simpl.
+    pose ((exist _ is His) : vinitial_state X) as v.
+    pose ((fun i => mk_singleton_state _ (is i)) :
+          vstate equivocators_no_equivocations_vlsm) as is'.
+    assert (vinitial_state_prop _ is') as His'.
+    {
+      intro i. apply mk_singleton_initial_state. apply His.
+    }
+    pose ((exist _ is' His') : vinitial_state equivocators_no_equivocations_vlsm) as vsz.
     exists (@mk_proto_run _ (type equivocators_no_equivocations_vlsm) (proj1_sig vsz) [] ((proj1_sig vsz), Some im)).
     assert (Him' : vinitial_message_prop equivocators_no_equivocations_vlsm im).
     { unfold vinitial_message_prop. simpl.
@@ -406,16 +414,15 @@ Proof.
       exists (exist _ imi Himi). reflexivity.
     }
     split; [apply (empty_run_initial_message equivocators_no_equivocations_vlsm im Him')|].
+    apply proj2_sig.
     exists (zero_choice _).
     split; [apply zero_choice_not_equivocating|].
     exists eq_refl. unfold final. unfold start. unfold fst. unfold snd.
     assert
-      (Hproject : equivocators_state_project (zero_choice IM) (` vsz) = s
-      )
+      (Hproject : equivocators_state_project (zero_choice IM) (` vsz) = is)
     ; [| exists Hproject; exists eq_refl; assumption].
+    unfold vsz, is'; simpl.
     apply functional_extensionality_dep_good.
-    simpl in Hs0. unfold composite_s0 in Hs0.
-    inversion Hs0. subst.
     reflexivity.
   - destruct IHHrunX1 as [eqv_state_run [Heqv_state_run [eqv_state_choice [Heqv_state_choice [Hstate_project [Hstate_final_project [_ Hstate_start_project]]]]]]].
     destruct IHHrunX2 as [eqv_msg_run [Heqv_msg_run [eqv_msg_choice [Heqv_msg_choice [Hmsg_project [_ [Hom Hmsg_start_project]]]]]]].

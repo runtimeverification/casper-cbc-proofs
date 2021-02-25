@@ -293,6 +293,16 @@ Definition equivocator_vlsm
   :=
   mk_vlsm equivocator_vlsm_machine.
 
+
+Lemma mk_singleton_initial_state
+  (s : vstate X)
+  : vinitial_state_prop X s ->
+    vinitial_state_prop equivocator_vlsm (mk_singleton_state s).
+  Proof.
+    intro Hs.
+    split;[reflexivity|assumption].
+  Qed.
+
 End equivocator_vlsm.
 
 Section equivocator_vlsm_protocol_state_projections.
@@ -412,17 +422,13 @@ Lemma equivocator_state_project_protocol
   forall (i : Fin.t (S n)), protocol_state_prop X (bs i).
 Proof.
   dependent induction Hbs; split.
-  - exists (proj1_sig (vs0 X)). apply protocol_initial_state.
-  - destruct is as [is His]. unfold s; clear s. simpl.
-    destruct His as [Hzero His].
-    destruct is as (n, is). simpl in Hzero. subst n. simpl in His.
-    intro i. dependent destruction i; [|inversion i].
-    exists None. change (is F1) with (proj1_sig (exist _ _ His)).
-    apply protocol_initial_state.
-  - unfold om0; clear om0.
-    exists (proj1_sig (vs0 X)). apply (protocol_initial_message X).
-  - unfold s; clear s. unfold s0. simpl.
-    intro i. exists None. apply protocol_initial_state.
+  - apply option_initial_message_is_protocol;assumption.
+  - destruct bs as [n bs]; intro i.
+    destruct Hs as [Hn0 Hinit].
+    simpl in Hn0, Hinit.
+    subst n.
+    dependent induction i;[|inversion i].
+    apply initial_is_protocol; assumption.
   - specialize (IHHbs1 X s _om eq_refl JMeq_refl).
     specialize (IHHbs2 X _s om0 eq_refl JMeq_refl).
     specialize (protocol_generated X) as Hgen.
@@ -470,8 +476,7 @@ Proof.
       simpl_existT. subst.
       destruct (to_nat j) as (nj, Hnj).
       try destruct (nat_eq_dec nj (S n0)).
-      * exists None. change sn with (proj1_sig (exist _ sn Hsn)).
-        constructor.
+      * apply initial_is_protocol;assumption.
       * apply IHHbs1.
     + destruct Hv as [Hi Hv].
       destruct (le_lt_dec (S (projT1 s)) i); [lia|].
@@ -536,10 +541,10 @@ Proof.
   revert bs Hbs i.
   induction 1 using protocol_state_prop_ind;intros.
   - destruct Hs as [Hzero His].
-    destruct s. simpl in *. subst x. exists None.
+    destruct s. simpl in *. subst x.
+    apply initial_is_protocol.
     dependent destruction i; [|inversion i].
-    change (v F1) with (proj1_sig (exist _ _ His)).
-     apply (protocol_initial_state (pre_loaded_with_all_messages_vlsm X)).
+    assumption.
   - destruct Ht as [[Hps [_ Hv]] Ht].
     simpl in Ht. unfold vtransition in Ht. unfold_transition Ht.
     destruct l as (l, description).
@@ -551,9 +556,8 @@ Proof.
       destruct s as (ns, bs).
       simpl in *. destruct (to_nat i) as (ni, Hni).
       destruct (nat_eq_dec ni (S ns)); [|apply IHHbs].
-      subst. exists None.
-      change sn with (proj1_sig (exist _ sn Hsn)).
-      constructor.
+      subst.
+      apply initial_is_protocol;assumption.
     + destruct Hv as [Hj Hv].
       destruct (le_lt_dec (S (projT1 s)) j); [lia|].
       replace (of_nat_lt l0) with (of_nat_lt Hj) in * by apply of_nat_ext. clear l0.

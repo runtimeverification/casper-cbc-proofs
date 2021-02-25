@@ -57,6 +57,14 @@ corresponding sets.
     ; l0 : label
     }.
 
+  Definition option_initial_message_prop
+    {message : Type} {vtype : VLSM_type message} {sign : VLSM_sign vtype}
+    (om : option message) : Prop
+    := match om with
+       | None => True
+       | Some m => initial_message_prop m
+       end.
+
   Definition VLSM_sign_pre_loaded_with_messages
     {message : Type} {vtype : VLSM_type message} (sign : VLSM_sign vtype)
     (initial : message -> Prop)
@@ -232,6 +240,7 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
   Definition vinitial_state_prop := @initial_state_prop _ _ sign.
   Definition vinitial_state := @initial_state _ _ sign.
   Definition vinitial_message_prop := @initial_message_prop _ _ sign.
+  Definition voption_initial_message_prop := @option_initial_message_prop _ _ sign.
   Definition vinitial_message := @initial_message _ _ sign.
   Definition vs0 := @s0 _ _ sign.
   Definition vm0 := @m0 _ _ sign.
@@ -302,14 +311,11 @@ The inductive definition has three cases:
 *)
 
     Inductive protocol_prop : state * option message -> Prop :=
-    | protocol_initial_state
-        (is : initial_state)
-        (s : state := proj1_sig is)
-      : protocol_prop (s, None)
-    | protocol_initial_message
-        (im : initial_message)
-        (s : state := proj1_sig s0)
-        (om : option message := Some (proj1_sig im))
+    | protocol_initial
+        (s : state)
+        (Hs : initial_state_prop s)
+        (om : option message)
+        (Hom : option_initial_message_prop om)
       : protocol_prop (s, om)
     | protocol_generated
         (l : label)
@@ -321,6 +327,10 @@ The inductive definition has three cases:
         (Hpm : protocol_prop (_s, om))
         (Hv : valid l (s, om))
       : protocol_prop (transition l (s, om)).
+    Definition protocol_initial_state
+      [s:state] (Hs: initial_state_prop s)
+      : protocol_prop (s,None)
+      := protocol_initial s Hs None I.
 
 (**
 
@@ -349,17 +359,10 @@ dependent types [protocol_state] and [protocol_message].
       (Hinitial : initial_state_prop s) :
       protocol_state_prop s.
     Proof.
-      unfold protocol_state_prop.
-      unfold initial_state_prop.
       exists None.
-      remember (exist _ s Hinitial) as is.
-      assert (s = proj1_sig is). {
-        rewrite Heqis.
-        simpl.
-        reflexivity.
-      }
-      rewrite H.
-      apply protocol_initial_state.
+      apply protocol_initial.
+      assumption.
+      exact I.
     Qed.
 
     Lemma initial_message_is_protocol
@@ -368,8 +371,9 @@ dependent types [protocol_state] and [protocol_message].
       protocol_message_prop m.
     Proof.
       exists (proj1_sig s0).
-      change m with (proj1_sig (exist _ m Hinitial)).
-      apply protocol_initial_message.
+      apply protocol_initial.
+      apply proj2_sig.
+      assumption.
     Qed.
 
 (**
@@ -383,7 +387,10 @@ to define a protocol message property for optional messages:
     Lemma option_protocol_message_None
       : option_protocol_message_prop None.
     Proof.
-      exists (proj1_sig s0). apply protocol_initial_state.
+      exists (proj1_sig s0).
+      apply protocol_initial.
+      apply proj2_sig.
+      exact I.
     Qed.
 
     Lemma option_protocol_message_Some
@@ -393,6 +400,17 @@ to define a protocol message property for optional messages:
     Proof.
       destruct Hpm as [s Hpm]. exists s. assumption.
     Qed.
+
+    Lemma option_initial_message_is_protocol
+      (om : option message)
+      (Hinitial : option_initial_message_prop om) :
+      option_protocol_message_prop om.
+    Proof.
+      destruct om;
+      [apply option_protocol_message_Some
+      |apply option_protocol_message_None].
+      apply initial_message_is_protocol;assumption.
+    Qed.    
 
 (**
 
@@ -527,19 +545,6 @@ pre-existing concepts.
       exists _s. assumption.
     Qed.
 
-    Lemma protocol_prop_transition_in
-          {l : label}
-          {s s' : state}
-          {om om' : option message}
-          (Ht : protocol_transition l (s, om) (s', om'))
-      : option_protocol_message_prop om.
-    Proof.
-      destruct om as [m|].
-      - apply protocol_transition_in in Ht.
-        inversion Ht. exists x. assumption.
-      - exists (proj1_sig s0). constructor.
-    Qed.
-
     Lemma protocol_prop_transition_out
           {l : label}
           {s s' : state}
@@ -668,17 +673,14 @@ pre-existing concepts.
     Proof.
       split.
       - intros [s Hm]; inversion Hm; subst.
-        + destruct im as [m Him]. simpl. left. assumption.
+        + left. assumption.
         + right.
           exists (s1, om). exists l1. exists s.
           repeat split; try assumption.
           * exists _om. assumption.
           * exists _s. assumption.
       - intros [Him | Hem].
-        + replace m with (proj1_sig (exist _ m Him))
-            by reflexivity.
-          exists (proj1_sig s0).
-          apply protocol_initial_message.
+        + apply initial_message_is_protocol. assumption.
         + apply can_emit_protocol. assumption.
     Qed.
 
@@ -703,15 +705,14 @@ and [protocol_message]s, similar to their recursive definition.
     Proof.
       intros; split.
       - intro Hps'. destruct Hps' as [om' Hs].
-        inversion Hs; subst
-        ; try (left; exists is; reflexivity)
-        ; try (left; exists s0; reflexivity).
-        right. exists l1. exists (s, om). exists om'.
-        repeat split; try assumption.
-        + exists _om. assumption.
-        + exists _s. assumption.
+        inversion Hs; subst.
+        * left. exists (exist _ _ Hs0). reflexivity.
+        * right. exists l1. exists (s, om). exists om'.
+          repeat split; try assumption.
+          + exists _om. assumption.
+          + exists _s. assumption.
       - intros [[[s His] Heq] | [l [[s om] [om' [[[_om Hps] [[_s Hpm] Hv]] Ht]]]]]; subst.
-        + exists None. apply protocol_initial_state.
+        + exists None. apply protocol_initial; [assumption | exact I].
         + exists om'. rewrite <- Ht. apply protocol_generated with _om _s; assumption.
     Qed.
 
@@ -739,8 +740,7 @@ and [protocol_message]s, similar to their recursive definition.
       remember (s, om) as som.
       generalize dependent om. generalize dependent s.
       induction Hs; intros; inversion Heqsom; subst.
-      - apply IHinit. unfold s. destruct is. assumption.
-      - apply IHinit. unfold s. destruct s0. assumption.
+      - apply IHinit. assumption.
       - specialize (IHgen s1 l1 om om0 s).
         specialize (IHHs1 s _om eq_refl).
         apply IHgen; try assumption.
@@ -761,14 +761,12 @@ and [protocol_message]s, similar to their recursive definition.
     Proof.
       intros; split.
       - intros [s' Hpm'].
-        inversion Hpm'; subst
-        ; try (left; exists im; reflexivity).
-        right. exists l1. exists (s, om). exists s'.
-        repeat split; try assumption.
-        + exists _om. assumption.
-        + exists _s. assumption.
+        inversion Hpm'; subst.
+        + left. exists (exist _ m' Hom). reflexivity.
+        + right. exists l1. exists (s, om). exists s'.
+          firstorder.
       - intros [[[s His] Heq] | [l [[s om] [s' [[[_om Hps] [[_s Hpm] Hv]] Ht]]]]]; subst.
-        + exists (proj1_sig s0). apply protocol_initial_message.
+        + apply initial_message_is_protocol. assumption.
         + exists s'. rewrite <- Ht.
           apply protocol_generated with _om _s; assumption.
     Qed.
@@ -1349,7 +1347,8 @@ It inherits some previously introduced definitions, culminating with the
     | empty_run_initial_message
         (im : message)
         (Him : initial_message_prop im)
-        (s : state := proj1_sig s0)
+        (s : state)
+        (Hs : initial_state_prop s)
       : vlsm_run_prop {| start := s; transitions := []; final := (s, Some im) |}
     | extend_run
         (state_run : proto_run)
@@ -1431,8 +1430,9 @@ It inherits some previously introduced definitions, culminating with the
     Proof.
       destruct vr as [r Hr]; simpl.
       induction Hr; simpl in *.
-      - replace is with (proj1_sig (exist _ is His)) by reflexivity. constructor.
-      - replace im with (proj1_sig (exist _ im Him)) by reflexivity. constructor.
+      - replace is with (proj1_sig (exist _ is His)) by reflexivity.
+        constructor. assumption. exact I.
+      - apply protocol_initial;assumption.
       - unfold om in *; clear om. unfold s in *; clear s.
         destruct (final state_run) as [s _om].
         destruct (final msg_run) as [_s om].
@@ -1445,8 +1445,9 @@ It inherits some previously introduced definitions, culminating with the
       : exists vr : vlsm_run, (som' = final (proj1_sig vr)).
     Proof.
       induction Hp.
-      - exists (exist _ _ (empty_run_initial_state _ (proj2_sig is))); reflexivity.
-      - exists (exist _ _ (empty_run_initial_message _ (proj2_sig im))); reflexivity.
+      - destruct om as [m|].
+        + exists (exist _ _ (empty_run_initial_message _ Hom _ Hs)); reflexivity.
+        + exists (exist _ _ (empty_run_initial_state _ Hs)); reflexivity.
       - destruct IHHp1 as [[state_run Hsr] Heqs]. destruct IHHp2 as [[msg_run Hmr] Heqm].
         specialize (extend_run state_run Hsr). simpl. intros Hvr.
         specialize (Hvr msg_run Hmr l1). simpl in Heqs. simpl in Heqm.
@@ -1461,12 +1462,10 @@ It inherits some previously introduced definitions, culminating with the
     Proof.
       unfold r; clear r; destruct vr as [r Hr]; simpl.
       induction Hr; simpl.
-      - specialize (protocol_initial_state (exist _ is His)) as Hpis; simpl in Hpis.
-        constructor; try assumption. constructor.
-        exists None. assumption.
-      - specialize (protocol_initial_state s0); intro Hps0; simpl in Hps0.
-        destruct s0 as [s0 Hs0]; simpl. constructor; try assumption. constructor.
-        exists None. assumption.
+      - split;[|assumption].
+        constructor. apply initial_is_protocol; assumption.
+      - split;[|assumption].
+        constructor. apply initial_is_protocol. assumption.
       - destruct IHHr1 as [Htr Hinit].
         split; try assumption.
         apply extend_right_finite_trace_from; try assumption.
@@ -1504,7 +1503,7 @@ It inherits some previously introduced definitions, culminating with the
         specialize (vlsm_run_last_state (exist _ r0 Hr0)); intro Hlast_state.
         simpl in Hlast_state. rewrite Htr_r0 in Hlast_state.
         rewrite Hstart in Hlast_state. rewrite Hlast_state in Hlst.
-        specialize (protocol_prop_transition_in Hlst); intro Hmsg.
+        specialize (protocol_transition_in Hlst); intro Hmsg.
         destruct Hmsg as [_s Hmsg].
         apply protocol_is_run in Hmsg.
         destruct Hmsg as [[r_msg Hr_msg] Hmsg].
@@ -1533,13 +1532,14 @@ It inherits some previously introduced definitions, culminating with the
       - clear Hlast'. subst. simpl. destruct Htr as [_ Hinit].
         change (start run) with (proj1_sig (exist _ _ Hinit)).
         apply protocol_initial_state.
+        assumption.
       - spec Hlast'; [destruct tr'; intro contra; inversion contra|].
         rewrite! last_error_is_last in Hlast'. simpl in Hlast'.
         destruct Hlast' as [Hdestination Houtput].
         rewrite! map_app. simpl. rewrite! last_is_last.
         destruct (final run) as (s, om). simpl in *.
         inversion Hdestination. inversion Houtput. subst.
-        assumption. 
+        assumption.
     Qed.
 
     Lemma trace_is_protocol_state
@@ -1990,15 +1990,10 @@ This relation is often used in stating safety and liveness properties.*)
       - destruct l as [| item l].
         + destruct tr as [s' l' | s' l']
           ; destruct Htr as [Htr Hinit]
-          ; inversion Heqpref_tr
-          ; subst
-          ; split; try assumption
+          ; inversion Heqpref_tr; subst
+          ; (split;[|assumption])
           ; constructor
-          ; replace s' with (proj1_sig (exist _ s' Hinit))
-          ; try reflexivity
-          ; exists None
-          ; apply protocol_initial_state
-          .
+          ;  apply initial_is_protocol;assumption.
         + assert (Hnnil : item ::l <> [])
             by (intro Hnil; inversion Hnil).
           specialize (exists_last Hnnil); intros [prefix [last Heq]].
@@ -2420,7 +2415,7 @@ Qed.
 (**
   [VLSM_incl] almost implies inclusion of the [protocol_prop] sets.
   Some additional hypotheses are required because [VLSM_incl] only
-  refers to traces, and [protocol_initial_messages] means that
+  refers to traces, and [protocol_initial] means that
   [protocol_prop] includes some pairs that do not appear in any
   transition.
  *)
@@ -2430,20 +2425,18 @@ Lemma protocol_prop_incl
       (X := mk_vlsm MX)
       (Y := mk_vlsm MY):
   VLSM_incl X Y ->
-  proj1_sig (vs0 X) = proj1_sig (vs0 Y) ->
   (forall m, vinitial_message_prop X m -> vinitial_message_prop Y m) ->
   forall som, protocol_prop X som -> protocol_prop Y som.
 Proof.
-  intros Hincl Hs0 Hinits.
+  intros Hincl Hinits.
   induction 1.
-  - (* protocol_initial_state *)
-    (* An initial state can be made into a zero-step [Trace] *)
-    subst s;destruct is as [s Hs];simpl.
+  - (* protocol_initial *)
     cut (vinitial_state_prop Y s).
     {
       intro Hs'.
-      change s with (proj1_sig (exist _ s Hs')).
-      apply (protocol_initial_state Y).
+      simpl;apply protocol_initial.
+      assumption.
+      destruct om;[apply Hinits|];assumption.
     }
     assert (protocol_trace_prop X (Finite s [])).
     {
@@ -2453,13 +2446,6 @@ Proof.
     }
     apply Hincl in H.
     apply H.
-  - (* protocol_initial_message *)
-    replace s with (proj1_sig (vs0 Y)) by assumption.
-    clear s.
-    subst om;destruct im as [im Him];simpl.
-    apply Hinits in Him.
-    change im with (proj1_sig (exist _ im Him)).
-    apply protocol_initial_message.
   - (* protocol_generated *)
     remember (transition l1 (s,om)) as som'.
     assert (protocol_transition X l1 (s,om) som').
@@ -2527,21 +2513,14 @@ Context
   Proof.
     intros som H.
     induction H.
-    - (* initial state *)
-      split.
-      + apply initial_is_protocol.
-        apply Hinitial_state.
-        apply proj2_sig.
-      + intros _.
-        apply option_protocol_message_None.
     - split.
       + apply initial_is_protocol.
         apply Hinitial_state.
-        apply proj2_sig.
-      + simpl. clear s. subst om.
-        intros [l [s Hv]].
+        assumption.
+      + intros [l [_s Hv]].
+        destruct om;[|apply option_protocol_message_None].
         apply (Hinitial_protocol_message _ _ _ Hv).
-        apply proj2_sig.
+        assumption.
     - rename IHprotocol_prop1 into IHs.
       rename IHprotocol_prop2 into IHm.
       simpl in IHm. destruct IHm as [_ IHm].
@@ -2719,11 +2698,8 @@ Byzantine fault tolerance analysis. *)
     (om : option message)
     : protocol_prop pre_loaded_with_all_messages_vlsm (proj1_sig (vs0 X), om).
   Proof.
-    destruct om as [m|]; try apply (protocol_initial_state pre_loaded_with_all_messages_vlsm).
-    assert (Hm : vinitial_message_prop pre_loaded_with_all_messages_vlsm m) by exact I.
-    pose (exist _ m Hm) as im.
-    replace m with (proj1_sig im) by reflexivity.
-    apply (protocol_initial_message pre_loaded_with_all_messages_vlsm).
+    apply protocol_initial;[apply proj2_sig|].
+    destruct om;exact I.
   Qed.
 
   Lemma pre_loaded_with_all_messages_protocol_prop
@@ -2733,14 +2709,12 @@ Byzantine fault tolerance analysis. *)
     : protocol_prop pre_loaded_with_all_messages_vlsm (s, om).
   Proof.
     induction Hps.
-    - apply (protocol_initial_state pre_loaded_with_all_messages_vlsm is).
-    - destruct im as [m Him]. simpl in om0. clear Him.
-      assert (Him : @initial_message_prop _ _ pre_loaded_with_all_messages_vlsm_sig m)
-        by exact I.
-      apply (protocol_initial_message pre_loaded_with_all_messages_vlsm (exist _ m Him)).
+    - apply (protocol_initial pre_loaded_with_all_messages_vlsm).
+      assumption.
+      destruct om0;exact I.
     - apply (protocol_generated pre_loaded_with_all_messages_vlsm) with _om _s; assumption.
   Qed.
-  
+
   Lemma pre_loaded_with_all_messages_protocol_state_prop
     (s : state)
     (Hps : protocol_state_prop X s)
@@ -2786,15 +2760,11 @@ Byzantine fault tolerance analysis. *)
       clearbody som;clear s om.
       induction Hproto.
       + apply preloaded_protocol_initial_state.
-        apply proj2_sig.
-      + apply preloaded_protocol_initial_state.
-        apply proj2_sig.
+        assumption.
       + apply preloaded_protocol_generated;assumption.
     - induction 1.
       + exists None.
-        pose (is := exist _ s Hs : vinitial_state pre_loaded_with_all_messages_vlsm).
-        change s with (proj1_sig is).
-        apply protocol_initial_state.
+        apply protocol_initial;[assumption|exact I].
       + pose (som' := vtransition pre_loaded_with_all_messages_vlsm l1
                                   (s:vstate pre_loaded_with_all_messages_vlsm, om)).
         change (transition l1 (s,om)) with som'.
@@ -2810,9 +2780,8 @@ Byzantine fault tolerance analysis. *)
     protocol_prop pre_loaded_with_all_messages_vlsm som.
   Proof.
     induction 1.
-    - exact (protocol_initial_state pre_loaded_with_all_messages_vlsm is).
-    - exact (protocol_initial_message pre_loaded_with_all_messages_vlsm
-                                           (exist _ (proj1_sig im) I)).
+    - refine (protocol_initial pre_loaded_with_all_messages_vlsm s Hs om _).
+      destruct om;exact I.
     - exact (protocol_generated pre_loaded_with_all_messages_vlsm l1
                                 _ _ IHprotocol_prop1
                                 _ _ IHprotocol_prop2 Hv).
@@ -2905,7 +2874,8 @@ Byzantine fault tolerance analysis. *)
     pose proof vlsm_is_pre_loaded_with_False as Heq.
     destruct X as (T, (S, M)).
     split;
-    (apply protocol_prop_incl;[|reflexivity|cbn;tauto]);
+      (apply protocol_prop_incl
+      ;[|cbn;tauto]);
     intros t Ht;apply Heq;assumption.
   Qed.
 

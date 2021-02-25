@@ -205,10 +205,8 @@ Section Simple.
       : ~ selected_message_exists_in_all_preloaded_traces message_selector s m.
     Proof.
       intro Hselected.
-      assert (Hps : protocol_state_prop pre_vlsm s).
-      { replace s with (proj1_sig (exist _ s Hs)); try reflexivity.
-        exists None. apply (protocol_initial_state pre_vlsm).
-      }
+      assert (Hps : protocol_state_prop pre_vlsm s)
+        by (apply initial_is_protocol;assumption).
       assert (Htr : finite_protocol_trace pre_vlsm s []).
       { split; try assumption. constructor. assumption. }
       specialize (Hselected s [] Htr eq_refl).
@@ -564,8 +562,8 @@ Section Simple.
       (s : vinitial_state vlsm)
       : sent_messages_fn (proj1_sig s) = [].
     Proof.
-      assert (Hps : protocol_state_prop pre_vlsm (proj1_sig s)).
-      { exists None. apply (@protocol_initial_state _ pre_vlsm). }
+      assert (Hps : protocol_state_prop pre_vlsm (proj1_sig s))
+        by (apply initial_is_protocol; apply proj2_sig).
       destruct s as [s Hs]. simpl in *.
       destruct (sent_messages_fn s) as [|m l] eqn:Hsm; try reflexivity.
       specialize (sent_messages_full s Hps m) as Hl. apply proj1 in Hl.
@@ -679,8 +677,8 @@ Section Simple.
       (s : vinitial_state vlsm)
       : received_messages_fn (proj1_sig s) = [].
     Proof.
-      assert (Hps : protocol_state_prop pre_vlsm (proj1_sig s)).
-      { exists None. apply (@protocol_initial_state _ pre_vlsm). }
+      assert (Hps : protocol_state_prop pre_vlsm (proj1_sig s))
+        by (apply initial_is_protocol;apply proj2_sig).
       destruct s as [s Hs]. simpl in *.
       destruct (received_messages_fn s) as [|m l] eqn:Hrcv; try reflexivity.
       specialize (received_messages_full s Hps m) as Hl. apply proj1 in Hl.
