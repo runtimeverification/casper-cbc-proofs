@@ -2305,9 +2305,9 @@ is also available to Y.
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       (s : vstate X)
       (tr : list (vtransition_item X))
-      : finite_protocol_trace X s tr -> finite_protocol_trace Y s tr.
+      (Htr : finite_protocol_trace X s tr)
+      : finite_protocol_trace Y s tr.
     Proof.
-      intro Htr.
       assert (Hptr : protocol_trace_prop X (Finite s tr)) by assumption.
       cut (protocol_trace_prop Y (Finite s tr)). { intro. assumption. }
       revert Hptr. apply Hincl.
@@ -2319,9 +2319,9 @@ is also available to Y.
       (Hincl : VLSM_incl_part MX MY)
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       (s : vstate X)
-      : protocol_state_prop X s -> protocol_state_prop Y s.
+      (Hs : protocol_state_prop X s)
+      : protocol_state_prop Y s.
     Proof.
-      intro Hs.
       apply protocol_state_has_trace in Hs.
       destruct Hs as [is [tr [Htr Hs]]].
       apply (VLSM_incl_finite_protocol_trace _ MY) in Htr
@@ -2354,9 +2354,9 @@ is also available to Y.
       (X := mk_vlsm MX) (Y := mk_vlsm MY)
       (s : vstate X)
       (tr : list (vtransition_item X))
-      : finite_protocol_trace_from X s tr -> finite_protocol_trace_from Y s tr.
+      (Htr : finite_protocol_trace_from X s tr)
+      : finite_protocol_trace_from Y s tr.
     Proof.
-      intro Htr.
       apply finite_protocol_trace_from_complete_left in Htr.
       destruct Htr as [is [pre [Htr Hlst]]].
       apply (VLSM_incl_finite_protocol_trace _ MY) in Htr; [|assumption].

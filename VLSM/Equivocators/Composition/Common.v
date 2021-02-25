@@ -264,14 +264,27 @@ Proof.
   unfold equivocator_descriptors_update. destruct (decide (j = i)); congruence.
 Qed.
 
+Lemma equivocator_descriptors_update_eq_rew
+  (s : equivocator_descriptors)
+  (i : equiv_index)
+  (si : MachineDescriptor (IM i))
+  (j : equiv_index)
+  (Heq : j = i)
+  : equivocator_descriptors_update s i si j = eq_rect_r (fun i => MachineDescriptor (IM i)) si Heq.
+Proof.
+  unfold equivocator_descriptors_update.
+  destruct (decide (j = i)); [|congruence]. subst.
+  replace e with (@eq_refl _ i); [reflexivity|].
+  apply Eqdep_dec.UIP_dec. assumption.
+Qed.
+
 Lemma equivocator_descriptors_update_eq
   (s : equivocator_descriptors)
   (i : equiv_index)
   (si : MachineDescriptor (IM i))
   : equivocator_descriptors_update s i si i = si.
 Proof.
-  unfold equivocator_descriptors_update.
-  rewrite eq_dec_refl. reflexivity.
+  rewrite equivocator_descriptors_update_eq_rew with (Heq := eq_refl). reflexivity.
 Qed.
 
 Lemma equivocator_descriptors_update_id

@@ -221,6 +221,32 @@ Proof.
     inversion Hitem. subst. repeat split; reflexivity.
 Qed.
 
+Lemma no_equivocating_equivocator_transition_item_project
+  (item : vtransition_item equivocator_vlsm)
+  (Hno_equiv_item : is_singleton_state X (destination item))
+  (s : vstate equivocator_vlsm)
+  (Hv : vvalid equivocator_vlsm (l item) (s, input item))
+  (Ht : vtransition equivocator_vlsm (l item) (s, input item) = (destination item, output item))
+  : equivocator_vlsm_transition_item_project item (Existing _ 0 false) =
+      Some (Some 
+        {| l := fst (l item); input := input item; output := output item; destination := equivocator_state_descriptor_project X (destination item) (Existing _ 0 false) |}
+        , Existing _ 0 false).
+Proof.
+  destruct item.
+  unfold Common.l, Common.input, Common.output, Common.destination in *.
+  unfold equivocator_vlsm_transition_item_project.
+  destruct l as (li, eqvi).
+  destruct destination as (ni, bsi) eqn:Hdesti.
+  destruct (le_lt_dec (S ni) 0); [lia|].
+  specialize
+    (equivocator_transition_no_equivocation_zero_descriptor X _ _ _ _ _ Hv Ht Hno_equiv_item)
+    as Heq_eqvi.
+  simpl in Heq_eqvi. subst eqvi.
+  destruct (nat_eq_dec 0 0); [|congruence].
+  reflexivity.
+Qed.
+
+
 Lemma equivocator_transition_item_project_proper_characterization
   (item : vtransition_item equivocator_vlsm)
   (descriptor : MachineDescriptor)
