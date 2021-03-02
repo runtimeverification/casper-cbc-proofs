@@ -1804,7 +1804,7 @@ Section Composite.
     assert (Hcomp : has_been_sent X s m) by (exists i; intuition).
     assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
       (apply pre_loaded_with_all_messages_protocol_state_prop; intuition).
-    
+
     apply protocol_state_has_trace in Hs as H'.
     destruct H' as [is [tr [Hpr Hlast]]].
     assert (Hpr_pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) is tr). {
@@ -1815,7 +1815,7 @@ Section Composite.
       unfold protocol_trace_prop in Hincl.
       intuition.
     }
-    
+
     specialize (@proper_sent _ X _ s H m) as Hprop.
     unfold has_been_sent_prop in Hprop.
     unfold all_traces_have_message_prop in Hprop.
@@ -1837,7 +1837,7 @@ Section Composite.
     assert (Hcomp : has_been_received X s m) by (exists i; intuition).
     assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
       (apply pre_loaded_with_all_messages_protocol_state_prop; intuition).
-    
+
     apply protocol_state_has_trace in Hs as H'.
     destruct H' as [is [tr [Hpr Hlast]]].
     assert (Hpr_pre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) is tr). {
@@ -1847,14 +1847,14 @@ Section Composite.
       unfold protocol_trace_prop in Hincl.
       intuition.
     }
-    
+
     specialize (@proper_received _ X _ s H m) as Hprop.
     unfold has_been_received_prop in Hprop.
     unfold all_traces_have_message_prop in Hprop.
     apply Hprop in Hcomp.
     specialize (Hcomp is tr Hpr_pre Hlast).
     destruct Hpr as [Hpr His].
-    apply protocol_trace_input_is_protocol with (is0 := is) (tr0 := tr); intuition. 
+    apply protocol_trace_input_is_protocol with (is0 := is) (tr0 := tr); intuition.
   Qed.
      (* end hide *)
 End Composite.
@@ -2030,7 +2030,7 @@ Section full_node_constraint.
   (**
   The equivocation-based abstract definition of the full node condition
   stipulates that a message can be received in a state @s@ if either it causes
-  [no_additional_equivocations] to state @s@, or if there is a machine 
+  [no_additional_equivocations] to state @s@, or if there is a machine
   allowed to equivocate such that the message can be produced by that machine
   pre-loaded with all messages, in a state @si@ whose all received but not sent
   messages cause [no_additional_equivocations] to state @s@
@@ -2312,7 +2312,7 @@ Section has_been_sent_irrelevance.
   sometime show that they are equivalent.
 *)
 
-  Context 
+  Context
     {message : Type}
     (X : VLSM message)
     (Hbs1 : has_been_sent_capability X)
@@ -2320,7 +2320,7 @@ Section has_been_sent_irrelevance.
     (has_been_sent1 := @has_been_sent _ X Hbs1)
     (has_been_sent2 := @has_been_sent _ X Hbs2)
     .
-  
+
   Lemma has_been_sent_irrelevance
     (s : state)
     (m : message)

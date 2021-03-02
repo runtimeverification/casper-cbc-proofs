@@ -121,7 +121,7 @@ Context
       remember (x, x0) as gigi.
       clear x x0 Heqgigi.
       induction H.
-      - simpl. 
+      - simpl.
         destruct Hs.
         congruence.
       - destruct l eqn : eq.
@@ -681,7 +681,7 @@ Context
         split; try assumption. reflexivity.
       - destruct om as [m|]; inversion Ht.
     Qed.
-    
+
     Global Instance lv_sent_capability:
       has_been_sent_capability X.
     Proof.
@@ -724,7 +724,7 @@ Context
                   congruence.
             -- subst index_self. intuition.
           * destruct H.
-            -- inversion H. 
+            -- inversion H.
                assert (fst msg = index_self) by (rewrite <- H3; simpl; intuition).
                unfold send_oracle.
                rewrite decide_True by intuition.
@@ -766,7 +766,7 @@ Context
             intuition.
             rewrite e. intuition.
     Qed.
-    
+
     Global Instance lv_received_capability:
       has_been_received_capability X.
     Proof.
@@ -809,7 +809,7 @@ Context
             destruct (decide (fst m = fst msg)).
             -- unfold receive_oracle in H.
                destruct (decide (snd m = snd msg)).
-               ++ left. f_equal. destruct m; destruct msg. simpl in *. 
+               ++ left. f_equal. destruct m; destruct msg. simpl in *.
                   rewrite e. rewrite e0. intuition.
                ++ right. rewrite e in H.
                   rewrite history_append in H.
@@ -831,7 +831,7 @@ Context
             destruct (decide (fst msg = index_self));[intuition congruence|].
             destruct H.
             -- inversion H.
-               subst m. 
+               subst m.
                rewrite history_append.
                2 : apply protocol_prop_no_bottom; intuition.
                2, 3 : intuition.

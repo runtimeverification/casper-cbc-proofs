@@ -45,7 +45,7 @@ Local Ltac unfold_transition  Ht :=
   unfold machine in Ht; unfold projT2 in Ht;
   unfold equivocator_vlsm_machine in Ht; unfold equivocator_transition in Ht).
 
-Local Ltac unfold_equivocators_transition_item_project := 
+Local Ltac unfold_equivocators_transition_item_project :=
 (
   simpl;
   unfold equivocators_transition_item_project; simpl;

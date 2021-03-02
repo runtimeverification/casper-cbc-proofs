@@ -139,7 +139,7 @@ Definition equivocator_state_descriptor_project
     match equivocator_state_project s j with
     | Some sj => sj
     | None => projT2 s F1
-    end 
+    end
   end.
 
 Definition equivocator_state_update

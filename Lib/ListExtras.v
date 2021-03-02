@@ -113,7 +113,7 @@ Proof.
   apply IHt.
 Qed.
 
-Lemma last_error_some {S} 
+Lemma last_error_some {S}
   (l : list S)
   (s random : S)
   (Herr : last_error l = Some s) :
@@ -1178,12 +1178,12 @@ Proof.
 Qed.
 
 (* Unpack list of [option A] into list of [A] *)
-Definition cat_option {A : Type} : list (option A) -> list A := 
+Definition cat_option {A : Type} : list (option A) -> list A :=
   @map_option (option A) A id.
 
 Example cat_option1 : cat_option [Some 1; Some 5; None; Some 6; None] = [1; 5; 6].
 Proof. intuition. Qed.
-  
+
 Lemma cat_option_length
   {A : Type}
   (l : list (option A))
@@ -1217,7 +1217,7 @@ Lemma cat_option_nth
   : Some (nth i (cat_option l) dummya) = (nth i l (Some dummya)).
 Proof.
   specialize (@map_option_nth (option A) A id l). simpl in *.
-  intros. 
+  intros.
   unfold id in *.
   apply H.
   all : intuition.
@@ -1504,7 +1504,7 @@ Proof.
 Qed.
 
 Lemma list_max_exists
-   (l : list nat) 
+   (l : list nat)
    (nz : list_max l > 0) :
    In (list_max l) l.
 Proof.
@@ -1528,11 +1528,11 @@ Proof.
       }
       rewrite H in *.
       left.
-      reflexivity. 
+      reflexivity.
 Qed.
 
 Lemma list_max_exists2
-   (l : list nat) 
+   (l : list nat)
    (Hne : l <> []) :
    In (list_max l) l.
 Proof.
@@ -1564,13 +1564,13 @@ Lemma mode_not_empty
   `{EqDecision A}
   (l : list A)
   (Hne : l <> []) :
-  mode l <> []. 
+  mode l <> [].
 Proof.
   destruct l.
   elim Hne. reflexivity.
   remember (a :: l) as l'.
   remember (List.map (count_occ decide_eq l') l') as occurrences.
-  
+
   assert (Hmaxp: list_max occurrences > 0). {
     rewrite Heqoccurrences.
     rewrite Heql'.
@@ -1579,7 +1579,7 @@ Proof.
     lia.
     reflexivity.
   }
-  
+
   assert (exists a, (count_occ decide_eq l' a) = list_max occurrences). {
     assert (In (list_max occurrences) occurrences). {
       apply list_max_exists.
@@ -1596,7 +1596,7 @@ Proof.
     rewrite Heqoccurrences.
     assumption.
   }
-  
+
   assert (exists a, In a (mode l')). {
     destruct H.
     exists x.
@@ -1624,7 +1624,7 @@ Qed.
 (* Computes the list suff which satisfies <<pref ++ suff = l>> or
    reports that no such list exists. *)
 
-Fixpoint complete_prefix 
+Fixpoint complete_prefix
   `{EqDecision A}
   (l pref : list A) : option (list A) :=
   match l, pref with
@@ -1645,7 +1645,7 @@ Proof. intuition. Qed.
 Example complete_prefix_none : complete_prefix [1;2;3;4] [1;3] = None.
 Proof. intuition. Qed.
 
-Lemma complete_prefix_empty 
+Lemma complete_prefix_empty
   `{EqDecision A}
   (l : list A) :
   complete_prefix l [] = Some l.
@@ -1659,7 +1659,7 @@ Proof.
     discriminate IHl.
 Qed.
 
-Lemma complete_prefix_correct 
+Lemma complete_prefix_correct
   `{EqDecision A}
   (l pref suff : list A) :
   l = pref ++ suff <->
@@ -1720,7 +1720,7 @@ Qed.
 (* Computes the list pref which satisfies <<pref ++ suff = l>> or
    reports that no such list exists. *)
 
-Definition complete_suffix 
+Definition complete_suffix
   `{EqDecision A}
   (l suff : list A) : option (list A) :=
   let res := complete_prefix (rev l) (rev suff) in
@@ -1728,11 +1728,11 @@ Definition complete_suffix
   | None => None
   | Some ls => Some (rev ls)
   end.
-  
+
 Example complete_suffix_some : complete_suffix [1;2;3;4] [3;4] = Some [1;2].
 Proof. intuition. Qed.
-  
-Lemma complete_suffix_correct 
+
+Lemma complete_suffix_correct
   `{EqDecision A}
   (l pref suff : list A) :
   l = pref ++ suff <->
@@ -1772,14 +1772,14 @@ Proof.
     discriminate H.
 Qed.
 
-Lemma complete_suffix_empty 
+Lemma complete_suffix_empty
   `{EqDecision A}
   (l : list A) :
   complete_suffix l [] = Some l.
 Proof.
   unfold complete_suffix. simpl.
   rewrite complete_prefix_empty.
-  f_equal. 
+  f_equal.
   apply rev_involutive.
 Qed.
 

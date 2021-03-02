@@ -237,7 +237,7 @@ Lemma no_equivocating_equivocator_transition_item_project
   (Hv : vvalid equivocator_vlsm (l item) (s, input item))
   (Ht : vtransition equivocator_vlsm (l item) (s, input item) = (destination item, output item))
   : equivocator_vlsm_transition_item_project item (Existing _ 0 false) =
-      Some (Some 
+      Some (Some
         {| l := fst (l item); input := input item; output := output item; destination := equivocator_state_descriptor_project X (destination item) (Existing _ 0 false) |}
         , Existing _ 0 false).
 Proof.

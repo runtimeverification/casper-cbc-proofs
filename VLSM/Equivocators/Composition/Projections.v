@@ -171,8 +171,8 @@ Lemma no_equivocating_equivocators_transition_item_project
   (Ht : composite_transition equivocator_IM (l item) (s, input item) = (destination item, output item))
   (lx : composite_label IM :=  existT (fun i => vlabel (IM i)) i (fst (projT2 (l item))))
   : equivocators_transition_item_project eqv_descriptors item =
-    Some (Some 
-      {| l := lx; input := input item; output := output item; 
+    Some (Some
+      {| l := lx; input := input item; output := output item;
         destination := equivocators_state_project eqv_descriptors (destination item) |},
       eqv_descriptors).
 Proof.
@@ -354,7 +354,7 @@ Lemma equivocators_transition_item_project_inv_characterization
 Proof.
   unfold equivocators_transition_item_project in Hpr_item.
   destruct
-    (equivocator_vlsm_transition_item_project 
+    (equivocator_vlsm_transition_item_project
       (IM (projT1 (l item)))
       (composite_transition_item_projection equivocator_IM item)
       (eqv_descriptors (projT1 (l item))))
@@ -745,7 +745,7 @@ Proof.
   apply equivocators_trace_project_app_iff in HtrX.
   destruct HtrX as [trX' [xX [eqv_descriptors' [HxX [HtrX' HtrX]]]]].
   subst trX.
-  subst s. 
+  subst s.
   simpl in HxX.
   destruct (equivocators_transition_item_project descriptors x) as [(o, descriptor)|] eqn:Hpr; [|congruence].
 
@@ -767,7 +767,7 @@ Proof.
   simpl in Hzero.
   specialize (Hzero _ Ht Hv Hpr).
   spec Hzero i H.
-  destruct o; inversion HxX; subst; assumption. 
+  destruct o; inversion HxX; subst; assumption.
 Qed.
 
 Lemma preloaded_equivocators_protocol_trace_from_project
@@ -821,7 +821,7 @@ Proof.
       repeat split; [assumption|].
       rewrite! map_app. simpl. rewrite! last_is_last. assumption.
     + exists trX', initial_descriptors. subst foldx. repeat split; [assumption|assumption|].
-      rewrite! map_app. simpl. rewrite! last_is_last. 
+      rewrite! map_app. simpl. rewrite! last_is_last.
       simpl in Hx. simpl in Hlst. congruence.
 Qed.
 
@@ -1363,7 +1363,7 @@ Proof.
       remember (equivocator_vlsm_transition_item_project (IM (projT1 (l x))) (composite_transition_item_projection_from_eq (equivocator_IM IM) x (projT1 (l x)) eq_refl) (final_descriptors (projT1 (l x))))
         as pr_item_x.
       destruct pr_item_x as [(oitem', descriptor')|]; [|congruence].
-      
+
       unfold composite_transition_item_projection_from_eq in Heqpr_item_x.
       unfold eq_rect_r in Heqpr_item_x.
       simpl in Heqpr_item_x.
@@ -1425,7 +1425,7 @@ Proof.
           f_equal.
           unfold sub_index.
           apply
-            (@dec_sig_sigT_eq _ 
+            (@dec_sig_sigT_eq _
               (sub_index_prop selection)
               (sub_index_prop_dec selection)
               (fun n => vlabel (IM n))

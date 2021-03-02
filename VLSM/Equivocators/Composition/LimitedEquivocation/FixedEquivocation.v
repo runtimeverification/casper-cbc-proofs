@@ -39,7 +39,7 @@ Existing Instance i0.
 Definition state_has_fixed_equivocation
   (s : composite_state equivocator_IM)
   : Prop
-  := 
+  :=
   incl (equivocating_indices IM index_listing s) equivocating.
 
 Definition equivocators_fixed_equivocations_constraint
@@ -167,7 +167,7 @@ Context
 
 (**
 The fixed equivocation constraint for the regular composition of nodes
-stipulates that a message can be received either if receiving it satisfies 
+stipulates that a message can be received either if receiving it satisfies
 the [no_additional_equivocations_constraint] (message [has_been_observed],
 or it has the [initial_message_prop]erty), or it can be emited by the
 free composition of equivocators pre=loaded with with messages producing
@@ -196,7 +196,7 @@ Section fixed_equivocation_with_fullnode.
 
 (**
 This section instantiates the [full_node_condition_for_admissible_equivocators]
-by choosing the admissible indices to be the fixed set of nodes allowed to 
+by choosing the admissible indices to be the fixed set of nodes allowed to
 equivocate, and then shows that this constraint is stronger than the
 [fixed_equivocation_constraint].
 *)
@@ -227,7 +227,7 @@ capabilities, that the number of nodes is finite
       := full_node_condition_for_admissible_equivocators_alt IM Hbs Hbr finite_index admissible_index)
     .
 
-  
+
 (**
 Context for the [fixed_equivocation_constraint]. Additionally to the above it
 requires that equality on messages is decidable and that the set of VLSMs
@@ -354,7 +354,7 @@ Proof.
   destruct Hs as [is [tr [Htr Hlst]]].
   destruct_list_last tr tr' x Htr'; subst tr.
   - simpl in Hlst. subst s. destruct Htr as [_ His].
-    specialize (His i). 
+    specialize (His i).
     destruct His as [His _]. assumption.
   - destruct Htr as [Htr _].
     apply finite_protocol_trace_from_app_iff in Htr.
@@ -386,7 +386,7 @@ Definition proper_fixed_equivocator_descriptors
     forall i, ~In i equivocating -> eqv_descriptors i = Existing _ 0 false.
 
 (**
-[not_equivocating_equivocator_descriptors] satisfy the 
+[not_equivocating_equivocator_descriptors] satisfy the
 [proper_fixed_equivocator_descriptors] property.
 *)
 Lemma not_equivocating_equivocatos_descriptors_proper_fixed
@@ -478,7 +478,7 @@ This is a property of the [fixed_equivocation_constraint] which is being
 used to parameterize the [_equivocators_protocol_trace_project] lemma below
 allowing it to also be instantiated for the free composition.
 
-It basically says that if a message has_been_sent for a state of the 
+It basically says that if a message has_been_sent for a state of the
 composition of equivocators with no-message equivocations and fixed
 state-equivocations, then any of its projections should be allowed to receive it.
 *)
@@ -707,7 +707,7 @@ Lemma equivocators_trace_sub_item_input_is_seeded_or_sub_previously_sent
   (trX: list (composite_transition_item IM))
   (Htr_project: equivocators_trace_project IM final_descriptors tr = Some (trX, initial_descriptors))
   (lst_trX := last (map Common.destination trX) (equivocators_state_project IM initial_descriptors is))
-  : trace_sub_item_input_is_seeded_or_sub_previously_sent 
+  : trace_sub_item_input_is_seeded_or_sub_previously_sent
     (equivocator_IM IM) equivocating
     (no_additional_equivocations (free_composite_vlsm IM) lst_trX) tr.
 Proof.
@@ -721,7 +721,7 @@ Proof.
     apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
   }
   assert (Htr_free : finite_protocol_trace  (pre_loaded_with_all_messages_vlsm FreeE) is tr).
-  { 
+  {
     apply VLSM_incl_finite_protocol_trace with (machine XE); [|assumption].
     apply VLSM_incl_trans with (machine FreeE)
     ; [apply equivocators_fixed_equivocations_vlsm_incl_free|].
@@ -987,7 +987,7 @@ Proof.
   destruct (in_dec IndEqDec (projT1 (l item)) equivocating); [assumption|].
   elim Hno. clear Hno.
   specialize
-    (@has_been_observed_sent_received_iff _ 
+    (@has_been_observed_sent_received_iff _
       Free Free_has_been_received_capability
       Free_has_been_sent_capability
       Free_has_been_observed_capability
@@ -1043,7 +1043,7 @@ Proof.
     as [trX [initial_descriptors [Htr_project [_ Hlst]]]].
   simpl in Hlst, HeqsX.
   rewrite Hlst in  HeqsX.
-  specialize 
+  specialize
     (equivocators_trace_sub_item_input_is_seeded_or_sub_previously_sent
       _ _ Htr initial_descriptors descriptors Hdescriptors _ Htr_project
     ) as Hsub.

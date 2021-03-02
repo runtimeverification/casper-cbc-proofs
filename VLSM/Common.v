@@ -410,7 +410,7 @@ to define a protocol message property for optional messages:
       [apply option_protocol_message_Some
       |apply option_protocol_message_None].
       apply initial_message_is_protocol;assumption.
-    Qed.    
+    Qed.
 
 (**
 
@@ -1368,7 +1368,7 @@ It inherits some previously introduced definitions, culminating with the
           ;   destination := fst som'
           ;   output := snd som'
           |}]; final := som' |}.
-    
+
     Lemma vlsm_run_initial_state
       (run : proto_run)
       (Hrun : vlsm_run_prop run)

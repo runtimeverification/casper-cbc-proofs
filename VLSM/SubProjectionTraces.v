@@ -67,7 +67,7 @@ Proof.
   apply H.
   apply bool_decide_eq_true_proof_irrelevance.
 Qed.
- 
+
 
 Definition free_sub_vlsm_composition : VLSM message
   := free_composite_vlsm sub_IM.
@@ -378,7 +378,7 @@ Proof.
     intros (j, Hj). unfold composite_state_sub_projection.
     simpl. symmetry. apply (state_update_neq _ s').
     apply bool_decide_eq_true_1 in Hj.
-    intro contra. subst. contradiction. 
+    intro contra. subst. contradiction.
 Qed.
 
 Lemma X_incl_Pre : VLSM_incl X Pre.
@@ -459,7 +459,7 @@ Definition composite_state_sub_projection_lift
   match (decide (sub_index_prop i)) with
   | left e => ss (dec_exist _ i e)
   | _ => proj1_sig (composite_s0 IM) i
-  end. 
+  end.
 
 Definition sub_constraint
   (l : composite_label sub_IM)
@@ -507,12 +507,12 @@ Proof.
     apply VLSM_incl_trans with (machine (pre_loaded_vlsm v (fun m => True)))
   end.
   - match goal with
-    |- context [pre_loaded_vlsm ?v _] => 
+    |- context [pre_loaded_vlsm ?v _] =>
       apply (pre_loaded_vlsm_incl v seed (fun m => True))
     end.
     intuition.
   - match goal with
-    |- context [pre_loaded_with_all_messages_vlsm ?v] => 
+    |- context [pre_loaded_with_all_messages_vlsm ?v] =>
       specialize (pre_loaded_with_all_messages_vlsm_is_pre_loaded_with_True v) as Hincl
     end.
     apply VLSM_eq_incl_iff in Hincl.
@@ -573,7 +573,7 @@ Proof.
   apply finite_protocol_trace_from_app_iff.
   split; [assumption|].
   specialize (Hmsg tr x []).
-  match goal with 
+  match goal with
   |- finite_protocol_trace_from _ ?l _ => remember l as lst
   end.
   assert (Hlst : protocol_state_prop Xj lst).

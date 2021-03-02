@@ -391,7 +391,7 @@ Definition comparable
   : Prop
   :=
   a = b \/ R a b \/ R b a.
-  
+
 Lemma comparable_commutative
    {A : Type}
    (R : A -> A -> Prop)
