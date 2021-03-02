@@ -31,7 +31,6 @@ VLSM/ListValidator/ListValidator.v
 VLSM/ListValidator/Equivocation.v
 VLSM/ListValidator/Observations.v
 VLSM/ListValidator/GeneralComposition.v
-VLSM/ListValidator/NoEquivocationComposition.v
 VLSM/ListValidator/EquivocationAwareListValidator.v
 VLSM/ListValidator/EquivocationAwareComposition.v
 VLSM/ListValidator/CommonFutures.v
@@ -61,3 +60,4 @@ Lib/SsrExport.v
 Lib/FinExtras.v
 Lib/FinFunExtras.v
 Lib/Classes.v
+VLSM/SubProjectionTraces.v

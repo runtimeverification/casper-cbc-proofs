@@ -105,8 +105,8 @@ Context
   {Rindex : ReachableThreshold index}
   (est' := fun (i : index) => (@EquivocationAwareListValidator.equivocation_aware_estimator _ i _ Hfinite _ _ _ ))
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec (est' i))
-  (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec (est' i))
-  (has_been_received_capabilities := fun i : index => @has_been_received_lv index i index_listing Hfinite idec (est' i))
+  (has_been_sent_capabilities := fun i : index => @lv_sent_capability index i index_listing Hfinite idec (est' i) _)
+  (has_been_received_capabilities := fun i : index => @lv_received_capability index i index_listing Hfinite idec (est' i))
   (X := composite_vlsm IM_index (free_constraint IM_index))
   (preX := pre_loaded_with_all_messages_vlsm X)
   (Hevents_set' := fun (i : index) => @simp_lv_observable_events index i index_listing _)
@@ -706,8 +706,7 @@ Context
             specialize (Hope inter (from, sa)).
             apply Hope.
             unfold has_been_sent.
-            unfold has_been_sent_capabilities.
-            unfold has_been_sent_lv.
+            simpl.
             unfold send_oracle; simpl.
             rewrite decide_True.
             apply Is_true_eq_left. 
@@ -723,8 +722,7 @@ Context
             specialize (Hope inter (from, sa)).
             apply Hope.
             unfold has_been_received.
-            unfold has_been_received_capabilities.
-            unfold has_been_received_lv.
+            simpl.
             unfold receive_oracle; simpl.
             rewrite decide_False.
             apply Is_true_eq_left.
@@ -1845,7 +1843,7 @@ Context
            simpl in Hprtr.
            unfold constrained_composite_valid in Hprtr.
            unfold free_constraint in Hprtr.
-           unfold free_composite_valid in Hprtr.
+           unfold composite_valid in Hprtr.
            unfold vvalid in Hprtr.
            unfold valid in Hprtr.
            simpl in Hprtr.
@@ -1869,7 +1867,7 @@ Context
       unfold valid in *.
       simpl in *.
       unfold constrained_composite_valid in *.
-      unfold free_composite_valid in *.
+      unfold composite_valid in *.
       unfold vvalid in *.
       intuition.
       unfold valid in *.
@@ -2020,7 +2018,7 @@ Context
         2 : {
           unfold protocol_valid in Hprotocol_valid.
           unfold constrained_composite_valid in Hprotocol_valid.
-          unfold free_composite_valid in Hprotocol_valid. 
+          unfold composite_valid in Hprotocol_valid. 
           unfold vvalid in Hprotocol_valid.
           unfold valid in Hprotocol_valid.
           simpl in Hprotocol_valid.

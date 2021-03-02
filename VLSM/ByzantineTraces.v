@@ -236,20 +236,18 @@ First note that _all_ messages are [protocol_message]s for <<Alt>>, as
         (om : option message)
         : option_protocol_message_prop Alt om.
     Proof.
-        exists (proj1_sig (vs0 Alt)).
-        destruct om as [m|]; try apply protocol_initial_state.
-        remember (proj1_sig (vs0 Alt)) as s.
-        replace
-          (@pair (@state message (@type message Alt)) (option message) s (@Some message m))
-          with (vtransition Alt (existT _ second m) (s, None)).
-        - assert (Hps : protocol_prop Alt (s, None))
-            by (subst; apply protocol_initial_state).
-          apply protocol_generated with None s; try assumption.
-          split; exact I.
-        - unfold vtransition. simpl.
-          f_equal.
-          apply state_update_id.
-          subst. reflexivity.
+        destruct om as [m|];[|apply option_protocol_message_None].
+        pose (s :=proj1_sig (vs0 Alt): vstate Alt).
+        unfold vstate in s.
+        exists s.
+        replace (s, Some m) with
+          (vtransition Alt (existT _ second m) (s, None)).
+        - assert (protocol_prop Alt (s, None)) as Hs
+            by (apply protocol_initial_state;apply proj2_sig).
+          apply protocol_generated with None s;[assumption..|].
+          split;exact I.
+        - unfold vtransition; simpl.
+          rewrite state_update_id;reflexivity.
     Qed.
 
 (**
@@ -284,59 +282,29 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
         (Hp : protocol_prop PreLoaded (sj, om))
         : protocol_state_prop Alt (lifted_alt_state sj).
     Proof.
-      remember (sj, om) as sjom.
-      generalize dependent om. generalize dependent sj.
-      induction Hp; intros; inversion Heqsjom; subst; clear Heqsjom.
-      - assert (Hinit : vinitial_state_prop Alt (lifted_alt_state s)).
-        { intros [|]; try exact I.
-          unfold lifted_alt_state. unfold lift_to_composite_state.
-          rewrite state_update_eq. unfold s. destruct is. assumption.
-        }
-        remember (exist (vinitial_state_prop Alt) (lifted_alt_state s) Hinit) as six.
-        replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
-        exists None.
-        apply (protocol_initial_state Alt).
-      - assert (Hinit : vinitial_state_prop Alt (lifted_alt_state s)).
-        { intros [|]; try exact I.
-          unfold lifted_alt_state. unfold lift_to_composite_state.
-          rewrite state_update_eq. unfold s. destruct s0. assumption.
-        }
-        remember (exist (vinitial_state_prop Alt) (lifted_alt_state s) Hinit) as six.
-        replace (lifted_alt_state s) with (proj1_sig six); try (subst; reflexivity).
-        exists None.
-        apply (protocol_initial_state Alt).
-      - specialize (IHHp1 s _om eq_refl). clear IHHp2.
-        remember (vtransition Alt (existT _ first l) (lifted_alt_state s, om)) as xsom'.
-        destruct xsom' as [xs' om'].
-        destruct IHHp1 as [_omX Hlift].
-        exists om'.
-        replace (lifted_alt_state sj) with xs'.
-        + replace
-            (@pair (@state message (@type message Alt)) (option message) xs' om')
-            with
-            (@pair (@state message
-               (@projT1 (VLSM_type message)
-                  (fun T : VLSM_type message =>
-                   @sigT (@VLSM_sign message T)
-                     (fun S : @VLSM_sign message T =>
-                      @VLSM_class message T S)) Alt))
-                (option message) xs' om')
-            by reflexivity.
-          rewrite Heqxsom'.
-          destruct (alt_option_protocol_message om) as [_sX Hopm].
-          apply (protocol_generated Alt) with _omX _sX; try assumption.
-          split; try exact I.
-          assumption.
-        + unfold vtransition in Heqxsom'. simpl in Heqxsom'.
-          unfold lifted_alt_state at 1 in Heqxsom'.
-          unfold lift_to_composite_state at 1 in Heqxsom'.
-          rewrite state_update_eq in Heqxsom'.
-          replace
-            (@vtransition message M l (@pair (@vstate message M) (option message) s om))
-            with (sj, om0)
-            in Heqxsom'.
-          inversion Heqxsom'; subst.
-          unfold lifted_alt_state.
+      assert (protocol_state_prop PreLoaded sj) as Hsj
+        by (exists om;assumption);clear Hp.
+      induction Hsj using protocol_state_prop_ind.
+      - apply initial_is_protocol.
+        intros [];[exact Hs|exact I].
+      - exists om'.
+        assert (option_protocol_message_prop Alt om0) as Hom0
+          by apply alt_option_protocol_message.
+        cut (protocol_transition Alt (existT _ first l) (lifted_alt_state s,om0) (lifted_alt_state s', om'))
+          ;[apply protocol_prop_transition_out|].
+        split.
+        * split;[assumption|].
+          split;[assumption|].
+          split;[|exact I].
+          simpl. apply Ht.
+        * simpl.
+          replace (lifted_alt_state s first) with s
+            by (unfold lifted_alt_state,lift_to_composite_state
+               ;rewrite state_update_eq;reflexivity).
+          apply proj2 in Ht.
+          change (vtransition M l (s: vstate M,om0) = (s',om')) in Ht.
+          rewrite Ht.
+          f_equal.
           apply state_update_twice.
     Qed.
 

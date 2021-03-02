@@ -147,7 +147,7 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
         ; intros; try (assumption || reflexivity).
         - apply Hvalidating in H. destruct H as [_ [_ [_ [Hopm _]]]].
           apply protocol_message_projection. assumption.
-        - destruct H as [_ [_ H]]. 
+        - destruct H as [_ [_ H]].
           apply Hvalidating in H. assumption.
     Qed.
 

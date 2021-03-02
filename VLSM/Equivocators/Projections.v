@@ -32,7 +32,7 @@ Context
   (MachineDescriptor := MachineDescriptor X)
   .
 
-Local Tactic Notation "unfold_transition"  hyp(H) :=
+Local Ltac unfold_transition H :=
   ( unfold transition in H; unfold equivocator_vlsm in H
   ; unfold Common.equivocator_vlsm in H
   ; unfold mk_vlsm in H; unfold machine in H
@@ -158,6 +158,224 @@ Proof.
   apply equivocator_transition_item_project_inv_none in contra.
   destruct contra as [id [fd [Heqd Hd]]].
   subst. simpl in *. lia.
+Qed.
+
+(**
+If [equivocator_vlsm_transition_item_project] produces a transition item,
+then that item has the same [input] and [output] as the argument item.
+*)
+Lemma equivocator_transition_item_project_inv_messages
+  (item : vtransition_item equivocator_vlsm)
+  (itemX : vtransition_item X)
+  (idescriptor odescriptor : MachineDescriptor)
+  (Hitem : equivocator_vlsm_transition_item_project item idescriptor = Some (Some itemX, odescriptor))
+  : exists
+    (i : nat)
+    (is_equiv : bool),
+    idescriptor = Existing _ i is_equiv /\
+    proper_descriptor X idescriptor (destination item) /\
+    input item = input itemX /\ output item = output itemX.
+Proof.
+  unfold equivocator_vlsm_transition_item_project in Hitem.
+  destruct idescriptor as [s|j fj]; [congruence|].
+  exists j. exists fj. split; [reflexivity|].
+  destruct item.
+  destruct destination as (n, bs).
+  destruct l as (lx, descriptorx).
+  destruct (le_lt_dec (S n) j); [congruence|].
+  destruct descriptorx as [s | i' [|]] eqn:Hl; simpl.
+  - destruct (nat_eq_dec (S j) (S n)); congruence.
+  - destruct (nat_eq_dec (S j) (S n)); [|congruence].
+    split; [assumption|].
+    inversion Hitem. subst. repeat split; reflexivity.
+  - destruct (nat_eq_dec i' j); [|congruence].
+    split; [assumption|].
+    inversion Hitem. subst. repeat split; reflexivity.
+Qed.
+
+Lemma equivocator_transition_item_project_proper_characterization
+  (item : vtransition_item equivocator_vlsm)
+  (descriptor : MachineDescriptor)
+  (Hproper : proper_descriptor X descriptor (destination item))
+  : exists oitem descriptor',
+    equivocator_vlsm_transition_item_project item descriptor = Some (oitem, descriptor')
+    /\ match oitem with
+      | Some itemx =>
+        l itemx = fst (l item) /\  input item = input itemx /\ output item = output itemx /\
+        (equivocator_state_descriptor_project X (destination item) descriptor = destination itemx)
+      | None => True
+      end
+    /\ forall
+      (s : vstate equivocator_vlsm)
+      (Hv : vvalid equivocator_vlsm (l item) (s, input item))
+      (Ht : vtransition equivocator_vlsm (l item) (s, input item) = (destination item, output item)),
+      proper_descriptor X descriptor' s /\
+      match oitem with
+      | Some itemx =>
+        forall (sx : vstate X)
+          (Hsx : sx = equivocator_state_descriptor_project X s descriptor'),
+          vvalid X (l itemx) (sx, input itemx) /\
+          vtransition X (l itemx) (sx, input itemx) = (destination itemx, output itemx)
+      | None =>
+        equivocator_state_descriptor_project X (destination item) descriptor = equivocator_state_descriptor_project X s descriptor'
+      end.
+Proof.
+  destruct item. simpl. simpl in Hproper.
+  unfold equivocator_vlsm_transition_item_project.
+  destruct descriptor eqn:Heqvi.
+  - exists None. eexists _. split; [reflexivity|].
+    intros. split; [exact I|]. intros.
+    split; [|reflexivity].
+    assumption.
+  - destruct l as (li, eqvi).
+    simpl in Hproper.
+    destruct destination as (ni, bsi) eqn:Hdesti.
+    simpl in Hproper.
+    destruct (le_lt_dec (S ni) n); [lia|].
+    destruct eqvi as [nsi | ieqvi feqvi].
+    + destruct (nat_eq_dec (S n) (S ni)).
+      * exists None. eexists _. split; [reflexivity|]. split; [exact I|].
+        intros.
+        inversion e. subst. clear e.
+        split; [apply Hv|].
+        apply
+          (new_machine_label_equivocator_state_project_last X (li, NewMachine X nsi) s input _ output Ht nsi eq_refl b).
+      * exists None. eexists _. split; [reflexivity|]. split; [exact I|].
+        intros.
+        apply and_comm.
+        split.
+        { apply
+          (new_machine_label_equivocator_state_project_not_last X (li, NewMachine X nsi) s input _ output Ht nsi eq_refl).
+          simpl. lia.
+        }
+        simpl.
+        unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+        inversion Ht. subst. clear Ht.
+        destruct s as (neqv, seqv). simpl in *. inversion H0.
+        subst ni. lia.
+    + destruct feqvi; [destruct (nat_eq_dec (S n) (S ni))|destruct (nat_eq_dec ieqvi n)].
+      * inversion e. subst ni. clear e.
+        eexists _. eexists _. split; [reflexivity|]. split; [repeat split|].
+        -- unfold equivocator_state_descriptor_project.
+          unfold equivocator_state_project.
+          destruct (le_lt_dec (S n) n); [lia|]. simpl. f_equal. apply of_nat_ext.
+        -- intros.
+          destruct Hv as [Heqv Hv].
+          split; [assumption|].
+          intros.
+          unfold equivocator_state_descriptor_project in Hsx.
+          unfold equivocator_state_project in Hsx.
+          simpl.
+          unfold fst in Hv.
+          unfold vvalid in Hv.
+          unfold vtransition in Ht.
+          unfold_transition Ht. unfold snd in Ht.
+          destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
+          replace (of_nat_lt l0) with (of_nat_lt Heqv) in * by apply of_nat_ext.
+          clear l0.
+          assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
+          { subst.
+            destruct s as (nsi, si). unfold projT2.
+            simpl in Heqv.
+            destruct (le_lt_dec (S nsi) ieqvi); [lia|].
+            f_equal. apply of_nat_ext.
+          }
+          rewrite Hsxi. split; [assumption|].
+          unfold fst in Ht.
+          destruct (vtransition X li (projT2 s (of_nat_lt Heqv), input))
+            as (si'', om') eqn:Ht'.
+          inversion Ht.
+          f_equal.
+          destruct s as (ns, bs).
+          inversion H0. subst n. simpl_existT. subst bsi.
+          rewrite to_nat_of_nat.
+          destruct (nat_eq_dec (S ns) (S ns)); [|congruence].
+          reflexivity.
+      * eexists _. eexists _. split; [reflexivity|]. split; [exact I|].
+        intros.
+        apply and_comm.
+        split.
+        { apply
+            (existing_true_label_equivocator_state_project_not_last X (li, Existing X ieqvi true) s input _ output Ht _ eq_refl )
+          ; [|simpl; lia].
+          apply Hv.
+        }
+        destruct Hv as [Heqv Hv].
+        unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+        destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
+        destruct (vtransition X (fst (li, Existing X ieqvi true))
+        (projT2 s (of_nat_lt l0), input))
+          as (si', om').
+        inversion Ht. subst.
+        destruct s as (neqv, seqv). simpl in *.
+        inversion H0. subst ni. lia.
+      * subst ieqvi.
+        eexists _. eexists _. split; [reflexivity|].
+        split; [repeat split|].
+        -- unfold equivocator_state_descriptor_project.
+          unfold equivocator_state_project.
+          destruct (le_lt_dec (S ni) n); [lia|]. simpl. f_equal. apply of_nat_ext.
+        -- intros.  destruct Hv as [Heqv Hv].
+          split; [assumption|].
+          intros. simpl.
+          unfold equivocator_state_descriptor_project in Hsx.
+          unfold equivocator_state_project in Hsx.
+          unfold fst in Hv.
+          unfold vvalid in Hv.
+          unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+          destruct (le_lt_dec (S (projT1 s)) n); [lia|].
+          replace (of_nat_lt l0) with (of_nat_lt Heqv) in * by apply of_nat_ext.
+          clear l0.
+          assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
+          { subst.
+            destruct s as (nsi, si). unfold projT2.
+            simpl in Heqv.
+            destruct (le_lt_dec (S nsi) n); [lia|].
+            f_equal. apply of_nat_ext.
+          }
+          rewrite Hsxi. split; [assumption|].
+          unfold fst in Ht.
+          destruct (vtransition X li (projT2 s (of_nat_lt Heqv), input))
+            as (si'', om') eqn:Ht'.
+          inversion Ht. clear Ht. subst ni.
+          simpl_existT. subst bsi.
+          f_equal.
+          rewrite eq_dec_if_true; [reflexivity|].
+          apply of_nat_ext.
+      * eexists _. eexists _. split; [reflexivity|]. split; [exact I|].
+        intros.
+        apply and_comm.
+        split.
+        { apply
+            (existing_false_label_equivocator_state_project_not_same X (li, Existing X ieqvi false) s input _ output Ht _ eq_refl)
+          ; [| simpl; lia|assumption].
+          destruct Hv as [Hieqvi Hv].
+          assumption.
+        }
+        destruct Hv as [Heqv Hv].
+        unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+        destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
+        unfold fst in Ht.
+        destruct (vtransition X li (projT2 s (of_nat_lt l0), input))
+          as (si', om').
+        inversion Ht. subst. simpl. lia.
+Qed.
+
+Lemma equivocator_transition_item_project_inv_characterization
+  (item : vtransition_item equivocator_vlsm)
+  (itemx : vtransition_item X)
+  (descriptor descriptor' : MachineDescriptor)
+  (Hitem : equivocator_vlsm_transition_item_project item descriptor = Some (Some itemx, descriptor'))
+  : l itemx = fst (l item) /\  input item = input itemx /\ output item = output itemx /\
+    (equivocator_state_descriptor_project X (destination item) descriptor = destination itemx)
+    .
+Proof.
+  apply equivocator_transition_item_project_inv_messages in Hitem as Hitem'.
+  destruct Hitem' as [_ [_ [_ [Hproper _]]]].
+  apply equivocator_transition_item_project_proper_characterization in Hproper.
+  destruct Hproper as [oitem [odescriptor [Hpr' H]]].
+  rewrite Hpr' in Hitem.
+  inversion Hitem. subst. apply H.
 Qed.
 
 (**
@@ -769,7 +987,7 @@ trace in the [pre_loaded_with_all_messages_vlsm] corresponding to the original v
 Lemma preloaded_equivocator_vlsm_project_protocol_trace
   (bs : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs btr)
+  (Hbtr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs btr)
   (j : nat)
   (Hj : j < S (projT1 (last (map destination btr) bs)))
   (jf : bool)
@@ -788,10 +1006,10 @@ Lemma preloaded_equivocator_vlsm_project_protocol_trace
       (s := projT2 bs (of_nat_lt Hi))
       (Hlast : projT2 (last (map destination btr) bs) (of_nat_lt Hj) = last (map destination tr) s)
       ,
-      finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s tr
+      finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) s tr
+      /\ (vinitial_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs -> vinitial_state_prop (pre_loaded_with_all_messages_vlsm X) s)
     end.
 Proof.
-  destruct Hbtr as [Hbtr Hinit].
   destruct (preloaded_equivocator_vlsm_trace_project_protocol bs btr Hbtr j Hj jf)
     as [tr [di [Hproject Hdi]]].
   exists tr.
@@ -802,13 +1020,11 @@ Proof.
     repeat split; assumption.
   - destruct Hdi as [Hi [Hlast Htr]].
     exists Hi. exists Hlast. split; [assumption|].
-    destruct Hinit as [Hzero Hinit].
-    destruct bs as [ns bs]; simpl in *. subst ns.
-    assert (Hzero : i = 0) by lia.
-    subst i.
-    replace (of_nat_lt Hi) with (@F1 0); [assumption|].
-    rewrite <- (of_nat_to_nat_inv (@F1 0)).
-    apply of_nat_ext.
+    intro Hinit.
+    destruct Hinit.
+    cut (projT2 bs (of_nat_lt (Hzero X bs)) = projT2 bs (of_nat_lt Hi)).
+    { intro R. rewrite <- R. assumption. }
+    f_equal. assert (Hi0 : i = 0) by lia. subst. apply of_nat_ext.
 Qed.
 
 (**
@@ -939,7 +1155,7 @@ Lemma preloaded_equivocator_vlsm_protocol_trace_project_inv2
   (is: state)
   (tr: list transition_item)
   (Hntr : tr <> [])
-  (Htr: finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr)
+  (Htr: finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is tr)
   (j : nat)
   (fj : bool)
   (di : MachineDescriptor)
@@ -958,7 +1174,8 @@ Lemma preloaded_equivocator_vlsm_protocol_trace_project_inv2
       (s := projT2 is (of_nat_lt Hi))
       (Hlast : projT2 (last (map destination tr) is) (of_nat_lt Hj) = last (map destination trX) s)
       ,
-      finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) s trX
+      finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) s trX
+      /\ (vinitial_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is -> vinitial_state_prop (pre_loaded_with_all_messages_vlsm X) s)
     end.
 Proof.
   specialize (equivocator_vlsm_trace_project_inv _ Hntr j fj) as Hj.

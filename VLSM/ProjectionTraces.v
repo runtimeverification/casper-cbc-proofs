@@ -22,27 +22,41 @@ Context
   (Xj := composite_vlsm_constrained_projection IM constraint j)
   .
 
+(** Extracted common functionality for both [finite_trace_projection_list]
+    and [finite_trace_projection_list_alt]. *)
+Definition composite_transition_item_projection_from_eq
+  (item : composite_transition_item IM)
+  (i := projT1 (l item))
+  j
+  (e : j = i)
+  : vtransition_item (IM j)
+  :=
+  let lj := eq_rect_r _ (projT2 (l item)) e in
+  @Build_transition_item _ (type (IM j)) lj (input item) (destination item j) (output item).
+
+Definition composite_transition_item_projection
+  (item : composite_transition_item IM)
+  (i := projT1 (l item))
+  : vtransition_item (IM i)
+  :=
+  composite_transition_item_projection_from_eq item i eq_refl.
+
 Fixpoint finite_trace_projection_list
-  (trx : list (vtransition_item X))
-  : list (vtransition_item Xj)
+  (trx : list (composite_transition_item IM))
+  : list (vtransition_item (IM j))
   :=
   match trx with
   | [] => []
   | item :: trx =>
     let tail := finite_trace_projection_list trx in
-    let s := destination item in
-    let l := l item in
-    let x := projT1 l in
-    match decide (j = x) with
-    | left e =>
-      let lj := eq_rect_r _ (projT2 l) e in
-      @Build_transition_item _ (type Xj) lj (input item) (s j) (output item) :: tail
+    match decide (j = (projT1 (l item))) with
+    | left e => composite_transition_item_projection_from_eq item j e :: tail
     | _ => tail
     end
   end.
 
 Definition from_projection
-  (a : vtransition_item X)
+  (a : composite_transition_item IM)
   : Prop
   := j = projT1 (l a).
 
@@ -50,15 +64,15 @@ Instance dec_from_projection (a : transition_item) : Decision (from_projection a
   decide (from_projection a).
 
 Definition finite_trace_projection_list_alt
-  (trx : list (vtransition_item X))
+  (trx : list (composite_transition_item IM))
   (ftrx := (filter (fun a => bool_decide (from_projection a)) trx))
   (Hall: Forall from_projection ftrx)
   :=
   List.map
-    (fun item : {a : vtransition_item X | from_projection a} =>
+    (fun item : {a : composite_transition_item IM | from_projection a} =>
       let (item, e) := item in
       let lj := eq_rect_r _ (projT2 (l item)) e in
-      @Build_transition_item _ (type Xj)
+      @Build_transition_item _ (type (IM j))
         lj
         (input item)
         (destination item j)
@@ -67,7 +81,7 @@ Definition finite_trace_projection_list_alt
   (list_annotate from_projection ftrx Hall).
 
 Lemma finite_trace_projection_list_alt_iff
-  (trx : list (vtransition_item X))
+  (trx : list (composite_transition_item IM))
   (ftrx := (filter (fun a => bool_decide (from_projection a)) trx))
   (Hall: Forall from_projection ftrx)
   : finite_trace_projection_list_alt trx Hall = finite_trace_projection_list trx.
@@ -174,7 +188,7 @@ Proof.
 Qed.
 
 Lemma finite_trace_projection_list_app
-  (tr1 tr2 : list (vtransition_item X))
+  (tr1 tr2 : list (composite_transition_item IM))
   : finite_trace_projection_list (tr1 ++ tr2) =
     finite_trace_projection_list tr1 ++ finite_trace_projection_list tr2.
 Proof.
@@ -222,13 +236,11 @@ Lemma finite_trace_projection_last_state
   : lstj = lstx j.
 Proof.
   apply preloaded_finite_trace_projection_last_state.
-  apply VLSM_incl_finite_trace; [|assumption].
+  apply VLSM_incl_finite_protocol_trace_from; [|assumption].
   apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
 Qed.
 
-(* The projection of a finite protocol trace remains a protocol trace *)
-
-Lemma finite_ptrace_projection
+Local Lemma _finite_ptrace_projection
   (s : vstate X)
   (Psj : protocol_state_prop Xj (s j))
   (trx : list (vtransition_item X))
@@ -248,7 +260,9 @@ Proof.
     + subst x.
       simpl in Ht.
       destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.
-      inversion Ht; subst. rewrite state_update_eq in *.
+      inversion Ht; subst. unfold composite_transition_item_projection_from_eq.
+      simpl.
+      rewrite state_update_eq in *.
       simpl in Hv.
       apply (finite_ptrace_extend Xj).
       * apply IHHtr.
@@ -282,9 +296,39 @@ Proof.
       assumption.
 Qed.
 
+Lemma protocol_state_projection
+  (s : state)
+  (Hps : protocol_state_prop X s)
+  : protocol_state_prop Xj (s j).
+Proof.
+  apply protocol_state_has_trace in Hps.
+  destruct Hps as [is [tr [[Htr His] Hs]]].
+  specialize (finite_trace_projection_last_state _ _ Htr) as Hlst.
+  apply _finite_ptrace_projection in Htr as Hptr.
+  - apply finite_ptrace_last_pstate in Hptr.
+    simpl in *.
+    rewrite Hlst in Hptr.
+    subst. assumption.
+  - apply initial_is_protocol. specialize (His j). assumption.
+Qed.
+
+(* The projection of a finite protocol trace remains a protocol trace *)
+
+Lemma finite_ptrace_projection
+  (s : vstate X)
+  (trx : list (vtransition_item X))
+  (Htr : finite_protocol_trace_from X s trx)
+   : finite_protocol_trace_from Xj (s j) (finite_trace_projection_list trx).
+Proof.
+  apply _finite_ptrace_projection; [|assumption].
+  apply protocol_state_projection.
+  apply finite_ptrace_first_pstate in Htr.
+  assumption.
+Qed.
+
 (* The projection of a preloaded finite protocol trace remains a preloaded protocol trace *)
 
-Lemma preloaded_finite_ptrace_projection
+Lemma _preloaded_finite_ptrace_projection
   (s : vstate X)
   (Psj : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM j)) (s j))
   (trx : list (vtransition_item X))
@@ -305,7 +349,9 @@ Proof.
       unfold vtransition in Ht. simpl in Ht.
       unfold vtransition in Ht. simpl in Ht.
       destruct (vtransition (IM j) lx (s' j, iom)) as [si' om'] eqn:Hteq.
-      inversion Ht; subst. rewrite state_update_eq in *.
+      inversion Ht; subst.
+      unfold composite_transition_item_projection_from_eq. simpl.
+      rewrite state_update_eq in *.
       simpl in Hv.
       apply (finite_ptrace_extend (pre_loaded_with_all_messages_vlsm (IM j))).
       * apply IHHtr.
@@ -345,45 +391,31 @@ Proof.
       assumption.
 Qed.
 
-Lemma protocol_state_projection
+Lemma preloaded_protocol_state_projection
   (s : state)
-  (Hps : protocol_state_prop X s)
-  : protocol_state_prop Xj (s j).
+  (Hps : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s)
+  : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM j)) (s j).
 Proof.
-  destruct Hps as [om Hps].
-  specialize (protocol_is_run X (s, om) Hps); intros [run Heqfinal].
-  specialize (run_is_trace X run); intros Htrace.
-  specialize (vlsm_run_last_state X run); intros Hlast.
-  destruct run as [run Hrun]; simpl in *.
-  rewrite <- Heqfinal in *. simpl in Hlast.
-  destruct run; simpl in *.
-  clear - Htrace Hlast.
-  destruct Htrace as [Htrace Hinit].
-  specialize (finite_ptrace_projection start); intro Hproj.
-  assert (Hstartj : initial_state_prop (start j)) by apply Hinit.
-  remember (exist _ (start j) Hstartj) as istartj.
-  assert (Hpstartj : protocol_state_prop Xj (start j)).
-  { exists None.
-    specialize (protocol_initial_state Xj istartj) as Hpinit.
-    subst.
-    assumption.
-  }
-  specialize (Hproj Hpstartj _ Htrace).
-  specialize (trace_is_run Xj (start j) (finite_trace_projection_list transitions)) as Hrun.
-  specialize (Hrun (conj Hproj Hstartj)).
-  destruct Hrun as [run [Hrun [Hstart Htrans]]].
-  specialize (run_is_protocol Xj (exist _ run Hrun)); simpl; intro Hps.
-  specialize (vlsm_run_last_state Xj (exist _ run Hrun)); simpl; intros Hlast'.
-  simpl in *.
-  rewrite Htrans in Hlast'. rewrite Hstart in Hlast'. simpl in Hlast'.
-  destruct (final run) as (s', om). simpl in Hlast'.
-  exists om.
-  subst.
-  specialize (finite_trace_projection_last_state start transitions Htrace)
-  ; simpl; intro Hlast.
-  clear - Hlast Hps.
-  simpl in Hlast.
-  rewrite <- Hlast.
+  apply protocol_state_has_trace in Hps.
+  destruct Hps as [is [tr [[Htr His] Hs]]].
+  specialize (preloaded_finite_trace_projection_last_state _ _ Htr) as Hlst.
+  apply _preloaded_finite_ptrace_projection in Htr as Hptr.
+  - apply finite_ptrace_last_pstate in Hptr.
+    simpl in *.
+    rewrite Hlst in Hptr.
+    subst. assumption.
+  - apply initial_is_protocol. specialize (His j). assumption.
+Qed.
+
+Lemma preloaded_finite_ptrace_projection
+  (s : vstate X)
+  (trx : list (vtransition_item X))
+  (Htr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) s trx)
+   : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm (IM j)) (s j) (finite_trace_projection_list trx).
+Proof.
+  apply _preloaded_finite_ptrace_projection; [|assumption].
+  apply preloaded_protocol_state_projection.
+  apply finite_ptrace_first_pstate in Htr.
   assumption.
 Qed.
 
@@ -392,33 +424,29 @@ Lemma in_futures_projection
   (Hfutures : in_futures X s1 s2)
   : in_futures Xj (s1 j) (s2 j).
 Proof.
-  specialize (in_futures_protocol_fst X s1 s2 Hfutures)
-  ; intros HpsX1.
-  specialize (protocol_state_projection s1 HpsX1)
-  ; intros Hps1j.
   destruct Hfutures as [tr [Htr Hs2]].
-  specialize (finite_ptrace_projection s1 Hps1j tr Htr); intros Htrj.
+  specialize (finite_ptrace_projection s1 tr Htr); intros Htrj.
   exists (finite_trace_projection_list tr).
-  split; try assumption.
+  split; [assumption|].
   subst s2.
   apply finite_trace_projection_last_state.
   assumption.
 Qed.
 
 Definition in_projection
-   (tr : Stream (vtransition_item X))
+   (tr : Stream (composite_transition_item IM))
    (n : nat)
    := from_projection (Str_nth n tr).
 
 Definition in_projection_dec
-  := forall (tr : Stream (vtransition_item X)),
+  := forall (tr : Stream (composite_transition_item IM)),
        bounding (in_projection tr)
        + { ss : monotone_nat_stream
          | filtering_subsequence from_projection tr ss
          }.
 
 Definition infinite_trace_projection_stream
-  (ss: Stream (vtransition_item X))
+  (ss: Stream (composite_transition_item IM))
   (ks: monotone_nat_stream)
   (Hfilter: filtering_subsequence from_projection ss ks)
   : Stream (vtransition_item (IM j))
@@ -435,7 +463,7 @@ Definition infinite_trace_projection_stream
     subsP.
 
 Lemma finite_trace_projection_stream
-  (ss: Stream (vtransition_item X))
+  (ss: Stream (composite_transition_item IM))
   (ks: monotone_nat_stream)
   (Hfilter: filtering_subsequence from_projection ss ks)
   (n : nat)
@@ -454,16 +482,10 @@ Proof.
       (succ n)
     ); intros [Hall Heq].
   clear -Heq.
-  replace
-    (@stream_prefix
-      (@sig (@vtransition_item message X)
-         (fun a : @vtransition_item message X => from_projection a))
-      (@stream_annotate (@vtransition_item message X) from_projection
-         (@stream_subsequence (@vtransition_item message X) ss ks)
-         (@stream_filter_Forall (@vtransition_item message X) from_projection ss ks Hfilter))
-      (succ n))
-    with
-      (list_annotate from_projection (stream_prefix (stream_subsequence ss ks) (succ n)) Hall).
+  match goal with
+  |- List.map _ ?s = _ => replace s with
+      (list_annotate from_projection (stream_prefix (stream_subsequence ss ks) (succ n)) Hall)
+  end.
   specialize
     (stream_filter_prefix
        ss
@@ -651,14 +673,9 @@ Proof.
             Hall
             n2
           ); intros [oitem [Hoa Hnth]].
-        replace
-          (@nth_error
-            (@sig (@vtransition_item message X)
-               (fun a : @vtransition_item message X => from_projection a))
-            (@list_annotate (@vtransition_item message X)
-               from_projection
-               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n2)
-          with oitem in Hs2.
+        match type of Hs2 with
+        | option_map _ (option_map _ ?n) = _ => replace n with oitem in Hs2
+        end.
         clear Hoa.
         destruct oitem as [[item Hitem]|]; try inversion Hs2; subst; clear Hs2.
         simpl in Hnth.
@@ -697,23 +714,12 @@ Proof.
             Hall
             n1
           ); intros [oitem1 [Hoa1 Hn1th]].
-        replace
-          (@nth_error
-            (@sig (@vtransition_item message X)
-               (fun a : @vtransition_item message X => from_projection a))
-            (@list_annotate (@vtransition_item message X)
-               from_projection
-               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n2)
-          with oitem2 in Hs2.
-        clear Hoa2.
-        replace
-          (@nth_error
-            (@sig (@vtransition_item message X)
-               (fun a : @vtransition_item message X => from_projection a))
-            (@list_annotate (@vtransition_item message X)
-               from_projection
-               (@filter _ (fun a => bool_decide (from_projection a)) trx) Hall) n1)
-           with oitem1 in Hs1.
+        match type of Hs2 with
+        | option_map _ (option_map _ ?n) = _ => replace n with oitem2 in Hs2
+        end.
+        match type of Hs1 with
+        | option_map _ (option_map _ ?n) = _ => replace n with oitem1 in Hs1
+        end.
         clear Hoa1.
         destruct oitem2 as [[item2 Hitem2]|]; try inversion Hs2; subst; clear Hs2.
         destruct oitem1 as [[item1 Hitem1]|]; try inversion Hs1; subst; clear Hs1.
@@ -848,7 +854,7 @@ Lemma finite_trace_projection_list_in
   (itemX : vtransition_item X)
   (HitemX : In itemX tr)
   (j := projT1 (l itemX))
-  : In (@Build_transition_item _ (type (IM j)) (projT2 (l itemX)) (input itemX) (destination itemX j) (output itemX)) (finite_trace_projection_list IM constraint j tr).
+  : In (@Build_transition_item _ (type (IM j)) (projT2 (l itemX)) (input itemX) (destination itemX j) (output itemX)) (finite_trace_projection_list IM j tr).
 Proof.
   induction tr; [inversion HitemX|].
   destruct HitemX as [HitemX | HitemX].
@@ -871,12 +877,12 @@ Proof.
 Qed.
 
 Lemma finite_trace_projection_list_in_rev
-  (tr : list (vtransition_item X))
+  (tr : list (composite_transition_item IM))
   (j : index)
   (itemj : vtransition_item (IM j))
-  (Hitemj : In itemj  (finite_trace_projection_list IM constraint j tr))
+  (Hitemj : In itemj  (finite_trace_projection_list IM j tr))
   : exists
-    (itemX : vtransition_item X)
+    (itemX : composite_transition_item IM)
     (Houtput : output itemX = output itemj)
     (Hinput : input itemX = input itemj)
     (Hl1 : j = projT1 (l itemX))

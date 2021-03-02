@@ -40,8 +40,8 @@ Context
   {Rindex : ReachableThreshold index}
   (est' := fun (i : index) => (@EquivocationAwareListValidator.equivocation_aware_estimator _ i _ Hfinite _ _ _ ))
   (IM_index := fun (i : index) => @VLSM_list index i index_listing idec (est' i))
-  (has_been_sent_capabilities := fun i : index => @has_been_sent_lv index i index_listing Hfinite idec (est' i))
-  (has_been_received_capabilities := fun i : index => @has_been_received_lv index i index_listing Hfinite idec (est' i))
+  (has_been_sent_capabilities := fun i : index => @lv_sent_capability index i index_listing Hfinite idec (est' i))
+  (has_been_received_capabilities := fun i : index => @lv_received_capability index i index_listing Hfinite idec (est' i))
   (X := composite_vlsm IM_index (free_constraint IM_index))
   (preX := pre_loaded_with_all_messages_vlsm X)
   (Hevents_set' := fun (i : index) => @simp_lv_observable_events index i index_listing _)
@@ -83,7 +83,7 @@ Context
     unfold valid in Hprotocol.
     simpl in Hprotocol.
     unfold constrained_composite_valid in Hprotocol.
-    unfold free_composite_valid in Hprotocol.
+    unfold composite_valid in Hprotocol.
     unfold vvalid in Hprotocol.
     unfold valid in Hprotocol.
     simpl in Hprotocol.
@@ -175,7 +175,7 @@ Context
     unfold valid in Hprotocol.
     simpl in Hprotocol.
     unfold constrained_composite_valid in Hprotocol.
-    unfold free_composite_valid in Hprotocol.
+    unfold composite_valid in Hprotocol.
     unfold vvalid in Hprotocol.
     unfold valid in Hprotocol.
     simpl in Hprotocol.
@@ -1030,7 +1030,7 @@ Context
       simpl in Htrans.
       destruct l. simpl in *.
       unfold constrained_composite_valid in Hproto.
-      unfold free_composite_valid in Hproto.
+      unfold composite_valid in Hproto.
       unfold vvalid in Hproto. unfold valid in Hproto. simpl in *.
       unfold vtransition in Htrans.
       unfold transition in Htrans. simpl in Htrans.
@@ -2016,7 +2016,7 @@ Context
         unfold valid in Hpr_a.
         simpl in Hpr_a.
         unfold constrained_composite_valid in Hpr_a.
-        unfold free_composite_valid in Hpr_a.
+        unfold composite_valid in Hpr_a.
         unfold vvalid in Hpr_a.
         unfold valid in Hpr_a. simpl in Hpr_a.
         subst v.
