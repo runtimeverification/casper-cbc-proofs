@@ -81,6 +81,10 @@ Definition equivocator_vlsm_transition_item_project
     end
   end.
 
+(**
+Since equivocators always have machine 0, We can always project a 'valid'
+equivocator 'transition item' to component 0.
+*)
 
 Lemma equivocators_vlsm_transition_item_project_zero_descriptor
   (item : vtransition_item equivocator_vlsm)
@@ -221,6 +225,11 @@ Proof.
     inversion Hitem. subst. repeat split; reflexivity.
 Qed.
 
+(**
+If the 'destination' of a 'valid' equivocator 'transition_item' is singleton,
+then by projecting the item to component 0 we actually obtain a
+'transition_item' for the original machine.
+*)
 Lemma no_equivocating_equivocator_transition_item_project
   (item : vtransition_item equivocator_vlsm)
   (Hno_equiv_item : is_singleton_state X (destination item))

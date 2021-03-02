@@ -520,6 +520,12 @@ Proof.
     assumption.
 Qed.
 
+(**
+Property of a composite trace requiring that every message received in an
+transition involving a machine in the chosen subset must either belong to
+the set specified by [seed], or it must [have_been_sent] by some machine
+in the chosen subset (prior to it being received).
+*)
 Definition trace_sub_item_input_is_seeded_or_sub_previously_sent
   (tr : list (composite_transition_item IM))
   : Prop

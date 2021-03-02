@@ -71,7 +71,11 @@ Definition equivocating_indices
   :=
   filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
 
-Lemma equivocators_transition_reflects_equivocating_indices
+(**
+The statement below is obvious a transition cannot make an already equivocating
+component non-equivocating.
+*)
+Lemma equivocators_transition_preserves_equivocating_indices
   (index_listing : list index)
   (s: composite_state equivocator_IM)
   (iom oom: option message)
@@ -173,23 +177,23 @@ Proof.
   intro eqv. apply not_equivocating_descriptor_proper. apply Hne.
 Qed.
 
-Definition zero_choice
+Definition zero_descriptor
   (eqv : equiv_index)
   : MachineDescriptor (IM eqv)
   := Existing _ 0 false.
 
-Lemma zero_choice_not_equivocating
+Lemma zero_descriptor_not_equivocating
   (s : vstate equivocators_free_vlsm)
-  : not_equivocating_equivocator_descriptors zero_choice s.
+  : not_equivocating_equivocator_descriptors zero_descriptor s.
 Proof.
   intro eqv. simpl. lia.
 Qed.
 
-Lemma zero_choice_proper
+Lemma zero_descriptor_proper
   (s : vstate equivocators_free_vlsm)
-  : proper_equivocator_descriptors zero_choice s.
+  : proper_equivocator_descriptors zero_descriptor s.
 Proof.
-  apply not_equivocating_equivocator_descriptors_proper. apply zero_choice_not_equivocating.
+  apply not_equivocating_equivocator_descriptors_proper. apply zero_descriptor_not_equivocating.
 Qed.
 
 Lemma proper_equivocator_descriptors_state_update_eqv
@@ -264,6 +268,10 @@ Proof.
   unfold equivocator_descriptors_update. destruct (decide (j = i)); congruence.
 Qed.
 
+(**
+A generalized version of [equivocator_descriptors_update_eq] parametric on the
+hypothesis equating the indices.
+*)
 Lemma equivocator_descriptors_update_eq_rew
   (s : equivocator_descriptors)
   (i : equiv_index)

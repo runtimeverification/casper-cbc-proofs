@@ -375,23 +375,23 @@ Lemma equivocators_protocol_vlsm_run_project
     (eqv_descriptors : equivocator_descriptors)
     (Heqv : not_equivocating_equivocator_descriptors eqv_descriptors (fst (final run)))
     (Hproject : equivocators_trace_project eqv_descriptors (transitions run)
-      = Some (transitions runX, zero_choice _))
+      = Some (transitions runX, zero_descriptor _))
     (Hdestination : equivocators_state_project eqv_descriptors (fst (final run)) = fst (final runX))
     (Houtput : snd (final run) = snd (final runX)),
-    equivocators_state_project (zero_choice _) (start run) = start runX.
+    equivocators_state_project (zero_descriptor _) (start run) = start runX.
 Proof.
   induction HrunX.
   - specialize (lift_initial_to_equivocators_state IM Hbs finite_index is His) as Hs.
     remember (lift_to_equivocators_state IM is) as s.
     exists (@mk_proto_run _ (type equivocators_no_equivocations_vlsm) s [] (s, None)).
     split; [constructor; assumption|].
-    exists (zero_choice _).
-    split; [apply zero_choice_not_equivocating|].
+    exists (zero_descriptor _).
+    split; [apply zero_descriptor_not_equivocating|].
     exists eq_refl.
     subst.
     simpl.
     assert
-      (Hproject : equivocators_state_project (zero_choice IM)
+      (Hproject : equivocators_state_project (zero_descriptor IM)
         (lift_to_equivocators_state IM is) = is)
     ; [|exists Hproject; exists eq_refl; assumption].
     apply functional_extensionality_dep_good.
@@ -415,17 +415,17 @@ Proof.
     }
     split; [apply (empty_run_initial_message equivocators_no_equivocations_vlsm im Him')|].
     apply proj2_sig.
-    exists (zero_choice _).
-    split; [apply zero_choice_not_equivocating|].
+    exists (zero_descriptor _).
+    split; [apply zero_descriptor_not_equivocating|].
     exists eq_refl. unfold final. unfold start. unfold fst. unfold snd.
     assert
-      (Hproject : equivocators_state_project (zero_choice IM) (` vsz) = is)
+      (Hproject : equivocators_state_project (zero_descriptor IM) (` vsz) = is)
     ; [| exists Hproject; exists eq_refl; assumption].
     unfold vsz, is'; simpl.
     apply functional_extensionality_dep_good.
     reflexivity.
-  - destruct IHHrunX1 as [eqv_state_run [Heqv_state_run [eqv_state_choice [Heqv_state_choice [Hstate_project [Hstate_final_project [_ Hstate_start_project]]]]]]].
-    destruct IHHrunX2 as [eqv_msg_run [Heqv_msg_run [eqv_msg_choice [Heqv_msg_choice [Hmsg_project [_ [Hom Hmsg_start_project]]]]]]].
+  - destruct IHHrunX1 as [eqv_state_run [Heqv_state_run [eqv_state_descriptors [Heqv_state_descriptors [Hstate_project [Hstate_final_project [_ Hstate_start_project]]]]]]].
+    destruct IHHrunX2 as [eqv_msg_run [Heqv_msg_run [eqv_msg_descriptors [Heqv_msg_descriptors [Hmsg_project [_ [Hom Hmsg_start_project]]]]]]].
     specialize (run_is_trace equivocators_no_equivocations_vlsm (exist _ _ Heqv_state_run))
       as Hstate_trace.
     simpl in Hstate_trace.
@@ -464,13 +464,13 @@ Proof.
     specialize
       (extend_right_finite_trace_from equivocators_no_equivocations_vlsm _ _ Happ) as Happ_extend.
     destruct l as (eqv, li).
-    specialize (Heqv_state_choice eqv) as Heqv_state_choice_i.
-    destruct (eqv_state_choice eqv) as [| eqv_state_choice_i eqv_state_choice_f]
-    eqn:Heqv_state_choice_eqv
-    ; [contradict Heqv_state_choice_i|].
-    destruct eqv_state_choice_f; [contradict Heqv_state_choice_i|].
+    specialize (Heqv_state_descriptors eqv) as Heqv_state_descriptors_i.
+    destruct (eqv_state_descriptors eqv) as [| eqv_state_descriptors_i eqv_state_descriptors_f]
+    eqn:Heqv_state_descriptors_eqv
+    ; [contradict Heqv_state_descriptors_i|].
+    destruct eqv_state_descriptors_f; [contradict Heqv_state_descriptors_i|].
     pose
-      (existT (fun i : index => vlabel (equivocator_IM i)) (eqv) (li, Existing (IM (eqv)) eqv_state_choice_i false))
+      (existT (fun i : index => vlabel (equivocator_IM i)) (eqv) (li, Existing (IM (eqv)) eqv_state_descriptors_i false))
       as el.
     pose (last (map destination (transitions eqv_state_run ++ emsg_tr))
       (start eqv_state_run))
@@ -485,7 +485,7 @@ Proof.
     | context [?t = _] =>
       replace t with (es', om')
     end.
-    simpl in Heqv_state_choice_i.
+    simpl in Heqv_state_descriptors_i.
     assert (Heqv_t := Hesom').
     unfold vtransition in Hesom'. simpl in Hesom'.
     unfold vtransition in Hesom'.
@@ -503,7 +503,7 @@ Proof.
       as [Houtput Hstate].
     specialize (Hstate eqv) as Hstate_eqv.
     destruct Hstate_eqv as [Hstate_size [Hstate_msg Hstate_state]].
-    spec Hstate_state eqv_state_choice_i.
+    spec Hstate_state eqv_state_descriptors_i.
 
     remember (last (map destination (transitions eqv_state_run ++ emsg_tr)) (start eqv_state_run))
       as ess.
@@ -515,8 +515,8 @@ Proof.
     simpl in Heqv_state_final.
     simpl in Heqess, Hstate_state, Heqemsg_tr.
     rewrite Heqv_state_final in Heqess, Heqemsg_tr, Hstate_state.
-    specialize (Hstate_state Heqv_state_choice_i) as Hstate_state_i.
-    destruct Hstate_state_i as [Heqv_merged_choice_i Hstate_state_i].
+    specialize (Hstate_state Heqv_state_descriptors_i) as Hstate_state_i.
+    destruct Hstate_state_i as [Heqv_merged_descriptors_i Hstate_state_i].
     rewrite Heqemsg_tr in Heqess.
     change ess with es in Happ_extend.
     subst ess. unfold es in Hesom'.
@@ -526,7 +526,7 @@ Proof.
        destruct (le_lt_dec X Y)
     end
     ; [lia|].
-    replace (of_nat_lt l) with (of_nat_lt Heqv_merged_choice_i) in Hesom' by apply of_nat_ext. clear l.
+    replace (of_nat_lt l) with (of_nat_lt Heqv_merged_descriptors_i) in Hesom' by apply of_nat_ext. clear l.
     rewrite Hstate_state_i in Hesom'.
     unfold fst in Hesom' at 1.
     specialize (equal_f_dep Hstate_final_project (eqv)) as Hstate_final_project_eqv.
@@ -534,13 +534,13 @@ Proof.
     unfold Common.equivocators_state_project in Hstate_final_project_eqv.
     unfold equivocator_state_descriptor_project in Hstate_final_project_eqv.
     unfold equivocator_state_project in Hstate_final_project_eqv.
-    rewrite Heqv_state_choice_eqv in Hstate_final_project_eqv.
-    match type of Heqv_state_choice_i with
+    rewrite Heqv_state_descriptors_eqv in Hstate_final_project_eqv.
+    match type of Heqv_state_descriptors_i with
     | context [projT1 ?s] => destruct s as (n_eqv_state_run_eqv, s_eqv_state_run_eqv) eqn:Heqeqv_state_run_eqv
     end.
-    simpl in Heqv_state_choice_i.
-    destruct (le_lt_dec (S n_eqv_state_run_eqv) eqv_state_choice_i); [lia|].
-    replace (of_nat_lt l) with (of_nat_lt Heqv_state_choice_i) in Hstate_final_project_eqv by apply of_nat_ext. clear l.
+    simpl in Heqv_state_descriptors_i.
+    destruct (le_lt_dec (S n_eqv_state_run_eqv) eqv_state_descriptors_i); [lia|].
+    replace (of_nat_lt l) with (of_nat_lt Heqv_state_descriptors_i) in Hstate_final_project_eqv by apply of_nat_ext. clear l.
     simpl in Hesom', Hstate_final_project_eqv.
     rewrite Hstate_final_project_eqv in Hesom'.
     rewrite Hstate_final in Hesom'.
@@ -576,7 +576,7 @@ Proof.
       split; [assumption|].
       split.
       - simpl. unfold vvalid. simpl.
-        exists Heqv_merged_choice_i.
+        exists Heqv_merged_descriptors_i.
         unfold es.
         rewrite Hstate_state_i. simpl.
         rewrite Hstate_final_project_eqv.
@@ -659,7 +659,7 @@ Proof.
       as [eqv_merged_run [Heqv_merged_run [Heqv_merged_run_start Heqv_merged_run_transitions]]].
     exists eqv_merged_run.
     exists Heqv_merged_run.
-    exists eqv_state_choice.
+    exists eqv_state_descriptors.
     specialize
       (vlsm_run_last_final equivocators_no_equivocations_vlsm (exist _ _ Heqv_merged_run))
       as Hmerged_final.
@@ -670,15 +670,15 @@ Proof.
     destruct Hmerged_final as [Hfinal_es Hfinal_om].
     inversion Hfinal_es as [Hfinal_es']. rewrite <- Hfinal_es'.
     inversion Hfinal_om as [Hfinal_om']. rewrite <- Hfinal_om'.
-    assert (Hnext_state_choice : not_equivocating_equivocator_descriptors eqv_state_choice es').
-    { intro eqv'. spec Heqv_state_choice eqv'.
+    assert (Hnext_state_descriptors : not_equivocating_equivocator_descriptors eqv_state_descriptors es').
+    { intro eqv'. spec Heqv_state_descriptors eqv'.
       specialize (Hstate eqv').
       destruct Hstate as [Hstate_size' _].
-      destruct (eqv_state_choice eqv') as [| eqv_state_choice_i' eqv_state_choice_f']
-      eqn:Heqv_state_choice_eqv'
-      ; [contradict Heqv_state_choice|].
-      destruct eqv_state_choice_f'; [contradict Heqv_state_choice|].
-      simpl in Heqv_state_choice. simpl.
+      destruct (eqv_state_descriptors eqv') as [| eqv_state_descriptors_i' eqv_state_descriptors_f']
+      eqn:Heqv_state_descriptors_eqv'
+      ; [contradict Heqv_state_descriptors|].
+      destruct eqv_state_descriptors_f'; [contradict Heqv_state_descriptors|].
+      simpl in Heqv_state_descriptors. simpl.
       subst es'.
       simpl in Hstate_size'.
       rewrite Heqv_state_final in Hstate_size'.
@@ -689,7 +689,7 @@ Proof.
       - rewrite state_update_neq; [|assumption].
         lia.
     }
-    exists Hnext_state_choice.
+    exists Hnext_state_descriptors.
     match type of H0 with
     | state_update _ _ _ ?e = _ => remember e as esu
     end.
@@ -700,7 +700,7 @@ Proof.
       by (subst; apply equivocator_state_update_size).
     assert
       (Hproject :
-        equivocators_state_project eqv_state_choice es' =
+        equivocators_state_project eqv_state_descriptors es' =
         state_update IM (fst (final state_run)) (eqv) si'
       ).
     {
@@ -709,14 +709,14 @@ Proof.
       intro i.
       unfold equivocators_state_project.
       rewrite equivocators_state_project_state_update_eqv.
-      rewrite Heqv_state_choice_eqv.
-      destruct (le_lt_dec (S (projT1 esu)) eqv_state_choice_i)
+      rewrite Heqv_state_descriptors_eqv.
+      destruct (le_lt_dec (S (projT1 esu)) eqv_state_descriptors_i)
       ; [subst; rewrite equivocator_state_update_size in l; lia|].
       f_equal.
       - specialize
         (replay_trace_from_full_replay_state_project IM Hbs _ finite_index
           (fst (final eqv_state_run)) (start eqv_msg_run) (proj2 Hmsg_trace)
-          _ (proj1 Hmsg_trace) eqv_state_choice
+          _ (proj1 Hmsg_trace) eqv_state_descriptors
         ) as Hproject.
         spec Hproject
         ; [apply not_equivocating_equivocator_descriptors_proper; assumption|].
@@ -749,19 +749,19 @@ Proof.
     match goal with
     |- context [ts ++ ?l] => remember l as last_item
     end.
-    assert (last_prj = Some (last_item, eqv_state_choice)).
+    assert (last_prj = Some (last_item, eqv_state_descriptors)).
     { subst last_prj. subst last_item.
       unfold equivocators_trace_project_folder.
       subst el.
       unfold_equivocators_transition_item_project.
       simpl in Hproject.
       rewrite <- Hproject.
-      rewrite Heqv_state_choice_eqv.
+      rewrite Heqv_state_descriptors_eqv.
       unfold equivocator_vlsm_transition_item_project.
       rewrite <- H0.
       rewrite state_update_eq.
       destruct esu as (n_esu, s_esu) eqn:Hesu.
-      destruct (le_lt_dec (S n_esu) eqv_state_choice_i)
+      destruct (le_lt_dec (S n_esu) eqv_state_descriptors_i)
       ; [simpl in *; subst; lia|].
       rewrite eq_dec_if_true by reflexivity.
       simpl.
@@ -770,7 +770,7 @@ Proof.
       assumption.
     }
     rewrite H.
-    assert (equivocators_trace_project eqv_state_choice emsg_tr = Some ([], eqv_state_choice)).
+    assert (equivocators_trace_project eqv_state_descriptors emsg_tr = Some ([], eqv_state_descriptors)).
     {
       subst emsg_tr.
       apply equivocators_trace_project_skip_full_replay_trace_full. assumption.
@@ -781,7 +781,7 @@ Proof.
       ) as Hmsg_tr.
     simpl in Hmsg_tr.
     match goal with
-    |- fold_right _ ?r _ = _ => replace r with (Some (last_item, eqv_state_choice))
+    |- fold_right _ ?r _ = _ => replace r with (Some (last_item, eqv_state_descriptors))
     end.
     clear Hmsg_tr.
     specialize
@@ -800,8 +800,8 @@ Lemma equivocators_protocol_trace_project_rev
     (tr : list (composite_transition_item equivocator_IM))
     (Htr : finite_protocol_trace equivocators_no_equivocations_vlsm is tr)
     (eqv_descriptors : equivocator_descriptors)
-    (Hproject : equivocators_trace_project eqv_descriptors tr = Some (trX, zero_choice _)),
-    equivocators_state_project (zero_choice _) is = isX.
+    (Hproject : equivocators_trace_project eqv_descriptors tr = Some (trX, zero_descriptor _)),
+    equivocators_state_project (zero_descriptor _) is = isX.
 Proof.
   destruct (trace_is_run X _ _ HtrX) as [runX [HrunX [_HstartX _HtrX]]].
   subst.
@@ -809,13 +809,13 @@ Proof.
     (equivocators_protocol_vlsm_run_project
       _ HrunX
     )
-    as [run [Hrun [choice [Hproper [Hproject [Hfinal_state [Hfinal_msg Hstart]]]]]]].
+    as [run [Hrun [descriptors [Hproper [Hproject [Hfinal_state [Hfinal_msg Hstart]]]]]]].
   exists (start run).
   exists (transitions run).
   specialize (run_is_trace equivocators_no_equivocations_vlsm (exist _ _ Hrun)) as Htr.
   simpl in Htr.
   exists Htr.
-  exists choice.
+  exists descriptors.
   exists Hproject.
   exact Hstart.
 Qed.

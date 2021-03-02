@@ -584,7 +584,7 @@ Next couple of lemmas characterize the projections of a [equivocator_state]
 after taking a transition in terms of the preceeeding state.
 
 These are simpler version of the results concerning the projection of
-states from the composition of equivocators over [equivocation_choice]s.
+states from the composition of equivocators over [equivocation_descriptors].
 
 These results are used for characterizing the projection of the [destination]
 of a [transition_item] in an equivocator trace in
