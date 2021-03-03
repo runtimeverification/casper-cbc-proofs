@@ -492,7 +492,7 @@ Definition constraint_has_been_sent_prop
     (Hdescriptors : proper_fixed_equivocator_descriptors descriptors s)
     (sX := @equivocators_state_project _ _ IndEqDec IM i0 descriptors s)
     (m: message)
-    (Hinput : has_been_sent FreeE s m)
+    (Hm : has_been_sent FreeE s m)
     l,
   constraint l (sX, Some m).
 
@@ -501,6 +501,18 @@ Generic proof that the projection of a trace of the composition of equivocators
 with no message equivocation and fixed state equivocation is protocol w.r.t.
 the composition of the regular nodes constrained by a constraint satisfying
 several properties, including the [constraint_has_been_sent_prop]erty.
+
+The proof proceeds by well founded induction on the length of the trace,
+performing an analysis on the final transition item of the trace.
+
+It uses the fact that the trace hase no message equivocation to extract a
+subtrace producing the message being received at the last transition and
+proves that it's a protocol message for the destination machine by using
+the induction hypothesis (that is why well-founded induction is used rather
+than a simpler induction principle).
+
+The constraint satisfaction for the projection of the final transition is
+for now assumes as hypothesis @Hconstraint_hbs@.
 *)
 Lemma _equivocators_protocol_trace_project
   (final_descriptors : equivocator_descriptors IM)
@@ -550,8 +562,8 @@ Proof.
     specialize
       (equivocators_transition_item_project_preserves_zero_descriptors IM final_descriptors lst)
       as Hzero.
-    unfold final_state in Hproper. rewrite Htr_lst in Hproper.
-    rewrite map_app in Hproper. simpl in Hproper. rewrite last_is_last in Hproper.
+    unfold final_state in Hproper. rewrite Htr_lst, map_app in Hproper.
+    simpl in Hproper. rewrite last_is_last in Hproper.
     spec Hproperx (proj1 Hproper).
     destruct Hproperx as [oitem [final_descriptors' [Hprojectx [Hitemx Hproperx]]]].
     specialize (Hproperx (last (map destination tr') is)).
@@ -671,7 +683,7 @@ Proof.
       subst tr. clear -Hstate_project Hx.
       rewrite Hstate_project in Hx.
       rewrite <- Hx. f_equal. unfold final_state.
-      rewrite map_app. simpl. rewrite last_is_last. reflexivity.
+      rewrite map_app. apply last_is_last.
 Qed.
 
 (** Instantiating the lemma above with the free constraint.
@@ -697,25 +709,36 @@ Proof.
   ; unfold constraint_has_been_sent_prop; intros; exact I.
 Qed.
 
+(**
+Consider a [protocol_trace] for the composition of equivocators with
+no message equivocation and fixed state equivocation.
+
+Because any of its projections to the composition of original nodes contains
+all transitions from nodes not allowed to equivocate, then a final state of
+such a projection will be alble to observe all messages sent or received by
+non-equivocating nodes in the initial trace.
+
+Therefore if seeding the composition of equivocating nodes with these
+messages, the restriction of the initial trace to only the equivocating
+nodes will satisfy the [trace_sub_item_input_is_seeded_or_sub_previously_sent]
+property w.r.t. these messages, a sufficient condition for it being
+protocol ([finite_protocol_trace_sub_projection]).
+*)
 Lemma equivocators_trace_sub_item_input_is_seeded_or_sub_previously_sent
   (is : vstate XE)
   (tr : list (vtransition_item XE))
   (s := last (map destination tr) is)
   (Htr : finite_protocol_trace XE is tr)
-  (initial_descriptors final_descriptors: equivocator_descriptors IM)
-  (Hproper: proper_fixed_equivocator_descriptors final_descriptors s)
-  (trX: list (composite_transition_item IM))
-  (Htr_project: equivocators_trace_project IM final_descriptors tr = Some (trX, initial_descriptors))
-  (lst_trX := last (map Common.destination trX) (equivocators_state_project IM initial_descriptors is))
+  (descriptors: equivocator_descriptors IM)
+  (Hproper: proper_fixed_equivocator_descriptors descriptors s)
+  (lst_trX := equivocators_state_project IM descriptors s)
   : trace_sub_item_input_is_seeded_or_sub_previously_sent
     (equivocator_IM IM) equivocating
     (no_additional_equivocations (free_composite_vlsm IM) lst_trX) tr.
 Proof.
   intros pre item suf m Heq Hm Hitem.
-  destruct (free_equivocators_protocol_trace_project final_descriptors is tr Hproper Htr)
-    as [_trX [_initial_descriptors [Hinitial_descriptors [_Htr_project [Hfinal_state HtrXFree]]]]].
-  rewrite Htr_project in _Htr_project.
-  inversion _Htr_project. subst _trX _initial_descriptors. clear _Htr_project.
+  destruct (free_equivocators_protocol_trace_project descriptors is tr Hproper Htr)
+    as [trX [initial_descriptors [Hinitial_descriptors [Htr_project [Hfinal_state HtrXFree]]]]].
   assert (HtrXPre : finite_protocol_trace (pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM)) (equivocators_state_project IM initial_descriptors is) trX).
   { apply VLSM_incl_finite_protocol_trace with (machine (free_composite_vlsm IM)); [|apply HtrXFree].
     apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
@@ -771,12 +794,21 @@ Proof.
   destruct (in_dec IndEqDec (projT1 (Common.l pre_item)) equivocating)
   ; [assumption|].
   elim Hno.
+  subst lst_trX.
+  remember (equivocators_state_project IM descriptors s) as lst_trX.
+  unfold s in Heqlst_trX.
+  rewrite! map_app in Hfinal_state,Heqlst_trX. simpl in Hfinal_state,Heqlst_trX.
+  rewrite last_app,unroll_last in Hfinal_state,Heqlst_trX.
   assert (Hlst_trX : protocol_state_prop (pre_loaded_with_all_messages_vlsm Free) lst_trX).
-  { destruct HtrXPre as [HtrXPre _]. apply finite_ptrace_last_pstate in HtrXPre. assumption. }
+  { destruct HtrXPre as [HtrXPre _]. apply finite_ptrace_last_pstate in HtrXPre.
+    simpl in Hfinal_state, HtrXPre. rewrite <- Hfinal_state in HtrXPre.
+    subst. assumption.
+  }
   rewrite has_been_observed_sent_received_iff; [|assumption].
   right. apply proper_sent; [assumption|].
   apply has_been_sent_consistency; [assumption| assumption |].
-  exists (equivocators_state_project IM initial_descriptors is), trX, HtrXPre, eq_refl.
+  subst lst_trX. symmetry in Hfinal_state.
+  exists (equivocators_state_project IM initial_descriptors is), trX, HtrXPre, Hfinal_state.
   apply equivocators_trace_project_app_iff in Htr_project.
   destruct Htr_project as [preX [sufX [final_descriptors' [Hsuf_project [Htr_project Heq]]]]].
 
@@ -810,7 +842,7 @@ Proof.
   destruct Htr_free as [Hpre_free _]. apply finite_protocol_trace_from_app_iff in Hpre_free.
   destruct Hpre_free as [Hpre_free Hsuf_free].
   assert (Hfinal' : forall i, ~In i equivocating -> final_descriptors' i = Existing _ 0 false).
-  { specialize (equivocators_trace_project_preserves_zero_descriptors IM _ _ Hsuf_free final_descriptors) as Hpr.
+  { specialize (equivocators_trace_project_preserves_zero_descriptors IM _ _ Hsuf_free descriptors) as Hpr.
     specialize (Hpr _ _ Hsuf_project).
     intros i Hi.
     apply Hpr. apply (proj2 Hproper). assumption.
@@ -900,42 +932,48 @@ Qed.
 Existing Instance equivocating_i0.
 Existing Instance equivocating_index_eq_dec.
 
+(**
+Because any of its projections to the composition of original nodes contains
+all transitions from nodes not allowed to equivocate, all messages
+sent by non-equivocating nodes in the original trace will also be sent
+in any projection.
+*)
 Lemma equivocator_vlsm_trace_project_reflect_non_equivocating
-  (is: _composite_state (equivocator_IM IM))
-  (tr': list (composite_transition_item (equivocator_IM IM)))
-  (Htr': finite_protocol_trace XE is tr')
-  (input: message)
-  (final_descriptors': equivocator_descriptors IM)
-  (Hproper': proper_fixed_equivocator_descriptors final_descriptors' (last (map destination tr') is))
-  (trX': list (composite_transition_item IM))
+  (is: composite_state (equivocator_IM IM))
+  (tr: list (composite_transition_item (equivocator_IM IM)))
+  (Htr: finite_protocol_trace XE is tr)
+  (m: message)
+  (final_descriptors: equivocator_descriptors IM)
+  (Hproper: proper_fixed_equivocator_descriptors final_descriptors (last (map destination tr) is))
+  (trX: list (composite_transition_item IM))
   (initial_descriptors: equivocator_descriptors IM)
-  (Htr_project: equivocators_trace_project IM final_descriptors' tr' = Some (trX', initial_descriptors))
+  (Htr_project: equivocators_trace_project IM final_descriptors tr = Some (trX, initial_descriptors))
   (item: composite_transition_item (equivocator_IM IM))
-  (Hitem: In item tr')
-  (Houtput: output item = Some input)
+  (Hitem: In item tr)
+  (Houtput: output item = Some m)
   (Hno_equiv_item: ~ In (projT1 (l item)) equivocating)
-  : trace_has_message (field_selector output) input trX'.
+  : trace_has_message (field_selector output) m trX.
 Proof.
   apply in_split in Hitem.
-  destruct Hitem as [pre [suf Heq_tr']].
-  replace (item :: suf) with ([item] ++ suf) in Heq_tr' by reflexivity.
-  subst tr'.
+  destruct Hitem as [pre [suf Heq_tr]].
+  replace (item :: suf) with ([item] ++ suf) in Heq_tr by reflexivity.
+  subst tr.
   apply equivocators_trace_project_app_iff in Htr_project.
   destruct Htr_project as [preX [item_sufX [eqv_pre [Hpr_item_suf [Hpr_pre Heq_trX]]]]].
-  subst trX'.
+  subst trX.
   apply Exists_app. right.
   apply equivocators_trace_project_app_iff in Hpr_item_suf.
   destruct Hpr_item_suf as [itemXs [sufX [eqv_item [Hpr_suf [Hpr_item Heq_item_sufX]]]]].
   subst item_sufX.
   apply Exists_app. left.
-  destruct Htr' as [Htr' _].
-  rewrite app_assoc in Htr'.
-  apply finite_protocol_trace_from_app_iff in Htr'.
-  destruct Htr' as [Hpre Hsuf].
+  destruct Htr as [Htr _].
+  rewrite app_assoc in Htr.
+  apply finite_protocol_trace_from_app_iff in Htr.
+  destruct Htr as [Hpre Hsuf].
   apply finite_protocol_trace_from_app_iff in Hpre.
   destruct Hpre as [_ Hitem].
-  rewrite app_assoc in Hproper'. rewrite map_app in Hproper'. rewrite last_app in Hproper'.
-  rewrite map_app in Hsuf, Hproper'. simpl in Hsuf, Hproper'. rewrite last_is_last in Hsuf, Hproper'.
+  rewrite app_assoc, map_app, last_app in Hproper.
+  rewrite map_app in Hsuf, Hproper. simpl in Hsuf, Hproper. rewrite last_is_last in Hsuf, Hproper.
   assert (Hsufpre : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm FreeE) (destination item) suf).
   {
     revert Hsuf. apply VLSM_incl_finite_protocol_trace_from.
@@ -945,7 +983,7 @@ Proof.
   }
   specialize
     (equivocators_trace_project_preserves_proper_fixed_equivocator_descriptors _ _ Hsufpre
-      final_descriptors' eqv_item _ Hpr_suf Hproper'
+      final_descriptors eqv_item _ Hpr_suf Hproper
     ) as Hproper_item.
   destruct Hproper_item as [Hproper_item Hproper_fixed_item].
   specialize (Hproper_fixed_item _ Hno_equiv_item).
@@ -965,24 +1003,27 @@ Proof.
   constructor. assumption.
 Qed.
 
-Lemma has_not_been_observed_piecewise
+(**
+As a consequence of the [equivocator_vlsm_trace_project_reflect_non_equivocating]
+lemma, if a message emmited by a trace cannot be observed in a projection
+of the trace's final state, then it must be that it was emitted by one of
+the nodes allowed to equivocate.
+*)
+Lemma projection_has_not_been_observed_is_equivocating
   (is: _composite_state (equivocator_IM IM))
-  (tr': list (composite_transition_item (equivocator_IM IM)))
-  (Htr': finite_protocol_trace XE is tr')
-  (final_descriptors': equivocator_descriptors IM)
-  (Hproper': proper_fixed_equivocator_descriptors final_descriptors' (last (map destination tr') is))
-  (trX': list (composite_transition_item IM))
-  (initial_descriptors: equivocator_descriptors IM)
-  (Htr_project: equivocators_trace_project IM final_descriptors' tr' = Some (trX', initial_descriptors))
-  (input: message)
-  (Hno: ~ has_been_observed Free (last (map destination trX') (equivocators_state_project IM initial_descriptors is)) input)
+  (tr: list (composite_transition_item (equivocator_IM IM)))
+  (Htr: finite_protocol_trace XE is tr)
+  (s := last (map destination tr) is)
+  (descriptors: equivocator_descriptors IM)
+  (Hproper: proper_fixed_equivocator_descriptors descriptors s)
+  (sX := equivocators_state_project IM descriptors s)
+  (m: message)
+  (Hno: ~ has_been_observed Free sX m)
   : forall item : composite_transition_item (equivocator_IM IM),
-      In item tr' -> output item = Some input -> In (projT1 (l item)) equivocating.
+      In item tr -> output item = Some m -> In (projT1 (l item)) equivocating.
 Proof.
-  destruct (free_equivocators_protocol_trace_project final_descriptors' is tr' Hproper' Htr')
-    as [_trX' [_initial_descriptors [_ [_Htr_project [_ HtrX']]]]].
-  rewrite Htr_project in _Htr_project.
-  inversion _Htr_project. subst _trX' _initial_descriptors. clear _Htr_project.
+  destruct (free_equivocators_protocol_trace_project descriptors is tr Hproper Htr)
+    as [trX [initial_descriptors [_ [Htr_project [Hlast_state HtrX]]]]].
   intros item Hitem Houtput.
   destruct (in_dec IndEqDec (projT1 (l item)) equivocating); [assumption|].
   elim Hno. clear Hno.
@@ -992,22 +1033,141 @@ Proof.
       Free_has_been_sent_capability
       Free_has_been_observed_capability
     ) as Hsent_received.
-  assert (HtrX'_free : finite_protocol_trace (pre_loaded_with_all_messages_vlsm Free) (equivocators_state_project IM initial_descriptors is) trX').
+  assert (HtrX_free : finite_protocol_trace (pre_loaded_with_all_messages_vlsm Free) (equivocators_state_project IM initial_descriptors is) trX).
   {
-    revert HtrX'. clear. apply VLSM_incl_finite_protocol_trace.
+    revert HtrX. clear. apply VLSM_incl_finite_protocol_trace.
     apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
   }
-  specialize (finite_ptrace_last_pstate _ _ _ (proj1 HtrX'_free)) as Hfree_lst.
-  specialize (Hsent_received _ Hfree_lst input).
+  specialize (finite_ptrace_last_pstate _ _ _ (proj1 HtrX_free)) as Hfree_lst.
+  specialize (Hsent_received _ Hfree_lst m).
+  subst sX. unfold s. rewrite Hlast_state.
   apply Hsent_received. clear Hsent_received. right.
   apply proper_sent; [assumption|].
   apply has_been_sent_consistency; [assumption| assumption |].
-  exists (equivocators_state_project IM initial_descriptors is), trX', HtrX'_free, eq_refl.
-  clear HtrX' HtrX'_free Hfree_lst.
-  apply equivocator_vlsm_trace_project_reflect_non_equivocating with is tr' final_descriptors' initial_descriptors item
+  exists (equivocators_state_project IM initial_descriptors is), trX, HtrX_free, eq_refl.
+  clear HtrX HtrX_free Hfree_lst.
+  apply equivocator_vlsm_trace_project_reflect_non_equivocating with is tr descriptors initial_descriptors item
   ; assumption.
 Qed.
 
+(**
+The next two lemmas are rather technical, but their basic meaning is that
+if we take the composition of a subset of equivocators, it doesn't matter
+the way we do it (either first obtain the indexed subset of nodes and then
+transform that into equivocators and take their composition, or we first
+start with the indexed full set of equivocators and then select a subset
+of them and take their composition).
+*)
+Lemma pre_loaded_equivocators_composition_sub_projection_commute
+  (seed1 : message -> Prop)
+  (seed2 : message -> Prop)
+  (Hseed12 : forall m, seed1 m -> seed2 m)
+  : VLSM_incl
+    (composite_no_equivocation_vlsm_with_pre_loaded
+      (sub_IM (equivocator_IM IM) equivocating)
+      (free_constraint (sub_IM (equivocator_IM IM) equivocating))
+      (sub_has_been_sent_capabilities (equivocator_IM IM)
+        equivocating (equivocator_Hbs IM Hbs))
+      (finite_sub_index equivocating finite_index) seed1)
+    (composite_no_equivocation_vlsm_with_pre_loaded
+      (equivocator_IM (sub_IM IM equivocating))
+      (free_constraint (equivocator_IM (sub_IM IM equivocating)))
+      (equivocator_Hbs (sub_IM IM equivocating)
+        (sub_has_been_sent_capabilities IM equivocating Hbs))
+      (finite_sub_index equivocating finite_index) seed2).
+Proof.
+  apply basic_VLSM_incl
+  ; intros; [assumption | .. | reflexivity].
+  - apply initial_message_is_protocol.
+    simpl.
+    destruct H0; [|right; apply Hseed12; assumption].
+    simpl in H0. left. assumption.
+  - destruct H as [Hs [_ [Hv Hc]]].
+    split; [assumption|].
+    destruct Hc as [Hc _].
+    split; [|exact I].
+    destruct om; [| exact I].
+    simpl in Hc. simpl.
+    destruct Hc as [Hc | [Hc | Hc]]
+    ; [| right; left; assumption| right; right; apply Hseed12; assumption].
+    left.
+    destruct Hc as [subi Hibs].
+    exists subi. revert Hibs.
+    apply has_been_sent_irrelevance.
+    match type of Hs with
+    | context [composite_vlsm ?IM ?constraint] =>
+      apply (preloaded_protocol_state_projection IM constraint)
+    end.
+    revert Hs.
+    apply VLSM_incl_protocol_state.
+    apply pre_loaded_vlsm_incl_pre_loaded_with_all_messages.
+Qed.
+
+Lemma pre_loaded_equivocators_composition_sub_projection_commute_inv
+  (seed1 : message -> Prop)
+  (seed2 : message -> Prop)
+  (Hseed12 : forall m, seed1 m -> seed2 m)
+  : VLSM_incl
+    (composite_no_equivocation_vlsm_with_pre_loaded
+      (equivocator_IM (sub_IM IM equivocating))
+      (free_constraint (equivocator_IM (sub_IM IM equivocating)))
+      (equivocator_Hbs (sub_IM IM equivocating)
+        (sub_has_been_sent_capabilities IM equivocating Hbs))
+      (finite_sub_index equivocating finite_index) seed1)
+    (composite_no_equivocation_vlsm_with_pre_loaded
+      (sub_IM (equivocator_IM IM) equivocating)
+      (free_constraint (sub_IM (equivocator_IM IM) equivocating))
+      (sub_has_been_sent_capabilities (equivocator_IM IM)
+        equivocating (equivocator_Hbs IM Hbs))
+      (finite_sub_index equivocating finite_index) seed2).
+Proof.
+  apply basic_VLSM_incl
+  ; intros; [assumption | .. | reflexivity].
+  - apply initial_message_is_protocol.
+    simpl.
+    destruct H0; [|right; apply Hseed12; assumption].
+    simpl in H0. left. assumption.
+  - destruct H as [Hs [_ [Hv Hc]]].
+    split; [assumption|].
+    destruct Hc as [Hc _].
+    split; [|exact I].
+    destruct om; [| exact I].
+    simpl in Hc. simpl.
+    destruct Hc as [Hc | [Hc | Hc]]
+    ; [| right; left; assumption| right; right; apply Hseed12; assumption].
+    left.
+    destruct Hc as [subi Hibs].
+    exists subi. revert Hibs.
+    apply has_been_sent_irrelevance.
+    match type of Hs with
+    | context [composite_vlsm ?IM ?constraint] =>
+      apply (preloaded_protocol_state_projection IM constraint)
+    end.
+    revert Hs.
+    apply VLSM_incl_protocol_state.
+    apply pre_loaded_vlsm_incl_pre_loaded_with_all_messages.
+Qed.
+
+
+(**
+The intermediary results above allow us to prove that the
+[fixed_equivocation_constraint] has the [constraint_has_been_sent_prop]erty.
+
+The core of this result is proving that given a [protocol_state] @s@ of the
+composition of equivocators with no message equivocation and fixed state
+equivocation, a message which [has_been_sent] for that state but not
+[has_been_observed] for a projection of that state @sx@, can nevertheless be
+generated by the composition of the nodes allowed to equivocate, pre-loaded with
+the messages observed in the state @sx@.
+
+To prove that, we consider a trace witness for the mesage having been sent,
+we use [projection_has_not_been_observed_is_equivocating] to derive that
+it must have been sent by one of the machines allowed to equivocate, from this
+we derive that it can be sent by the restriction of the composition of 
+equivocators to just the equivocating nodes, pre-loaded with the messages
+observed in the projection, then we use 
+the [seeded_equivocators_protocol_trace_project] result to reach our conclusion.
+*)
 Lemma fixed_equivocation_constraint_has_constraint_has_been_sent_prop
   : constraint_has_been_sent_prop
     (fixed_equivocation_constraint IM Hbs Hbr equivocating Hi0_equiv finite_index).
@@ -1018,12 +1178,14 @@ Proof.
   end.
   destruct (Free_no_additional_equivocation_decidable sX m)
   ; [left; assumption|right].
+  clear l.
   exists m. split; [reflexivity|].
   unfold no_additional_equivocations in n.
-  match type of n with
-  | ~ (?o \/ ?i) => assert (Hn : ~ o /\ ~ i) by intuition
-  end.
-  clear n; destruct Hn as [Hno Hni].
+  assert (Hno: ~ has_been_observed Free sX m) by intuition.
+  clear n.
+
+  (* Phase I: exhibiting a [protocol_trace] ending in tr s and sending m *)
+
   apply protocol_state_has_trace in Hs.
   destruct Hs as [is [tr [Htr Heqs]]]. subst s.
 
@@ -1035,18 +1197,18 @@ Proof.
         finite_index equivocating Hi0_equiv)).
     - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
   }
+  assert (Hplst : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeE) (last (map destination tr) is)).
+  { apply (finite_ptrace_last_pstate (pre_loaded_with_all_messages_vlsm FreeE)).
+    apply Htr'pre.
+  }
+  apply proper_sent in Hm; [|assumption].
+  specialize (Hm is tr Htr'pre eq_refl). clear Hplst.
 
-  destruct
-    (preloaded_equivocators_protocol_trace_from_project IM
-      descriptors is tr (proj1 Hdescriptors) (proj1 Htr'pre)
-    )
-    as [trX [initial_descriptors [Htr_project [_ Hlst]]]].
-  simpl in Hlst, HeqsX.
-  rewrite Hlst in  HeqsX.
-  specialize
-    (equivocators_trace_sub_item_input_is_seeded_or_sub_previously_sent
-      _ _ Htr initial_descriptors descriptors Hdescriptors _ Htr_project
-    ) as Hsub.
+  (* Phase II (a): The restriction of tr to the equivocators allowed to
+    state-equivocate is protocol for the corresponding composition
+    pre-loaded with the messages observed in the projection sX of s.
+  *)
+
   specialize
     (finite_protocol_trace_sub_projection (equivocator_IM IM) equivocating Hi0_equiv
       (equivocators_fixed_equivocations_constraint IM Hbs finite_index equivocating Hi0_equiv)
@@ -1055,34 +1217,81 @@ Proof.
       (no_additional_equivocations (free_composite_vlsm IM) sX)
     ) as Hproject.
   spec Hproject.
-  { intros l' (s', om').
-    unfold equivocators_fixed_equivocations_constraint.
-    unfold equivocators_no_equivocations_constraint.
-    unfold no_equivocations_additional_constraint.
-    clear. intuition.
+  { intros l' (s', om'). clear.
+    unfold equivocators_fixed_equivocations_constraint,
+      equivocators_no_equivocations_constraint,
+      no_equivocations_additional_constraint.
+    intuition.
   }
   spec Hproject is tr.
-  spec Hproject. { subst sX. assumption. }
-  spec Hproject Htr.
-  clear Hsub.
-  subst sX.
-  unfold pre_loaded_free_equivocating_vlsm_composition.
-  assert (Hplst : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeE) (last (map destination tr) is)).
-  { apply (finite_ptrace_last_pstate (pre_loaded_with_all_messages_vlsm FreeE)).
-    apply Htr'pre.
+  spec Hproject.
+  { subst sX.
+    apply
+      (equivocators_trace_sub_item_input_is_seeded_or_sub_previously_sent
+        _ _ Htr descriptors Hdescriptors
+      ).
   }
-  apply proper_sent in Hinput; [|assumption].
-  specialize (Hinput is tr Htr'pre eq_refl).
-  apply (equivocators_trace_project_output_reflecting_iff _ _ _ (proj1 Htr'pre)) in Hinput.
-  destruct Hinput as [final_descriptors_m [initial_descriptors_m [trXm [Hfinal_descriptors_m [Hproject_trXm Hex]]]]].
+  spec Hproject Htr.
+
+  rewrite HeqsX in Hno.
+  clear HeqsX.
+  (* Phase III (a):
+     Obtain a projection trXm of tr outputing m using a final_descriptor_m
+  *)
+
+  apply (equivocators_trace_project_output_reflecting_iff _ _ _ (proj1 Htr'pre)) in Hm.
+  destruct Hm as [final_descriptors_m [initial_descriptors_m [trXm [Hfinal_descriptors_m [Hproject_trXm Hex]]]]].
+
+  (* Identify the item outputing m in trXm an its corresponding item in tr.
+  *)
+
+  apply Exists_exists in Hex.
+  destruct Hex as [output_itemX [Hin Houtput_select]].
+  apply in_split in Hin.
+  destruct Hin as [preX [sufX Heq_trXm]].
+  change (output_itemX :: sufX) with ([output_itemX] ++ sufX) in Heq_trXm.
+  assert (Hpr_item := Hproject_trXm).
+  rewrite Heq_trXm in Hpr_item.
+  apply equivocators_trace_project_app_inv_item in Hpr_item.
+  destruct Hpr_item as [pre [suf [item [item_descriptors [pre_descriptors [_ [Hpr_item [_ Heqtr]]]]]]]].
+  unfold equivocators_transition_item_project in Hpr_item.
+  destruct
+    (equivocator_vlsm_transition_item_project (IM (projT1 (l item)))
+      (composite_transition_item_projection (equivocator_IM IM) item)
+      (item_descriptors (projT1 (l item)))
+    ) as [(o, deqv')|]
+    ; [|congruence].
+  destruct o as [item'|]; [|congruence].
+  inversion Hpr_item. subst output_itemX pre_descriptors. clear Hpr_item deqv'.
+  simpl in Houtput_select.
+
+  (* show that that item must be specifying a transition for an equivocating node*)
+
+  specialize
+    (projection_has_not_been_observed_is_equivocating _ _ Htr
+      _ Hdescriptors
+      _ Hno item
+    ) as Hitem_equivocating.
+  spec Hitem_equivocating.
+  { subst. rewrite !in_app_iff. right. left. left. reflexivity. }
+  spec Hitem_equivocating Houtput_select.
+  clear Hdescriptors Hno.
+
+  (* Phase III (b):
+  Consider a projection trX' obtained using the final_descriptor_m as above,
+  but first restricting the nodes to just the equivocators allowed to equivocate.
+  We will show that we can use [seeded_equivocators_protocol_trace_project]
+  and leverage the result from Phase II (a)
+  to derive that the resulting projection is protocol.
+  *)
+
   specialize
     (seeded_equivocators_protocol_trace_project (sub_IM IM equivocating)
       (sub_has_been_sent_capabilities IM equivocating Hbs)
       (finite_sub_index equivocating finite_index)
       (fun m : message =>
         no_additional_equivocations (free_composite_vlsm IM)
-          (last (map Common.destination trX)
-             (equivocators_state_project IM initial_descriptors is)) m \/
+          sX m \/
         vinitial_message_prop (free_composite_vlsm IM) m)
       (fun i => final_descriptors_m (proj1_sig i))
       (composite_state_sub_projection (equivocator_IM IM) equivocating is)
@@ -1107,96 +1316,53 @@ Proof.
     apply Hfinal_descriptors_m.
   }
   spec Hsub_project.
-  { clear -Hproject.
-    unfold seeded_equivocators_no_equivocation_vlsm.
-    destruct Hproject as [Hproject Hinit].
-    split; [|assumption].
-    eapply VLSM_incl_finite_protocol_trace_from; [|apply Hproject].
-    unfold composite_vlsm.
-    unfold mk_vlsm. unfold projT2.
-    match goal with
-    |- VLSM_incl_part ?MX ?MY =>
-      apply (basic_VLSM_incl MX MY)
-    end
-    ; intros; [assumption | .. | reflexivity].
-    - apply initial_message_is_protocol.
-      simpl.
-      destruct H0; [|right; left; assumption].
-      simpl in H0. left. assumption.
-    - destruct H as [Hs [_ [Hv Hc]]].
-      split; [assumption|].
-      destruct Hc as [Hc _].
-      split; [|exact I].
-      destruct om; [| exact I].
-      simpl in Hc. simpl.
-      destruct Hc as [Hc | [Hc | Hc]]
-      ; [| right; left; assumption| right; right; left; assumption].
-      left.
-      destruct Hc as [subi Hibs].
-      exists subi. revert Hibs.
-      apply has_been_sent_irrelevance.
-
-      match type of Hs with
-      | context [composite_vlsm_machine ?IM ?constraint] =>
-        apply (preloaded_protocol_state_projection IM constraint)
-      end.
-      revert Hs.
-      apply VLSM_incl_protocol_state.
-      apply pre_loaded_vlsm_incl_pre_loaded_with_all_messages.
+  { clear -Hproject. 
+    revert Hproject.
+    apply VLSM_incl_finite_protocol_trace.
+    apply pre_loaded_equivocators_composition_sub_projection_commute.
+    intros. left. assumption.
   }
   destruct Hsub_project
-    as [trX' [initial_descriptors' [Hinitial_descriptors' [Hpr_tr' [Hpr_lst_tr' HtrX]]]]].
-  specialize
-    (has_not_been_observed_piecewise _ _ Htr
-      _ Hdescriptors
-      _ _ Htr_project
-      _ Hno
-    ) as Hno'.
+    as [trX' [initial_descriptors' [_ [Hpr_tr' [_ HtrX]]]]].
+  clear Htr'pre Hproject.
+
+  (* State that by restricting trXm to the subset of equivocating nodes
+    we obtain the same trX' trace.
+  *)
+
   destruct
     (equivocators_trace_project_finite_trace_sub_projection_commute IM equivocating Hi0_equiv
       final_descriptors_m initial_descriptors_m initial_descriptors' tr trXm trX'
       Hproject_trXm Hpr_tr'
     )
     as [_ HeqtrX].
+  clear Hproject_trXm Hpr_tr'.
+
+  (* reduce the goal to showing that the message appears in trX'. *)
+
   remember
     (equivocators_state_project (sub_IM IM equivocating) initial_descriptors'
       (composite_state_sub_projection (equivocator_IM IM) equivocating is)
-    ) as isX.
-  clear - HeqtrX HtrX Hno' Hex Hproject_trXm (* Htr'pre Hfinal_descriptors_m *).
+    ) as isX. clear HeqisX.
   apply can_emit_from_protocol_trace with isX trX'; [assumption|].
+  clear HtrX.
 
-  apply Exists_exists in Hex.
-  destruct Hex as [output_itemX [Hin Houtput_select]].
-  apply in_split in Hin.
-  destruct Hin as [preX [sufX Heq_trXm]].
-  change (output_itemX :: sufX) with ([output_itemX] ++ sufX) in Heq_trXm.
-  subst trXm.
-  apply equivocators_trace_project_app_inv_item in Hproject_trXm.
-  destruct Hproject_trXm as [pre [suf [item [item_descriptors [pre_descriptors [Hpr_suf [Hpr_item [Hpr_pre Heqtr]]]]]]]].
   subst.
-
-  specialize (Hno' item).
-  spec Hno'.
-  { rewrite !in_app_iff. right. left. left. reflexivity. }
   rewrite! (finite_trace_sub_projection_app IM).
   unfold trace_has_message.
   rewrite! Exists_app. right. left. simpl.
 
-  unfold equivocators_transition_item_project in Hpr_item.
-  destruct
-    (equivocator_vlsm_transition_item_project (IM (projT1 (l item)))
-      (composite_transition_item_projection (equivocator_IM IM) item)
-      (item_descriptors (projT1 (l item)))
-    ) as [(o, deqv')|] eqn:Hpr_itemi
-    ; [|congruence].
-  destruct o as [item'|]; [|congruence].
-  inversion Hpr_item. subst. spec Hno' Houtput_select.
   unfold from_sub_projection. simpl.
   destruct (decide (sub_index_prop equivocating (projT1 (l item))))
   ; [|contradiction].
   constructor. simpl. assumption.
 Qed.
 
+(**
+Main result of this section, stating that traces which are protocol for the
+equivocator-based definition of fixed equivocation project to traces which are
+protocol for the simple-nodes definition of fixed equivocation.
+*)
 Theorem fixed_equivocators_protocol_trace_project
   (final_descriptors : equivocator_descriptors IM)
   (is : composite_state (equivocator_IM IM))
