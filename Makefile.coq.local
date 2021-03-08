@@ -75,5 +75,14 @@ resources/map.html: deps.map
 resources/index.html: resources/index.md
 	pandoc -s -o $@ $<
 
+docs/coqdoc/CasperCBC.VLSM.Liveness.SimpleFragileProtocol.dpd:
+	echo "Set DependGraph File \"docs/coqdoc/CasperCBC.VLSM.Liveness.SimpleFragileProtocol.dpd\". Print FileDependGraph CasperCBC.VLSM.Liveness.SimpleFragileProtocol." | $(COQTOP) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -require-import-from rvdpdgraph rvdpdgraph -load-vernac-object CasperCBC.VLSM.Liveness.SimpleFragileProtocol -quiet > /dev/null 2>&1
+
+docs/coqdoc/CasperCBC.VLSM.Liveness.SimpleFragileProtocol.dot: docs/coqdoc/CasperCBC.VLSM.Liveness.SimpleFragileProtocol.dpd
+	rvdpd2dot -graphname hej -o $@ $<
+
+docs/coqdoc/CasperCBC.VLSM.Liveness.SimpleFragileProtocol.svg: docs/coqdoc/CasperCBC.VLSM.Liveness.SimpleFragileProtocol.dot
+	dot -T svg $< > $@
+
 clean::
 	$(HIDE)rm -f deps.dot deps.map $(DEPFILES) resources/index.html
