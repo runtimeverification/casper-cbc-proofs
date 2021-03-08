@@ -93,4 +93,4 @@ rvdpd: $(SVGFILES)
 .PHONY: rvdpd
 
 clean::
-	$(HIDE)rm -f deps.dot deps.map $(DEPFILES) resources/index.html
+	$(HIDE)rm -f deps.dot deps.map $(DEPFILES) $(DPDFILES) $(DOTFILES) resources/index.html
