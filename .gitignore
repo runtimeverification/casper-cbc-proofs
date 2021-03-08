@@ -23,3 +23,5 @@ deps.dot
 deps.map
 resources/deps.png
 resources/map.html
+*.dpd
+*.dot
