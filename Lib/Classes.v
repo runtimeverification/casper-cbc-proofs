@@ -241,6 +241,12 @@ Proof. unfold bool_decide; destruct H; intuition discriminate. Qed.
 Lemma bool_decide_iff (P Q : Prop) `{Decision P, Decision Q} :
   (P <-> Q) -> bool_decide P = bool_decide Q.
 Proof. unfold bool_decide; destruct H; destruct H0; tauto. Qed.
+Lemma bool_decide_iff_2 (P Q : Prop) `{Decision P, Decision Q} :
+  bool_decide P = bool_decide Q -> (P <-> Q).
+Proof. unfold bool_decide; destruct H; destruct H0; intros H'; inversion H'; tauto. Qed.
+Lemma bool_decide_iff_iff (P Q : Prop) `{Decision P, Decision Q} :
+  (P <-> Q) <-> (bool_decide P = bool_decide Q).
+Proof. split. apply bool_decide_iff. apply bool_decide_iff_2. Qed.
 
 Lemma bool_decide_eq_true_1 P `{!Decision P}: bool_decide P = true -> P.
 Proof. apply bool_decide_eq_true. Qed.
@@ -397,3 +403,9 @@ Qed.
 Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
   (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
 Proof. firstorder. Qed.
+
+Global Instance list_eq_dec {A : Type} {dec : EqDecision A} : EqDecision (list A) :=
+  list_eq_dec dec.
+
+Global Instance list_in_dec {A : Type} {dec : EqDecision A} : RelDecision (@In A) :=
+  In_dec dec.
