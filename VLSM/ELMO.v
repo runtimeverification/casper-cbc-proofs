@@ -1,3 +1,15 @@
+Require Import
+  List Coq.Vectors.Fin
+  Arith.Compare_dec Lia
+  Program
+  .
+Import ListNotations.
+From CasperCBC
+  Require Import
+    Preamble
+    VLSM.Common
+    .
+
 Require Import List.
 
 Inductive Label := Receive | Send.
@@ -31,3 +43,18 @@ Definition witness (ob : Observation) : nat :=
   match ob with
   | Cobservation _ _ w => w
   end.
+
+Definition elmo_type : VLSM_type Premessage :=
+  {| state := Prestate;
+     Common.label := Label;
+  |}.
+
+Definition elmo_state : Type := @state Premessage elmo_type.
+
+Definition elmo_initial_state_prop (ps : elmo_state) : Prop :=
+  observations ps = [].
+
+Definition elmo_sig : VLSM_sign elmo_type :=
+  {| initial_state_prop := elmo_initial_state_prop
+   ;
+  |}.
