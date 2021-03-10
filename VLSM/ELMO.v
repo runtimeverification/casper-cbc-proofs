@@ -54,7 +54,19 @@ Definition elmo_state : Type := @state Premessage elmo_type.
 Definition elmo_initial_state_prop (ps : elmo_state) : Prop :=
   observations ps = [].
 
+Definition elmo_initial_state
+  := sig elmo_initial_state_prop.
+
+Definition elmo_s0 : elmo_initial_state.
+Proof.
+  unfold elmo_initial_state.
+  exists (Cprestate []).
+  unfold elmo_initial_state_prop.
+  reflexivity.
+Defined.
+
 Definition elmo_sig : VLSM_sign elmo_type :=
   {| initial_state_prop := elmo_initial_state_prop
-   ;
+     ; s0 := elmo_s0
+     ;
   |}.
