@@ -33,7 +33,6 @@ Section CompositeValidator.
   Existing Instance eq_V.
   Existing Instance message_preceeds_dec.
 
-
   Definition full_node_validator_observable_messages_fn
     (s : state C V)
     (v : V)
@@ -737,18 +736,104 @@ Section proper_sent_received.
         specialize (H is tr Htr Hlst). assumption.
   Qed.
 
-  Instance VLSM_full_validator_computable_sent_messages
-    : computable_sent_messages vlsm
-    :=
-    { sent_messages_fn := State.sent_messages;
-      sent_messages_full := sent_messages_prop;
-      sent_messages_consistency := VLSM_full_validator_sent_consistency
-    }.
-
-  Definition VLSM_full_validator_has_been_sent
-    : has_been_sent_capability vlsm
-    :=
-    computable_sent_messages_has_been_sent_capability vlsm.
+  Definition VLSM_full_validator_send_oracle 
+    (s : vstate vlsm) 
+    (m : message) :
+    Prop :=
+    In m (State.sent_messages s).
+  
+  Global Instance VLSM_full_validator_send_oracle_dec : RelDecision VLSM_full_validator_send_oracle.
+  Proof.
+    unfold RelDecision; intros s m.
+    unfold VLSM_full_validator_send_oracle.
+    destruct (inb decide_eq m (State.sent_messages s)) eqn : eq_inb.
+    - apply in_correct in eq_inb. left. intuition.
+    - apply in_correct' in eq_inb. right. intuition. 
+  Qed.
+  
+  Global Instance VLSM_full_validator_has_been_sent : has_been_sent_capability vlsm.
+  Proof.
+    apply (@has_been_sent_capability_from_stepwise _ vlsm VLSM_full_validator_send_oracle _).
+    split.
+    - intros.
+      simpl in H. unfold initial_state_prop in H.
+      subst s. unfold VLSM_full_validator_send_oracle. intuition.
+    - intros.
+      unfold VLSM_full_validator_send_oracle in *.
+      destruct H as [Hprotocol Htrans].
+      unfold transition in Htrans. simpl in Htrans.
+      unfold vtransition in Htrans. unfold transition in Htrans.
+      unfold protocol_valid in Hprotocol.
+      unfold valid in Hprotocol. simpl in Hprotocol.
+      unfold vvalid in Hprotocol. unfold valid in Hprotocol.
+      simpl in *.
+      split; intros H.
+      + unfold State.sent_messages in *. simpl in *.
+        destruct s as [s_set s_pointer].
+        destruct l eqn : eq_label.
+        * simpl in *.
+          destruct s_pointer eqn : eq_pointer.
+          -- inversion Htrans.
+             rewrite <- H1 in H.
+             rewrite H2 in H.
+             destruct om.
+             ++ destruct m0 as [c0 v0 j] eqn : eq_m0.
+                apply set_add_elim in H.
+                rewrite H2. 
+                destruct H.
+                ** left. f_equal. intuition.
+                ** right. destruct m as [c1 v1 j0].
+                   inversion H2.
+                   subst j. simpl in *.
+                   intuition. 
+             ++ simpl in H. intuition.
+          -- simpl in *.
+             inversion Htrans.
+             rewrite <- H1 in H.
+             simpl in H.
+             destruct H;[|intuition].
+             left. f_equal. intuition.
+        * simpl in *.
+          unfold State.sent_messages in *.
+          destruct im eqn : eq_im. 
+          -- inversion Htrans.
+             rewrite <- H1 in H.
+             destruct s_pointer eqn : eq_pointer; simpl in *.
+             ++ destruct m0 as [c0 v0 j] eqn : eq_m0.
+                right. intuition.
+             ++ simpl in H. intuition.
+          -- inversion Htrans.
+             rewrite <- H1 in H.
+             destruct s_pointer eqn : eq_pointer; simpl in *.
+             ++ destruct m as [c v0 j].
+                right. intuition.
+             ++ intuition.
+      + destruct s as [s_set s_pointer].
+        unfold State.sent_messages in *.
+        destruct l eqn : eq_label.
+        * simpl in *.
+          destruct s_pointer eqn : eq_pointer; simpl in *.
+          -- destruct m as [c0 v0 j] eqn : eq_m.
+             inversion Htrans. subst om. simpl in *.
+             apply set_add_iff.
+             destruct H.
+             ++ left. inversion H. intuition.
+             ++ right. intuition.
+          -- inversion Htrans. subst om. simpl in *.
+             destruct H;[|intuition].
+             left. inversion H. intuition.
+        * destruct im eqn : eq_im.
+          -- inversion Htrans.
+             destruct s_pointer eqn : eq_pointer; simpl in *.
+             ++ destruct m0 as [c0 v0 j] eqn : eq_m0.
+                destruct H;[intuition congruence|intuition].
+             ++ destruct H;[intuition congruence|intuition].
+          -- inversion Htrans. 
+             destruct s_pointer eqn : eq_pointer; simpl in *.
+             ++ destruct m as [c0 v0 j] eqn : eq_m.
+                destruct H;[intuition congruence|intuition].
+             ++ destruct H;[intuition congruence|intuition].
+  Qed.
 
   Lemma get_sent_messages
     (s : state C V)
@@ -792,187 +877,184 @@ Section proper_sent_received.
       apply (get_messages_in_futures s0 s Hfutures).
       subst s0. simpl. apply set_add_iff. left. reflexivity.
   Qed.
-
-  Lemma has_been_received_in_trace
-    (s : state C V)
-    (m: message)
-    (is : state C V)
-    (tr: list transition_item)
-    (Htr: finite_protocol_trace bvlsm is tr)
-    (item: transition_item)
-    (Hitem: In item tr)
-    (Hm: input item = Some m)
-    (Hs: last (map destination tr) is = s)
-    : In m (State.received_messages s).
+  
+  Definition VLSM_full_validator_receive_oracle 
+    (s : vstate vlsm) 
+    (m : message) :
+    Prop :=
+    In m (State.received_messages s).
+  
+  Global Instance VLSM_full_validator_receive_oracle_dec : RelDecision VLSM_full_validator_receive_oracle.
   Proof.
-    apply in_split in Hitem.
-    destruct Hitem as [l1 [l2 Hitem]]. subst tr.
-    destruct Htr as [Htr Hinit].
-    pose (finite_protocol_trace_from_app_iff bvlsm is l1 (item :: l2)) as Htr_app.
-    simpl in Htr_app. destruct Htr_app as [_ Htr_app].
-    specialize (Htr_app Htr).
-    clear Htr. destruct Htr_app as [_ Htr].
-    remember
-      (@last (state C V)
-      (@map (@transition_item message VLSM_type_full_validator)
-         (state C V) (@destination message VLSM_type_full_validator) l1)
-      is)
-      as sl1.
-    inversion Htr. subst tl item. simpl in Hm. subst iom.
-    assert (Hs0 : in_futures bvlsm s0 s).
-    { exists l2. split; try assumption.
-      rewrite map_app in Hs. rewrite map_cons in Hs.
-      rewrite last_app in Hs. rewrite unroll_last in Hs.
-      simpl in Hs.
-      assumption.
-    }
-    apply has_been_received_in_futures with s0; try assumption.
-    specialize (has_been_sent_protocol_transition _ _ _ _ _ H3 m) as Hbspt.
-    apply protocol_transition_inv_in in H3.
-    destruct H3 as [Hs0' [Hoom [Hnin [Hincl [Hsl1 [Hm Hps0]]]]]].
-    destruct (in_dec decide_eq m (State.sent_messages sl1)).
-    - exfalso.
-      apply get_sent_messages in i; try assumption.
-      elim Hnin. assumption.
-    - specialize (Hbspt n). subst oom.
-      assert (Hnbs : ~In m (State.sent_messages s0)).
-      { destruct (in_dec decide_eq m (State.sent_messages s0)); try assumption.
-        apply Hbspt in i. discriminate i.
-      }
-      unfold State.received_messages.
-      apply set_diff_iff. split; try assumption.
-      subst s0. simpl.
-      apply set_add_iff. left. reflexivity.
+    unfold RelDecision; intros s m.
+    unfold VLSM_full_validator_receive_oracle.
+    destruct (inb decide_eq m (State.received_messages s)) eqn : eq_inb.
+    - apply in_correct in eq_inb. left. intuition.
+    - apply in_correct' in eq_inb. right. intuition. 
   Qed.
-
-  Lemma has_been_received_in_trace_rev
-    (s: state C V)
-    (m: message)
-    (Horacle: In m (State.received_messages s))
-    (is : state C V)
-    (tr: list transition_item)
-    (Htr: finite_protocol_trace bvlsm is tr)
-    (Hlast: last (map destination tr) is = s)
-    : exists item : transition_item, In item tr /\ input item = Some m.
+  
+  Global Instance VLSM_full_validator_has_been_received : has_been_received_capability vlsm.
   Proof.
-      apply set_diff_iff in Horacle.
-      destruct Horacle as [Hin Hns].
-      destruct Htr as [Htr Hinit].
-      assert (Hstart : ~In m (get_message_set is)).
-      { inversion Hinit. simpl. intro n. contradiction n. }
-      clear -Hin Hns Htr Hlast Hstart bvlsm.
-      generalize dependent is.
-      induction tr; intros.
-      + simpl in Hlast. subst is. elim Hstart. assumption.
-      + inversion Htr. subst s' a tl.
-        assert (Hlast' := Hlast).
-        rewrite map_cons in Hlast. rewrite unroll_last in Hlast. simpl in Hlast.
-        assert (Hfutures : in_futures bvlsm s0 s)
-          by (exists tr; split; assumption).
-        assert (Hnbs : ~In m (State.sent_messages s0)).
-        { destruct (in_dec decide_eq  m (State.sent_messages s0)); try assumption.
-          apply (has_been_sent_in_futures s0 s Hfutures) in i.
-          elim Hns. assumption.
-        }
-        specialize (IHtr s0 H2).
-        destruct (in_dec decide_eq m (get_message_set s0)).
-        * specialize (finite_ptrace_first_pstate bvlsm is _ Htr) as Hpstart.
-          destruct Hpstart as [_om Hpstart].
-          pose (protocol_is_trace bvlsm is _om Hpstart) as Htr_start.
-          assert  (Hiom : iom = Some m).
-          { destruct H3 as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
-            destruct is as (msgs, final).
-            destruct l as [c|].
-            - inversion Ht. subst. clear Ht.
-              simpl in *.
-              apply set_add_iff in i.
-              destruct i as [i | i]; try (elim Hstart; assumption).
-              subst m.
-              clear -Hnbs. exfalso.
-              elim Hnbs.
-              destruct final as [m|].
-              + unfold State.sent_messages. simpl.
-                apply set_add_iff. left. reflexivity.
-              + unfold State.sent_messages. simpl.
-                left. reflexivity.
-            - destruct iom as [msg|]; inversion Ht; subst; clear Ht. simpl in *.
-              + apply set_add_iff in i.
-                destruct i as [i | i]; try (elim Hstart; assumption).
-                subst m. reflexivity.
-              + elim Hstart. assumption.
-          }
-          subst iom.
-          exists {| l := l; input := Some m; destination := s0; output := oom |}.
-          split; try reflexivity. left. reflexivity.
-        * specialize (IHtr Hlast n).
-          destruct IHtr as [item [Hitem Hin']]. exists item. split; try assumption.
-          right. assumption.
+    apply (@has_been_received_capability_from_stepwise _ vlsm VLSM_full_validator_receive_oracle _).
+    split.
+    - intros s H m.
+      simpl in H. unfold initial_state_prop in H. subst s.
+      unfold VLSM_full_validator_receive_oracle. simpl. intuition.
+    - intros.
+      unfold VLSM_full_validator_receive_oracle in *.
+      destruct H as [Hprotocol Htrans].
+      unfold transition in Htrans. simpl in Htrans.
+      unfold vtransition in Htrans. unfold transition in Htrans.
+      unfold protocol_valid in Hprotocol.
+      unfold valid in Hprotocol. simpl in Hprotocol.
+      unfold vvalid in Hprotocol. unfold valid in Hprotocol.
+      simpl in *.
+      split; intros H; unfold State.received_messages in *.
+      + destruct s as [s_set s_pointer].
+        destruct l eqn : eq_l; simpl in *.
+        * destruct im;[intuition|].
+          destruct s_pointer eqn : eq_pointer; simpl in *.
+          -- inversion Htrans. subst s'. subst om.
+             right. simpl in *.
+             unfold State.sent_messages in *. simpl in *.
+             destruct m as [c0 v0 j]; simpl in *.
+             apply set_diff_iff in H; simpl in *.
+             destruct H as [Hin Hnin].
+             apply set_add_iff in Hin.
+             destruct Hin.
+             ++ subst msg. 
+                contradict Hnin.
+                apply set_add_iff.
+                left. intuition.
+             ++ apply set_diff_iff.
+                split;[intuition|].
+                intros contra.
+                contradict Hnin.
+                apply set_add_iff.
+                right. intuition.
+          -- inversion Htrans. subst s'. subst om.
+             right. simpl in *.
+             unfold State.sent_messages in *. simpl in *.
+             apply set_diff_iff in H; simpl in *.
+             destruct H as [Hin Hnin].
+             apply set_add_iff in Hin.
+             destruct Hin.
+             ++ subst msg. 
+                contradict Hnin; intuition.
+             ++ apply set_diff_iff.
+                split;[intuition|].
+                intuition.
+        * destruct im eqn : eq_im.
+          -- inversion Htrans. subst s'. subst om.
+             apply set_diff_iff in H.
+             destruct H as [Hin Hnin]; simpl in *.
+             apply set_add_iff in Hin.
+             destruct Hin.
+             ++ left. f_equal. intuition.
+             ++ right. apply set_diff_iff.
+                intuition.
+          -- inversion Htrans. subst s'. subst om. 
+             apply set_diff_iff in H.
+             destruct H as [Hin Hnin]; simpl in *.
+             right. apply set_diff_iff.
+             intuition.
+       + destruct s as [s_set s_pointer] eqn : eq_s.
+         destruct l eqn : eq_l; simpl in *.
+         * destruct im;[intuition|].
+           destruct s_pointer eqn : eq_pointer; simpl in *.
+           -- inversion Htrans. subst s'. subst om.
+              destruct H;[intuition congruence|].
+              apply set_diff_iff in H.
+              destruct H as [Hin Hnin].
+              apply set_diff_iff.
+              split.
+              ++ apply set_add_iff. right. intuition.
+              ++ intros contra.
+                 unfold State.sent_messages in *; simpl in *.
+                 destruct m as [c0 v0 j]; simpl in *.
+                 apply set_add_iff in contra.
+                 destruct contra.
+                 ** specialize (in_justification_recursive' msg s_set) as Hjucrec.
+                     spec Hjucrec. {
+                      subst msg. simpl; intuition.
+                    }
+                    intuition.
+                 ** intuition.
+           -- destruct H;[intuition congruence|].
+              inversion Htrans. subst s'. subst om.
+              apply set_diff_iff in H. simpl in *.
+              destruct H as [H _].
+              apply set_diff_iff.
+              split.
+              ++ apply set_add_iff. right. intuition.
+              ++ intros contra.
+                 unfold State.sent_messages in contra. simpl in contra.
+                 destruct contra;[|intuition].
+                 specialize (in_justification_recursive' msg s_set) as Hjucrec.
+                     spec Hjucrec. {
+                      subst msg. simpl; intuition.
+                    }
+                  intuition.
+         * unfold State.sent_messages in H. 
+           destruct im eqn : eq_im; simpl in *.
+           -- destruct s_pointer eqn : eq_pointer; simpl in *.
+              ++ destruct m0 as [c v0 j] eqn : eq_m0.
+                 inversion Htrans.
+                 subst s'. subst om. simpl.
+                 destruct H. 
+                 ** inversion H.
+                    subst msg.
+                    apply set_diff_iff.
+                    split.
+                    --- apply set_add_iff. left. intuition.
+                    --- intros contra.
+                        apply set_add_iff in contra.
+                        assert (Hpr : protocol_state_prop bvlsm s). {
+                          destruct Hprotocol.
+                          subst s. intuition.
+                        }
+                        assert (Hinm0 :In m0 s_set). {
+                          specialize (last_sent_in_messages s Hpr m0).
+                          subst s. subst m0. simpl. intuition.
+                        }
+                        destruct contra.
+                        +++ subst m. subst m0. intuition.
+                        +++ specialize (in_protocol_state s Hpr m0) as Hin_pr.
+                            spec Hin_pr. {
+                              subst s. simpl. intuition.
+                            }
+                            unfold incl in Hin_pr.
+                            specialize (Hin_pr m).
+                            subst m0. simpl in *.
+                            specialize (get_sent_messages s Hpr) as Hincl.
+                            unfold State.sent_messages in Hincl.
+                            subst s. simpl in *.
+                            unfold incl in Hincl.
+                            specialize (Hincl m).
+                            spec Hincl. {
+                              apply set_add_iff. right.
+                              intuition.
+                            }
+                            intuition.
+                ** apply set_diff_iff in H.
+                   apply set_diff_iff.
+                   destruct H;split; [apply set_add_iff; right; intuition|intuition].
+              ++ inversion Htrans. subst s'. subst om. simpl in *.
+                 destruct H.
+                 ** apply set_diff_iff. 
+                    split.
+                    --- apply set_add_iff. inversion H. intuition.
+                    --- intuition.
+                 ** apply set_diff_iff.
+                    apply set_diff_iff in H.
+                    destruct H as [H _].
+                    split;[apply set_add_iff;right;intuition|intuition].
+           -- inversion Htrans. subst s'. subst om.
+              destruct s_pointer eqn : eq_pointer; simpl in *.
+              ++ destruct m as [c v0 j]. simpl in *.
+                 destruct H;[intuition congruence|intuition].
+              ++ destruct H;[intuition congruence|intuition].
   Qed.
-
-  Lemma received_messages_prop
-    (s : state C V)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : In m (State.received_messages s) <->
-    exists (sm : received_messages vlsm s), proj1_sig sm = m.
-  Proof.
-    split; intros.
-    - assert (Hm : selected_message_exists_in_some_preloaded_traces vlsm (field_selector input) s m)
-      ; try (exists (exist _ m Hm); reflexivity).
-      destruct Hs as [_om Hs].
-      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [start [tr [Htr [Hdest _]]]]].
-      + apply set_diff_iff in H. destruct H as [Hin Hns].
-        inversion Hinit. subst s. inversion Hin.
-      + specialize (has_been_received_in_trace_rev s m H start tr Htr) as Hbr.
-        assert (Hlast : last (List.map destination tr) start = s)
-        by (destruct tr as [|i tr]; inversion Hdest; apply last_map).
-        specialize (Hbr Hlast).
-        exists start. exists tr. exists Htr. exists Hlast. apply Exists_exists. assumption.
-    - destruct H as [[m0 H] Heq]; simpl in Heq; subst m0.
-      destruct H as [is [tr [Htr [Hlast Hitem]]]].
-      apply Exists_exists in Hitem. destruct Hitem as [item [Hitem Hin]].
-      apply (has_been_received_in_trace s m is tr Htr item Hitem Hin Hlast).
-  Qed.
-
-  Lemma VLSM_full_validator_received_consistency
-    (s : vstate vlsm)
-    (Hs : protocol_state_prop bvlsm s)
-    (m : message)
-    : selected_message_exists_in_some_preloaded_traces vlsm (field_selector input) s m <->
-    selected_message_exists_in_all_preloaded_traces vlsm (field_selector input) s m.
-  Proof.
-    specialize (received_messages_prop s Hs m) as Hin.
-    split; intros.
-    - intro is; intros.
-      apply proj2 in Hin.
-      spec Hin; try (exists (exist _ m H); reflexivity).
-      specialize (has_been_received_in_trace_rev s m Hin is tr Htr Hlast) as Hex.
-      apply Exists_exists. assumption.
-    - destruct Hs as [_om Hs].
-      pose (protocol_is_trace bvlsm s _om Hs) as Htr.
-      destruct Htr as [Hinit | [is [tr [Htr [Hlsts _]]]]].
-      + specialize (selected_message_exists_in_all_traces_initial_state vlsm s Hinit (field_selector input) m) as Hsm.
-        elim Hsm. assumption.
-      + exists is. exists tr. exists Htr.
-        assert (Hlst : last (List.map destination tr) is = s).
-        { destruct tr as [|i tr]; inversion Hlsts. apply last_map. }
-        exists Hlst.
-        specialize (H is tr Htr Hlst). assumption.
-  Qed.
-
-  Instance VLSM_full_validator_computable_received_messages
-    : computable_received_messages vlsm
-    :=
-    { received_messages_fn := State.received_messages;
-      received_messages_full := received_messages_prop;
-      received_messages_consistency := VLSM_full_validator_received_consistency
-    }.
-
-  Definition VLSM_full_validator_has_been_received
-    : has_been_received_capability vlsm
-    :=
-    computable_received_messages_has_been_received_capability vlsm.
 
   Lemma VLSM_full_validator_sent_messages_comparable'
     (s : vstate vlsm)
@@ -1019,7 +1101,7 @@ Section proper_sent_received.
     (tr : list transition_item)
     (Htr : finite_protocol_trace bvlsm s tr)
     (m1 m2 : message)
-    (Hm1 : trace_has_message (field_selector output) m1 tr)
+    (Hm1 : trace_has_message(field_selector output) m1 tr)
     (Hm2 : trace_has_message (field_selector output) m2 tr)
     : m1 = m2 \/ validator_message_preceeds _ _ m1 m2 \/ validator_message_preceeds _ _ m2 m1.
   Proof.

@@ -9,13 +9,13 @@ Require Import
   Lib.SortedLists
   VLSM.Common
   VLSM.Plans
+  VLSM.ProjectionTraces
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
   VLSM.ListValidator.Observations
   VLSM.ListValidator.EquivocationAwareListValidator
-  VLSM.ListValidator.GeneralComposition
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.
@@ -55,7 +55,23 @@ Context
   (**  We begin with some basic facts about the given composition. *)
   
   (**  Protocol states are never bottom *)
-  
+ 
+  Lemma protocol_state_component_no_bottom 
+    (s : vstate X)
+    (i : index)
+    (Hprs : protocol_state_prop X s) :
+    (s i) <> Bottom.
+  Proof.
+    apply (@protocol_prop_no_bottom index i _ _ (est' i)).
+    apply protocol_state_projection with (j := i) in Hprs.
+    unfold protocol_state_prop in Hprs.
+    destruct Hprs as [om Hprs] in Hprs.
+    apply proj_pre_loaded_with_all_messages_protocol_prop in Hprs.
+    unfold protocol_state_prop.
+    exists om.
+    assumption.
+  Qed.
+
   Proposition Hsnb 
     (s : vstate X)
     (Hpr : protocol_state_prop X s) :

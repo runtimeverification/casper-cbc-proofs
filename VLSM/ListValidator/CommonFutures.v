@@ -9,6 +9,7 @@ Require Import
   Lib.SortedLists
   VLSM.Common
   VLSM.Plans
+  VLSM.ProjectionTraces
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
@@ -16,7 +17,6 @@ Require Import
   VLSM.ListValidator.Observations
   VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ListValidator.EquivocationAwareComposition
-  VLSM.ListValidator.GeneralComposition
   VLSM.ObservableEquivocation
   CBC.Common
   CBC.Equivocation.
@@ -118,7 +118,24 @@ Context
   Local Notation hbo_cobs' := (@hbo_cobs index i0 index_listing Hfinite idec Mindex Rindex).
   Local Notation in_listing := (proj2 Hfinite).
   Local Notation component_list s li := (List.map s li).
-    
+  
+  (* TODO: Delete this when possible. *)
+  Local Lemma protocol_state_component_no_bottom 
+    (s : vstate X)
+    (i : index)
+    (Hprs : protocol_state_prop X s) :
+    (s i) <> Bottom.
+  Proof.
+    apply (@protocol_prop_no_bottom index i _ _ (est' i)).
+    apply protocol_state_projection with (j := i) in Hprs.
+    unfold protocol_state_prop in Hprs.
+    destruct Hprs as [om Hprs] in Hprs.
+    apply proj_pre_loaded_with_all_messages_protocol_prop in Hprs.
+    unfold protocol_state_prop.
+    exists om.
+    assumption.
+  Qed.
+  
   (* Returns a boolean <<b>> such that it is valid to perform an update transition
      using <<b>> in state <<s who>> *)
      
