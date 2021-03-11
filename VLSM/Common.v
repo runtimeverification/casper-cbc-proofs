@@ -2844,6 +2844,15 @@ Byzantine fault tolerance analysis. *)
       apply initial_message_is_protocol;exact I.
   Qed.
 
+  Lemma pre_loaded_vlsm_incl_pre_loaded_with_all_messages
+    (P : message -> Prop)
+    : VLSM_incl (pre_loaded_vlsm X P) pre_loaded_with_all_messages_vlsm.
+  Proof.
+    apply VLSM_incl_trans with (machine (pre_loaded_vlsm X (fun _ => True))).
+    - apply (pre_loaded_vlsm_incl P (fun _ => True)). intros. exact I.
+    - apply VLSM_eq_incl_iff. apply pre_loaded_with_all_messages_vlsm_is_pre_loaded_with_True.
+  Qed.
+
   Lemma vlsm_is_pre_loaded_with_False
     : VLSM_eq X (pre_loaded_vlsm X (fun m => False)).
   Proof.
