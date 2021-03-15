@@ -1,7 +1,7 @@
 Require Import
   List Coq.Vectors.Fin
   Arith.Compare_dec Lia
-  Program
+  Program Floats ListSet Nat
   .
 Import ListNotations.
 From CasperCBC
@@ -57,6 +57,11 @@ Definition stateOf (m : Premessage) : Prestate :=
   | Cpremessage s _ => s
   end.
 
+Definition authorOf (m : Premessage) : nat :=
+  match m with
+  | Cpremessage _ a => a
+  end.
+
 
 Definition elmo_type : VLSM_type Premessage :=
   {| state := Prestate;
@@ -105,4 +110,29 @@ Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat)
                   )
                   (observations (stateOf m))
              ).
-  
+
+
+Definition nth_update {A : Type} (l : list A) (idx : nat) (v : A) : list A :=
+  firstn idx l ++ cons v (skipn (S idx) l).
+
+Print Prestate.
+Definition update
+           (m : Premessage)
+           (component : nat)
+           (weights : list float)
+           (treshold : float)
+           (curState : list Prestate)
+           (curEq : set nat)
+  : bool * (list Prestate) * (set nat) :=
+  let p := stateOf m in
+  let a := authorOf m in
+  let lp := length (observations p) in
+  let ca := nth a curState (Cprestate []) in
+  let la := length (observations (ca)) in
+  if andb (la <=? lp)
+          (if (list_eq_dec Observation_eqdec (firstn la (observations p)) (observations ca)) then true else false) then
+    (true,
+     nth_update curState a (Cprestate (observations p ++ [Cobservation Send m a])),
+     curEq)
+  else
+    (false, curState, curEq).
