@@ -90,18 +90,16 @@ Definition elmo_sig : VLSM_sign elmo_type :=
      ;
   |}.
 
-Search list bool.
-Check existsb.
-Check In_dec.
-Check List.In. Print Observation.
-Check fold_right. Check map.
+
 (* Check that every message received or sent in m has been received in the prefix by the component *)
 Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat) : bool :=
   fold_right andb true
              (map (fun (ob2 : Observation) =>
                      match (label ob2) with
                      | Receive =>
-                       List.In (Cobservation Receive (message ob2) component) prefix
+                       if
+                         (In_dec Observation_eqdec (Cobservation Receive (message ob2) component) prefix)
+                       then true else false
                      | Send => false
                      end
                   )
