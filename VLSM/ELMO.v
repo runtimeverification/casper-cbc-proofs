@@ -24,6 +24,14 @@ Premessage : Type :=
 | Cpremessage: Prestate -> nat -> Premessage
 .
 
+Lemma Prestate_eqdec : forall (s1 s2 : Prestate), {s1 = s2} + {s1 <> s2}
+with  Observation_eqdec : forall (o1 o2 : Observation), {o1 = o2} + {o1 <> o2}
+with  Premessage_eqdec : forall (m1 m2 : Premessage), {m1 = m2} + {m1 <> m2}.
+Proof.
+  decide equality. decide equality. decide equality. decide equality.
+  decide equality. decide equality. decide equality.
+Qed.
+
 Definition observations (prs : Prestate) : list Observation :=
   match prs with
   | Cprestate l => l
@@ -43,6 +51,12 @@ Definition witness (ob : Observation) : nat :=
   match ob with
   | Cobservation _ _ w => w
   end.
+
+Definition stateOf (m : Premessage) : Prestate :=
+  match m with
+  | Cpremessage s _ => s
+  end.
+
 
 Definition elmo_type : VLSM_type Premessage :=
   {| state := Prestate;
@@ -65,8 +79,32 @@ Proof.
   reflexivity.
 Defined.
 
+Definition elmo_m0 : Premessage := Cpremessage (Cprestate []) 0.
+
 Definition elmo_sig : VLSM_sign elmo_type :=
   {| initial_state_prop := elmo_initial_state_prop
      ; s0 := elmo_s0
+     ; initial_message_prop := (fun x => False)
+     ; m0 := elmo_m0
+     ; l0 := Receive
      ;
   |}.
+
+Search list bool.
+Check existsb.
+Check In_dec.
+Check List.In. Print Observation.
+Check fold_right. Check map.
+(* Check that every message received or sent in m has been received in the prefix by the component *)
+Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat) : bool :=
+  fold_right andb true
+             (map (fun (ob2 : Observation) =>
+                     match (label ob2) with
+                     | Receive =>
+                       List.In (Cobservation Receive (message ob2) component) prefix
+                     | Send => false
+                     end
+                  )
+                  (observations (stateOf m))
+             ).
+  
