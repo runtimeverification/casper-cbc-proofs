@@ -7,6 +7,7 @@ Require Import
   Lib.ListExtras
   Lib.ListSetExtras
   Lib.SortedLists
+  Lib.SumWeights
   VLSM.Common
   VLSM.Composition
   VLSM.Equivocation

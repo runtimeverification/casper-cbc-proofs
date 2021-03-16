@@ -6,6 +6,7 @@ From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
+  Lib.SumWeights
   CBC.Common
   CBC.Equivocation
   VLSM.Common

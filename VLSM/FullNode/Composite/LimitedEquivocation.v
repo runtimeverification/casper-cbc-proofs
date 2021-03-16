@@ -7,6 +7,7 @@ From CasperCBC
     Preamble
     ListExtras
     ListSetExtras
+    Lib.SumWeights
     TopSort
     CBC.Common
     CBC.Equivocation

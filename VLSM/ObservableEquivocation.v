@@ -4,7 +4,7 @@ Import ListNotations.
 From CasperCBC
   Require Import
     Preamble ListExtras ListSetExtras
-    Lib.Classes
+    Lib.Classes Lib.SumWeights
     CBC.Common CBC.Equivocation
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.ProjectionTraces
