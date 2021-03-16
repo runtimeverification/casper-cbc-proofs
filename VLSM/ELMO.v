@@ -139,7 +139,8 @@ Definition update
                (if (list_eq_dec Observation_eqdec (firstn lp (observations ca)) (observations p)) then true else false)
                (if (Observation_eqdec (nth lp (observations ca) (Cobservation Receive m a) ) (Cobservation Send m a)) then true else false)) then
       (true, curState, curEq)
-    else      
+    else
+      let newEq := curEq in
       (false, curState, curEq).
 
 
