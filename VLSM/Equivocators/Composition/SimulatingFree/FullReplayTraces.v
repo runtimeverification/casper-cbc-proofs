@@ -304,7 +304,7 @@ Qed.
 
 (**
 This lemma matches states in the replay with the state in the original trace.
-It is lengthy because there are many cases to consider
+This lengthy proof covers all cases, and might be good to split up in the future.
 *)
 
 Lemma replayed_trace_from_state_correspondence'
