@@ -83,7 +83,14 @@ Proof.
   exists a.
   assumption.
 Qed.
-
+   
+Lemma forall_and_commute
+  {A : Type}
+  (P Q : A -> Prop)
+  : ((forall a, P a) /\ (forall a, Q a)) <-> forall a, P a /\ Q a.
+Proof.
+  firstorder.
+Qed.
 
 Lemma mirror_reflect: forall X (f : X -> bool) (P : X -> Prop),
   (forall x : X, f x = true <-> P x) ->

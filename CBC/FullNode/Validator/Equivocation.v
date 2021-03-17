@@ -9,6 +9,7 @@ From CasperCBC
     Require Import
       Preamble
       ListExtras
+      Lib.SumWeights
       Validator.State
       CBC.Common
       CBC.Equivocation

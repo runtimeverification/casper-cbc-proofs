@@ -53,14 +53,15 @@ RUN    opam init --auto-setup --yes --jobs=${NJOBS} --compiler=${COMPILER} --dis
 # From: https://github.com/coq-community/docker-coq/blob/master/Dockerfile
 
 ENV COQ_VERSION="8.12.2"
-ENV COQ_EXTRA_OPAM="coq-bignums coq-coq2html coq-serapi"
+ENV COQ_EXTRA_OPAM="coq-bignums coq-coq2html coq-serapi coq-rvdpdgraph"
 
-RUN    eval $(opam env --switch=${COMPILER} --set-switch)   \
-    && opam update -y -u                                    \
-    && opam pin add -n -k version coq ${COQ_VERSION}        \
-    && opam install -y -v -j ${NJOBS} coq ${COQ_EXTRA_OPAM} \
-    && opam clean -a -c -s --logs                           \
-    && opam config list                                     \
+RUN    eval $(opam env --switch=${COMPILER} --set-switch)                          \
+    && opam update -y -u                                                           \
+    && opam pin add -n -k version coq ${COQ_VERSION}                               \
+    && opam pin add -y -n -k git https://github.com/palmskog/rvdpdgraph.git#master \
+    && opam install -y -v -j ${NJOBS} coq ${COQ_EXTRA_OPAM}                        \
+    && opam clean -a -c -s --logs                                                  \
+    && opam config list                                                            \
     && opam list
 
 # Setup SSH/Git/GitHub

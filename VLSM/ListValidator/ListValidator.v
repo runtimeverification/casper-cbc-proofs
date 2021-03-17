@@ -466,13 +466,27 @@ Definition global_decisions (s : state) : list (option bool) :=
     taken into account).
  **)
 
+Definition in_mode (modes : list (option bool)) (b : bool) : Prop :=
+  match (inb decide_eq (Some b) modes) with
+  | true => True
+  | false => (inb decide_eq None modes) = true
+  end.
+
+Global Instance in_mode_dec : RelDecision in_mode.
+Proof.
+  unfold RelDecision; intros modes b.
+  unfold in_mode.
+  destruct (inb decide_eq (Some b) modes) eqn : eq_b.
+  - left. intuition.
+  - destruct (inb decide_eq None modes); intuition.
+Qed. 
+
 Definition estimator (s : state) (b : bool) : Prop :=
-  let none_count := List.count_occ decide_eq (global_decisions s) None in
-  let our_count := List.count_occ decide_eq (global_decisions s) (Some b) in
-  let other_count := List.count_occ decide_eq (global_decisions s) (Some (negb b)) in
+  let ob_dec := (option_eq_dec) in
+  let decision_modes := mode (global_decisions s) in
   match s with
   | Bottom => True
-  | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
+  | Something c some => in_mode decision_modes b 
   end.
 
 (** Labels describe the type of transitions: either updates (with boolean values) or receiving of messages. **)
@@ -546,4 +560,75 @@ Definition VLSM_list
   (est : state -> bool -> Prop)
   : VLSM message := mk_vlsm (VLSM_list_machine est).
 
-End ListNode.
+Definition mk_label (l : label_list) : @label _ VLSM_list_protocol := l.
+
+Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
+  project_indexed l ls who.
+
+Definition last_sent (s : state) : state := project s index_self.
+
+Fixpoint rec_history (s : state) (who : index) (d : nat) : list state :=
+  match s, d with
+  | Bottom, _ => []
+  | _, 0 => []
+  | (Something cv ls), (S d') => s :: rec_history (last_recorded index_listing ls who) who d'
+  end.
+
+Definition get_history (s : state) (who : index) : list state :=
+   match s with
+   | Bottom => []
+   | Something cv ls => let child := last_recorded index_listing ls who in
+                          rec_history child who (depth child)
+   end.
+
+  Definition state_eqb (s1 s2 : state) : bool :=
+    match decide_eq s1 s2 with
+    | left _ => true
+    | right _ => false
+    end.
+
+  Lemma state_eqb_eq (s1 s2 : state) :
+    (state_eqb s1 s2) = true <-> s1 = s2.
+  Proof.
+    unfold state_eqb.
+    split.
+    - destruct (decide (s1 = s2)).
+      + intuition.
+      + intros. discriminate H.
+    - intros.
+      destruct (decide (s1 = s2));
+      intuition.
+  Qed.
+
+  Lemma state_eqb_neq (s1 s2 : state) :
+    (state_eqb s1 s2) = false <-> s1 <> s2.
+  Proof.
+    unfold state_eqb.
+    split;
+    destruct (decide (s1 = s2));
+    intuition.
+  Qed.
+
+  Definition send_oracle (s : state) (m : message)  : bool :=
+    let who := fst m in
+    let what := snd m in
+    match decide (who = index_self) with
+    | right _ => false
+    | left _ => existsb (state_eqb what) (get_history s who)
+    end.
+
+  Definition receive_oracle (s : state) (m : message) : bool :=
+    let who := fst m in
+    let what := snd m in
+    match decide (who = index_self) with
+    | left _ => false
+    | right _ => existsb (state_eqb what) (get_history s who)
+    end.
+
+    Definition not_send_oracle (s : state) (m : message)  : bool :=
+      negb (send_oracle s m).
+
+    Definition not_receive_oracle (s : state) (m : message) : bool :=
+      negb (receive_oracle s m). 
+   
+End ListNode. 

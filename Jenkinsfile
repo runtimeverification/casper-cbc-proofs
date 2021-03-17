@@ -40,6 +40,7 @@ pipeline {
             make coqdoc
             make coq2html
             make -j 6 alectryon
+            make -j 6 rvdpd
             export COQ_SHA=$(git rev-parse HEAD)
 
             git clone 'ssh://github.com/runtimeverification/casper-cbc-proof-docs.git'

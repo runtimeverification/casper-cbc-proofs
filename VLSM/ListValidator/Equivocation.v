@@ -7,6 +7,7 @@ Require Import
   Lib.ListExtras
   Lib.ListSetExtras
   Lib.SortedLists
+  Lib.SumWeights
   VLSM.Common
   VLSM.Composition
   VLSM.Equivocation
@@ -30,28 +31,10 @@ Context
   {mdec : EqDecision (@message index index_listing)}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
-
-  Definition last_recorded (l : list index) (ls : indexed_state l) (who : index) : state :=
-    @project_indexed _ index_listing _ l ls who.
-
-  Definition last_sent (s : vstate X) : vstate X := project s index_self.
-
-  Fixpoint rec_history (s : state) (who : index) (d : nat) : list state :=
-    match s, d with
-    | Bottom, _ => []
-    | _, 0 => []
-    | (Something cv ls), (S d') => s :: rec_history (last_recorded index_listing ls who) who d'
-    end.
-
-  Definition get_history (s : state) (who : index) : list state :=
-     match s with
-     | Bottom => []
-     | Something cv ls => let child := last_recorded index_listing ls who in
-                          rec_history child who (depth child)
-    end.
-
-  (* Definition list_message_equivocation_evidence : message_equivocation_evidence message index. *)
-
+  
+  Local Notation get_history' := (@get_history index index_listing idec).
+  Local Notation last_sent' := (@last_sent index index_self index_listing idec).
+  
   Definition state_eqb (s1 s2 : state) : bool :=
     match @state_eq_dec _ index_listing s1 s2 with
     | left _ => true
@@ -153,7 +136,7 @@ Context
              (i : index)
              (d : nat)
              (Hbig : d >= depth s),
-        rec_history s i d = rec_history s i (depth s).
+        rec_history s i d = rec_history s i (@depth index index_listing s).
     Proof.
       intros.
       remember (depth s) as dpth.
@@ -184,10 +167,10 @@ Context
              (i : index)
              (j : index)
              (Hdif : j <> i),
-             get_history s i = get_history (update_state s news j) i.
+             get_history' s i = get_history' (update_state s news j) i.
     Proof.
       intros.
-      unfold get_history.
+      unfold get_history'.
       destruct s.
       - simpl. reflexivity.
       - simpl.
@@ -209,7 +192,7 @@ Context
         forall (s : state)
                (cv : bool)
                (i : index),
-          get_history (update_consensus s cv) i = get_history s i.
+          get_history' (update_consensus s cv) i = get_history' s i.
     Proof.
       intros.
       unfold update_consensus.
@@ -225,13 +208,13 @@ Context
       (Hno_bottom_news : news <> Bottom)
       (i : index)
       (Hvalidity : project news i = project s i) :
-      get_history (update_state s news i) i = (news :: get_history s i).
+      get_history' (update_state s news i) i = (news :: get_history' s i).
     Proof.
       intros.
       unfold update_state.
       destruct s eqn : s_eq.
       - elim Hno_bottom_s. reflexivity.
-      - unfold get_history.
+      - unfold get_history'.
         unfold last_recorded.
 
         assert ((project_indexed index_listing (update_indexed index_listing is i news) i) =
@@ -275,8 +258,8 @@ Context
       (s1 s2 : state)
       (i : index)
       (pref suff : list state)
-      (Hin : get_history s1 i = pref ++ [s2] ++ suff) :
-      suff = get_history s2 i.
+      (Hin : get_history' s1 i = pref ++ [s2] ++ suff) :
+      suff = get_history' s2 i.
     Proof.
       generalize dependent s1.
       generalize dependent s2.
@@ -284,7 +267,7 @@ Context
       generalize dependent pref.
       induction pref.
       - intros. simpl in *.
-        unfold get_history in Hin.
+        unfold get_history' in Hin.
         destruct s1.
         + discriminate Hin.
         + unfold rec_history in Hin.
@@ -293,7 +276,7 @@ Context
           * destruct (depth (Something b0 is0)) eqn : eq_d.
             discriminate Hin.
             inversion Hin.
-            unfold get_history.
+            unfold get_history'.
             rewrite depth_redundancy.
             reflexivity.
             specialize (@depth_parent_child _ _ Hfinite _ is0 b0 i).
@@ -302,7 +285,7 @@ Context
             unfold last_recorded.
             lia.
       - intros.
-        unfold get_history in Hin.
+        unfold get_history' in Hin.
         specialize (IHpref suff s2 a).
         apply IHpref.
 
@@ -315,7 +298,7 @@ Context
             destruct (depth (Something b0 is0)) eqn : eq_d.
             discriminate Hin.
             inversion Hin.
-            unfold get_history.
+            unfold get_history'.
             unfold rec_history.
 
             rewrite depth_redundancy in H1.
@@ -332,7 +315,7 @@ Context
       (s : state)
       (i : index)
       (Hnbp : project s i = Bottom)
-      : get_history s i = [].
+      : get_history' s i = [].
     Proof.
       destruct s; try reflexivity; simpl in *.
       unfold last_recorded. rewrite Hnbp. reflexivity.
@@ -342,10 +325,10 @@ Context
       (s : state)
       (i : index)
       (Hnbp : project s i <> Bottom)
-      : get_history s i = project s i :: get_history (project s i) i.
+      : get_history' s i = project s i :: get_history' (project s i) i.
     Proof.
-      assert (Hproject : exists suff, get_history s i = project s i :: suff).
-      { unfold get_history. unfold project. destruct s; try (elim Hnbp; reflexivity).
+      assert (Hproject : exists suff, get_history' s i = project s i :: suff).
+      { unfold get_history'. unfold project. destruct s; try (elim Hnbp; reflexivity).
         unfold last_recorded.
         destruct (project_indexed index_listing is i) eqn: Hproject; try (elim Hnbp; assumption).
         destruct (depth (Something b0 is0)) eqn:Hdepth.
@@ -363,12 +346,12 @@ Context
       (i : index)
       (s1 : state)
       (ls : list state)
-      (Hcons : get_history s i = s1 :: ls)
+      (Hcons : get_history' s i = s1 :: ls)
       : s1 = project s i
-      /\ ls = get_history (project s i) i.
+      /\ ls = get_history' (project s i) i.
     Proof.
       destruct (project s i) eqn : eq_project.
-      - unfold get_history in Hcons.
+      - unfold get_history' in Hcons.
         destruct s.
         discriminate Hcons.
         unfold last_recorded in Hcons.
@@ -394,8 +377,8 @@ Context
     Lemma history_incl_equiv_suffix
       (s1 s2 : state)
       (i : index)
-      (history1 := get_history s1 i)
-      (history2 := get_history s2 i) :
+      (history1 := get_history' s1 i)
+      (history2 := get_history' s2 i) :
       incl history1 history2 <->
       exists (pref' : list state), history2 = pref' ++ history1.
    Proof.
@@ -425,7 +408,7 @@ Context
         rewrite Hsplit.
         rewrite H.
 
-        assert (get_history s i = l). {
+        assert (get_history' s i = l). {
           unfold history1 in eq_1.
           specialize (unfold_history s1 s i [] l eq_1).
           intros.
@@ -449,15 +432,174 @@ Context
     Lemma history_no_self_reference
       (s : state)
       (i : index)
-      : ~ In s (get_history s i).
+      : ~ In s (get_history' s i).
     Proof.
       intro Hs. apply in_split in Hs.
       destruct Hs as [pref [suff Hs]].
       specialize (unfold_history s s i pref suff Hs) as Hsuff.
       subst suff.
-      assert (Hl : length(get_history s i) = length(pref ++ s :: get_history s i))
+      assert (Hl : length(get_history' s i) = length(pref ++ s :: get_history' s i))
         by (f_equal; assumption).
       rewrite app_length in Hl. simpl in Hl. lia.
+    Qed.
+
+     Definition state_lt'
+     (i : index)
+     (s1 s2 : (@state index index_listing))
+     : Prop
+     := In s1 (get_history s2 i).
+     
+     Definition state_ltb'
+      (i : index)
+      (s1 s2 : (@state index index_listing))
+      : bool
+      := inb decide_eq s1 (get_history s2 i).
+      
+    Definition state_lt_ext
+      (i : index)
+      (s1 s2 : (@state index index_listing)) :=
+      (s1 = Bottom /\ s2 <> Bottom) \/
+      state_lt' i s1 s2.
+      
+    Lemma state_lt'_dec 
+      (i : index)
+      : RelDecision (state_lt' i).
+    Proof.
+      unfold RelDecision; intros.
+      unfold Decision.
+      destruct (state_ltb' i x y) eqn : eqb; 
+      (unfold state_lt'; unfold state_ltb' in eqb).
+      - left. apply in_correct in eqb. assumption.
+      - right. intros contra. 
+        apply in_correct in contra. 
+        rewrite eqb in contra.
+        discriminate contra. 
+    Qed.
+    
+    Existing Instance state_lt'_dec.
+    
+    Lemma state_lt'_trans
+      (i : index)
+      (s1 s2 s3 : state)
+      (Hlt : state_lt' i s1 s2 /\ state_lt' i s2 s3) :
+      state_lt' i s1 s3.
+    Proof.
+      destruct Hlt as [Hlt1 Hlt2].
+      unfold state_lt' in Hlt1, Hlt2.
+      apply in_split in Hlt2.
+      destruct Hlt2 as [pref [suff Heq]].
+      apply unfold_history in Heq as Heq'.
+      unfold state_lt'.
+      rewrite Heq.
+      rewrite Heq'.
+      apply in_app_iff.
+      right.
+      apply in_cons.
+      assumption.
+    Qed.
+    
+    Lemma state_lt'_antisymmetric
+      (i : index)
+      (s1 s2 : (@state index index_listing)) :
+      state_lt' i s1 s2 -> ~ state_lt' i s2 s1.
+     Proof.
+      intro H.
+      unfold state_lt' in *.
+      intros contra.
+      apply in_split in H.
+      destruct H as [left [right Heq]].
+      apply unfold_history in Heq as Heq'.
+      rewrite Heq' in Heq.
+      apply in_split in contra.
+      destruct contra as [left' [right' Heq_contra]].
+      rewrite Heq_contra in Heq.
+      specialize (history_no_self_reference s2 i) as Hnsr.
+      rewrite Heq in Hnsr.
+      contradict Hnsr.
+      apply in_app_iff. right.
+      simpl. right.
+      apply in_app_iff. right.
+      intuition.
+     Qed.
+    
+    Lemma state_lt_ext_dec 
+      (i : index)
+      : RelDecision (state_lt_ext i).
+    Proof.
+      unfold RelDecision; intros.
+      unfold Decision.
+      unfold state_lt_ext.
+      destruct x eqn : eq_x; destruct y eqn : eq_y; simpl.
+      - right. intros contra. destruct contra;[intuition congruence|].
+        unfold state_lt' in H. simpl in H. intuition.
+      - left. left. intuition congruence.
+      - right. intros contra. 
+        destruct contra;[intuition|].
+        unfold state_lt' in H. simpl in H. intuition.
+      - destruct (decide (state_lt' i x y)); subst x; subst y.
+        * left. right. intuition.
+        * right. intros contra. destruct contra;[intuition congruence|intuition]. 
+    Qed.
+    
+    Lemma state_lt_ext_antisymmetric
+     (i : index)
+     (s1 s2 : (@state index index_listing)) :
+     state_lt_ext i s1 s2 -> ~ state_lt_ext i s2 s1.
+    Proof.
+      intros H.
+      unfold state_lt_ext in *.
+      destruct H.
+      - intros contra.
+        destruct contra;[intuition|].
+        destruct H as [Hs1 Hs2]. subst s1.
+        unfold state_lt' in H0. intuition.
+      - intros contra.
+        destruct contra.
+        + destruct H0 as [H1 H2]. subst s2.
+          unfold state_lt' in H. intuition.
+        + apply state_lt'_antisymmetric in H.
+          intuition.
+    Qed.
+    
+    Lemma state_lt_ext_tran
+      (i : index)
+      (s1 s2 s3 : state)
+      (H12 : state_lt_ext i s1 s2)
+      (H23 : state_lt_ext i s2 s3)
+      : state_lt_ext i s1 s3.
+    Proof.
+      unfold state_lt_ext in H12, H23.
+      destruct H12; destruct H23.
+      - intuition congruence.
+      - unfold state_lt_ext.
+        left. split;[intuition|].
+        unfold state_lt' in H0.
+        destruct s3;[simpl in H0;intuition|].
+        congruence.
+      - unfold state_lt' in H. 
+        destruct H0 as [H0 _]. rewrite H0 in H. 
+        simpl in H. intuition. 
+      - unfold state_lt_ext. right.
+        apply state_lt'_trans with (s2 := s2).
+        intuition.
+    Qed.
+    
+    Lemma state_lt_ext_proj
+      (i : index)
+      (s1 s2 : state) :
+      state_lt_ext i s1 (project s2 i) ->
+      state_lt_ext i s1 s2.
+    Proof.
+      intros.
+      unfold state_lt_ext in *.
+      destruct H.
+      - left. split;[intuition|].
+        destruct s2. simpl in H. intuition congruence. congruence.
+      - right. unfold state_lt' in *.
+        destruct (project s2 i) eqn : eq_p.
+        + simpl in H. intuition.
+        + rewrite unfold_history_cons by (intuition congruence).
+          simpl. right. rewrite eq_p. intuition.
     Qed.
 
     Lemma projection_in_history
@@ -466,10 +608,10 @@ Context
       (i : index)
       (Hnot_bottom : news <> Bottom)
       (Hproject : project s i = news) :
-      In news (get_history s i).
+      In news (get_history' s i).
     Proof.
       intros.
-      unfold get_history.
+      unfold get_history'.
       unfold project in Hproject.
       destruct s eqn : eqs.
       - rewrite Hproject in Hnot_bottom. elim Hnot_bottom. reflexivity.
@@ -489,6 +631,23 @@ Context
         unfold In.
         left.
         reflexivity.
+    Qed.
+    
+    Lemma non_empty_history_nb_project
+      (s so : state)
+      (i : index)
+      (Hin : In so (get_history' s i)) :
+      project s i <> Bottom.
+    Proof.
+      unfold get_history' in Hin.
+      destruct s.
+      - intuition.
+      - unfold last_recorded in Hin.
+        unfold rec_history in Hin.
+        unfold project.
+        destruct (project_indexed index_listing is i).
+        + simpl in Hin. intuition.
+        + congruence.
     Qed.
 
     Lemma emitted_messages_only_from_self
@@ -543,7 +702,7 @@ Context
     Qed.
 
     Lemma no_bottom_in_history_rec
-      (s s': state)
+      (s s': (@state index index_listing))
       (i : index)
       (l : list state)
       (Heql : l = rec_history s i (depth s))
@@ -582,7 +741,7 @@ Context
           destruct Hin.
           * elim n.
             intuition.
-          * unfold get_history in Heql.
+          * unfold get_history' in Heql.
             destruct s.
             discriminate Heql.
             unfold rec_history in Heql.
@@ -618,10 +777,10 @@ Context
     Lemma no_bottom_in_history
       (s s': state)
       (i : index)
-      (Hin : In s' (get_history s i)) :
+      (Hin : In s' (get_history' s i)) :
       s' <> Bottom.
     Proof.
-      unfold get_history in Hin.
+      unfold get_history' in Hin.
       destruct s.
       - simpl in Hin.
         intuition.
@@ -656,9 +815,9 @@ Context
     Lemma get_history_all_bottom
       (cv : bool)
       (i : index)
-      : get_history (Something cv all_bottom) i = [].
+      : get_history' (Something cv all_bottom) i = [].
     Proof.
-      unfold get_history.
+      unfold get_history'.
       unfold last_recorded.
       rewrite project_all_bottom.
       simpl.
@@ -765,8 +924,8 @@ Context
             rewrite <- history_oblivious.
             intuition.
             rewrite e. intuition.
-    Qed.
-
+    Defined.
+    
     Global Instance lv_received_capability:
       has_been_received_capability X.
     Proof.
@@ -850,1038 +1009,76 @@ Context
                   right. rewrite Is_true_iff_eq_true. intuition.
                ++ rewrite <- history_oblivious by intuition.
                   intuition.
-    Qed.
-
-    Definition get_messages_from_history (s : state) (i : index) : set message :=
-      List.map (pair i) (get_history s i).
-
-    Definition get_sent_messages (s : state) : set message :=
-      get_messages_from_history s index_self.
-
-    Definition get_messages (s : state) : set message :=
-      let all := List.map (get_messages_from_history s) index_listing in
-      List.fold_right (@set_union message mdec) [] all.
-
-    Definition get_received_messages (s : state) : set message :=
-      set_diff mdec (get_messages s) (get_sent_messages s).
-
-    Lemma get_iff_history
+    Defined.
+    
+    Lemma bottom_project_empty_history
       (s : state)
-      (m : message) :
-      In m (get_messages_from_history s (fst m)) <-> In (snd m) (get_history s (fst m)).
-    Proof.
-      split.
-      - intros.
-        unfold get_messages_from_history in H.
-        rewrite in_map_iff in H.
-        destruct H as [x [Heq Hinx]].
-        rewrite <- Heq.
-        simpl.
-        assumption.
-      - intros.
-        unfold get_messages_from_history.
-        rewrite in_map_iff.
-        exists (snd m).
-        split.
-        + rewrite surjective_pairing.
-          reflexivity.
-        + assumption.
-    Qed.
-
-    Lemma sent_set_equiv_send_oracle
-      (s : state)
-      (Hprotocol : protocol_state_prop preX s)
-      (m : message) :
-      send_oracle s m = true <-> In m (get_sent_messages s).
-    Proof.
-      split.
-      - intros.
-        unfold send_oracle in H.
-        destruct (decide (fst m = index_self)).
-        + unfold get_sent_messages.
-          rewrite <- e.
-          rewrite get_iff_history.
-          rewrite existsb_exists in H.
-          destruct H as [x [Hinx Heq]].
-          rewrite state_eqb_eq in Heq.
-          rewrite Heq.
-          assumption.
-        + discriminate H.
-      - intros.
-        unfold send_oracle.
-        destruct (decide (fst m = index_self)).
-        + unfold get_sent_messages in H.
-          rewrite <- e in H.
-          rewrite get_iff_history in H.
-          rewrite existsb_exists.
-          exists (snd m).
-          split.
-          * assumption.
-          * rewrite state_eqb_eq.
-            reflexivity.
-        + unfold get_sent_messages in H.
-          unfold get_messages_from_history in H.
-          rewrite in_map_iff in H.
-          destruct H as [x [Heq Hinx]].
-          elim n.
-          rewrite <- Heq.
-          reflexivity.
-    Qed.
-
-    Lemma message_in_unique_history
-      (s : state)
-      (m : message)
       (i : index)
-      (Hin : In m (get_messages_from_history s i)) :
-      i = (fst m).
+      (Hb : project s i = Bottom) : 
+      get_history' s i = [].
     Proof.
-      unfold get_messages_from_history in Hin.
-      rewrite in_map_iff in Hin.
-      destruct Hin as [x [Heq Hinx]].
-      rewrite <- Heq.
-      simpl.
-      reflexivity.
-    Qed.
-
-    Lemma in_history_equiv_in_union
-      (s : state)
-      (m : message) :
-      In m (get_messages s) <-> In m (get_messages_from_history s (fst m)).
-    Proof.
-      remember (map (get_messages_from_history s) index_listing) as haystack.
-      remember (get_messages_from_history s (fst m)) as needle.
-      split.
-      - intros.
-        unfold get_messages in H.
-        specialize (union_fold haystack m).
-        intros.
-        destruct H0 as [Hleft _].
-        rewrite <- Heqhaystack in H.
-        specialize (Hleft H).
-        destruct Hleft as [needle' [Hin1 Hin2]].
-        assert (needle = needle'). {
-          assert (exists (i : index), needle' = (get_messages_from_history s i)). {
-            rewrite Heqhaystack in Hin2.
-            rewrite in_map_iff in Hin2.
-            destruct Hin2 as [x [Hneed _]].
-            exists x.
-            symmetry.
-            assumption.
-          }
-          destruct H0 as [i Heq].
-          specialize (message_in_unique_history s m i).
-          intros.
-          rewrite Heq in Hin1.
-          specialize (H0 Hin1).
-          rewrite H0 in Heq.
-          rewrite Heq.
-          rewrite Heqneedle.
-          reflexivity.
-        }
-
-        rewrite H0.
-        assumption.
-      - intros.
-        unfold get_messages.
-
-        specialize (union_fold haystack m).
-        intros.
-        destruct H0 as [_ Hright].
-        rewrite Heqhaystack in Hright.
-        apply Hright.
-        exists (get_messages_from_history s (fst m)).
-        split.
-        + rewrite <- Heqneedle.
-          assumption.
-        + rewrite in_map_iff.
-          exists (fst m).
-          split.
-          * reflexivity.
-          * apply ((proj2 Hfinite) (fst m)).
-    Qed.
-
-    Lemma received_set_equiv_receive_oracle
-      (s : state)
-      (Hprotocol : protocol_state_prop preX s)
-      (m : message) :
-      receive_oracle s m = true <-> In m (get_received_messages s).
-    Proof.
-      split.
-      - intros.
-        unfold receive_oracle in H.
-        destruct (decide (fst m = index_self)).
-        + discriminate H.
-        + rewrite existsb_exists in H.
-          destruct H as [x [Hinx Heq]].
-          unfold get_received_messages.
-          specialize set_diff_intro.
-          intros.
-          specialize (H message mdec m (get_messages s) (get_sent_messages s)).
-          apply H.
-          * rewrite state_eqb_eq in Heq.
-            apply in_history_equiv_in_union.
-            rewrite get_iff_history.
-            rewrite Heq.
-            assumption.
-          * intros contra.
-            specialize (message_in_unique_history s m index_self).
-            intros.
-            rewrite state_eqb_eq in Heq.
-            unfold get_sent_messages in contra.
-            specialize (H0 contra).
-            elim n.
-            symmetry.
-            assumption.
-       - intros.
-         unfold receive_oracle.
-         destruct (decide (fst m = index_self)).
-         + unfold get_received_messages in H.
-           rewrite set_diff_iff in H.
-           rewrite in_history_equiv_in_union in H.
-           unfold get_sent_messages in H.
-           rewrite e in H.
-           intuition.
-         + unfold get_received_messages in H.
-           rewrite set_diff_iff in H.
-           destruct H as [Hin Hnot_in].
-           rewrite existsb_exists.
-           exists (snd m).
-           split.
-           * rewrite in_history_equiv_in_union in Hin.
-             rewrite get_iff_history in Hin.
-             assumption.
-           * rewrite state_eqb_eq.
-             reflexivity.
-      Qed.
-
-    Fixpoint get_observations (target : index) (d : nat) (s : state) : set state :=
-      match s with
-      | Bottom => []
-      | _ => match d with
-             | 0 => set_remove decide_eq Bottom [project s target]
-             | S n => let children := List.map (@project index index_listing _ s) index_listing in
-             let children_res := List.map (get_observations target n) children in
-             set_remove decide_eq Bottom
-             (set_union decide_eq (List.fold_right (set_union decide_eq) [] children_res) [project s target])
-             end
-      end.
-
-    Definition shallow_observations (s : state) (target : index) :=
-      get_observations target 1 s.
-
-    Definition full_observations (s : state) (target : index) :=
-      get_observations target (depth s) s.
-
-    Lemma get_observations_depth_redundancy
-      (target : index)
-      (d : nat)
-      (s : state)
-      (Hineq : d >= depth s) :
-      get_observations target d s = get_observations target (depth s) s.
-   Proof.
-    remember (depth s) as dpth.
-    generalize dependent s.
-    generalize dependent d.
-    induction dpth using (well_founded_induction lt_wf).
-    intros.
-    unfold get_observations at 1.
-    destruct s.
-    - unfold depth in Heqdpth.
-      rewrite Heqdpth.
-      destruct d.
-      + reflexivity.
-      + simpl in *.
+      unfold get_history'.
+      destruct s.
+      - reflexivity.
+      - unfold project in Hb.
+        unfold last_recorded.
+        rewrite Hb.
+        simpl.
         reflexivity.
-     - unfold get_observations.
-       destruct dpth eqn : eq_dpth.
-       + destruct d eqn: eq_d.
-         * reflexivity.
-         * symmetry in Heqdpth.
-           apply depth_zero_bottom in Heqdpth.
-           discriminate Heqdpth.
-       + destruct d.
-         lia.
-         simpl.
-         f_equal.
-         f_equal.
-         f_equal.
-         apply map_ext_in.
-         intros.
-         rewrite in_map_iff in H0.
-         destruct H0 as [j [Heq Hin]].
-         assert (depth a < S n). {
-           rewrite Heqdpth.
-           specialize (@depth_parent_child index index_listing Hfinite decide_eq is b j).
-           intros.
-           unfold project in Heq.
-           replace (@project_indexed index index_listing _ index_listing is j)
-           with a in H0.
-           lia.
-         }
+    Qed.
 
-        assert (d >= depth a). {
-          lia.
-        }
-
-         assert (get_observations target (depth a) a = get_observations target n a). {
-          symmetry.
-          apply H.
-          lia.
-          lia.
+    Lemma eq_history_eq_project
+      (s s' : state)
+      (i : index) :
+      get_history' s i = get_history' s' i <->
+      project s i = @project index index_listing idec s' i.
+    Proof.
+      destruct (project s i) eqn : eq_ps; destruct (project s' i) eqn : eq_ps'; split; intros.
+      - reflexivity.
+      - apply bottom_project_empty_history in eq_ps.
+        apply bottom_project_empty_history in eq_ps'.
+        rewrite eq_ps. rewrite eq_ps'. reflexivity.
+      - apply bottom_project_empty_history in eq_ps.
+        rewrite eq_ps in H.
+        specialize (unfold_history_cons s' i). intros.
+        spec H0. intros contra. rewrite eq_ps' in contra. discriminate contra.
+        rewrite H0 in H. discriminate H.
+      - discriminate H.
+      - apply bottom_project_empty_history in eq_ps'.
+        rewrite eq_ps' in H.
+        specialize (unfold_history_cons s i). intros.
+        spec H0. intros contra. rewrite eq_ps in contra. discriminate contra.
+        rewrite H0 in H. discriminate H.
+      - discriminate H.
+      - unfold get_history' in H.
+        destruct s; destruct s';
+        try discriminate eq_ps';
+        try discriminate eq_ps.
+        + unfold rec_history in H.
+          destruct (depth (last_recorded index_listing is1 i)) eqn : eq_d1;
+          destruct (depth (last_recorded index_listing is2 i)) eqn : eq_d2;
+          try unfold last_recorded in *;
+          try unfold project in *;
+          try apply depth_zero_bottom in eq_d1;
+          try apply depth_zero_bottom in eq_d2;
+          try rewrite eq_d1 in eq_ps;
+          try rewrite eq_d2 in eq_ps';
+          try discriminate eq_ps;
+          try discriminate eq_ps'.
+          rewrite eq_ps in H.
+          rewrite eq_ps' in H.
+          inversion H.
           reflexivity.
-         }
-
-         specialize (H (depth a) H0 d H1 a eq_refl).
-         rewrite H2 in H.
-         intuition.
+      - specialize (unfold_history_cons s i) as Hus.
+        specialize (unfold_history_cons s' i) as Hus'.
+        spec Hus. intros contra. rewrite contra in eq_ps. discriminate eq_ps.
+        spec Hus'. intros contra. rewrite contra in eq_ps'. discriminate eq_ps'.
+        rewrite H in eq_ps.
+        rewrite eq_ps in Hus.
+        rewrite eq_ps' in Hus'.
+        rewrite Hus.
+        rewrite Hus'.
+        reflexivity.
    Qed.
 
-    Lemma get_observations_nodup
-      (target : index)
-      (s : state) :
-      (NoDup (get_observations target (depth s) s)).
-    Proof.
-      remember(depth s) as d.
-      generalize dependent s.
-       induction d using (well_founded_induction lt_wf).
-       unfold get_observations.
-       destruct d.
-       - intros.
-          simpl.
-         destruct (project s target).
-         + rewrite decide_True; auto.
-           symmetry in Heqd.
-           apply depth_zero_bottom in Heqd.
-           rewrite Heqd.
-           apply NoDup_nil.
-         + rewrite decide_False.
-           symmetry in Heqd.
-           apply depth_zero_bottom in Heqd.
-           rewrite Heqd.
-           apply NoDup_nil.
-           intros contra.
-           discriminate contra.
-       - intros.
-         simpl.
-         destruct s.
-         simpl in Heqd. discriminate Heqd.
-         apply set_remove_nodup.
-         apply set_add_nodup.
-         specialize (@set_union_iterated_nodup (@state index index_listing) decide_eq).
-         intros.
-         specialize (H0 (map
-        ((fix get_observations (target0 : index) (d0 : nat) (s : state) {struct d0} :
-              set state :=
-            match s with
-            | Bottom => []
-            | Something _ _ =>
-                match d0 with
-                | 0 =>
-                    if decide (Bottom = (project s target0))
-                    then []
-                    else project s target0 :: empty_set state
-                | S n =>
-                    set_remove decide_eq Bottom
-                      (set_add decide_eq (project s target0)
-                         (fold_right (set_union decide_eq) []
-                            (map (get_observations target0 n) (map (project s) index_listing))))
-                end
-            end) target d) (map (project (Something b is)) index_listing))).
-        apply H0.
-        intros.
-        rewrite in_map_iff in H1.
-        destruct H1 as [x [Hleft Hright]].
-        assert (depth x < S d). {
-          rewrite Heqd.
-          apply in_map_iff in Hright.
-          destruct Hright as [i [Hi _]].
-          rewrite <- Hi.
-          specialize (@depth_parent_child index index_listing Hfinite decide_eq is b i).
-          intros.
-          unfold project.
-          intuition.
-        }
-        rewrite <- Hleft.
-        specialize H.
-        rewrite get_observations_depth_redundancy.
-        specialize (H (depth x)).
-        specialize (H H1).
-        specialize (H x eq_refl).
-        assumption.
-        lia.
- Qed.
-
-  Lemma no_bottom_in_observations
-    (s s': state)
-    (target : index)
-    (Hins' : In s' (get_observations target (depth s) s)) :
-    s' <> Bottom.
-  Proof.
-   unfold get_observations in Hins'.
-   destruct s.
-   - simpl in *.
-     intuition.
-   - simpl in *.
-     destruct (depth (Something b is)) eqn : eq_d'.
-     + apply depth_zero_bottom in eq_d'.
-       discriminate eq_d'.
-     + simpl in *.
-       apply set_remove_2 in Hins'.
-       assumption.
-       clear Hins'.
-       apply set_add_nodup.
-       apply (set_union_iterated_nodup).
-       intros.
-       rewrite in_map_iff in H.
-       destruct H as [child [Heq_child Hin_child]].
-       rewrite in_map_iff in Hin_child.
-       destruct Hin_child as [i [Heq_project _]].
-       rewrite <- Heq_child.
-       specialize (get_observations_nodup target child).
-       intros.
-       rewrite get_observations_depth_redundancy.
-       apply H.
-       specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hparent_child.
-       rewrite eq_d' in Hparent_child.
-       rewrite <- Heq_project.
-       unfold project.
-       lia.
-  Qed.
-
-    Lemma observations_in_project
-      (s : state)
-      (target i : index)
-      : incl (full_observations (project s i) target) (full_observations s target).
-  Proof.
-    unfold incl.
-    intros.
-    unfold full_observations.
-    unfold get_observations at 1.
-    destruct s eqn : eq_s.
-    - simpl in *.
-      assumption.
-    - destruct (depth (Something b is)) eqn : eq_depth.
-      + apply depth_zero_bottom in eq_depth.
-        discriminate eq_depth.
-      + specialize (@set_union_in_iterated (@state index index_listing) state_eq_dec).
-        intros.
-        specialize (H0 (map (get_observations target n) (map (project (Something b is)) index_listing))).
-        specialize (H0 a).
-        destruct H0 as [_ Hneed].
-        assert (a <> Bottom). {
-          specialize (no_bottom_in_observations (project (Something b is) i) a target).
-          intros.
-          apply H0.
-          unfold full_observations in H.
-          assumption.
-        }
-        apply set_remove_3.
-        apply set_union_intro1.
-        apply Hneed.
-        rewrite Exists_exists.
-        exists (get_observations target n (project (Something b is) i)).
-        split.
-        rewrite in_map_iff.
-        exists (project (Something b is) i).
-        split.
-        reflexivity.
-        rewrite in_map_iff.
-        exists i.
-        split.
-        reflexivity.
-        apply ((proj2 Hfinite) i).
-        unfold full_observations in H.
-        rewrite get_observations_depth_redundancy.
-        assumption.
-        specialize (@depth_parent_child index index_listing Hfinite idec is b i).
-        intros.
-        unfold project.
-        lia.
-        assumption.
-  Qed.
-
-    Lemma observations_disregards_cv
-      (s : vstate X)
-      (cv : bool)
-      (target : index)
-      : full_observations (update_consensus s cv) target
-      = full_observations s target.
-    Proof.
-      unfold full_observations.
-      unfold get_observations.
-      rewrite <- depth_consensus_clean with (value := cv).
-      destruct (depth s) eqn : eq_d.
-      - rewrite <- update_consensus_clean.
-        destruct s.
-        simpl. reflexivity.
-        simpl. reflexivity.
-      - rewrite <- update_consensus_clean.
-        assert (map (project (update_consensus s cv)) index_listing = map (project s) index_listing). {
-          apply map_ext_in.
-          intros.
-          symmetry.
-          apply update_consensus_clean.
-        }
-        rewrite H.
-        destruct s.
-        simpl.
-        reflexivity.
-        simpl.
-        reflexivity.
-    Qed.
-
-    Lemma observations_update_eq
-      (s s' : vstate X)
-      (Hsnot : s <> Bottom)
-      (Hs'not : s' <> Bottom)
-      (target : index)
-      (Hvalid : project s' target = project s target)
-      : set_eq
-        (full_observations (update_state s s' target) target)
-        (set_add decide_eq s'
-          (set_union decide_eq
-            (full_observations s target)
-            (full_observations s' target)
-          )
-        ).
-    Proof.
-     unfold set_eq.
-     split; unfold incl; intros.
-     - destruct (decide (a = s')).
-       + apply set_add_intro2.
-         assumption.
-       + apply set_add_intro1.
-         unfold full_observations in H.
-         unfold get_observations in H.
-         destruct (update_state s s' target) eqn : eq_up.
-         * simpl in *.
-           intuition.
-         * destruct (depth (Something b is)) eqn : eq_d.
-           apply depth_zero_bottom in eq_d.
-           discriminate eq_d.
-           apply set_remove_1 in H.
-           assert (project (Something b is) target = s'). {
-             rewrite <- eq_up.
-             specialize (@project_same index index_listing Hfinite decide_eq s s' target).
-             intros.
-             apply H0.
-             assumption.
-           }
-           rewrite H0 in H.
-           apply set_union_elim in H.
-           simpl in H.
-           destruct H.
-           specialize (@set_union_in_iterated (@state index index_listing) decide_eq).
-           intros.
-           specialize (H1 (map
-            ((fix get_observations (target : index) (d : nat) (s : state) {struct d} :
-                  set state :=
-                match s with
-                | Bottom => []
-                | Something _ _ =>
-                    match d with
-                    | 0 =>
-                        if decide (Bottom = (project s target))
-                        then []
-                        else project s target :: empty_set state
-                    | S n =>
-                        set_remove decide_eq Bottom
-                          (set_add decide_eq (project s target)
-                             (fold_right (set_union decide_eq) []
-                                (map (get_observations target n) (map (project s) index_listing))))
-                    end
-                end) target n0) (map (project (Something b is)) index_listing))).
-            specialize (H1 a).
-            unfold ListSet.set_In in H.
-            destruct H1 as [Hneed _].
-            specialize (Hneed H).
-            rewrite Exists_exists in Hneed.
-            destruct Hneed as [child_result [Hin1 Hina]].
-            rewrite in_map_iff in Hin1.
-            destruct Hin1 as [child [Ha Hb]].
-            rewrite in_map_iff in Hb.
-            destruct Hb as [j [Hproject _]].
-            specialize (@depth_parent_child index index_listing Hfinite idec is b j).
-            intros.
-            assert (n0 >= depth (child)). {
-              rewrite eq_d in H1.
-              rewrite <- Hproject.
-              unfold project.
-              lia.
-            }
-            destruct (decide (j = target)).
-            rewrite e in Hproject.
-            rewrite H0 in Hproject.
-            rewrite <- Hproject in Ha.
-            unfold ListSet.set_In.
-            apply set_union_intro2.
-            unfold full_observations.
-            rewrite <- get_observations_depth_redundancy with (d := n0).
-            rewrite <- Ha in Hina.
-            intuition.
-            rewrite Hproject.
-            assumption.
-            apply set_union_intro1.
-
-            assert (project (Something b is) j = project s j). {
-              specialize (@project_different index index_listing Hfinite idec s s' j target).
-              intros.
-              rewrite <- eq_up.
-              apply H3.
-              assumption.
-              assumption.
-            }
-
-            specialize (observations_in_project s target j).
-            intros.
-            rewrite Hproject in H3.
-            rewrite H3 in Ha.
-            unfold incl in H4.
-            specialize (H4 a).
-            apply H4.
-            rewrite <- Ha in Hina.
-            unfold full_observations.
-            rewrite <- get_observations_depth_redundancy with (d := n0).
-            assumption.
-            rewrite <- H3.
-            assumption.
-            destruct H.
-            elim n.
-            symmetry.
-            assumption.
-            exfalso.
-            assumption.
-        - remember (update_state s s' target) as u.
-          assert (project u target = s'). {
-            specialize (@project_same index index_listing Hfinite idec s s' target).
-            intros.
-            rewrite <- Hequ in H0.
-            apply H0.
-            assumption.
-          }
-          apply set_add_elim in H.
-          destruct (decide (a = s')).
-          (* a = s' *)
-          + unfold full_observations.
-            unfold get_observations.
-            destruct u.
-            simpl in *.
-            intuition.
-            destruct (depth (Something b is)) eqn: eq_d.
-            apply depth_zero_bottom in eq_d.
-            discriminate eq_d.
-            apply set_remove_3.
-            apply set_union_intro.
-            right.
-            rewrite H0.
-            rewrite e.
-            simpl.
-            intuition.
-            rewrite e.
-            assumption.
-          + unfold ListSet.set_In in H.
-            destruct H.
-            elim n.
-            assumption.
-            apply set_union_elim in H.
-            destruct H.
-            * (* In a (get_observations s)). *)
-              unfold full_observations in H.
-              assert (a <> Bottom) as Hanot_bottom. {
-                apply no_bottom_in_observations in H.
-                assumption.
-              }
-              unfold get_observations in H.
-              destruct s.
-              elim Hsnot.
-              reflexivity.
-              destruct (depth (Something b is)) eqn : eq_d.
-              apply depth_zero_bottom in eq_d.
-              discriminate eq_d.
-              apply set_remove_1 in H.
-              apply set_union_elim in H.
-              destruct H.
-              apply set_union_in_iterated in H.
-              rewrite Exists_exists in H.
-              destruct H as [child_result [Heq_child_result Hin_a]].
-              rewrite in_map_iff in Heq_child_result.
-              destruct Heq_child_result as [child [Heq_child Hin_child]].
-              rewrite in_map_iff in Hin_child.
-              destruct Hin_child as [i [Hproject _]].
-              destruct (decide (i = target)).
-              { (* found originally in target projection *)
-                rewrite e in Hproject.
-                rewrite <- Hvalid in Hproject.
-                specialize (observations_in_project u target target).
-                intros.
-                unfold incl in H.
-                specialize (H a).
-                apply H.
-                clear H.
-                rewrite H0.
-                specialize (observations_in_project s' target target).
-                intros.
-                unfold incl in H.
-                specialize (H a).
-                apply H.
-                rewrite Hproject.
-                rewrite get_observations_depth_redundancy in Heq_child.
-                rewrite <- Heq_child in Hin_a.
-                unfold full_observations.
-                assumption.
-                specialize (@depth_parent_child index index_listing Hfinite idec is b target) as Hdpc.
-                rewrite eq_d in Hdpc.
-                rewrite <- Hproject.
-                simpl in Hvalid.
-                rewrite Hvalid.
-                lia.
-              }
-              { (* found originally in different projection *)
-               assert (n0 >= depth child) as Hn0child. {
-                   specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hdpc.
-                   simpl in Hproject.
-                   rewrite Hproject in Hdpc.
-                   lia.
-                }
-                unfold full_observations.
-                unfold get_observations.
-                destruct u.
-                discriminate Hequ.
-                destruct (depth (Something b0 is0)) eqn : eq_du.
-                apply depth_zero_bottom in eq_du.
-                discriminate eq_du.
-                apply set_remove_3.
-                apply set_union_intro.
-                left.
-                assert (project (Something b is) i = project (Something b0 is0) i) as Hsame. {
-                  specialize (@project_different index index_listing Hfinite idec).
-                  intros.
-                  specialize (H (Something b is) s' i target).
-                  rewrite Hequ.
-                  symmetry.
-                  apply H.
-                  assumption.
-                  intros contra.
-                  discriminate contra.
-                }
-
-                apply set_union_in_iterated.
-                rewrite Exists_exists.
-                exists child_result.
-                rewrite in_map_iff.
-                split.
-                exists child.
-                split.
-                rewrite get_observations_depth_redundancy.
-                rewrite get_observations_depth_redundancy in Heq_child.
-                assumption.
-                assumption.
-
-                specialize (@depth_parent_child index index_listing Hfinite idec is0 b0 i) as Hdpc'.
-                simpl in H0.
-
-                rewrite Hsame in Hproject.
-                rewrite <- Hproject.
-                unfold project.
-                lia.
-                rewrite in_map_iff.
-                exists i.
-                split.
-                rewrite Hsame in Hproject.
-                assumption.
-                apply ((proj2 Hfinite) i).
-                assumption.
-                rewrite get_observations_depth_redundancy in Heq_child.
-                rewrite <- Heq_child in Hin_a.
-                apply no_bottom_in_observations in Hin_a.
-                assumption.
-                assumption.
-                }
-                (* a = project s target *)
-                simpl in H.
-                simpl in Hvalid.
-                rewrite <- Hvalid in H.
-                destruct H.
-                unfold full_observations.
-                unfold get_observations.
-                destruct u.
-                simpl in *.
-                discriminate Hequ.
-                destruct (depth (Something b0 is0)) eqn : eq_du.
-                apply depth_zero_bottom in eq_du.
-                discriminate eq_du.
-                apply set_remove_3.
-                apply set_union_intro.
-                left.
-                apply set_union_in_iterated.
-                rewrite Exists_exists.
-                exists (full_observations s' target).
-                rewrite in_map_iff.
-                split.
-                exists s'.
-                rewrite get_observations_depth_redundancy.
-                split.
-                unfold full_observations.
-                reflexivity.
-                rewrite in_map_iff.
-                exists target.
-                split.
-                assumption.
-                apply ((proj2 Hfinite) target).
-                specialize (@depth_parent_child index index_listing Hfinite idec is0 b0 target).
-                intros.
-                simpl in H0.
-                rewrite <- H0.
-                lia.
-                rewrite <- H.
-                unfold full_observations.
-                unfold get_observations.
-                destruct s'.
-                elim Hs'not.
-                reflexivity.
-                destruct (depth (Something b1 is1)) eqn : eq_d1.
-                apply depth_zero_bottom in eq_d1.
-                discriminate eq_d1.
-                apply set_remove_3.
-                apply set_union_intro.
-                right.
-                simpl.
-                intuition.
-                rewrite H.
-                assumption.
-                assumption.
-                exfalso.
-                assumption.
-            * (* In a (get_observation s') *)
-              specialize (observations_in_project u target target).
-              intros.
-              unfold incl in H1.
-              specialize (H1 a).
-              apply H1.
-              rewrite <- H0 in H.
-              assumption.
-    Qed.
-
-    Lemma unfold_full_observations
-      (s s' : state)
-      (Hsnot_bottom : s <> Bottom)
-      (Hs'not_bottom : s' <> Bottom)
-      (target : index) :
-      In s' (full_observations s target) <->
-      project s target = s' \/
-      (exists (i : index), (In s' (full_observations (project s i) target))).
-    Proof.
-      split.
-      - intros.
-        unfold full_observations in H.
-        unfold get_observations in H.
-        destruct s.
-        simpl in *.
-        exfalso.
-        assumption.
-        destruct (depth (Something b is)) eqn : eq_d.
-        apply depth_zero_bottom in eq_d.
-        discriminate eq_d.
-        apply set_remove_1 in H.
-        apply set_union_elim in H.
-        destruct H.
-        + apply set_union_in_iterated in H.
-          rewrite Exists_exists in H.
-          destruct H as [child_res [Heq_child_res Hin_child_res]].
-          rewrite in_map_iff in Heq_child_res.
-          destruct Heq_child_res as [child [Heq_child Hin_child]].
-          rewrite in_map_iff in Hin_child.
-          destruct Hin_child as [i [Hproject Hini]].
-          right.
-          exists i.
-          rewrite get_observations_depth_redundancy in Heq_child.
-          rewrite <- Heq_child in Hin_child_res.
-          rewrite <- Hproject in Hin_child_res.
-          assumption.
-          specialize (@depth_parent_child index index_listing Hfinite idec is b i).
-          intros Hdpc.
-          rewrite <- Hproject.
-          unfold project.
-          lia.
-        + simpl in H.
-          left.
-          intuition.
-      - intros.
-        destruct H.
-        unfold full_observations.
-        unfold get_observations.
-        destruct s.
-        elim Hsnot_bottom.
-        reflexivity.
-        destruct (depth (Something b is)) eqn : eq_d.
-        apply depth_zero_bottom in eq_d.
-        discriminate eq_d.
-        apply set_remove_3.
-        apply set_union_intro.
-        right.
-        simpl.
-        intuition.
-        assumption.
-        unfold full_observations.
-        unfold get_observations.
-        destruct s.
-        elim Hsnot_bottom.
-        reflexivity.
-        destruct (depth (Something b is)) eqn : eq_d.
-        apply depth_zero_bottom in eq_d.
-        discriminate eq_d.
-        apply set_remove_3.
-        apply set_union_intro.
-        left.
-        apply set_union_in_iterated.
-        rewrite Exists_exists.
-        destruct H as [i Hin_i].
-        exists (full_observations (project (Something b is) i) target).
-        split.
-        rewrite in_map_iff.
-        exists (project (Something b is) i).
-        split.
-        rewrite get_observations_depth_redundancy.
-        unfold full_observations.
-        reflexivity.
-        specialize (@depth_parent_child index index_listing Hfinite idec is b i) as Hdpc.
-        unfold project.
-        lia.
-        rewrite in_map_iff.
-        exists i.
-        split.
-        reflexivity.
-        apply ((proj2 Hfinite) i).
-        assumption.
-        assumption.
-    Qed.
-
-    Lemma observations_update_neq
-      (s s' : vstate X)
-      (Hsnot : s <> Bottom)
-      (Hs'not : s' <> Bottom)
-      (target i : index)
-      (Hvalid : project s' i = project s i)
-      (Hi : i <> target)
-      : set_eq
-        (full_observations (update_state s s' i) target)
-        (set_union decide_eq
-          (full_observations s target)
-          (full_observations s' target)
-        ).
-    Proof.
-      remember (update_state s s' i) as u.
-
-      assert (Hproj_ui : project u i = s'). {
-        rewrite Hequ.
-        apply (@project_same index index_listing Hfinite).
-        assumption.
-      }
-
-      assert (Hproj_utarget : project u target = project s target). {
-        rewrite Hequ.
-        apply (@project_different index index_listing Hfinite).
-        intuition.
-        assumption.
-      }
-
-            assert (Hu_not_bottom : u <> Bottom). {
-         destruct u.
-          simpl in *.
-          elim Hs'not.
-          intuition.
-          intros contra.
-          discriminate contra.
-      }
-
-      split;
-      unfold incl;
-      intros.
-      - assert (Ha : a <> Bottom). {
-          apply no_bottom_in_observations in H.
-          assumption.
-        }
-        apply unfold_full_observations in H.
-        destruct H.
-        apply set_union_intro.
-        left.
-        apply unfold_full_observations.
-        assumption.
-        assumption.
-        left.
-        rewrite <- Hproj_utarget.
-        assumption.
-        destruct H as [j Hin_j].
-        apply set_union_intro.
-        destruct (decide (i = j)).
-        + right.
-          rewrite e in Hproj_ui.
-          rewrite Hproj_ui in Hin_j.
-          assumption.
-        + left.
-          apply unfold_full_observations.
-          assumption.
-          assumption.
-          right.
-          exists j.
-          assert (Hsame_uj : (project u j) = (project s j)). {
-            rewrite Hequ.
-            apply (@project_different index index_listing Hfinite).
-            intuition.
-            assumption.
-          }
-          rewrite <- Hsame_uj.
-          assumption.
-        + assumption.
-        + assumption.
-      - apply set_union_elim in H.
-        assert (Ha : a <> Bottom). {
-          destruct H;
-          apply no_bottom_in_observations in H;
-          assumption.
-        }
-        destruct H.
-        apply unfold_full_observations in H.
-        destruct H.
-        apply unfold_full_observations.
-        assumption.
-        assumption.
-        left.
-        rewrite Hproj_utarget.
-        assumption.
-        destruct H as [j Hin_j].
-        apply unfold_full_observations.
-        assumption.
-        assumption.
-        right.
-        destruct (decide (i = j)).
-        exists i.
-        rewrite Hproj_ui.
-        apply unfold_full_observations.
-        assumption.
-        assumption.
-        right.
-        exists i.
-        rewrite Hvalid.
-        rewrite <- e in Hin_j.
-        assumption.
-        exists j.
-        assert (Hproj_uj : project u j = project s j). {
-          rewrite Hequ.
-          apply (@project_different index index_listing Hfinite).
-          intuition.
-          assumption.
-        }
-        rewrite Hproj_uj.
-        assumption.
-        assumption.
-        assumption.
-        apply unfold_full_observations.
-        assumption.
-        assumption.
-        right.
-        exists i.
-        rewrite Hproj_ui.
-        assumption.
-    Qed.
 End Equivocation.
