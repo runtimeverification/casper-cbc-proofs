@@ -1243,7 +1243,7 @@ Lemma trace_generated_index
 Proof.
   destruct (decide ((A v) = i)); [assumption|].
   specialize
-    (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr))
+    (protocol_transition_to X _ _ _ _ _ (proj1 Htr) Heq)
     as Hpt.
   specialize
     (sent_messages_unforgeability s s' (input item) (output item) (l item) Hpt v n e)

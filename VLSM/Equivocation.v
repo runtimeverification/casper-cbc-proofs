@@ -1171,6 +1171,18 @@ Proof.
   assumption.
 Qed.
 
+Lemma has_been_observed_stepwise_from_trace
+      [message : Type]
+      [vlsm: VLSM message]
+      (Hhbo: has_been_observed_capability vlsm):
+  oracle_stepwise_props item_sends_or_receives (has_been_observed vlsm).
+Proof.
+  apply stepwise_props_from_trace.
+  apply has_been_observed_dec.
+  apply proper_observed.
+  apply proper_not_observed.
+Defined.
+
 (** A received message introduces no additional equivocations to a state
     if it has already been observed in s or it is an initial message.
 *)

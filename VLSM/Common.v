@@ -883,22 +883,42 @@ decompose the above properties in proofs.
         reflexivity.
     Qed.
 
+    Lemma protocol_transition_to
+          (s : state)
+          (tr : list transition_item)
+          (tr1 tr2 : list transition_item)
+          (te : transition_item)
+          (Htr : finite_protocol_trace_from s tr)
+          (Heq : tr = tr1 ++ [te] ++ tr2)
+          (lst1 := last (List.map destination tr1) s)
+      : protocol_transition (l te) (lst1, input te) (destination te, output te).
+    Proof.
+      generalize dependent s. generalize dependent tr.
+      induction tr1.
+      - intros tr Heq s Htr. simpl in Heq; subst. inversion Htr; subst. assumption.
+      - specialize (IHtr1 (tr1 ++ [te] ++ tr2) eq_refl).
+        intros tr Heq is Htr; subst. inversion Htr; subst.
+        simpl in IHtr1. specialize (IHtr1 s H2).
+        rewrite map_cons, unroll_last.
+        assumption.
+    Qed.
+
     Lemma finite_ptrace_consecutive_valid_transition
           (s : state)
-          (tr tr2 : list transition_item)
-          (tr1 : list transition_item)
+          (tr : list transition_item)
+          (tr1 tr2 : list transition_item)
           (te1 te2 : transition_item)
           (Htr : finite_protocol_trace_from s tr)
           (Heq : tr = tr1 ++ [te1; te2] ++ tr2)
       : protocol_transition (l te2) (destination te1, input te2) (destination te2, output te2).
     Proof.
-      generalize dependent s. generalize dependent tr.
-      induction tr1.
-      - intros tr Heq s Htr. simpl in Heq; subst. inversion Htr; subst. inversion H2; subst. assumption.
-      - specialize (IHtr1 (tr1 ++ [te1; te2] ++ tr2) eq_refl).
-        intros tr Heq is Htr; subst. inversion Htr; subst.
-        simpl in IHtr1. specialize (IHtr1 s H2). assumption.
+      change ([te1; te2] ++ tr2) with ([te1] ++ [te2] ++ tr2) in Heq.
+      rewrite app_assoc in Heq.
+      specialize (protocol_transition_to s tr (tr1 ++ [te1]) tr2 te2 Htr Heq)
+        as Ht.
+      rewrite map_app in Ht. simpl in Ht. rewrite last_is_last in Ht. assumption.
     Qed.
+    
 
     Lemma protocol_trace_output_is_protocol
       (is : state)
@@ -1079,58 +1099,6 @@ traces.
 
     (* begin hide *)
 
-    Lemma protocol_transition_to
-      (si : state)
-      (middle : transition_item)
-      (tr prefix suffix : list transition_item)
-      (Hsplit : tr = prefix ++ [middle] ++ suffix)
-      (Htr : finite_protocol_trace_from si tr)
-      (prev_state := last (List.map destination prefix) si)
-      :
-      protocol_transition (l middle) (prev_state, input middle) (destination middle, output middle).
-    Proof.
-      intros.
-      destruct prefix eqn : eq_prefix.
-      - simpl in *.
-        unfold prev_state.
-        apply first_transition_valid.
-        specialize (finite_protocol_trace_from_prefix si tr Htr 1).
-        intros.
-        rewrite Hsplit in H.
-        simpl in *.
-        assert (list_prefix suffix 0 = []). {
-          unfold list_prefix.
-          destruct suffix;
-          reflexivity.
-        }
-        rewrite H0 in H.
-        assumption.
-      - assert (Hnot_empty: t :: l1 <> []). {
-          intros contra.
-          discriminate contra.
-        }
-        specialize (exists_last Hnot_empty).
-        intros.
-        destruct X0 as [l2 [lst Hlst]].
-        rewrite Hlst in Hsplit.
-        simpl in Hsplit.
-        rewrite <- app_assoc in Hsplit.
-        simpl in Hsplit.
-        specialize (finite_ptrace_consecutive_valid_transition si).
-        intros.
-        specialize (H tr suffix l2 lst middle Htr Hsplit).
-        assert (destination lst = prev_state). {
-          unfold prev_state.
-          rewrite Hlst.
-          rewrite map_app.
-          rewrite last_app.
-          simpl.
-          reflexivity.
-        }
-        rewrite <- H0.
-        assumption.
-    Qed.
-
     Lemma can_emit_from_protocol_trace
       (si : state)
       (m : message)
@@ -1145,7 +1113,7 @@ traces.
       destruct Hin as [l1 [l2 Hconcat]].
       unfold can_emit.
       destruct Hprotocol.
-      specialize (protocol_transition_to si x tr l1 l2 Hconcat H).
+      specialize (protocol_transition_to _ _ _ _ _ H Hconcat).
       intros.
       simpl in H1.
       exists (last (List.map destination l1) si, input x).
@@ -1928,16 +1896,7 @@ This relation is often used in stating safety and liveness properties.*)
           rewrite <- (app_assoc p _ _) in Htr. simpl in Htr.
           rewrite <- app_assoc in Htr.
           specialize
-            (finite_ptrace_consecutive_valid_transition
-               s
-               (p ++ [last_p; {| l := l1; input := input0; destination := destination0; output := output0 |}] ++ suffix)
-               suffix
-               p
-               last_p
-               {| l := l1; input := input0; destination := destination0; output := output0 |}
-               Htr
-               eq_refl
-            ).
+            (finite_ptrace_consecutive_valid_transition _ _ _ _ _ _ Htr eq_refl).
           simpl.
           rewrite map_app. simpl. rewrite last_is_last. tauto.
         + assert

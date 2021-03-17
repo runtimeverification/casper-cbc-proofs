@@ -1307,6 +1307,7 @@ Existing Instance i0.
 Existing Instance sub_i0.
 Existing Instance sub_index_eq_dec.
 
+
 (**
 A generalization of [equivocators_trace_project_finite_trace_projection_list_commute]
 to projections over a set of indices.
@@ -1315,8 +1316,121 @@ We can project a trace over the composition of equivocators in two ways:
 (1) first project to a subset of equivocator components, then project that to the corresponding subset of the composition of the original components
 (2) first project to the composition of original components, then project to a subset of them
 
-The result below says that the two ways lead to the same result.
+The results below (fist for a single item, then for the full trace saythat the
+two ways lead to the same result.
 *)
+Lemma equivocators_trace_project_finite_trace_sub_projection_item_commute
+  (item: composite_transition_item (equivocator_IM IM))
+  (final_descriptors' final_descriptors: equivocator_descriptors IM)
+  (final_sub_descriptors := fun i : sub_index selection => final_descriptors (` i))
+  (pr_item: list (composite_transition_item IM))
+  (Hpr_item: equivocators_trace_project IM final_descriptors [item] = Some (pr_item, final_descriptors'))
+  (pr_sub_item: list (composite_transition_item (sub_IM IM selection)))
+  (final_sub_descriptors': equivocator_descriptors (sub_IM IM selection))
+  (Hpr_sub_item: equivocators_trace_project (sub_IM IM selection) final_sub_descriptors (finite_trace_sub_projection (equivocator_IM IM) selection [item]) = Some (pr_sub_item, final_sub_descriptors'))
+  : final_sub_descriptors' = (fun i : sub_index selection => final_descriptors' (` i))
+  /\ finite_trace_sub_projection IM selection pr_item = pr_sub_item.
+Proof.
+  unfold equivocators_trace_project in Hpr_item. unfold sub_IM in *.
+  simpl in *.
+  destruct (equivocators_transition_item_project IM final_descriptors item)
+    as [(ox, final')|] eqn:Hpr_item_x
+  ; [|congruence].
+  unfold equivocators_transition_item_project in Hpr_item_x.
+  unfold composite_transition_item_projection in Hpr_item_x.
+  remember (equivocator_vlsm_transition_item_project (IM (projT1 (l item))) (composite_transition_item_projection_from_eq (equivocator_IM IM) item (projT1 (l item)) eq_refl) (final_descriptors (projT1 (l item))))
+    as pr_item_x.
+  destruct pr_item_x as [(oitem', descriptor')|]; [|congruence].
+
+  unfold composite_transition_item_projection_from_eq in Heqpr_item_x.
+  unfold eq_rect_r in Heqpr_item_x.
+  simpl in Heqpr_item_x.
+  destruct (decide (from_sub_projection (equivocator_IM IM) selection item)).
+  - simpl in Hpr_sub_item.
+    unfold final_sub_descriptors in *.
+    unfold equivocators_transition_item_project in Hpr_sub_item.
+    match type of Hpr_sub_item with
+    | context [equivocator_vlsm_transition_item_project ?X ?i ?c]
+      => remember (equivocator_vlsm_transition_item_project X i c) as project
+    end.
+    simpl in Heqproject.
+    unfold
+      composite_transition_item_sub_projection,
+      composite_transition_item_projection,
+      composite_transition_item_projection_from_eq,
+      eq_rect_r,
+      composite_state_sub_projection in Heqproject.
+    simpl in Heqproject.
+    rewrite <-  Heqpr_item_x in Heqproject. clear Heqpr_item_x.
+    subst project.
+    simpl in Hpr_sub_item.
+    split.
+    + apply functional_extensionality_dep.
+      destruct oitem' as [item'|]
+      ; inversion Hpr_sub_item; subst; clear Hpr_sub_item
+      ; inversion Hpr_item_x; subst; clear Hpr_item_x
+      ; inversion Hpr_item; subst; clear Hpr_item
+      ; simpl
+      ; intros i
+      ; destruct (decide ((proj1_sig i) = projT1 (l item))).
+      * rewrite equivocator_descriptors_update_eq_rew with (Heq := e).
+        assert (e1 : i = (dec_exist (sub_index_prop selection) (projT1 (l item)) f)).
+        { apply dec_sig_eq_iff. assumption. }
+        subst i.
+        rewrite equivocator_descriptors_update_eq_rew with (Heq := eq_refl).
+        simpl in e. replace e with (eq_refl (projT1 (l item))); [reflexivity|].
+        apply Eqdep_dec.UIP_dec. assumption.
+      * rewrite! equivocator_descriptors_update_neq; [reflexivity | assumption |].
+        intro H. elim n. apply dec_sig_eq_iff in H. assumption.
+      * rewrite equivocator_descriptors_update_eq_rew with (Heq := e).
+        assert (e1 : i = (dec_exist (sub_index_prop selection) (projT1 (l item)) f)).
+        { apply dec_sig_eq_iff. assumption. }
+        subst i.
+        rewrite equivocator_descriptors_update_eq_rew with (Heq := eq_refl).
+        simpl in e. replace e with (eq_refl (projT1 (l item))); [reflexivity|].
+        apply Eqdep_dec.UIP_dec. assumption.
+      * rewrite! equivocator_descriptors_update_neq; [reflexivity | assumption |].
+        intro H. elim n. apply dec_sig_eq_iff in H. assumption.
+    + destruct oitem' as [item'|]
+      ; inversion Hpr_sub_item; subst; clear Hpr_sub_item
+      ; inversion Hpr_item_x; subst; clear Hpr_item_x
+      ; inversion Hpr_item; subst; clear Hpr_item
+      ; simpl; [|reflexivity].
+      unfold from_sub_projection. simpl.
+      destruct (decide (sub_index_prop selection (projT1 (l item)))); [|contradiction].
+      f_equal.
+      unfold composite_transition_item_sub_projection. simpl.
+      f_equal.
+      unfold sub_index.
+      apply
+        (@dec_sig_sigT_eq _
+          (sub_index_prop selection)
+          (sub_index_prop_dec selection)
+          (fun n => vlabel (IM n))
+          (projT1 (l item)) (l item') (l item') s f
+        ).
+      reflexivity.
+  - simpl in Hpr_sub_item. unfold final_sub_descriptors in *.
+    inversion Hpr_sub_item. subst. clear Hpr_sub_item.
+    split.
+    + apply functional_extensionality_dep. intros i.
+      assert (Hnot : proj1_sig i <> projT1 (l item)).
+      { intro Hnot. elim n. destruct i. simpl in Hnot. subst.
+        apply bool_decide_eq_true in e. assumption.
+      }
+      destruct oitem' as [item'|]
+      ; inversion Hpr_item_x; subst; clear Hpr_item_x
+      ; inversion Hpr_item; subst; clear Hpr_item
+      ; simpl
+      ; rewrite equivocator_descriptors_update_neq; [reflexivity| assumption | reflexivity| assumption].
+    + destruct oitem' as [item'|]
+      ; inversion Hpr_item_x; subst; clear Hpr_item_x
+      ; inversion Hpr_item; subst; clear Hpr_item
+      ; simpl; [|reflexivity].
+      unfold from_sub_projection. simpl.
+      destruct (decide (sub_index_prop selection (projT1 (l item)))); [contradiction|].
+      reflexivity.
+Qed.
 
 Lemma equivocators_trace_project_finite_trace_sub_projection_commute
   (final_descriptors initial_descriptors : equivocator_descriptors IM)
@@ -1352,107 +1466,12 @@ Proof.
     rewrite finite_trace_sub_projection_app in Hproject_sub_tr.
     apply equivocators_trace_project_app_iff in Hproject_sub_tr.
     destruct Hproject_sub_tr as [tr_subX' [project_sub_x [final_sub_descriptors' [Hproject_sub_x [Htr_subX' Heqtr_subX]]]]].
-    assert (Hfinal_sub' : final_sub_descriptors' = (fun i => final_descriptors' (proj1_sig i)) /\ finite_trace_sub_projection IM selection projectx = project_sub_x).
-    { clear - Hproject_x Hproject_sub_x.
-      simpl in *.
-      destruct (equivocators_transition_item_project IM final_descriptors x)
-        as [(ox, final')|] eqn:Hpr_item_x
-      ; [|congruence].
-      unfold equivocators_transition_item_project in Hpr_item_x.
-      unfold composite_transition_item_projection in Hpr_item_x.
-      remember (equivocator_vlsm_transition_item_project (IM (projT1 (l x))) (composite_transition_item_projection_from_eq (equivocator_IM IM) x (projT1 (l x)) eq_refl) (final_descriptors (projT1 (l x))))
-        as pr_item_x.
-      destruct pr_item_x as [(oitem', descriptor')|]; [|congruence].
-
-      unfold composite_transition_item_projection_from_eq in Heqpr_item_x.
-      unfold eq_rect_r in Heqpr_item_x.
-      simpl in Heqpr_item_x.
-      destruct (decide (from_sub_projection (equivocator_IM IM) selection x)).
-      - simpl in Hproject_sub_x.
-        unfold final_sub_descriptors in *.
-        unfold equivocators_transition_item_project in Hproject_sub_x.
-        match type of Hproject_sub_x with
-        | context [equivocator_vlsm_transition_item_project ?X ?i ?c]
-          => remember (equivocator_vlsm_transition_item_project X i c) as project
-        end.
-        simpl in Heqproject.
-        unfold
-          composite_transition_item_sub_projection,
-          composite_transition_item_projection,
-          composite_transition_item_projection_from_eq,
-          eq_rect_r,
-          composite_state_sub_projection in Heqproject.
-        simpl in Heqproject.
-        rewrite <-  Heqpr_item_x in Heqproject. clear Heqpr_item_x.
-        subst project.
-        simpl in Hproject_sub_x.
-        split.
-        + apply functional_extensionality_dep.
-          destruct oitem' as [item'|]
-          ; inversion Hproject_sub_x; subst; clear Hproject_sub_x
-          ; inversion Hpr_item_x; subst; clear Hpr_item_x
-          ; inversion Hproject_x; subst; clear Hproject_x
-          ; simpl
-          ; intros i
-          ; destruct (decide ((proj1_sig i) = projT1 (l x))).
-          * rewrite equivocator_descriptors_update_eq_rew with (Heq := e).
-            assert (e1 : i = (dec_exist (sub_index_prop selection) (projT1 (l x)) f)).
-            { apply dec_sig_eq_iff. assumption. }
-            subst i.
-            rewrite equivocator_descriptors_update_eq_rew with (Heq := eq_refl).
-            simpl in e. replace e with (eq_refl (projT1 (l x))); [reflexivity|].
-            apply Eqdep_dec.UIP_dec. assumption.
-          * rewrite! equivocator_descriptors_update_neq; [reflexivity | assumption |].
-            intro H. elim n. apply dec_sig_eq_iff in H. assumption.
-          * rewrite equivocator_descriptors_update_eq_rew with (Heq := e).
-            assert (e1 : i = (dec_exist (sub_index_prop selection) (projT1 (l x)) f)).
-            { apply dec_sig_eq_iff. assumption. }
-            subst i.
-            rewrite equivocator_descriptors_update_eq_rew with (Heq := eq_refl).
-            simpl in e. replace e with (eq_refl (projT1 (l x))); [reflexivity|].
-            apply Eqdep_dec.UIP_dec. assumption.
-          * rewrite! equivocator_descriptors_update_neq; [reflexivity | assumption |].
-            intro H. elim n. apply dec_sig_eq_iff in H. assumption.
-        + destruct oitem' as [item'|]
-          ; inversion Hproject_sub_x; subst; clear Hproject_sub_x
-          ; inversion Hpr_item_x; subst; clear Hpr_item_x
-          ; inversion Hproject_x; subst; clear Hproject_x
-          ; simpl; [|reflexivity].
-          unfold from_sub_projection. simpl.
-          destruct (decide (sub_index_prop selection (projT1 (l x)))); [|contradiction].
-          f_equal.
-          unfold composite_transition_item_sub_projection. simpl.
-          f_equal.
-          unfold sub_index.
-          apply
-            (@dec_sig_sigT_eq _
-              (sub_index_prop selection)
-              (sub_index_prop_dec selection)
-              (fun n => vlabel (IM n))
-              (projT1 (l x)) (l item') (l item') s f
-            ).
-          reflexivity.
-      - simpl in Hproject_sub_x. unfold final_sub_descriptors in *.
-        inversion Hproject_sub_x. subst. clear Hproject_sub_x.
-        split.
-        + apply functional_extensionality_dep. intros i.
-          assert (Hnot : proj1_sig i <> projT1 (l x)).
-          { intro Hnot. elim n. destruct i. simpl in Hnot. subst.
-            apply bool_decide_eq_true in e. assumption.
-          }
-          destruct oitem' as [item'|]
-          ; inversion Hpr_item_x; subst; clear Hpr_item_x
-          ; inversion Hproject_x; subst; clear Hproject_x
-          ; simpl
-          ; rewrite equivocator_descriptors_update_neq; [reflexivity| assumption | reflexivity| assumption].
-        + destruct oitem' as [item'|]
-          ; inversion Hpr_item_x; subst; clear Hpr_item_x
-          ; inversion Hproject_x; subst; clear Hproject_x
-          ; simpl; [|reflexivity].
-          unfold from_sub_projection. simpl.
-          destruct (decide (sub_index_prop selection (projT1 (l x)))); [contradiction|].
-          reflexivity.
-    }
+    specialize
+      (equivocators_trace_project_finite_trace_sub_projection_item_commute
+        x _ _ _ Hproject_x _ _ Hproject_sub_x
+      )
+      as Hfinal_sub'.
+    
     destruct Hfinal_sub' as [Hfinal_sub' Hpr_sub_x].
     subst final_sub_descriptors'.
     specialize (IHtr _ Htr_subX').
