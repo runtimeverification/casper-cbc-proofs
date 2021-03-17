@@ -349,9 +349,9 @@ Proof.
       as (tr_eprefx, s_eprefx) eqn:Hplan_eprefx.
     subst tr_is_epref.
     setoid_rewrite map_app in Hplan_eprefx.
-    rewrite (composite_apply_plan_app equivocator_IM) in Hplan_eprefx.
+    rewrite composite_apply_plan_app in Hplan_eprefx.
     simpl in *.
-    unfold composite_trace_to_plan in IHepref.
+    unfold composite_trace_to_plan,_trace_to_plan in IHepref.
     destruct
       (composite_apply_plan equivocator_IM is  (map _transition_item_to_plan_item epref))
       as (tr_epref, s_epref) eqn:Hplan_epref.
@@ -388,7 +388,7 @@ Proof.
     subst tr_replay_eprefx s_replay_eprefx. clear Hplan_replay_eprefx.
 
     destruct x. simpl in *.
-    unfold _transition_item_to_plan_item, composite_apply_plan in Hplan_x. simpl in Hplan_x.
+    unfold _transition_item_to_plan_item, composite_apply_plan, _apply_plan in Hplan_x. simpl in Hplan_x.
     destruct l as (i, li).
     destruct (vtransition (equivocator_IM i) li (s_epref i, input))
       as (s_epref_i', om_epref_i') eqn:Ht_s_epref_i.
@@ -444,7 +444,7 @@ Proof.
       split; [assumption|].
       split; [intros; reflexivity|].
       assumption.
-    + unfold composite_apply_plan in Hplan_replay_x. simpl in Hplan_replay_x.
+    + unfold composite_apply_plan, _apply_plan in Hplan_replay_x. simpl in Hplan_replay_x.
       destruct
         (vtransition (equivocator_IM i)
           (li, Existing (IM i) (id' + S (projT1 (full_replay_state i))) fd')
@@ -827,7 +827,7 @@ Proof.
             (_transition_item_to_plan_item ea)
           ).
         spec Hvalids.
-        { subst tr. unfold trace_to_plan. repeat rewrite map_app. reflexivity. }
+        { subst tr. unfold trace_to_plan, _trace_to_plan. repeat rewrite map_app. reflexivity. }
         destruct ea. simpl in *.
         destruct l as (eqv, l).
         destruct l as (l,d).
@@ -865,6 +865,7 @@ Proof.
             end.
             assumption.
           ++ simpl. rewrite <- (apply_plan_last SeededXE) in *.
+            rewrite <- (apply_plan_last (pre_loaded_vlsm (composite_vlsm equivocator_IM constraint) seed)).
             apply (Hconstraint _ _ _  _ _ _ _ eq_refl eq_refl).
 Qed.
 
@@ -972,8 +973,8 @@ Proof.
     rewrite last_error_is_last in Houtput'.
     rewrite replayed_trace_from_app.
     apply Exists_app. right. simpl.
-    unfold composite_apply_plan in Houtput'.
-    unfold composite_apply_plan. simpl in *.
+    unfold composite_apply_plan,_apply_plan in Houtput'.
+    unfold composite_apply_plan,_apply_plan. simpl in *.
     destruct (update_equivocators_transition_item_descriptor full_replay_state mitem) eqn:Hupdated_item.
     simpl in *.
     destruct label_a as (i, li).

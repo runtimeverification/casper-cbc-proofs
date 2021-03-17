@@ -155,18 +155,6 @@ Section apply_plans.
 
 End apply_plans.
 
-(**
-We define several notations useful when we want to use the results above
-for a specific [VLSM], by instantiating the generic definitions with the
-corresponding [type] and [transition].
-*)
-
-Notation vplan_item X := (@plan_item _ (type X)).
-Notation apply_plan X := (@_apply_plan _ (type X) (vtransition X)).
-Notation trace_to_plan X := (@_trace_to_plan _ (type X)).
-Notation apply_plan_app X := (@_apply_plan_app _ (type X) (vtransition X)).
-Notation apply_plan_last X := (@_apply_plan_last _ (type X) (vtransition X)).
-
 Section protocol_plans.
 
   Context
@@ -174,8 +162,30 @@ Section protocol_plans.
     (X : VLSM message)
     .
 
-  Definition plan : Type
-    := list (@plan_item message (type X)).
+  (**
+  We define several notations useful when we want to use the results above
+  for a specific [VLSM], by instantiating the generic definitions with the
+  corresponding [type] and [transition].
+  *)
+
+  Definition vplan_item := (@plan_item _ (type X)).
+  Definition plan : Type := list vplan_item.
+  Definition apply_plan := (@_apply_plan _ (type X) (vtransition X)).
+  Definition trace_to_plan := (@_trace_to_plan _ (type X)).
+  Definition apply_plan_app
+    (start : vstate X)
+    (a a' : plan)
+    : apply_plan start (a ++ a') =
+      let (aitems, afinal) := apply_plan start a in
+      let (a'items, a'final) := apply_plan afinal a' in
+       (aitems ++ a'items, a'final)
+    := (@_apply_plan_app _ (type X) (vtransition X) start a a').
+  Definition apply_plan_last
+    (start : vstate X)
+    (a : plan)
+    (after_a := apply_plan start a)
+    : last (map destination (fst after_a)) start = snd after_a
+    := (@_apply_plan_last _ (type X) (vtransition X) start a).
 
   (** A plan is protocol w.r.t. a state if by applying it to that state we
   obtain a protocol trace sequence.
@@ -184,21 +194,21 @@ Section protocol_plans.
     (s : vstate X)
     (a : plan)
     : Prop :=
-    finite_protocol_trace_from _ s (fst (apply_plan X s a)).
+    finite_protocol_trace_from _ s (fst (apply_plan s a)).
 
   Lemma finite_protocol_plan_from_app_iff
     (s : vstate X)
     (a b : plan)
-    (s_a := snd (apply_plan X s a))
+    (s_a := snd (apply_plan s a))
     : finite_protocol_plan_from s a /\ finite_protocol_plan_from s_a b <-> finite_protocol_plan_from s (a ++ b).
   Proof.
     unfold finite_protocol_plan_from.
-    specialize (apply_plan_app X s a b) as Happ.
-    specialize (apply_plan_last X s a) as Hlst.
-    simpl in *. subst s_a.
-    destruct (apply_plan X s a) as (aitems, afinal) eqn:Ha.
+    specialize (apply_plan_app s a b) as Happ.
+    specialize (apply_plan_last s a) as Hlst.
+    destruct (apply_plan s a) as (aitems, afinal) eqn:Ha.
+    subst s_a.
     simpl in *.
-    destruct (apply_plan X afinal b) as (bitems, bfinal).
+    destruct (apply_plan afinal b) as (bitems, bfinal).
     rewrite Happ. simpl. clear Happ. subst afinal.
     apply finite_protocol_trace_from_app_iff.
   Qed.
@@ -217,11 +227,11 @@ Section protocol_plans.
     (Hprs : protocol_state_prop X s)
     (a : plan)
     (Hpra : finite_protocol_plan_from s a)
-    (after_a := apply_plan X s a) :
+    (after_a := apply_plan s a) :
     protocol_state_prop X (snd after_a).
   Proof.
     subst after_a.
-    rewrite <- (apply_plan_last X).
+    rewrite <- apply_plan_last.
     apply finite_ptrace_last_pstate.
     assumption.
   Qed.
@@ -233,26 +243,27 @@ Section protocol_plans.
     (s : vstate X)
     (tr : list (vtransition_item X))
     (Htr : finite_protocol_trace_from X s tr)
-    : fst (apply_plan X s (trace_to_plan X tr)) = tr.
+    : fst (apply_plan s (trace_to_plan tr)) = tr.
   Proof.
     induction tr using rev_ind; try reflexivity.
     apply finite_protocol_trace_from_app_iff in Htr.
     destruct Htr as [Htr Hx].
     specialize (IHtr Htr).
-    setoid_rewrite map_app. setoid_rewrite (apply_plan_app X).
-    specialize (apply_plan_last X s (map _transition_item_to_plan_item tr)) as Hlst.
-    destruct (apply_plan X s (map _transition_item_to_plan_item tr)) as (aitems, afinal)
+    setoid_rewrite map_app. rewrite apply_plan_app.
+    specialize (apply_plan_last s (map _transition_item_to_plan_item tr)) as Hlst.
+    destruct (apply_plan s (map _transition_item_to_plan_item tr)) as (aitems, afinal)
       eqn:Hapl.
     setoid_rewrite Hapl in IHtr. simpl in IHtr.
     simpl in *. subst.
-    inversion Hx. subst. clear -H3.
-    destruct H3 as [_ Ht].
-    unfold _transition_item_to_plan_item. simpl. unfold apply_plan.
+    apply first_transition_valid in Hx.
+    destruct Hx as [_ Ht].
+    unfold _transition_item_to_plan_item. simpl. unfold apply_plan, _apply_plan.
     simpl.
     match goal with
-    |- context[vtransition X l ?lst] => replace (vtransition X l lst) with (s0, oom)
-    end
-    ; reflexivity.
+    |- context[vtransition X ?l ?lst] => replace (vtransition X l lst) with (destination x, output x)
+    end.
+    destruct x. 
+    reflexivity.
   Qed.
 
   (** The plan extracted from a protocol trace is protocol w.r.t. the starting
@@ -262,7 +273,7 @@ Section protocol_plans.
     (s : vstate X)
     (tr : list (vtransition_item X))
     (Htr : finite_protocol_trace_from X s tr)
-    : finite_protocol_plan_from s (trace_to_plan X tr).
+    : finite_protocol_plan_from s (trace_to_plan tr).
   Proof.
     unfold finite_protocol_plan_from.
     rewrite trace_to_plan_to_trace; assumption.
@@ -279,7 +290,7 @@ Section protocol_plans.
         (prefa suffa : plan)
         (ai : plan_item)
         (Heqa : a = prefa ++ [ai] ++ suffa)
-        (lst := snd (apply_plan X s prefa)),
+        (lst := snd (apply_plan s prefa)),
         vvalid X (label_a ai) (lst, input_a ai).
   Proof.
     induction a using rev_ind; repeat split; intros
@@ -295,8 +306,8 @@ Section protocol_plans.
     - destruct Ha' as [_ [Hmsgs _]].
       apply Forall_app. split; try assumption.
       repeat constructor. unfold finite_protocol_plan_from in Hx.
-      remember (snd (apply_plan X s a)) as lst.
-      unfold apply_plan in Hx. simpl in Hx.
+      remember (snd (apply_plan s a)) as lst.
+      unfold apply_plan, _apply_plan in Hx. simpl in Hx.
       destruct x.
       destruct ( vtransition X label_a0 (lst, input_a0)) as (dest, out).
       simpl. simpl in Hx. inversion Hx. subst.
@@ -307,9 +318,9 @@ Section protocol_plans.
       + subst. rewrite app_assoc in Heqa. rewrite app_nil_r in Heqa.
         apply app_inj_tail in Heqa. destruct Heqa; subst.
         unfold lst. clear lst.
-        remember (snd (apply_plan X s prefa)) as lst.
+        remember (snd (apply_plan s prefa)) as lst.
         unfold finite_protocol_plan_from in Hx.
-        unfold apply_plan in Hx. simpl in Hx.
+        unfold apply_plan,_apply_plan in Hx. simpl in Hx.
         destruct ai.
         destruct ( vtransition X label_a0 (lst, input_a0)) as (dest, out).
         simpl. simpl in Hx. inversion Hx. subst.
@@ -326,22 +337,24 @@ Section protocol_plans.
       ; try apply IHa; repeat split; try assumption.
       + intros.
         specialize (Hvalid prefa (suffa ++ [x]) ai).
-        repeat rewrite app_assoc in *. rewrite <- Heqa in Hvalid.
+        repeat rewrite app_assoc in *.
+        subst a.
         specialize (Hvalid eq_refl). assumption.
       + unfold finite_protocol_plan_from.
         specialize (Hvalid a [] x).
         rewrite app_assoc in Hvalid. rewrite app_nil_r in Hvalid.
         specialize (Hvalid eq_refl).
-        remember (snd (apply_plan X s a)) as sa.
-        unfold apply_plan. simpl.
+        remember (snd (apply_plan s a)) as sa.
+        unfold apply_plan, _apply_plan. simpl.
         destruct x.
         destruct (vtransition X label_a0 (sa, input_a0)) as (dest, out) eqn:Ht.
         simpl.
         apply Forall_inv in Hinput_ai. simpl in Hinput_ai.
         unfold finite_protocol_plan_from in Ha.
         apply finite_ptrace_last_pstate in Ha.
-        specialize (apply_plan_last X s a) as Hlst.
-        simpl in Hlst. rewrite Hlst in Ha. rewrite <- Heqsa in Ha.
+        specialize (apply_plan_last s a) as Hlst.
+        simpl in Hlst, Ha.
+        setoid_rewrite Hlst in Ha. setoid_rewrite <- Heqsa in Ha.
         repeat constructor; try assumption.
         exists out.
         replace (@pair (@state message (@type message X)) (option message) dest out)
@@ -361,9 +374,9 @@ Section protocol_plans.
     split; 
     intros; 
     destruct a; 
-    unfold apply_plan in *; simpl in *;
+    unfold apply_plan,_apply_plan in *; simpl in *;
     unfold finite_protocol_plan_from in *;
-    unfold apply_plan in *; simpl in *.
+    unfold apply_plan, _apply_plan in *; simpl in *.
     - match type of H with
       | context[let (_, _) := let (_, _) := ?t in _ in _] =>
         destruct t as [dest output] eqn : eq_trans
@@ -386,7 +399,7 @@ Section protocol_plans.
     (P : vstate X -> Prop) :
     Prop :=
     forall (s : vstate X),
-    (P s -> protocol_state_prop X s -> finite_protocol_plan_from s a -> P (snd (apply_plan X s a))).
+    (P s -> protocol_state_prop X s -> finite_protocol_plan_from s a -> P (snd (apply_plan s a))).
 
   Definition ensures
     (a : plan)
@@ -416,7 +429,7 @@ Section protocol_plans.
     apply finite_protocol_plan_from_app_iff.
     split. 
     - assumption.
-    - remember (snd (apply_plan X s a)) as s'.
+    - remember (snd (apply_plan s a)) as s'.
       specialize (Hensures s').
       apply Hensures.
       rewrite Heqs'.

@@ -201,7 +201,7 @@ Proof.
   end.
   destruct IHtr as [Hproject Hsize].
   simpl in Heqa_app.
-  unfold composite_apply_plan in Heqa_app.
+  unfold composite_apply_plan, _apply_plan in Heqa_app.
   simpl in Heqa_app.
   unfold update_equivocators_transition_item_descriptor in Heqa_app.
   destruct x. destruct l as (eqv, li).

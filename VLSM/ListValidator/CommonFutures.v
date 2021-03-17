@@ -668,8 +668,7 @@ Context
     - intros. simpl in *.
       
       change (a :: a0) with ([a] ++ a0).
-      specialize (finite_protocol_plan_from_app_iff X s [a] a0) as Hrew.
-      simpl in Hrew. rewrite <- Hrew.
+      rewrite <- finite_protocol_plan_from_app_iff.
       
       unfold sync in Hsync.
       destruct (complete_suffix (get_history (s' inter) from) (get_history (s to) from)) eqn : eq_cs. 2: discriminate Hsync.
@@ -846,7 +845,7 @@ Context
           discriminate eq_cs2.
       }
       unfold finite_protocol_plan_from at 1.
-      unfold apply_plan. simpl in *.
+      unfold apply_plan, _apply_plan. simpl in *.
       rewrite fold_right_app. simpl.
       match goal with
       |- context [let (_,_) := let (_,_) := ?t in _ in _] =>
@@ -858,19 +857,28 @@ Context
       + apply IHa.
       + destruct IHa as [_ IHa].
         rewrite <- IHa.
-        unfold _apply_plan. simpl.
+        unfold apply_plan, _apply_plan. simpl.
         f_equal.
         specialize (@_apply_plan_folder_additive _ (type X) (vtransition X) s0 (rev a0) ) as Hadd.
         
         match goal with
         |- context[[?item]] => specialize (Hadd [item])
         end.
-        simpl in Hadd.
+        simpl in Hadd. simpl.
         match goal with
         |- _ = snd (let (final, items) := ?f in _) to =>
           destruct f as (tr', dest') eqn : eqf2
         end.
-        simpl in *. rewrite Hadd.
+        match type of Hadd with 
+        | let (_,_) := ?f in _ => replace f with (tr', dest') in Hadd
+        end.
+        simpl in *. 
+        match goal with
+        |- snd (let (final, items) := ?f in _) to = _ =>
+          match type of Hadd with _ = ?r =>
+            replace f  with r
+          end
+        end.
         reflexivity.
     Qed.
    
@@ -1554,7 +1562,7 @@ Context
         rewrite concat_app. simpl in *.
         rewrite app_nil_r.
         
-        rewrite (apply_plan_app X).
+        rewrite apply_plan_app.
        
         destruct (apply_plan X s (concat (map (get_matching_plan s from) li))) as (tr_long, res_long) eqn : eq_long.
         destruct (apply_plan X res_long (get_matching_plan s from x)) as (tr_short, res_short) eqn : eq_short.
@@ -1693,14 +1701,7 @@ Context
         
         rewrite Hres_long in Heff.
         destruct Heff as [Heff_proto Heff_proj].
-        match goal with
-        |- context [snd (let (_,_) := ?x in _)] =>
-          replace x with (tr_long, res_long)
-        end.
-        match goal with
-        |- context [snd (let (_,_) := ?x in _)] =>
-          replace x with (tr_short, res_short)
-        end.
+
         split.
         + apply finite_protocol_plan_from_app_iff.
           split. 
@@ -1712,7 +1713,6 @@ Context
           * specialize (IHli_proj i H).
             rewrite <- IHli_proj.
             specialize (Hrem2 i H).
-            simpl.
             rewrite <- Hrem2.
             rewrite Hres_long.
             intuition.
@@ -1794,26 +1794,16 @@ Context
           intuition.
         }
         
-        unfold res.
-        rewrite (apply_plan_app X).
-        destruct (apply_plan X s a) as [tr_long res_long] eqn:eq_long.
-        match type of Hpra_short with
-        | context[ snd ?a] => replace a with (tr_long, res_long) in Hpra_short
-        end.
-        match type of IHa with
-        | context[ snd ?a] => replace a with (tr_long, res_long) in IHa
-        end.
-        simpl in IHa.
         rewrite <- IHa.
-
+        unfold res.
+        rewrite apply_plan_app.
+        destruct (apply_plan X s a) as [tr_long res_long].
         simpl in *.
-        unfold apply_plan.
-        unfold _apply_plan_folder.
+        unfold apply_plan, _apply_plan, _apply_plan_folder.
         destruct x. simpl.
-        
+
         unfold finite_protocol_plan_from in Hpra_short.
-        unfold apply_plan in Hpra_short.
-        unfold _apply_plan_folder in Hpra_short.
+        unfold apply_plan,_apply_plan, _apply_plan_folder in Hpra_short.
         simpl in Hpra_short.
         destruct (vtransition X label_a (res_long, input_a)) eqn : eq_trans.
         simpl.
@@ -1939,7 +1929,7 @@ Context
         apply finite_protocol_plan_from_app_iff in Hpr.
         destruct Hpr as [Hpr_long Hpr_short].
         
-        rewrite (apply_plan_app X).
+        rewrite apply_plan_app.
         destruct (apply_plan X s' a) as (tr_long', res_long') eqn : eq_long'.
         destruct (apply_plan X res_long' [x]) as (tr_short', res_short') eqn : eq_short'.
         simpl.
@@ -1957,10 +1947,11 @@ Context
         simpl in IHa.
         destruct IHa as [Iha_pr Iha_proj].
         
-        rewrite (apply_plan_app X).
+        rewrite apply_plan_app.
         destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
         destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
-        
+        simpl in *.
+
         assert (res_long = snd (apply_plan X s a)). {
           rewrite eq_long.
           intuition.
@@ -1981,12 +1972,10 @@ Context
           intuition.
         }
           
-        simpl in *.
         replace res_short' with (snd (apply_plan X res_long' [x])).
         replace res_short with (snd (apply_plan X res_long [x])).
         
-        unfold apply_plan.
-        unfold _apply_plan_folder.
+        unfold apply_plan, _apply_plan, _apply_plan_folder.
         specialize (Hrec_short x).
         remember x as x'.
         destruct x as [label_x input_x].
@@ -2007,8 +1996,7 @@ Context
         } 
 
         unfold finite_protocol_plan_from in Hpr_short.
-        unfold apply_plan in Hpr_short.
-        unfold _apply_plan_folder in Hpr_short.
+        unfold apply_plan, _apply_plan, _apply_plan_folder in Hpr_short.
         simpl in Hpr_short.
         rewrite Heqx' in Hpr_short.
         rewrite Heqx'.
@@ -2078,14 +2066,12 @@ Context
             rewrite eq_long' in Hrel. simpl in Hrel.
             apply Hrel; [|assumption]. simpl.
             specialize (Iha_proj j).
-            rewrite eq_long in Iha_proj.
             rewrite Hm.
             symmetry.
             intuition.
         + intros.
           subst x'. simpl in *.
           specialize (Iha_proj i).
-          rewrite eq_long in Iha_proj.
          * inversion trans.
            inversion trans'.
            destruct (decide (i = j)).
@@ -2194,7 +2180,7 @@ Context
         destruct IHlfrom as [IHprotocol IHproject].
         rewrite map_app.
         rewrite concat_app.
-        rewrite (apply_plan_app X).
+        rewrite apply_plan_app.
         
         match goal with
         |- context[apply_plan X s ?a] => 
@@ -2413,7 +2399,7 @@ Context
       assumption.
       unfold receive_phase_transitions.
       unfold receive_phase_result.
-      apply (apply_plan_last X).
+      apply apply_plan_last.
     Qed.
     
     Remark self_projections_same_after_receive_phase

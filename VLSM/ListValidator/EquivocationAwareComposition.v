@@ -134,7 +134,7 @@ Context
     - intuition.
     - simpl in *.
       intros.
-      rewrite (apply_plan_app X).
+      rewrite apply_plan_app.
       destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
       destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
       
@@ -228,7 +228,7 @@ Context
     - intuition.
     - simpl in *.
       intros.
-      rewrite (apply_plan_app X).
+      rewrite apply_plan_app.
       destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
       destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
       
@@ -1989,13 +1989,11 @@ Context
       apply finite_protocol_plan_from_app_iff in Hpr_a.
       spec IHa. intuition.
         
-      rewrite (apply_plan_app X).
+      rewrite apply_plan_app.
       destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
-      simpl in eq_long.
-      rewrite eq_long in IHa.
       destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
-      
-      assert (res_long = snd (apply_plan X s a)) by (simpl; rewrite eq_long; intuition).
+
+      assert (res_long = snd (apply_plan X s a)) by (rewrite eq_long; intuition).
       assert (res_short = snd (apply_plan X res_long [x])) by (rewrite eq_short; intuition).
       
       simpl.
@@ -2009,7 +2007,7 @@ Context
         simpl in IHa.
         intuition.
       + rewrite H0.
-        unfold apply_plan. simpl.
+        unfold apply_plan, _apply_plan. simpl.
         
         specialize (Hgood x).
         spec Hgood. {
@@ -2058,7 +2056,7 @@ Context
               unfold finite_protocol_plan_from in H1.
               intuition.
             - rewrite H.
-              apply (apply_plan_last X).
+              apply apply_plan_last.
           }
           specialize (Hf (SimpObs Message' from so)).
           apply in_cobs_messages'.

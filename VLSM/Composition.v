@@ -400,6 +400,26 @@ the [composite_valid]ity.
       inversion Ht. apply state_update_eq.
     Qed.
 
+    (** Composite versions for the generic [_apply_plan]-related definitions and
+    results.
+    *)
+    Definition composite_apply_plan := (@_apply_plan _ composite_type composite_transition).
+    Definition composite_apply_plan_app
+      (start : composite_state)
+      (a a' : list plan_item)
+      : composite_apply_plan start (a ++ a') =
+        let (aitems, afinal) := composite_apply_plan start a in
+        let (a'items, a'final) := composite_apply_plan afinal a' in
+         (aitems ++ a'items, a'final)
+      := (@_apply_plan_app _ composite_type composite_transition start a a').
+    Definition composite_apply_plan_last
+      (start : composite_state)
+      (a : list plan_item)
+      (after_a := composite_apply_plan start a)
+      : last (map destination (fst after_a)) start = snd after_a
+      := (@_apply_plan_last _ composite_type composite_transition start a).
+    Definition composite_trace_to_plan := (@_trace_to_plan _ composite_type).
+
     Section constraint_subsumption_part_one.
 (**
 
@@ -877,13 +897,6 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
 
 End VLSM_composition.
 
-(** Composite versions for the generic [_apply_plan]-related definitions and
-results.
-*)
-Notation composite_apply_plan IM := (@_apply_plan _ (composite_type IM) (composite_transition IM)).
-Notation composite_apply_plan_app IM := (@_apply_plan_app _ (composite_type IM) (composite_transition IM)).
-Notation composite_apply_plan_last IM := (@_apply_plan_last _ (composite_type IM) (composite_transition IM)).
-Notation composite_trace_to_plan IM := (@_trace_to_plan _ (composite_type IM)).
 
 (**
    These basic projection lemmas relate
@@ -1578,7 +1591,7 @@ All results from regular projections carry to these "free" projections.
   Proof.
     simpl.
     unfold finite_protocol_plan_from in *.
-    unfold _apply_plan in *.
+    unfold apply_plan, _apply_plan in *.
     destruct ai; simpl in *.
     match goal with
     |- context [let (_, _) := let (_, _) := ?t in _ in _] =>
@@ -1626,7 +1639,7 @@ All results from regular projections carry to these "free" projections.
     let res := snd (composite_apply_plan IM s [ai]) in
     (res i) = (s i).
   Proof.
-    unfold composite_apply_plan, _apply_plan.
+    unfold composite_apply_plan, apply_plan, _apply_plan.
     simpl.
     destruct ai.
     match goal with
@@ -1753,17 +1766,16 @@ All results from regular projections carry to these "free" projections.
       + intros i Hi.
         specialize (IHaind i Hi).
         specialize (Heq i Hi).
-        rewrite _apply_plan_app.
-        rewrite _apply_plan_app.
+        rewrite !apply_plan_app.
         simpl in *.
-        destruct (@_apply_plan _ (composite_type IM) (vtransition X) s' a)
+        destruct (apply_plan X s' a)
           as (tra', sa') eqn : eq_as'.
-        destruct (@_apply_plan _ (composite_type IM) (vtransition X) s a)
+        destruct (apply_plan X s a)
           as (tra, sa) eqn : eq_as.
         simpl in *.
-        destruct (@_apply_plan _ (composite_type IM) (vtransition X) sa [x])
+        destruct (apply_plan X sa [x])
           as (trx, sx) eqn : eq_xsa.
-        destruct (@_apply_plan _ (composite_type IM) (vtransition X) sa' [x])
+        destruct (apply_plan X sa' [x])
           as (trx', sx') eqn : eq_xsa'.
         simpl in *.
         destruct (decide (i = (projT1 (label_a x)))).
