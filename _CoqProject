@@ -29,6 +29,10 @@ VLSM/FullNode/Composite/Free.v
 VLSM/FullNode/Composite/LimitedEquivocation.v
 VLSM/ListValidator/ListValidator.v
 VLSM/ListValidator/Equivocation.v
+VLSM/ListValidator/Observations.v
+VLSM/ListValidator/EquivocationAwareListValidator.v
+VLSM/ListValidator/EquivocationAwareComposition.v
+VLSM/ListValidator/CommonFutures.v
 VLSM/Liveness.v
 VLSM/Liveness/SimpleFragileProtocol.v
 CBC/Binary.v
@@ -52,6 +56,7 @@ Lib/TraceClassicalProperties.v
 Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
+Lib/SumWeights.v
 Lib/FinExtras.v
 Lib/FinFunExtras.v
 Lib/Classes.v

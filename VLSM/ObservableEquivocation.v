@@ -4,7 +4,7 @@ Import ListNotations.
 From CasperCBC
   Require Import
     Preamble ListExtras ListSetExtras
-    Lib.Classes
+    Lib.Classes Lib.SumWeights
     CBC.Common CBC.Equivocation
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.ProjectionTraces
@@ -906,7 +906,7 @@ Context
   `{EqDecision event}
   {index : Type}
   `{EqDecision index}
-  (index_listing : list index)
+  (index_listing witness_set : list index)
   (IM : index -> VLSM message)
   (Hstate_events_fn : forall (i : index), vstate (IM i) -> validator -> set event)
   (Hstate_validators : forall (i : index), vstate (IM i) -> set validator)
@@ -921,7 +921,7 @@ Definition composite_state_events_fn
   (v : validator)
   : set event
   :=
-  fold_right (set_union decide_eq) [] (map (fun i => Hstate_events_fn i (s i) v) index_listing).
+  fold_right (set_union decide_eq) [] (map (fun i => Hstate_events_fn i (s i) v) witness_set).
 
 Definition composite_validators
   (s : composite_state IM)

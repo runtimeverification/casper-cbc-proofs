@@ -9,6 +9,14 @@ Require Import CasperCBC.Lib.ListExtras.
 Definition set_eq {A} (s1 s2 : set A) : Prop :=
   incl s1 s2 /\ incl s2 s1.
 
+Lemma set_eq_extract_forall
+  {A : Type}
+  (l1 l2 : set A)
+  : set_eq l1 l2 <-> forall a, (In a l1 <-> In a l2).
+Proof.
+  unfold set_eq. unfold incl. apply forall_and_commute.
+Qed.
+
 Lemma set_eq_empty
   {A}
   : forall (l : list A),
@@ -662,7 +670,7 @@ Proof.
   reflexivity.
 Qed.
 
-(* For each element X of l1, exactly one occurrence of X is removed
+(** For each element X of l1, exactly one occurrence of X is removed
    from l2. If no such occurrence exists, nothing happens. *)
 
 Definition set_remove_list `{EqDecision A} (l1 l2 : list A) : list A :=
