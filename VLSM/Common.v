@@ -939,13 +939,16 @@ decompose the above properties in proofs.
     Lemma first_transition_valid
       (s : state)
       (te : transition_item)
-      (Htr : finite_protocol_trace_from s [te])
-      : protocol_transition (l te) (s, input te) (destination te, output te).
+      : finite_protocol_trace_from s [te] <-> protocol_transition (l te) (s, input te) (destination te, output te).
 
     Proof.
-      inversion Htr.
-      simpl.
-      assumption.
+      split.
+      - intro Htr.
+        inversion Htr.
+        assumption.
+      - destruct te. simpl. intro Ht. 
+        apply protocol_transition_destination in Ht as Hdestination0.
+        constructor; [|assumption]. constructor. assumption.
     Qed.
 
     Lemma extend_right_finite_trace_from
