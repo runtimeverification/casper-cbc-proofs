@@ -1,12 +1,13 @@
 Require Import
   List Coq.Vectors.Fin
   Arith.Compare_dec Lia
-  Program Floats ListSet Nat
+  Program Reals Lra ListSet Nat
   .
 Import ListNotations.
 From CasperCBC
   Require Import
     Preamble
+    Lib.SumWeights
     VLSM.Common
     .
 
@@ -115,11 +116,11 @@ Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat)
 Definition nth_update {A : Type} (l : list A) (idx : nat) (v : A) : list A :=
   firstn idx l ++ cons v (skipn (S idx) l).
 
-Definition update
+Program Definition update
            (m : Premessage)
            (component : nat)
-           (weights : list float)
-           (treshold : float)
+           (weights : list pos_R)
+           (treshold : R)
            (curState : list Prestate)
            (curEq : set nat)
   : bool * (list Prestate) * (set nat) :=
@@ -141,6 +142,13 @@ Definition update
       (true, curState, curEq)
     else
       let newEq := curEq in
-      (false, curState, curEq).
+      (*      if (Rlt_dec (sum_weights (map (fun idx => nth idx weights (0%R)) newEq)) treshold) then *)
+      if (Rlt_dec (@sum_weights _ (Build_Measurable _ (fun idx => nth idx weights (exist _ 1%R _))) newEq) treshold) then
+        (false, curState, curEq)
+      else
+        (true, curState, newEq).
+Next Obligation.
+  lra.
+Defined.
 
 
