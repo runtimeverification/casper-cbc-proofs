@@ -182,34 +182,6 @@ Instance prod_inhabited {A B} (iA : Inhabited A)
 Instance pair_inj : Inj2 eq eq eq (@pair A B).
 Proof. injection 1; auto. Qed.
 
-Definition prod_relation {A B} (R1 : relation A) (R2 : relation B) :
-  relation (A * B) := fun x y => R1 (fst x) (fst y) /\ R2 (snd x) (snd y).
-
-Section prod_relation.
-  Context `{R1 : relation A, R2 : relation B}.
-  Global Instance prod_relation_refl :
-    Reflexive R1 -> Reflexive R2 -> Reflexive (prod_relation R1 R2).
-  Proof. firstorder eauto. Qed.
-  Global Instance prod_relation_sym :
-    Symmetric R1 -> Symmetric R2 -> Symmetric (prod_relation R1 R2).
-  Proof. firstorder eauto. Qed.
-  Global Instance prod_relation_trans :
-    Transitive R1 -> Transitive R2 -> Transitive (prod_relation R1 R2).
-  Proof. firstorder eauto. Qed.
-  Global Instance prod_relation_equiv :
-    Equivalence R1 -> Equivalence R2 -> Equivalence (prod_relation R1 R2).
-  Proof. split; apply _. Qed.
-
-  Global Instance pair_proper' : Proper (R1 ==> R2 ==> prod_relation R1 R2) pair.
-  Proof. firstorder eauto. Qed.
-  Global Instance pair_inj' : Inj2 R1 R2 (prod_relation R1 R2) pair.
-  Proof. inversion_clear 1; eauto. Qed.
-  Global Instance fst_proper' : Proper (prod_relation R1 R2 ==> R1) fst.
-  Proof. firstorder eauto. Qed.
-  Global Instance snd_proper' : Proper (prod_relation R1 R2 ==> R2) snd.
-  Proof. firstorder eauto. Qed.
-End prod_relation.
-
 Instance option_inhabited {A} : Inhabited (option A) := populate None.
 
 Lemma dec_stable `{Decision P} : ~~P -> P.
