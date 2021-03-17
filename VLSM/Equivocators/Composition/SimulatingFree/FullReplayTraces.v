@@ -75,9 +75,7 @@ Definition update_equivocators_transition_item_descriptor
     end
   end.
 
-(**
-The plan item correspondint to an initial state equivocation
-*)
+(** The plan item correspondint to an initial state equivocation *)
 Definition initial_new_machine_transition_item
   (is : composite_state equivocator_IM)
   (eqv : equiv_index)
@@ -91,9 +89,7 @@ Definition initial_new_machine_transition_item
     in
   @Build_plan_item message (composite_type equivocator_IM) new_l None.
 
-(**
-The transition corresponding to the initial state equivocation above is valid.
-*)
+(** The transition corresponding to the initial state equivocation above is valid. *)
 Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
   (s : composite_state equivocator_IM)
   (a : composite_plan equivocator_IM)
@@ -118,17 +114,13 @@ Proof.
     split; exact I.
 Qed.
 
-(**
-Command for equivocating all states of an initial composite state.
-*)
+(** Command for equivocating all states of an initial composite state. *)
 Definition spawn_initial_state
   (is : composite_state equivocator_IM)
   : composite_plan equivocator_IM
   := map (initial_new_machine_transition_item is) index_listing.
 
-(**
-The replay plan of a trace on top of a given state, fully equivocating.
-*)
+(** The replay plan of a trace on top of a given state, fully equivocating. *)
 Definition replay_plan_from
   (full_replay_state : composite_state equivocator_IM)
   (is : composite_state equivocator_IM)
@@ -139,9 +131,7 @@ Definition replay_plan_from
   map (update_equivocators_transition_item_descriptor full_replay_state) tr.
 
 
-(**
-The replaying of a trace on top of a given state, fully equivocating.
-*)
+(** The replaying of a trace on top of a given state, fully equivocating. *)
 Definition applied_replay_plan_from
   (full_replay_state : composite_state equivocator_IM)
   (is : composite_state equivocator_IM)
@@ -151,9 +141,7 @@ Definition applied_replay_plan_from
   composite_apply_plan equivocator_IM full_replay_state
       (replay_plan_from full_replay_state is tr).
 
-(**
-The trace component of the above applied plan.
-*)
+(** The trace component of the above applied plan. *)
 Definition replayed_trace_from
   (full_replay_state : composite_state equivocator_IM)
   (is : composite_state equivocator_IM)
@@ -162,9 +150,7 @@ Definition replayed_trace_from
   :=
   fst (applied_replay_plan_from full_replay_state is tr).
 
-(**
-Append property for replayed_trace_from.
-*)
+(** Append property for replayed_trace_from. *)
 Lemma replayed_trace_from_app
   (full_replay_state : composite_state equivocator_IM)
   (is : composite_state equivocator_IM)
@@ -576,9 +562,7 @@ Proof.
           assumption.
 Qed.
 
-(**
-A specialization of the above lemma for the case when the trace is protocol.
-*)
+(** A specialization of the above lemma for the case when the trace is protocol. *)
 Lemma replayed_trace_from_state_correspondence
   (full_replay_state : composite_state equivocator_IM)
   (is : composite_state equivocator_IM)

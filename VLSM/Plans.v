@@ -137,8 +137,7 @@ Section apply_plans.
     intuition.
   Qed.
 
-  (** We can forget information from a trace to obtain a plan.
-  *)
+  (** We can forget information from a trace to obtain a plan. *)
   Definition _transition_item_to_plan_item
     (item : transition_item)
     : plan_item
@@ -269,8 +268,7 @@ Section protocol_plans.
     rewrite trace_to_plan_to_trace; assumption.
   Qed.
 
-  (** Characterization of protocol plans.
-  *)
+  (** Characterization of protocol plans. *)
   Lemma finite_protocol_plan_iff
     (s : vstate X)
     (a : plan)
@@ -353,8 +351,7 @@ Section protocol_plans.
         apply protocol_generated with _oma _s; assumption.
   Qed.
 
-  (** Characterizing a singleton protocol plan as a protocol transition.
-  *)
+  (** Characterizing a singleton protocol plan as a protocol transition. *)
   Lemma finite_protocol_plan_from_one
     (s : vstate X)
     (a : plan_item) :
