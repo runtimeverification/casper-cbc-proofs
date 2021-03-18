@@ -1,3 +1,5 @@
+From Coq Require Import ssreflect ssrfun ssrbool.
+
 Require Import
   List Coq.Vectors.Fin
   Arith.Compare_dec Lia
@@ -152,3 +154,28 @@ Next Obligation.
 Defined.
 
 
+Print Premessage.
+Check Cobservation.
+Print Label.
+
+Definition dummy_prestate := Cprestate [].
+Definition dummy_premessage := Cpremessage dummy_prestate 0.
+Definition dummy_observation := Cobservation Receive dummy_premessage 0.
+
+Definition isProtocol_step
+           (args : bool * nat * list Observation * list Prestate * set nat)
+  : bool * nat * list Observation * list Prestate * set nat
+  :=
+    let: (result, i, observations, curState, curEq) := args in
+    match result with
+    | false => args
+    | true =>
+      let ob := nth i observations dummy_observation in
+      let l := label ob in
+      let m := message ob in
+      let p := stateOf m in
+      let a := authorOf m in
+      let prefix := firstn i observations in
+      let i := S i in
+      (result, i, observations, curState, curEq)
+    end.
