@@ -397,3 +397,6 @@ Qed.
 Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
   (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
 Proof. firstorder. Qed.
+
+Global Instance list_eq_dec {A : Type} {dec : EqDecision A} : EqDecision (list A) :=
+  list_eq_dec dec.

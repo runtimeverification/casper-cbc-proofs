@@ -50,7 +50,8 @@ Section Define_Component.
       if decide (t1 = t2) then
         if decide (c1 = c2) then
           if decide (v1 = v2) then
-            if list_eq_dec validator_message_eq_dec msgs1 msgs2 then
+            if @list_eq_dec _ validator_message_eq_dec msgs1 msgs2 then
+(*            if bool_decide (msgs1=msgs2) then              *)
               left _
             else right _
           else right _
