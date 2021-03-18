@@ -192,14 +192,14 @@ Definition l {A : Type} {dec : EqDecision A} (x: A) (l : list A) : bool
   
 
 Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : R)
-           (args : bool * nat * list Observation * list Prestate * set nat)
+           (args : bool * nat * list Observation * list Prestate * set nat) (ob : Observation)
   : bool * nat * list Observation * list Prestate * set nat
   :=
     let: (result, i, observations, curState, curEq) := args in
     match result with
     | false => args
     | true =>
-      let ob := nth i observations dummy_observation in
+      (*let ob := nth i observations dummy_observation in*)
       let l := label ob in
       let m := message ob in
       let p := stateOf m in
@@ -235,3 +235,14 @@ Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : 
               (result, i, observations, curState, curEq)
           end 
     end.
+
+Definition isProtocol
+           (prestate : Prestate)
+           (component : nat)
+           (weights : list pos_R)
+           (treshold: R) : bool
+  :=
+    let initialState := map (fun x => Cprestate nil) weights in
+    let initialEq := @nil nat in
+    let result := (fold_left (isProtocol_step component weights treshold) (observationsOf prestate) (true, 0, observationsOf prestate, initialState, initialEq )) in
+    fst (fst (fst (fst result))).
