@@ -68,12 +68,13 @@ Proof.
   destruct Htr as [Htr Hx].
   specialize (IHtr Htr _ eq_refl).
   apply IHtr. clear IHtr.
-  inversion Hx. subst. clear Hx. simpl in *. clear H3.
-  match type of H4 with
+  destruct x as (l, iom, s, oom). apply first_transition_valid in Hx. simpl in *.
+  subst s2.
+  match type of Hx with
   | protocol_transition _ _ (?l, _) _ => remember l as s0
   end.
-  clear -H4 H.
-  destruct H4 as [_ Ht]. simpl in Ht.
+  clear -Hx H.
+  destruct Hx as [_ Ht]. simpl in Ht, H.
   apply incl_tran with (equivocating_indices IM index_listing s); [|assumption].
   apply equivocators_transition_preserves_equivocating_indices with iom oom l.
   assumption.
@@ -97,17 +98,14 @@ Proof.
   apply protocol_state_has_trace in Hs.
   destruct Hs as [is [tr [Htr Hlst]]].
   destruct_list_last tr tr' x Htr'; subst tr.
-  - simpl in Hlst. subst s. destruct Htr as [_ His].
-    specialize (His i).
-    destruct His as [His _]. assumption.
+  - simpl in Hlst. subst s. apply Htr.
   - destruct Htr as [Htr _].
-    apply finite_protocol_trace_from_app_iff in Htr.
-    destruct Htr as [_ Hx].
-    inversion Hx. subst. clear Hx H2.
-    destruct H3 as [[_ [_ [_ Hc]]] Ht].
-    destruct Hc as [_ Hfixed].
+    apply (protocol_transition_to _ _ _ tr' [] x) in Htr
+    ; [| rewrite app_assoc, app_nil_r; reflexivity].
+    destruct x as (l, iom, s0, oom). simpl in Htr.
+    destruct Htr as [[_ [_ [_ [_ Hfixed]]]] Ht].
     simpl in *. rewrite Ht in Hfixed. clear Ht. simpl in Hfixed.
-    rewrite! map_app. simpl. rewrite! last_is_last.
+    subst s. rewrite! map_app. simpl. rewrite! last_is_last.
     specialize (Hfixed i).
     destruct (decide (projT1 (s0 i) = 0)); [assumption|].
     elim Hi. apply Hfixed.
@@ -314,6 +312,7 @@ allowed to equivocate is non-empty.
   Proof.
     intros s Hs l om [Hno_equiv | Hfull]; [left; assumption|].
     destruct Hfull as [m [Hom [i [Hi Hm]]]].
+    unfold node_generated_without_further_equivocation_alt in Hm.
     subst om.
     right. exists m. split; [reflexivity|].
     remember (no_additional_equivocations (free_composite_vlsm IM) s) as P.
@@ -430,7 +429,7 @@ Proof.
   specialize (Heqv_descriptors i). unfold not_equivocating_descriptor in Heqv_descriptors.
   destruct (eqv_descriptors i); [contradiction|].
   destruct b; [contradiction|].
-  replace n with 0; [reflexivity|]. lia.
+  f_equal. lia.
 Qed.
 
 (**
@@ -499,9 +498,11 @@ Existing Instance Free_has_been_sent_capability.
 Existing Instance equivocating_i0.
 
 (**
-This is a property of the [fixed_equivocation_constraint] which is being
-used to parameterize the [_equivocators_protocol_trace_project] lemma below
-allowing it to also be instantiated for the free composition.
+This is a property of the [fixed_equivocation_constraint] which also
+trivially holds for the free constraint.  This property is sufficient for
+proving the [_equivocators_protocol_trace_project] lemma, 
+which lets that lemma be used for both the composition of equivocators with
+fixed state-equivocation and the free composition.
 
 It basically says that if a message has_been_sent for a state of the
 composition of equivocators with no-message equivocations and fixed
@@ -524,7 +525,7 @@ Definition constraint_has_been_sent_prop
 (**
 Generic proof that the projection of a trace of the composition of equivocators
 with no message equivocation and fixed state equivocation is protocol w.r.t.
-the composition of the regular nodes constrained by a constraint satisfying
+the composition of the regular nodes constrained by any constraint satisfying
 several properties, including the [constraint_has_been_sent_prop]erty.
 
 The proof proceeds by well founded induction on the length of the trace,
@@ -599,8 +600,8 @@ Proof.
     end.
     simpl in Heqfoldx.
     rewrite Hprojectx in Heqfoldx.
-    inversion Hlst. subst tl s' lst.
-    destruct H4 as [[Hs [Hiom [Hv Hc]]] Ht].
+    apply first_transition_valid in Hlst. destruct lst as (l, iom, s, oom). simpl in *.
+    destruct Hlst as [[Hs [Hiom [Hv Hc]]] Ht].
     specialize (Hzero oitem final_descriptors' _ Ht Hv Hprojectx).
     specialize (Hproperx Hv Ht).
     destruct Hproperx as [_Hproper' Hx].
@@ -853,7 +854,7 @@ no message equivocation and fixed state equivocation.
 
 Because any of its projections to the composition of original nodes contains
 all transitions from nodes not allowed to equivocate, then a final state of
-such a projection will be alble to observe all messages sent or received by
+such a projection will be able to observe all messages sent or received by
 non-equivocating nodes in the initial trace.
 
 Therefore if seeding the composition of equivocating nodes with these
@@ -915,10 +916,9 @@ Proof.
   { apply finite_ptrace_last_pstate in Hsuf_free. subst s.
     rewrite map_app. rewrite last_app. assumption.
   }
-  inversion Hpt. subst. clear Hpt.
+  destruct item as (l, iom, s0, oom). apply first_transition_valid in Hpt.
   simpl in Hm. subst iom.
-  clear H2.
-  destruct H3 as [[_ [_ [_ [[Hc _] Hfixed]]]] Ht].
+  destruct Hpt as [[_ [_ [_ [[Hc _] Hfixed]]]] Ht].
   simpl in Ht, Hfixed. rewrite Ht in Hfixed. simpl in Hfixed.
   clear Ht.
   destruct Hc as [Hc | Hinit]; [|contradiction].
@@ -1067,7 +1067,8 @@ Proof.
     apply (not_equivocating_index_has_singleton_state _ Hbs finite_index _ Hi0_equiv); [|assumption].
     apply finite_ptrace_last_pstate in Hitem. assumption.
   }
-  inversion Hitem; subst. destruct H3 as [[Hs [Hiom [Hv Hc]]] Ht].
+  destruct item as (l, iom, s, oom). apply first_transition_valid in Hitem. simpl in Hitem.
+  destruct Hitem as [[Hs [Hiom [Hv Hc]]] Ht].
   specialize (Hex _ Hv Ht). simpl in Hex.
   simpl in Hpr_item. rewrite Hex in Hpr_item.
   inversion_clear Hpr_item.

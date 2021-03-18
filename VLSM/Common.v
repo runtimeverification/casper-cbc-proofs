@@ -171,6 +171,21 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
       : Prop
       := List.Exists (message_selector msg) tr.
 
+    (** Defines a message received but not sent by within the trace. *)
+    Definition trace_received_not_sent
+      (tr : list transition_item)
+      (m : message)
+      : Prop
+      := trace_has_message (field_selector input) m tr /\
+         ~trace_has_message (field_selector output) m tr.
+
+    (** States that a property holds for all messages received but not dent by a trace. *)
+    Definition trace_received_not_sent_invariant
+      (tr : list transition_item)
+      (P : message -> Prop)
+      : Prop
+      := forall m, trace_received_not_sent tr m -> P m.
+
   (** 'proto_run's are used for an alternative definition of 'protocol_prop' which
   takes into account transitions. See 'vlsm_run_prop'.
   *)
@@ -2445,6 +2460,34 @@ Context
   (MY : VLSM_class SY)
   (X := mk_vlsm MX)
   (Y := mk_vlsm MY)
+  .
+
+Lemma VLSM_incl_finite_traces_characterization
+  : VLSM_incl X Y <->
+    forall (s : vstate X)
+    (tr : list (vtransition_item X)),
+    finite_protocol_trace X s tr -> finite_protocol_trace Y s tr.
+Proof.
+  split; intros Hincl.
+  - intros. specialize (Hincl (Finite s tr)). apply Hincl. assumption.
+  - intros tr Htr.
+    destruct tr as [is tr | is tr]; simpl in *.
+    + revert Htr. apply Hincl.
+    + destruct Htr as [HtrX HisX].
+      assert (His_tr: finite_protocol_trace X is []).
+      { split; [|assumption]. constructor.
+        apply initial_is_protocol. assumption.
+      } 
+      apply Hincl in His_tr.
+      destruct His_tr as [_ HisY].
+      split; [|assumption].
+      apply infinite_protocol_trace_from_prefix_rev.
+      intros.
+      apply infinite_protocol_trace_from_prefix with (n0 := n) in HtrX.
+      apply (Hincl _ _ (conj HtrX HisX)).
+Qed.
+
+Context
   (Hinitial_state :
     forall s : state,
       vinitial_state_prop X s -> vinitial_state_prop Y s
@@ -2568,34 +2611,16 @@ Qed.
       apply basic_VLSM_incl_protocol_transition. assumption.
   Qed.
 
-  Lemma basic_VLSM_incl_infinite_protocol_trace
-    (s : state)
-    (ls : Stream transition_item)
-    (Hpxt : infinite_protocol_trace_from X s ls)
-    : infinite_protocol_trace_from Y s ls.
-  Proof.
-    generalize dependent ls. generalize dependent s.
-    cofix H.
-    intros s [[l input destination output] ls] Hx.
-    inversion Hx; subst.
-    specialize (H destination ls H3).
-    constructor; try assumption.
-    apply basic_VLSM_incl_protocol_transition.
-    assumption.
-  Qed.
-
   (* end hide *)
 
   Lemma basic_VLSM_incl
     : VLSM_incl X Y.
   Proof.
-    intros [s ls| s ss]; simpl; intros [Hxt Hinit].
-    - apply basic_VLSM_incl_finite_protocol_trace in Hxt.
-      split; try assumption.
-      apply Hinitial_state. assumption.
-    - apply basic_VLSM_incl_infinite_protocol_trace in Hxt.
-      split; try assumption.
-      apply Hinitial_state. assumption.
+    apply VLSM_incl_finite_traces_characterization.
+    intros s ls [Hxt Hinit].
+    apply basic_VLSM_incl_finite_protocol_trace in Hxt.
+    split; [assumption|].
+    apply Hinitial_state. assumption.
   Qed.
 
 End basic_VLSM_incl.

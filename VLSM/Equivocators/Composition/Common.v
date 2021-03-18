@@ -282,7 +282,7 @@ Lemma equivocator_descriptors_update_eq_rew
 Proof.
   unfold equivocator_descriptors_update.
   destruct (decide (j = i)); [|congruence]. subst.
-  replace e with (@eq_refl _ i); [reflexivity|].
+  f_equal.
   apply Eqdep_dec.UIP_dec. assumption.
 Qed.
 
