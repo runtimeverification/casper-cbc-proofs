@@ -7,6 +7,7 @@ Require Import
   Lib.Preamble
   Lib.ListExtras
   VLSM.CBC.SumWeights
+  VLSM.CBC.Basic
   CBC.Common
   CBC.Equivocation
   VLSM.Common

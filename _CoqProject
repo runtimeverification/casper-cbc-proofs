@@ -35,6 +35,8 @@ VLSM/ListValidator/EquivocationAwareComposition.v
 VLSM/ListValidator/CommonFutures.v
 VLSM/Liveness.v
 VLSM/Liveness/SimpleFragileProtocol.v
+VLSM/CBC/Basic.v
+VLSM/CBC/SumWeights.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
@@ -56,7 +58,6 @@ Lib/TraceClassicalProperties.v
 Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
-VLSM/CBC/SumWeights.v
 Lib/FinExtras.v
 Lib/FinFunExtras.v
 Lib/Classes.v

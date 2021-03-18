@@ -6,7 +6,7 @@ Import List Notations.
 From CasperCBC
   Require Import
     Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras
-    CBC.Protocol CBC.Common CBC.Definitions
+    VLSM.CBC.Basic
     VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
 (* 3.1 Decisions on consensus values *)

@@ -8,6 +8,7 @@ From CasperCBC
     Lib.ListExtras
     Lib.ListSetExtras
     VLSM.CBC.SumWeights
+    VLSM.CBC.Basic
     VLSM.Common
     CBC.Common
     CBC.Equivocation
