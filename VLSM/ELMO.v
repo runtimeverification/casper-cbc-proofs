@@ -181,6 +181,16 @@ Definition dummy_prestate := Cprestate [].
 Definition dummy_premessage := Cpremessage dummy_prestate 0.
 Definition dummy_observation := Cobservation Receive dummy_premessage 0.
 
+
+Global Instance list_in_dec {A : Type} {dec : EqDecision A} : RelDecision (@In A)
+  := In_dec dec.
+
+(*
+Definition l {A : Type} {dec : EqDecision A} (x: A) (l : list A) : bool
+  := bool_decide (In x l).
+*)    
+  
+
 Definition isProtocol_step (component : nat)
            (args : bool * nat * list Observation * list Prestate * set nat)
   : bool * nat * list Observation * list Prestate * set nat
@@ -207,6 +217,7 @@ Definition isProtocol_step (component : nat)
             let result := bool_decide (observationsOf p = prefix) in
             (result, i, observations, curState, curEq)
           | Receive =>
+            let result := bool_decide (In (Cobservation Send m component) prefix) in
             (result, i, observations, curState, curEq)
           end
         else
