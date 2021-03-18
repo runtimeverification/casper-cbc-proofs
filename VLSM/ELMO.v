@@ -191,7 +191,7 @@ Definition l {A : Type} {dec : EqDecision A} (x: A) (l : list A) : bool
 *)    
   
 
-Definition isProtocol_step (component : nat)
+Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : R)
            (args : bool * nat * list Observation * list Prestate * set nat)
   : bool * nat * list Observation * list Prestate * set nat
   :=
@@ -222,8 +222,16 @@ Definition isProtocol_step (component : nat)
           end
         else
           (* a <> component *)
-        (result, i, observations, curState, curEq)
+          match l with
+          | Send =>
+            let result := false in
+            (result, i, observations, curState, curEq)
+          | Receive =>
+            if negb (fullNode m prefix component) then
+              let result := false in
+              (result, i, observations, curState, curEq)
+            else
+              let: (result, curState, curEq) := update m component weights treshold curState curEq in
+              (result, i, observations, curState, curEq)
+          end 
     end.
-Locate bool_decide.
-Check bool_decide.
-Check negb.
