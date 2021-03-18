@@ -14,7 +14,7 @@ From CasperCBC
     .
 
 Require Import List.
-
+    
 Inductive Label := Receive | Send.
 
 Inductive Prestate : Type :=
@@ -35,7 +35,26 @@ Proof.
   decide equality. decide equality. decide equality.
 Qed.
 
-Definition observations (prs : Prestate) : list Observation :=
+Instance Prestate_eqdec' : EqDecision Prestate.
+Proof.
+  intros x y.
+  apply Prestate_eqdec.
+Qed.
+
+Instance Observation_eqdec' : EqDecision Observation.
+Proof.
+  intros x y.
+  apply Observation_eqdec.
+Qed.
+
+Instance Premessage_eqdec' : EqDecision Premessage.
+Proof.
+  intros x y.
+  apply Premessage_eqdec.
+Qed.
+
+
+Definition observationsOf (prs : Prestate) : list Observation :=
   match prs with
   | Cprestate l => l
   end.
@@ -74,7 +93,7 @@ Definition elmo_type : VLSM_type Premessage :=
 Definition elmo_state : Type := @state Premessage elmo_type.
 
 Definition elmo_initial_state_prop (ps : elmo_state) : Prop :=
-  observations ps = [].
+  observationsOf ps = [].
 
 Definition elmo_initial_state
   := sig elmo_initial_state_prop.
@@ -111,7 +130,7 @@ Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat)
                      | Send => false
                      end
                   )
-                  (observations (stateOf m))
+                  (observationsOf (stateOf m))
              ).
 
 
@@ -128,19 +147,19 @@ Program Definition update
   : bool * (list Prestate) * (set nat) :=
   let p := stateOf m in
   let a := authorOf m in
-  let lp := length (observations p) in
+  let lp := length (observationsOf p) in
   let ca := nth a curState (Cprestate []) in
-  let la := length (observations (ca)) in
+  let la := length (observationsOf (ca)) in
   if andb (la <=? lp)
-          (if (list_eq_dec Observation_eqdec (firstn la (observations p)) (observations ca)) then true else false) then
+          (bool_decide ((firstn la (observationsOf p))=(observationsOf ca))) then
     (true,
-     nth_update curState a (Cprestate (observations p ++ [Cobservation Send m a])),
+     nth_update curState a (Cprestate (observationsOf p ++ [Cobservation Send m a])),
      curEq)
   else
     if andb (S lp <=? la)
             (andb
-               (if (list_eq_dec Observation_eqdec (firstn lp (observations ca)) (observations p)) then true else false)
-               (if (Observation_eqdec (nth lp (observations ca) (Cobservation Receive m a) ) (Cobservation Send m a)) then true else false)) then
+               (bool_decide ((firstn lp (observationsOf ca))=(observationsOf p)))
+               (bool_decide ((nth lp (observationsOf ca) (Cobservation Receive m a))=(Cobservation Send m a)))) then
       (true, curState, curEq)
     else
       let newEq := curEq in
@@ -162,7 +181,7 @@ Definition dummy_prestate := Cprestate [].
 Definition dummy_premessage := Cpremessage dummy_prestate 0.
 Definition dummy_observation := Cobservation Receive dummy_premessage 0.
 
-Definition isProtocol_step
+Definition isProtocol_step (component : nat)
            (args : bool * nat * list Observation * list Prestate * set nat)
   : bool * nat * list Observation * list Prestate * set nat
   :=
@@ -175,7 +194,25 @@ Definition isProtocol_step
       let m := message ob in
       let p := stateOf m in
       let a := authorOf m in
+      let w := witness ob in
       let prefix := firstn i observations in
       let i := S i in
-      (result, i, observations, curState, curEq)
+      (* w <> component *)
+      if negb (bool_decide (w=component)) then
+        (false, i, observations, curState, curEq)
+      else (* w = component *)
+        if bool_decide (a=component) then
+          match l with
+          | Send =>
+            let result := bool_decide (observationsOf p = prefix) in
+            (result, i, observations, curState, curEq)
+          | Receive =>
+            (result, i, observations, curState, curEq)
+          end
+        else
+          (* a <> component *)
+        (result, i, observations, curState, curEq)
     end.
+Locate bool_decide.
+Check bool_decide.
+Check negb.
