@@ -11,11 +11,11 @@ From CasperCBC
     VLSM.CBC.SumWeights
     VLSM.Common
     VLSM.CBC.Equivocation
-    Validator.State
-    Validator.Equivocation
+    VLSM.CBC.FullNode.Validator.State
+    VLSM.CBC.FullNode.Validator.Equivocation
     VLSM.Equivocation
     VLSM.ObservableEquivocation
-    VLSM.FullNode.Client
+    VLSM.CBC.FullNode.Client
     .
 
 Section CompositeValidator.

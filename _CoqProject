@@ -22,10 +22,6 @@ VLSM/Equivocators/Composition/LimitedEquivocation/LimitedEquivocation.v
 VLSM/Equivocation.v
 VLSM/PreceedsEquivocation.v
 VLSM/ObservableEquivocation.v
-VLSM/FullNode/Client.v
-VLSM/FullNode/Validator.v
-VLSM/FullNode/Composite/Free.v
-VLSM/FullNode/Composite/LimitedEquivocation.v
 VLSM/ListValidator/ListValidator.v
 VLSM/ListValidator/Equivocation.v
 VLSM/ListValidator/Observations.v
@@ -39,8 +35,11 @@ VLSM/CBC/SumWeights.v
 VLSM/CBC/Equivocation.v
 VLSM/CBC/FullNode/Validator/State.v
 VLSM/CBC/FullNode/Validator/Equivocation.v
+VLSM/CBC/FullNode/Client.v
+VLSM/CBC/FullNode/Validator.v
+VLSM/CBC/FullNode/Composite/Free.v
+VLSM/CBC/FullNode/Composite/LimitedEquivocation.v
 VLSM/SubProjectionTraces.v
-VLSM/FullNode/Simple.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
@@ -48,6 +47,7 @@ CBC/Definitions.v
 CBC/FullNode.v
 CBC/LightNode.v
 CBC/Protocol.v
+CBC/FullNodeSimpleVLSM.v
 Lib/StreamExtras.v
 Lib/RealsExtras.v
 Lib/ListSetExtras.v
