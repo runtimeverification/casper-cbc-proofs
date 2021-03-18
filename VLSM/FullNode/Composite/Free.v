@@ -7,7 +7,7 @@ From CasperCBC
     Preamble
     ListExtras
     ListSetExtras
-    Lib.SumWeights
+    VLSM.CBC.SumWeights
     CBC.Common
     VLSM.Common
     VLSM.Composition

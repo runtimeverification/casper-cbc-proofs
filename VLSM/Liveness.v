@@ -5,7 +5,7 @@ From CasperCBC
   Require Import
     Lib.Preamble
     Lib.Traces
-    Lib.SumWeights
+    VLSM.CBC.SumWeights
     VLSM.Common
     VLSM.Decisions
     VLSM.Composition

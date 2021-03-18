@@ -56,7 +56,7 @@ Lib/TraceClassicalProperties.v
 Lib/TraceProperties.v
 Lib/Traces.v
 Lib/SsrExport.v
-Lib/SumWeights.v
+VLSM/CBC/SumWeights.v
 Lib/FinExtras.v
 Lib/FinFunExtras.v
 Lib/Classes.v

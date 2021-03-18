@@ -10,7 +10,7 @@ From CasperCBC
   Require Import
     Preamble
     CBC.Common
-    Lib.SumWeights
+    VLSM.CBC.SumWeights
     ListExtras
     ListSetExtras
   .
