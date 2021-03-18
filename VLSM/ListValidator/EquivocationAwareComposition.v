@@ -19,8 +19,7 @@ Require Import
   VLSM.ListValidator.Observations
   VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ObservableEquivocation
-  CBC.Common
-  CBC.Equivocation.
+  VLSM.CBC.Equivocation.
  
 (**   This file describes a free composition <X> of List Validator nodes, each using
    an [equivocation_aware_estimator]. Also see:

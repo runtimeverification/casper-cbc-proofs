@@ -10,8 +10,7 @@ From CasperCBC
     VLSM.CBC.Basic
     VLSM.CBC.SumWeights
     TopSort
-    CBC.Common
-    CBC.Equivocation
+    VLSM.CBC.Equivocation
     VLSM.Common
     VLSM.Composition
     Validator.State

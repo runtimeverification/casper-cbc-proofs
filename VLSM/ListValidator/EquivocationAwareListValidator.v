@@ -8,8 +8,7 @@ Require Import
   Lib.ListExtras
   VLSM.CBC.SumWeights
   VLSM.CBC.Basic
-  CBC.Common
-  CBC.Equivocation
+  VLSM.CBC.Equivocation
   VLSM.Common
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation

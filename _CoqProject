@@ -37,6 +37,7 @@ VLSM/Liveness.v
 VLSM/Liveness/SimpleFragileProtocol.v
 VLSM/CBC/Basic.v
 VLSM/CBC/SumWeights.v
+VLSM/CBC/Equivocation.v
 CBC/Binary.v
 CBC/Common.v
 CBC/CTL.v
@@ -44,7 +45,6 @@ CBC/Definitions.v
 CBC/FullNode.v
 CBC/LightNode.v
 CBC/Protocol.v
-CBC/Equivocation.v
 CBC/FullNode/Validator/State.v
 CBC/FullNode/Validator/Equivocation.v
 Lib/StreamExtras.v

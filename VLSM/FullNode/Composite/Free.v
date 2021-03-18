@@ -9,7 +9,6 @@ From CasperCBC
     ListSetExtras
     VLSM.CBC.Basic
     VLSM.CBC.SumWeights
-    CBC.Common
     VLSM.Common
     VLSM.Composition
     VLSM.ProjectionTraces
@@ -18,7 +17,7 @@ From CasperCBC
     FullNode.Client
     FullNode.Validator
     Validator.Equivocation
-    CBC.Equivocation
+    VLSM.CBC.Equivocation
     .
 
 Section ClientsAndValidators.

@@ -14,8 +14,7 @@ Require Import
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ObservableEquivocation
-  CBC.Common
-  CBC.Equivocation.
+  VLSM.CBC.Equivocation.
 
 Section Equivocation.
 

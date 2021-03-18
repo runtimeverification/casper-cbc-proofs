@@ -11,8 +11,7 @@ From CasperCBC
     Lib.ListSetExtras
     VLSM.CBC.SumWeights
     VLSM.CBC.Basic
-    CBC.Common
-    CBC.Equivocation
+    VLSM.CBC.Equivocation
     VLSM.Common
     VLSM.Composition
     VLSM.Equivocation

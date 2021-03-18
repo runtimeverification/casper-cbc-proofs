@@ -13,7 +13,7 @@ From CasperCBC
       VLSM.CBC.Basic
       Validator.State
       CBC.Common
-      CBC.Equivocation
+      VLSM.CBC.Equivocation
       VLSM.ObservableEquivocation
     .
 

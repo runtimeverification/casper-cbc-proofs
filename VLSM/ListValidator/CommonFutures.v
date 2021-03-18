@@ -20,8 +20,7 @@ Require Import
   VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ListValidator.EquivocationAwareComposition
   VLSM.ObservableEquivocation
-  CBC.Common
-  CBC.Equivocation.
+  VLSM.CBC.Equivocation.
 
 (** 
 Also see:
