@@ -53,6 +53,10 @@ Proof.
   apply Premessage_eqdec.
 Qed.
 
+Definition dummy_prestate := Cprestate [].
+Definition dummy_premessage := Cpremessage dummy_prestate 0.
+Definition dummy_observation := Cobservation Receive dummy_premessage 0.
+
 
 Definition observationsOf (prs : Prestate) : list Observation :=
   match prs with
@@ -148,7 +152,7 @@ Program Definition update
   let p := stateOf m in
   let a := authorOf m in
   let lp := length (observationsOf p) in
-  let ca := nth a curState (Cprestate []) in
+  let ca := nth a curState dummy_prestate in
   let la := length (observationsOf (ca)) in
   if andb (la <=? lp)
           (bool_decide ((firstn la (observationsOf p))=(observationsOf ca))) then
@@ -159,11 +163,10 @@ Program Definition update
     if andb (S lp <=? la)
             (andb
                (bool_decide ((firstn lp (observationsOf ca))=(observationsOf p)))
-               (bool_decide ((nth lp (observationsOf ca) (Cobservation Receive m a))=(Cobservation Send m a)))) then
+               (bool_decide ((nth lp (observationsOf ca) dummy_observation)=(Cobservation Send m a)))) then
       (true, curState, curEq)
     else
       let newEq := curEq in
-      (*      if (Rlt_dec (sum_weights (map (fun idx => nth idx weights (0%R)) newEq)) treshold) then *)
       if (Rlt_dec (@sum_weights _ (Build_Measurable _ (fun idx => nth idx weights (exist _ 1%R _))) newEq) treshold) then
         (false, curState, curEq)
       else
@@ -173,19 +176,9 @@ Next Obligation.
 Defined.
 
 
-Definition dummy_prestate := Cprestate [].
-Definition dummy_premessage := Cpremessage dummy_prestate 0.
-Definition dummy_observation := Cobservation Receive dummy_premessage 0.
-
-
 Global Instance list_in_dec {A : Type} {dec : EqDecision A} : RelDecision (@In A)
   := In_dec dec.
 
-(*
-Definition l {A : Type} {dec : EqDecision A} (x: A) (l : list A) : bool
-  := bool_decide (In x l).
-*)    
-  
 
 Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : R)
            (args : bool * nat * list Observation * list Prestate * set nat) (ob : Observation)
@@ -195,7 +188,6 @@ Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : 
     match result with
     | false => args
     | true =>
-      (*let ob := nth i observations dummy_observation in*)
       let l := labelOf ob in
       let m := messageOf ob in
       let p := stateOf m in
