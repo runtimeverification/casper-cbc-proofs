@@ -59,17 +59,17 @@ Definition observationsOf (prs : Prestate) : list Observation :=
   | Cprestate l => l
   end.
 
-Definition label (ob : Observation) : Label :=
+Definition labelOf (ob : Observation) : Label :=
   match ob with
   | Cobservation lbl _ _ => lbl
   end.
 
-Definition message (ob : Observation) : Premessage :=
+Definition messageOf (ob : Observation) : Premessage :=
   match ob with
   | Cobservation _ msg _ => msg
   end.
 
-Definition witness (ob : Observation) : nat :=
+Definition witnessOf (ob : Observation) : nat :=
   match ob with
   | Cobservation _ _ w => w
   end.
@@ -85,7 +85,7 @@ Definition authorOf (m : Premessage) : nat :=
   end.
 
 
-Definition elmo_type : VLSM_type Premessage :=
+Instance elmo_type : VLSM_type Premessage :=
   {| state := Prestate;
      Common.label := Label;
   |}.
@@ -122,10 +122,10 @@ Definition elmo_sig : VLSM_sign elmo_type :=
 Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat) : bool :=
   fold_right andb true
              (map (fun (ob2 : Observation) =>
-                     match (label ob2) with
+                     match (labelOf ob2) with
                      | Receive =>
                        if
-                         (In_dec Observation_eqdec (Cobservation Receive (message ob2) component) prefix)
+                         (In_dec Observation_eqdec (Cobservation Receive (messageOf ob2) component) prefix)
                        then true else false
                      | Send => false
                      end
@@ -173,10 +173,6 @@ Next Obligation.
 Defined.
 
 
-Print Premessage.
-Check Cobservation.
-Print Label.
-
 Definition dummy_prestate := Cprestate [].
 Definition dummy_premessage := Cpremessage dummy_prestate 0.
 Definition dummy_observation := Cobservation Receive dummy_premessage 0.
@@ -200,11 +196,11 @@ Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : 
     | false => args
     | true =>
       (*let ob := nth i observations dummy_observation in*)
-      let l := label ob in
-      let m := message ob in
+      let l := labelOf ob in
+      let m := messageOf ob in
       let p := stateOf m in
       let a := authorOf m in
-      let w := witness ob in
+      let w := witnessOf ob in
       let prefix := firstn i observations in
       let i := S i in
       (* w <> component *)
@@ -265,7 +261,7 @@ Definition elmo_transition
            (component : nat)
            (weights : list pos_R)
            (treshold : R)
-           (label : Label)
+           (label : Common.label)
            (bsom : Prestate * option Premessage)
   : Prestate * option Premessage
   :=
@@ -285,4 +281,10 @@ Definition elmo_transition
          (s, None)
     end.
 
-      
+Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold : R)
+  : @VLSM_class Premessage elmo_type elmo_sig
+  :=
+    {| valid := elmo_valid weights treshold
+       ; transition := elmo_transition component weights treshold
+    |}.
+
