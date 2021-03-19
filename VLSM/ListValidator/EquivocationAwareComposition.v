@@ -124,7 +124,7 @@ Context
   Proposition self_projections_same_after_receives
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
-    (a : vplan X)
+    (a : plan X)
     (Hpra : finite_protocol_plan_from X s a)
     (Hrec : forall (ai : vplan_item X), In ai a -> projT2 (label_a ai) = receive) :
     let res := snd (apply_plan X s a) in
@@ -168,7 +168,7 @@ Context
      }
      rewrite Hres_long in Hone.
      specialize (Hone Hpra_short).
-     rewrite Hres_long. rewrite Hres_short.
+     rewrite Hres_short.
      rewrite Hres_long.
      intuition.
   Qed.
@@ -218,7 +218,7 @@ Context
   Proposition non_self_projections_same_after_sends
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
-    (a : vplan X)
+    (a : plan X)
     (Hpra : finite_protocol_plan_from X s a)
     (Hrec : forall (ai : vplan_item X), In ai a -> exists (c : bool), projT2 (label_a ai) = update c) :
     let res := snd (apply_plan X s a) in
@@ -262,7 +262,7 @@ Context
      }
      rewrite Hres_long in Hone.
      specialize (Hone Hpra_short).
-     rewrite Hres_long. rewrite Hres_short.
+     rewrite Hres_short.
      rewrite Hres_long.
      intuition.
      intuition.
@@ -1972,7 +1972,7 @@ Context
   Lemma receive_plan_preserves_equivocation 
     (s : vstate X)
     (Hpr : protocol_state_prop X s)
-    (a : vplan X)
+    (a : plan X)
     (Hpr_a : finite_protocol_plan_from X s a)
     (Hgood : forall (ai : vplan_item X), In ai a ->
       (projT2 (label_a ai)) = receive /\
@@ -1991,14 +1991,14 @@ Context
         
       rewrite apply_plan_app.
       destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
-        destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
-        
-        assert (res_long = snd (apply_plan X s a)) by (rewrite eq_long; intuition).
-        assert (res_short = snd (apply_plan X res_long [x])) by (rewrite eq_short; intuition).
-        
-        simpl.
-        apply set_eq_tran with (s2 := GE res_long).
-        spec IHa. {
+      destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
+
+      assert (res_long = snd (apply_plan X s a)) by (rewrite eq_long; intuition).
+      assert (res_short = snd (apply_plan X res_long [x])) by (rewrite eq_short; intuition).
+      
+      simpl.
+      apply set_eq_tran with (s2 := GE res_long).
+      + spec IHa. {
           intros ai Hai.
           specialize (Hgood ai).
           spec Hgood. apply in_app_iff. left. intuition.
@@ -2006,8 +2006,8 @@ Context
         }
         simpl in IHa.
         intuition.
-        rewrite H0.
-        unfold apply_plan. simpl.
+      + rewrite H0.
+        unfold apply_plan, _apply_plan. simpl.
         
         specialize (Hgood x).
         spec Hgood. {
@@ -2037,38 +2037,37 @@ Context
         unfold vvalid in Hpr_a.
         unfold valid in Hpr_a. simpl in Hpr_a.
         subst v.
-        destruct input_a eqn : eq_input.
-        + destruct Hgood as [so [from [Heqm Hinso]]].
-          inversion Heqm.
-          subst m. simpl in *.
-          unfold set_eq.
-          inversion eq_trans. clear H3.
-          assert (In (SimpObs Message' from so) (cobs res_long from)). {
-            specialize (@in_future_message_obs index_listing s res_long Hpr from) as Hf.
-            spec Hf. {
-              unfold in_futures.
-              exists (fst (apply_plan X s a)).
-              split.
-              - assert (finite_protocol_plan_from X s a). {
-                  intuition. 
-                }
-                unfold finite_protocol_plan_from in H1.
-                intuition.
-              - rewrite H.
-                apply apply_plan_last.
-                
-            }
-            specialize (Hf (SimpObs Message' from so)).
-            apply in_cobs_messages'.
-            apply Hf.
-            intuition.
+        destruct input_a eqn : eq_input
+        ; [| intuition].
+        destruct Hgood as [so [from [Heqm Hinso]]].
+        inversion Heqm.
+        subst m. simpl in *.
+        unfold set_eq.
+        inversion eq_trans. clear H3.
+        assert (In (SimpObs Message' from so) (cobs res_long from)). {
+          specialize (@in_future_message_obs index_listing s res_long Hpr from) as Hf.
+          spec Hf. {
+            unfold in_futures.
+            exists (fst (apply_plan X s a)).
+            split.
+            - assert (finite_protocol_plan_from X s a). {
+                intuition. 
+              }
+              unfold finite_protocol_plan_from in H1.
+              intuition.
+            - rewrite H.
+              apply apply_plan_last.
           }
-          split.
-          * apply GE_existing_different_rev.
-            all : intuition.
-          * apply GE_existing_different.
-            all : intuition.
-        + intuition. 
+          specialize (Hf (SimpObs Message' from so)).
+          apply in_cobs_messages'.
+          apply Hf.
+          intuition.
+        }
+        split.
+        * apply GE_existing_different_rev.
+          all : intuition.
+        * apply GE_existing_different.
+          all : intuition.
   Qed.
   
 End Composition.

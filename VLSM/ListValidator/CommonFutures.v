@@ -213,7 +213,7 @@ Context
     assumption.
   Qed.
   
-  Definition chain_updates (li : list index) (s : vstate X) : vplan X :=
+  Definition chain_updates (li : list index) (s : vstate X) : plan X :=
     List.map (feasible_update_composite s) li.
   
   Lemma chain_updates_projections_out 
@@ -379,9 +379,9 @@ Context
           unfold chain_updates in IHli.
           rewrite Hchain; intuition.
       + unfold res; simpl.
-        replace (feasible_update_composite s i :: chain_updates li s) with 
-                ([feasible_update_composite s i] ++ chain_updates li s) by intuition.
-        rewrite apply_plan_app.
+        change (feasible_update_composite s i :: chain_updates li s) with 
+                ([feasible_update_composite s i] ++ chain_updates li s).
+        rewrite (apply_plan_app X).
         destruct (apply_plan X s [feasible_update_composite s i]) as (tr_short, res_short) eqn : eq_short.
         assert (res_short = snd (apply_plan X s [feasible_update_composite s i])) by (rewrite eq_short; intuition).
         destruct (apply_plan X res_short (chain_updates li s)) as (tr_long, res_long) eqn : eq_long.
@@ -411,7 +411,7 @@ Context
              rewrite Hsame.
              rewrite H0.
              unfold apply_plan.
-             unfold apply_plan_folder; simpl. 
+             unfold _apply_plan_folder; simpl. 
              rewrite state_update_eq.
              rewrite <- update_consensus_clean with (value := (feasible_update_value (s i) i)).
              rewrite (@project_same index index_listing Hfinite).
@@ -479,7 +479,7 @@ Context
   
   (** Some wrappers for clarity of expoisition going forward. *)
   
-  Definition send_phase_plan (s : vstate X) : vplan X :=
+  Definition send_phase_plan (s : vstate X) : plan X :=
     chain_updates (GH s) s.
  
   Definition send_phase (s : vstate X) : list (vtransition_item X) * vstate X :=
@@ -550,7 +550,7 @@ Context
     assumption.
     unfold send_phase_transitions.
     unfold send_phase_result.
-    apply apply_plan_last.
+    apply (apply_plan_last X).
   Qed.
   
   Remark send_phase_result_projections 
@@ -601,10 +601,10 @@ Context
   Definition lift_to_receive_item (to from : index) (s : state): vplan_item (IM_index to) :=
     @Build_plan_item _ (type (IM_index to)) receive (Some (from, s)).
   
-  (** Construct a [vplan X] such that <s to> will receive the messages 
+  (** Construct a [plan X] such that <s to> will receive the messages 
      in <ls>. *)
   
-  Definition sync_plan (to from : index) (ls : list state) : (vplan X) := 
+  Definition sync_plan (to from : index) (ls : list state) : (plan X) := 
     let tmp := List.map (lift_to_receive_item to from) ls in
     List.map (lift_to_composite_plan_item IM_index to) tmp.
   
@@ -613,7 +613,7 @@ Context
      don't match, None is returned. 
      See [Lib/ListExtras.v] for [complete_suffix]. *) 
   
-  Definition sync (s : vstate X) (s': state) (to from : index) : option (vplan X) :=
+  Definition sync (s : vstate X) (s': state) (to from : index) : option (plan X) :=
     let history_s := get_history (s to) from in
     let history_s' := get_history s' from in
     let rem_states := complete_suffix history_s' history_s in
@@ -634,7 +634,7 @@ Context
     (to inter from : index)
     (Hhist : get_history (s inter) from = get_history (s' inter) from) 
     (Hdif : to <> from)
-    (a : vplan X)
+    (a : plan X)
     (Hsync : sync s (s' inter) to from = Some a) :
     let res := snd (apply_plan X s a) in
     finite_protocol_plan_from X s a /\
@@ -667,7 +667,7 @@ Context
           assumption.
     - intros. simpl in *.
       
-      replace (a :: a0) with ([a] ++ a0). 2: auto.
+      change (a :: a0) with ([a] ++ a0).
       rewrite <- finite_protocol_plan_from_app_iff.
       
       unfold sync in Hsync.
@@ -844,38 +844,41 @@ Context
           rewrite H1 in eq_cs2.
           discriminate eq_cs2.
       }
-    
-      split. split. 
-      + unfold finite_protocol_plan_from.
-        unfold apply_plan. simpl in *.
-        rewrite eq_vtrans. simpl.
-        apply finite_ptrace_extend.
-        apply finite_ptrace_empty.
-        apply protocol_transition_destination in H. 
-        assumption.
-        assumption.
-      + unfold apply_plan. simpl.
-        rewrite eq_vtrans. simpl.
-        apply IHa.
+      unfold finite_protocol_plan_from at 1.
+      unfold apply_plan, _apply_plan. simpl in *.
+      rewrite fold_right_app. simpl.
+      match goal with
+      |- context [let (_,_) := let (_,_) := ?t in _ in _] =>
+        replace t with (s0, o)
+      end.
+      simpl in *.
+      repeat split.
+      + apply first_transition_valid. assumption.
+      + apply IHa.
       + destruct IHa as [_ IHa].
         rewrite <- IHa.
+        unfold apply_plan, _apply_plan. simpl.
         f_equal.
-        unfold apply_plan. simpl.
-        rewrite fold_right_app. simpl.
-        rewrite eq_vtrans. simpl.
-        specialize (@apply_plan_folder_additive _ X s0 (rev a0) [{| l := label_a; input := Some (from, sa); destination := s0; output := o |}]) as Hadd.
+        specialize (@_apply_plan_folder_additive _ (type X) (vtransition X) s0 (rev a0) ) as Hadd.
         
+        match goal with
+        |- context[[?item]] => specialize (Hadd [item])
+        end.
+        simpl in Hadd. simpl.
         match goal with
         |- _ = snd (let (final, items) := ?f in _) to =>
-          destruct f as (tr', dest') eqn : eqf2 end.
-        
+          destruct f as (tr', dest') eqn : eqf2
+        end.
+        match type of Hadd with 
+        | let (_,_) := ?f in _ => replace f with (tr', dest') in Hadd
+        end.
+        simpl in *. 
         match goal with
         |- snd (let (final, items) := ?f in _) to = _ =>
-           match type of Hadd with ?f1 = _ =>
-              change f with f1
-           end
+          match type of Hadd with _ = ?r =>
+            replace f  with r
+          end
         end.
-        rewrite Hadd.
         reflexivity.
     Qed.
    
@@ -1314,7 +1317,7 @@ Context
       
     Definition get_matching_plan
       (s : vstate X)
-      (from to : index) : vplan X :=
+      (from to : index) : plan X :=
       match (sync s (get_matching_state s to from) to from) with
       | None => []
       | Some a => a
@@ -1501,7 +1504,7 @@ Context
     Definition get_receives_for
       (s : vstate X)
       (li : list index)
-      (from : index) : vplan X :=
+      (from : index) : plan X :=
       let matching_plans := List.map (get_matching_plan s from) li in
       List.concat matching_plans.
       
@@ -1698,7 +1701,7 @@ Context
         
         rewrite Hres_long in Heff.
         destruct Heff as [Heff_proto Heff_proj].
-        
+
         split.
         + apply finite_protocol_plan_from_app_iff.
           split. 
@@ -1718,20 +1721,17 @@ Context
             subst res_short. subst res_long.
             specialize (Heff_proj x). 
             spec Heff_proj. intuition. simpl in Heff_proj.
-            unfold free_composite_vlsm in Heff_proj.
             rewrite <- Heff2.
-            unfold X. unfold X in Heff_proj.
-            rewrite Heff_proj.
-            intuition.
+            f_equal. simpl. assumption.
     Qed.
     
     Definition is_receive_plan
-      (a : vplan X) : Prop := 
+      (a : plan X) : Prop := 
       forall (ai : vplan_item X),
         In ai a -> projT2 (label_a ai) = receive.
     
     Definition is_receive_plan_app
-      (a b : vplan X) :
+      (a b : plan X) :
       is_receive_plan a /\ is_receive_plan b <-> is_receive_plan (a ++ b).
     Proof.
       unfold is_receive_plan.
@@ -1766,7 +1766,7 @@ Context
     Lemma receives_neq
       (s : vstate X)
       (Hpr : protocol_state_prop X s)
-      (a : vplan X) 
+      (a : plan X) 
       (Hpra : finite_protocol_plan_from X s a)
       (i j : index)
       (Hreceive : is_receive_plan a)
@@ -1799,22 +1799,18 @@ Context
         rewrite apply_plan_app.
         destruct (apply_plan X s a) as [tr_long res_long].
         simpl in *.
-        unfold apply_plan.
-        unfold apply_plan_folder.
+        unfold apply_plan, _apply_plan, _apply_plan_folder.
         destruct x. simpl.
+
+        unfold finite_protocol_plan_from in Hpra_short.
+        unfold apply_plan,_apply_plan, _apply_plan_folder in Hpra_short.
+        simpl in Hpra_short.
         destruct (vtransition X label_a (res_long, input_a)) eqn : eq_trans.
         simpl.
-        
-        unfold finite_protocol_plan_from in Hpra_short.
-        unfold apply_plan in Hpra_short.
-        unfold apply_plan_folder in Hpra_short.
         simpl in Hpra_short.
-        rewrite eq_trans in Hpra_short.
-        simpl in Hpra_short.
-        inversion Hpra_short.
+        apply first_transition_valid in Hpra_short. simpl in Hpra_short.
         
-        unfold protocol_transition in H6.
-        destruct H6 as [Hprtr Htrans].
+        destruct Hpra_short as [Hprtr Htrans].
         
         unfold vtransition in eq_trans.
         unfold transition in eq_trans.
@@ -1906,7 +1902,7 @@ Context
       (s s' : vstate X)
       (Hprs : protocol_state_prop X s)
       (Hprs' : protocol_state_prop X s')
-      (a : vplan X)
+      (a : plan X)
       (Hrec : is_receive_plan a)
       (Hpr : finite_protocol_plan_from X s a)
       (f : index)
@@ -1955,7 +1951,7 @@ Context
         destruct (apply_plan X s a) as (tr_long, res_long) eqn : eq_long.
         destruct (apply_plan X res_long [x]) as (tr_short, res_short) eqn : eq_short.
         simpl in *.
-        
+
         assert (res_long = snd (apply_plan X s a)). {
           rewrite eq_long.
           intuition.
@@ -1979,8 +1975,7 @@ Context
         replace res_short' with (snd (apply_plan X res_long' [x])).
         replace res_short with (snd (apply_plan X res_long [x])).
         
-        unfold apply_plan.
-        unfold apply_plan_folder.
+        unfold apply_plan, _apply_plan, _apply_plan_folder.
         specialize (Hrec_short x).
         remember x as x'.
         destruct x as [label_x input_x].
@@ -1999,23 +1994,24 @@ Context
           assumption.
           assumption.
         } 
-        
-        destruct (vtransition X label_x (res_long', input_x)) eqn : trans'.
-        destruct (vtransition X label_x (res_long, input_x)) eqn : trans.
-        simpl.
-        
+
         unfold finite_protocol_plan_from in Hpr_short.
-        unfold apply_plan in Hpr_short.
-        unfold apply_plan_folder in Hpr_short.
+        unfold apply_plan, _apply_plan, _apply_plan_folder in Hpr_short.
         simpl in Hpr_short.
         rewrite Heqx' in Hpr_short.
-        rewrite trans in Hpr_short.
-          
-        inversion Hpr_short.
-        remember H10 as Hprotocol_trans.
-        unfold protocol_transition in H10.
-        destruct H10 as [Hprotocol_valid Htrans].
+        rewrite Heqx'.
+       
+        destruct (vtransition X label_x (res_long, input_x)) eqn : trans.
+
+        apply first_transition_valid in Hpr_short. simpl in Hpr_short.
+
+        simpl in *.
+        destruct (vtransition X label_x (res_long', input_x)) eqn : trans'.
+        simpl.
         
+        remember Hpr_short as Hprotocol_trans.
+        destruct Hpr_short as [Hprotocol_valid Htrans].
+
         unfold vtransition in trans, trans'.
         unfold transition in trans, trans'.
         simpl in *.
@@ -2060,27 +2056,19 @@ Context
           split.
           * assumption.
           * unfold finite_protocol_plan_from.
-            assert (protocol_transition X (existT (fun n : index => vlabel (IM_index n)) j receive)
-                    (snd (apply_plan X s' a), Some m)
-                    (state_update IM_index (snd (apply_plan X s' a)) j
-                    (update_state (snd (apply_plan X s' a) j) (snd m) (fst m)), None)). {
-             split;[|intuition].
-             destruct Hprotocol_trans as [Hprotocol_trans tmp].
-             specialize (relevant_component_transition_lv res_long res_long') as Hrel.
-             specialize (Hrel Hprs_long Hprs'_long (existT (fun n : index => vlabel (IM_index n)) j receive) m).
-             rewrite H1 in Hrel.
-             apply Hrel. simpl.
-             specialize (Iha_proj j).
-             rewrite Hm.
-             symmetry.
-             rewrite <- H1.
-             all : intuition.
-            }
-            rewrite Heqx'. simpl.
-            apply finite_ptrace_extend.
-            apply finite_ptrace_empty.
-            apply protocol_transition_destination in H10.
-            all : intuition.
+            simpl. rewrite eq_long'. simpl.
+            apply first_transition_valid. simpl.
+            split;[|intuition].
+            destruct Hprotocol_trans as [Hprotocol_trans tmp].
+            specialize (relevant_component_transition_lv res_long res_long') as Hrel.
+            specialize (Hrel Hprs_long Hprs'_long (existT (fun n : index => vlabel (IM_index n)) j receive) m).
+            rewrite H1 in Hrel.
+            rewrite eq_long' in Hrel. simpl in Hrel.
+            apply Hrel; [|assumption]. simpl.
+            specialize (Iha_proj j).
+            rewrite Hm.
+            symmetry.
+            intuition.
         + intros.
           subst x'. simpl in *.
           specialize (Iha_proj i).
@@ -2092,22 +2080,18 @@ Context
               rewrite state_update_eq.
               rewrite e in Iha_proj.
               clear -Iha_proj Hprs_long Hprs'_long.
-              destruct (decide ((fst m) = f)).
-              ** rewrite e.
+              destruct (decide (f = (fst m))).
+              ** rewrite <- e.
                  rewrite (@project_same index index_listing Hfinite).
                  rewrite (@project_same index index_listing Hfinite).
                  reflexivity.
                  all : (apply protocol_state_component_no_bottom; assumption).
-              ** rewrite (@project_different index index_listing Hfinite).
-                 rewrite (@project_different index index_listing Hfinite).
-                 assumption.
-                 intuition.
+              ** rewrite !(@project_different index index_listing Hfinite); [assumption| assumption | | assumption |].
                  (apply protocol_state_component_no_bottom; assumption).
-                 intuition.
                  (apply protocol_state_component_no_bottom; assumption).
-          -- rewrite state_update_neq.
-             rewrite state_update_neq.
-             all : intuition.
+          -- rewrite state_update_neq by assumption.
+             rewrite state_update_neq by assumption.
+             intuition.
     Qed.
       
     Definition others (i : index) (s : vstate X) := 
@@ -2136,7 +2120,7 @@ Context
     
     Definition get_receives_all
       (s : vstate X)
-      (lfrom : set index) : vplan X :=
+      (lfrom : set index) : plan X :=
       let receive_fors := List.map (fun (i : index) => get_receives_for s (others i s) i) lfrom in
       List.concat receive_fors.
       
@@ -2196,7 +2180,7 @@ Context
         destruct IHlfrom as [IHprotocol IHproject].
         rewrite map_app.
         rewrite concat_app.
-        rewrite apply_plan_app; simpl.
+        rewrite apply_plan_app.
         
         match goal with
         |- context[apply_plan X s ?a] => 
@@ -2207,11 +2191,12 @@ Context
         |- context [apply_plan X res_long ?a] =>
            destruct (apply_plan X res_long a) as [tr_short res_short] eqn : eq_short
         end.
+        simpl in *.
         
         rewrite app_nil_r in *.
-        simpl.
         
         assert (res_short = snd (apply_plan X res_long (get_receives_for s (others x s) x))). {
+          simpl.
           rewrite eq_short.
           intuition.
         }
@@ -2290,6 +2275,7 @@ Context
         }
         
         simpl in Hrel.
+        rewrite eq_short in Hrel.
         
         assert (Hfinite_short : finite_protocol_plan_from X res_long (get_receives_for s (others x s) x)). {
           intuition.
@@ -2297,15 +2283,15 @@ Context
         
         split.
         + apply finite_protocol_plan_from_app_iff.
+          unfold finite_protocol_plan_from. simpl. rewrite eq_long.
           split.
           * unfold finite_protocol_plan_from in IHprotocol.
             replace tr_long with (fst (apply_plan X s (get_receives_all s lfrom))).
             assumption.
             unfold get_receives_all.
-            replace (apply_plan X s (concat (map (fun i : index => get_receives_for s (others i s) i) lfrom))) with
-            (tr_long, res_long). 
-            intuition.
-          * rewrite H0 in Hfinite_short.
+            simpl. rewrite eq_long. reflexivity.
+          * rewrite H0 in Hfinite_short. simpl. simpl in Hfinite_short.
+            rewrite eq_long in Hfinite_short.
             apply Hfinite_short.
         +
              intros.
@@ -2314,6 +2300,7 @@ Context
                 destruct Hrel as [_ Hrel].
                 specialize (Hrel i).
                 rewrite e.
+                simpl. rewrite eq_short.
                 rewrite Hrel.
                 apply get_receives_for_correct.
                 assumption.
@@ -2337,6 +2324,7 @@ Context
                 unfold get_receives_all.
                 replace (snd (apply_plan X s (concat (map (fun i1 : index => get_receives_for s (others i1 s) i1) lfrom)))) with res_long by intuition.
                 rewrite H.
+                simpl. rewrite eq_long. simpl.
                 apply receives_neq.
                 assumption.
                 assumption.
@@ -2672,7 +2660,7 @@ Context
     unfold receive_phase_result.
     unfold receive_phase.
     unfold receive_phase_plan.
-    rewrite Hrec. 
+    simpl. rewrite Hrec. 
     rewrite get_matching_state_for_honest.
     rewrite <- self_projections_same_after_receive_phase.
     intuition.

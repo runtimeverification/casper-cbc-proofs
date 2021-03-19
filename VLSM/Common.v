@@ -939,13 +939,16 @@ decompose the above properties in proofs.
     Lemma first_transition_valid
       (s : state)
       (te : transition_item)
-      (Htr : finite_protocol_trace_from s [te])
-      : protocol_transition (l te) (s, input te) (destination te, output te).
+      : finite_protocol_trace_from s [te] <-> protocol_transition (l te) (s, input te) (destination te, output te).
 
     Proof.
-      inversion Htr.
-      simpl.
-      assumption.
+      split.
+      - intro Htr.
+        inversion Htr.
+        assumption.
+      - destruct te. simpl. intro Ht. 
+        apply protocol_transition_destination in Ht as Hdestination0.
+        constructor; [|assumption]. constructor. assumption.
     Qed.
 
     Lemma extend_right_finite_trace_from
@@ -2843,6 +2846,15 @@ Byzantine fault tolerance analysis. *)
       (basic_VLSM_incl (VLSM_class_pre_loaded_with_messages (projT2 (projT2 X))
                                                         (fun _ : message => True)) pre_loaded_with_all_messages_vlsm_machine ); intros; [assumption| | apply H |reflexivity].
       apply initial_message_is_protocol;exact I.
+  Qed.
+
+  Lemma pre_loaded_vlsm_incl_pre_loaded_with_all_messages
+    (P : message -> Prop)
+    : VLSM_incl (pre_loaded_vlsm X P) pre_loaded_with_all_messages_vlsm.
+  Proof.
+    apply VLSM_incl_trans with (machine (pre_loaded_vlsm X (fun _ => True))).
+    - apply (pre_loaded_vlsm_incl P (fun _ => True)). intros. exact I.
+    - apply VLSM_eq_incl_iff. apply pre_loaded_with_all_messages_vlsm_is_pre_loaded_with_True.
   Qed.
 
   Lemma vlsm_is_pre_loaded_with_False
