@@ -260,3 +260,29 @@ Definition elmo_valid
   | Receive, None => false
   | Receive, Some m => isProtocol (stateOf m) (authorOf m) weights treshold
   end.
+
+Definition elmo_transition
+           (component : nat)
+           (weights : list pos_R)
+           (treshold : R)
+           (label : Label)
+           (bsom : Prestate * option Premessage)
+  : Prestate * option Premessage
+  :=
+    let: (state, message) := bsom in
+    match label, message with
+    | Send, Some _ => (state, None)
+    | Send, None
+      => let m := Cpremessage state component in
+         let ob := Cobservation Send m component in
+         let s := Cprestate (observationsOf state ++ [ob]) in
+         (s, Some m)
+    | Receive, None
+      => (state, None)
+    | Receive, Some msg
+      => let ob := Cobservation Receive msg component in
+         let s := Cprestate (observationsOf state ++ [ob]) in
+         (s, None)
+    end.
+
+      
