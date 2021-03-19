@@ -176,10 +176,6 @@ Next Obligation.
 Defined.
 
 
-Global Instance list_in_dec {A : Type} {dec : EqDecision A} : RelDecision (@In A)
-  := In_dec dec.
-
-
 Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : R)
            (args : bool * nat * list Observation * list Prestate * set nat) (ob : Observation)
   : bool * nat * list Observation * list Prestate * set nat
