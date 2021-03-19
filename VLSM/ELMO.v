@@ -246,3 +246,17 @@ Definition isProtocol
     let initialEq := @nil nat in
     let result := (fold_left (isProtocol_step component weights treshold) (observationsOf prestate) (true, 0, observationsOf prestate, initialState, initialEq )) in
     fst (fst (fst (fst result))).
+
+Definition elmo_valid
+           (weights : list pos_R)
+           (treshold : R)
+           (label : Label)
+           (bsom : Prestate * option Premessage)
+  : bool :=
+  let: (state, message) := bsom in
+  match label,message with
+  | Send, None => true
+  | Send, Some _ => false
+  | Receive, None => false
+  | Receive, Some m => isProtocol (stateOf m) (authorOf m) weights treshold
+  end.
