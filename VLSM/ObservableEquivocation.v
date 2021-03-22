@@ -5,8 +5,7 @@ From CasperCBC
   Require Import
     Preamble ListExtras ListSetExtras
     Lib.Classes
-    Lib.Measurable VLSM.CBC.Basic
-    VLSM.CBC.Equivocation
+    Lib.Measurable
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.ProjectionTraces
     .

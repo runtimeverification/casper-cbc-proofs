@@ -10,9 +10,8 @@ From CasperCBC
       Preamble
       ListExtras
       Lib.Measurable
-      VLSM.CBC.Basic
+      VLSM.Equivocation
       Validator.State
-      VLSM.CBC.Equivocation
       VLSM.ObservableEquivocation
     .
 

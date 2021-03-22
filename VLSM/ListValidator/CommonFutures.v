@@ -8,7 +8,6 @@ Require Import
   Lib.ListSetExtras
   Lib.SortedLists
   Lib.Measurable
-  VLSM.CBC.Basic
   VLSM.Common
   VLSM.Plans
   VLSM.ProjectionTraces
@@ -20,7 +19,7 @@ Require Import
   VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ListValidator.EquivocationAwareComposition
   VLSM.ObservableEquivocation
-  VLSM.CBC.Equivocation.
+  .
 
 (** 
 Also see:

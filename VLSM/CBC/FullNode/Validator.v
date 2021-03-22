@@ -7,10 +7,9 @@ From CasperCBC
     Lib.Preamble
     Lib.ListExtras
     Lib.ListSetExtras
-    VLSM.CBC.Basic
     Lib.Measurable
     VLSM.Common
-    VLSM.CBC.Equivocation
+    VLSM.Decisions
     VLSM.CBC.FullNode.Validator.State
     VLSM.CBC.FullNode.Validator.Equivocation
     VLSM.Equivocation

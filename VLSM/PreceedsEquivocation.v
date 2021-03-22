@@ -10,8 +10,6 @@ From CasperCBC
     Lib.ListExtras
     Lib.ListSetExtras
     Lib.Measurable
-    VLSM.CBC.Basic
-    VLSM.CBC.Equivocation
     VLSM.Common
     VLSM.Composition
     VLSM.Equivocation

@@ -2,7 +2,6 @@ From CasperCBC
   Require Import
     Lib.Preamble
     VLSM.Common VLSM.Composition VLSM.Decisions VLSM.ProjectionTraces
-    VLSM.CBC.Basic
     .
 
 (** * Common Futures and Decision Consistency *)

@@ -1,7 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical Sorting.
 Import ListNotations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists VLSM.CBC.Basic Lib.Measurable CBC.Protocol CBC.Common.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common.
 
 (* Lists of state hashes *)
 Definition justification_type (hash : Type) : Type := list hash.
@@ -846,7 +846,7 @@ Definition LightNode_seteq
     Protocol.reach_trans := reach_trans;
     Protocol.reach_union := reach_union;
     Protocol.reach_morphism := reach_morphism;
-    Protocol.estimator_total := Basic.estimator_total;
+    Protocol.estimator_total := Decisions.estimator_total;
     about_state0 := protocol_state_nil;
     equivocation_weight := fault_weight_state;
     Protocol.equivocation_weight_compat := equivocation_weight_compat;
@@ -1099,11 +1099,11 @@ Lemma exist_equivocating_messages
         In v vs  ->
           equivocating_messages (c1, v, hash_state j1) (c2, v, hash_state j2) = true).
 Proof.
-  destruct (Basic.estimator_total []) as [c Hc].
+  destruct (Decisions.estimator_total []) as [c Hc].
   intros.
   destruct vs; try (exfalso; apply H; reflexivity); clear H.
-  destruct (Basic.estimator_total [(c, v, [])]) as [c' Hc'].
-  destruct (Basic.estimator_total [(c', v, hash_state [(c, v, [])])]) as [c'' Hc''].
+  destruct (Decisions.estimator_total [(c, v, [])]) as [c' Hc'].
+  destruct (Decisions.estimator_total [(c', v, hash_state [(c, v, [])])]) as [c'' Hc''].
   exists []. exists [(c', v, hash_state [(c, v, [])])]. repeat split; try constructor.
   - apply (protocol_state_singleton c' v [(c, v, [])]) in Hc'; try constructor; try assumption.
     apply (protocol_state_singleton c v []) in Hc; try constructor; assumption.

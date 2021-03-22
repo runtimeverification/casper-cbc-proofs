@@ -30,8 +30,6 @@ VLSM/ListValidator/EquivocationAwareComposition.v
 VLSM/ListValidator/CommonFutures.v
 VLSM/Liveness.v
 VLSM/Liveness/SimpleFragileProtocol.v
-VLSM/CBC/Basic.v
-VLSM/CBC/Equivocation.v
 VLSM/CBC/FullNode/Validator/State.v
 VLSM/CBC/FullNode/Validator/Equivocation.v
 VLSM/CBC/FullNode/Client.v

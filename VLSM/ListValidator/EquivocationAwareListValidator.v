@@ -7,8 +7,7 @@ Require Import
   Lib.Preamble
   Lib.ListExtras
   Lib.Measurable
-  VLSM.CBC.Basic
-  VLSM.CBC.Equivocation
+  VLSM.Equivocation
   VLSM.Common
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation

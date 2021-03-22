@@ -7,10 +7,10 @@ From CasperCBC
     Preamble
     ListExtras
     ListSetExtras
-    VLSM.CBC.Basic
     Lib.Measurable
     TopSort
-    VLSM.CBC.Equivocation
+    VLSM.Equivocation
+    VLSM.Decisions
     VLSM.Common
     VLSM.Composition
     VLSM.CBC.FullNode.Validator.State

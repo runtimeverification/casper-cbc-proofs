@@ -1,7 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts .
 Import ListNotations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras VLSM.CBC.Basic Lib.Measurable CBC.Protocol CBC.Common CBC.Definitions.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common CBC.Definitions.
 
 (* Implementation -instantiates-> Level Specific *)
 (** Building blocks for instancing CBC_protocol with full node version **)
@@ -377,7 +377,7 @@ Theorem non_triviality_decisions_on_properties_of_protocol_states
 Proof.
   pose (triple_strictly_comparable_proj2 about_M) as HscV.
   pose (@strictly_comparable_eq_dec _ HscV) as HeqV.
-  destruct (Basic.estimator_total Empty) as [c Hc].
+  destruct (Decisions.estimator_total Empty) as [c Hc].
   destruct exists_pivotal_validator_ps as [v [vs [Hnodup [Hnin [Hlt Hgt]]]]].
   destruct vs as [ | v' vs].
   - exists (in_state (c,v,Empty)).
@@ -388,7 +388,7 @@ Proof.
     + destruct (distinct_choice_total v) as [v' Hv'].
       remember (add_in_sorted_fn (c, v', Empty) Empty) as sigma0.
       assert (Hps0 : protocol_state sigma0) by (subst; now apply protocol_state_singleton).
-      destruct (Basic.estimator_total sigma0) as [c0 Hc0].
+      destruct (Decisions.estimator_total sigma0) as [c0 Hc0].
       assert (bleh : protocol_state (add_in_sorted_fn (c0, v, sigma0) sigma0)) by (apply copy_protocol_state; assumption).
       exists (exist protocol_state (add_in_sorted_fn (c0, v, sigma0) sigma0) bleh).
       intros sigma' H'.
@@ -449,7 +449,7 @@ Proof.
       simpl in *. subst. assumption.
   - remember (add_in_sorted_fn (c, v', Empty) Empty) as sigma0.
     assert (Hps0 : protocol_state sigma0) by (subst; now apply protocol_state_singleton).
-    destruct (Basic.estimator_total sigma0) as [c0 Hc0].
+    destruct (Decisions.estimator_total sigma0) as [c0 Hc0].
     exists (in_state (c0,v,sigma0)).
     split.
     + assert (bleh : protocol_state (add_in_sorted_fn (c0, v, sigma0) sigma0)) by (apply copy_protocol_state; assumption).
@@ -458,7 +458,7 @@ Proof.
       red in H'; apply H'. apply in_state_add_in_sorted_iff. left. reflexivity.
     + remember (add_in_sorted_fn (c, v, Empty) Empty) as sigma.
       simpl in Heqsigma. rewrite add_is_next in Heqsigma.
-      destruct (Basic.estimator_total sigma) as [csigma Hcsigma].
+      destruct (Decisions.estimator_total sigma) as [csigma Hcsigma].
       remember (valid_protocol_state sigma csigma c (v' :: vs)) as sigma2.
       assert (Hequiv2 : set_eq (equivocating_senders sigma2) (v' :: vs)).
       { rewrite Heqsigma2. rewrite Heqsigma in *.

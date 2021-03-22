@@ -8,7 +8,6 @@ Require Import
   Lib.ListSetExtras
   Lib.SortedLists
   Lib.Measurable
-  VLSM.CBC.Basic
   VLSM.Common
   VLSM.Plans
   VLSM.ProjectionTraces
@@ -19,7 +18,7 @@ Require Import
   VLSM.ListValidator.Observations
   VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ObservableEquivocation
-  VLSM.CBC.Equivocation.
+  .
  
 (**   This file describes a free composition <X> of List Validator nodes, each using
    an [equivocation_aware_estimator]. Also see:

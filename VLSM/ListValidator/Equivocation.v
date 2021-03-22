@@ -8,13 +8,12 @@ Require Import
   Lib.ListSetExtras
   Lib.SortedLists
   Lib.Measurable
-  VLSM.CBC.Basic
   VLSM.Common
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ObservableEquivocation
-  VLSM.CBC.Equivocation.
+  .
 
 Section Equivocation.
 
