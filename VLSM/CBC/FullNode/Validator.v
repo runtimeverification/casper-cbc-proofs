@@ -8,7 +8,7 @@ From CasperCBC
     Lib.ListExtras
     Lib.ListSetExtras
     VLSM.CBC.Basic
-    VLSM.CBC.SumWeights
+    Lib.Measurable
     VLSM.Common
     VLSM.CBC.Equivocation
     VLSM.CBC.FullNode.Validator.State

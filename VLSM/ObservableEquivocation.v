@@ -5,7 +5,7 @@ From CasperCBC
   Require Import
     Preamble ListExtras ListSetExtras
     Lib.Classes
-    VLSM.CBC.SumWeights VLSM.CBC.Basic
+    Lib.Measurable VLSM.CBC.Basic
     VLSM.CBC.Equivocation
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.ProjectionTraces

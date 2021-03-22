@@ -7,7 +7,7 @@ Require Import
   Lib.ListExtras
   Lib.ListSetExtras
   Lib.SortedLists
-  VLSM.CBC.SumWeights
+  Lib.Measurable
   VLSM.CBC.Basic
   VLSM.Common
   VLSM.Composition

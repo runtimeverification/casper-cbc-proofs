@@ -31,7 +31,6 @@ VLSM/ListValidator/CommonFutures.v
 VLSM/Liveness.v
 VLSM/Liveness/SimpleFragileProtocol.v
 VLSM/CBC/Basic.v
-VLSM/CBC/SumWeights.v
 VLSM/CBC/Equivocation.v
 VLSM/CBC/FullNode/Validator/State.v
 VLSM/CBC/FullNode/Validator/Equivocation.v
@@ -48,6 +47,7 @@ CBC/FullNode.v
 CBC/LightNode.v
 CBC/Protocol.v
 CBC/FullNodeSimpleVLSM.v
+Lib/Measurable.v
 Lib/StreamExtras.v
 Lib/RealsExtras.v
 Lib/ListSetExtras.v

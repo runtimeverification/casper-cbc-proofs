@@ -1,7 +1,7 @@
 From Coq Require Import Reals List.
 From CasperCBC
     Require Import
-      VLSM.CBC.SumWeights
+      Lib.Measurable
     .
 
 (* Defining the estimator function as a relation *)

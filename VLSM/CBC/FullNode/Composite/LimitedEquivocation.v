@@ -8,7 +8,7 @@ From CasperCBC
     ListExtras
     ListSetExtras
     VLSM.CBC.Basic
-    VLSM.CBC.SumWeights
+    Lib.Measurable
     TopSort
     VLSM.CBC.Equivocation
     VLSM.Common
