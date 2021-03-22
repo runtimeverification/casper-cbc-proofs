@@ -9,10 +9,9 @@ From CasperCBC
     Require Import
       Preamble
       ListExtras
-      Lib.SumWeights
+      Lib.Measurable
+      VLSM.Equivocation
       Validator.State
-      CBC.Common
-      CBC.Equivocation
       VLSM.ObservableEquivocation
     .
 

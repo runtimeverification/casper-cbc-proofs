@@ -7,10 +7,8 @@ From CasperCBC
     Lib.Preamble
     Lib.ListExtras
     Lib.ListSetExtras
-    Lib.SumWeights
+    Lib.Measurable
     VLSM.Common
-    CBC.Common
-    CBC.Equivocation
     Validator.State
     Validator.Equivocation
     VLSM.Equivocation

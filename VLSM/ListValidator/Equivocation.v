@@ -7,14 +7,13 @@ Require Import
   Lib.ListExtras
   Lib.ListSetExtras
   Lib.SortedLists
-  Lib.SumWeights
+  Lib.Measurable
   VLSM.Common
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ObservableEquivocation
-  CBC.Common
-  CBC.Equivocation.
+  .
 
 Section Equivocation.
 

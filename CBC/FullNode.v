@@ -1,7 +1,7 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts .
 Import ListNotations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras Lib.SumWeights CBC.Protocol CBC.Common CBC.Definitions.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common CBC.Definitions.
 
 (* Implementation -instantiates-> Level Specific *)
 (** Building blocks for instancing CBC_protocol with full node version **)
@@ -317,7 +317,7 @@ Instance FullNode_syntactic
     about_consensus_values := triple_strictly_comparable_proj1 about_M;
     validators := V;
     about_validators :=  triple_strictly_comparable_proj2 about_M;
-    weight := SumWeights.weight;
+    weight := Measurable.weight;
     t := threshold;
     suff_val := reachable_threshold;
     state := sorted_state C V;
@@ -377,7 +377,7 @@ Theorem non_triviality_decisions_on_properties_of_protocol_states
 Proof.
   pose (triple_strictly_comparable_proj2 about_M) as HscV.
   pose (@strictly_comparable_eq_dec _ HscV) as HeqV.
-  destruct (estimator_total Empty) as [c Hc].
+  destruct (Decisions.estimator_total Empty) as [c Hc].
   destruct exists_pivotal_validator_ps as [v [vs [Hnodup [Hnin [Hlt Hgt]]]]].
   destruct vs as [ | v' vs].
   - exists (in_state (c,v,Empty)).
@@ -388,7 +388,7 @@ Proof.
     + destruct (distinct_choice_total v) as [v' Hv'].
       remember (add_in_sorted_fn (c, v', Empty) Empty) as sigma0.
       assert (Hps0 : protocol_state sigma0) by (subst; now apply protocol_state_singleton).
-      destruct (estimator_total sigma0) as [c0 Hc0].
+      destruct (Decisions.estimator_total sigma0) as [c0 Hc0].
       assert (bleh : protocol_state (add_in_sorted_fn (c0, v, sigma0) sigma0)) by (apply copy_protocol_state; assumption).
       exists (exist protocol_state (add_in_sorted_fn (c0, v, sigma0) sigma0) bleh).
       intros sigma' H'.
@@ -434,7 +434,7 @@ Proof.
           }
           rewrite Hequiv0. simpl. rewrite eq_dec_if_true; try reflexivity.
           simpl. simpl in Hgt. unfold Rminus in Hgt.
-          apply (Rplus_gt_compat_r (proj1_sig (Lib.SumWeights.weight v))) in Hgt. rewrite Rplus_assoc in Hgt.
+          apply (Rplus_gt_compat_r (proj1_sig (Measurable.weight v))) in Hgt. rewrite Rplus_assoc in Hgt.
           rewrite Rplus_0_r. rewrite Rplus_0_l in Hgt. rewrite Rplus_opp_l in Hgt. rewrite Rplus_0_r in Hgt.
           apply Rgt_lt. assumption.
         - apply fault_weight_state_incl. unfold syntactic_state_inclusion. simpl.
@@ -449,7 +449,7 @@ Proof.
       simpl in *. subst. assumption.
   - remember (add_in_sorted_fn (c, v', Empty) Empty) as sigma0.
     assert (Hps0 : protocol_state sigma0) by (subst; now apply protocol_state_singleton).
-    destruct (estimator_total sigma0) as [c0 Hc0].
+    destruct (Decisions.estimator_total sigma0) as [c0 Hc0].
     exists (in_state (c0,v,sigma0)).
     split.
     + assert (bleh : protocol_state (add_in_sorted_fn (c0, v, sigma0) sigma0)) by (apply copy_protocol_state; assumption).
@@ -458,7 +458,7 @@ Proof.
       red in H'; apply H'. apply in_state_add_in_sorted_iff. left. reflexivity.
     + remember (add_in_sorted_fn (c, v, Empty) Empty) as sigma.
       simpl in Heqsigma. rewrite add_is_next in Heqsigma.
-      destruct (estimator_total sigma) as [csigma Hcsigma].
+      destruct (Decisions.estimator_total sigma) as [csigma Hcsigma].
       remember (valid_protocol_state sigma csigma c (v' :: vs)) as sigma2.
       assert (Hequiv2 : set_eq (equivocating_senders sigma2) (v' :: vs)).
       { rewrite Heqsigma2. rewrite Heqsigma in *.
@@ -476,11 +476,11 @@ Proof.
         - apply Rlt_irrefl with (proj1_sig threshold).
           apply Rlt_le_trans with (fault_weight_state (add (c0, v, sigma0)to sigma2)); try assumption.
           unfold fault_weight_state.
-          unfold Rminus in Hgt. apply (Rplus_gt_compat_r (proj1_sig (Lib.SumWeights.weight v))) in Hgt.
+          unfold Rminus in Hgt. apply (Rplus_gt_compat_r (proj1_sig (Measurable.weight v))) in Hgt.
           rewrite Rplus_assoc in Hgt. rewrite Rplus_opp_l, Rplus_0_r in Hgt.
-          apply Rgt_lt. apply Rge_gt_trans with (sum_weights (v' :: vs) + (proj1_sig (Lib.SumWeights.weight v)))%R; try assumption.
+          apply Rgt_lt. apply Rge_gt_trans with (sum_weights (v' :: vs) + (proj1_sig (Measurable.weight v)))%R; try assumption.
           rewrite Rplus_comm.
-          assert (Hsum : (proj1_sig (Lib.SumWeights.weight v) + sum_weights (v' :: vs))%R = sum_weights (v :: v' :: vs))
+          assert (Hsum : (proj1_sig (Measurable.weight v) + sum_weights (v' :: vs))%R = sum_weights (v :: v' :: vs))
           ; try reflexivity; try rewrite Hsum.
           apply Rle_ge. apply sum_weights_incl; try apply set_map_nodup; try (constructor; assumption).
           intros vv Hvin. unfold equivocating_senders.
@@ -931,7 +931,7 @@ Definition add_weight_under
   {C V} `{about_M : StrictlyComparable (message C V)} `{Hm : Measurable V} `{Hrt : ReachableThreshold V}
   (s : @state C V) (v : V)
   :=
-  (fault_weight_state s + proj1_sig (Lib.SumWeights.weight v) <= proj1_sig threshold)%R.
+  (fault_weight_state s + proj1_sig (Measurable.weight v) <= proj1_sig threshold)%R.
 
 Lemma equivocation_adds_fault_weight
   {C V} `{PS : ProtocolState C V}
@@ -1201,10 +1201,10 @@ Proof.
     (* Discharging second premise *)
     spec IHvs.
     simpl in H_underweight.
-    apply (Rplus_le_reg_pos_r (fault_weight_state s + sum_weights tl) (proj1_sig (Lib.SumWeights.weight hd)) (proj1_sig threshold)).
-    destruct (Lib.SumWeights.weight hd). firstorder.
+    apply (Rplus_le_reg_pos_r (fault_weight_state s + sum_weights tl) (proj1_sig (Measurable.weight hd)) (proj1_sig threshold)).
+    destruct (Measurable.weight hd). firstorder.
     rewrite Rplus_assoc.
-    rewrite (Rplus_comm (sum_weights tl) (proj1_sig (Lib.SumWeights.weight hd))).
+    rewrite (Rplus_comm (sum_weights tl) (proj1_sig (Measurable.weight hd))).
     rewrite <- Rplus_assoc.
     rewrite <- Rplus_assoc in H_underweight.
     assumption.
@@ -1234,11 +1234,11 @@ Proof.
       rewrite H_weight. simpl in H_underweight.
       rewrite <- Rplus_assoc in H_underweight.
       rewrite Rplus_assoc.
-      rewrite (Rplus_comm (sum_weights tl) (proj1_sig (Lib.SumWeights.weight hd))).
+      rewrite (Rplus_comm (sum_weights tl) (proj1_sig (Measurable.weight hd))).
       rewrite <- Rplus_assoc.
       assumption.
     + simpl.
-      rewrite (Rplus_comm (proj1_sig (Lib.SumWeights.weight hd)) (sum_weights tl)).
+      rewrite (Rplus_comm (proj1_sig (Measurable.weight hd)) (sum_weights tl)).
       rewrite <- Rplus_assoc.
       rewrite <- H_weight.
       apply equivocation_adds_fault_weight; try assumption.
@@ -1264,7 +1264,7 @@ Definition potentially_pivotal_state
     (* That tip over s's fault weight but only with the help of v *)
     (sum_weights ((equivocating_senders s) ++ vs) <= proj1_sig threshold)%R /\
     (sum_weights ((equivocating_senders s) ++ vs) >
-     proj1_sig threshold - proj1_sig (Lib.SumWeights.weight v))%R.
+     proj1_sig threshold - proj1_sig (Measurable.weight v))%R.
 
 (* This is a critical lemma *)
 Lemma all_pivotal_validator
@@ -1437,8 +1437,8 @@ Proof.
           exact H_in3_copy.
           assumption.
     }
-    assert (H_s_overweight : (proj1_sig (Lib.SumWeights.weight v) + fault_weight_state (proj1_sig s2) + sum_weights vs <= fault_weight_state s)%R).
-    { replace ((proj1_sig (Lib.SumWeights.weight v) + fault_weight_state (proj1_sig s2) + sum_weights vs))%R with (sum_weights ([v] ++ (equivocating_senders (proj1_sig s2)) ++ vs)).
+    assert (H_s_overweight : (proj1_sig (Measurable.weight v) + fault_weight_state (proj1_sig s2) + sum_weights vs <= fault_weight_state s)%R).
+    { replace ((proj1_sig (Measurable.weight v) + fault_weight_state (proj1_sig s2) + sum_weights vs))%R with (sum_weights ([v] ++ (equivocating_senders (proj1_sig s2)) ++ vs)).
       apply sum_weights_incl.
       { (* Proving mutual NoDup *)
         apply nodup_append.
@@ -1476,8 +1476,8 @@ Proof.
     rewrite sum_weights_app in H_over.
     unfold fault_weight_state in H_s1_s2_weight at 1.
     rewrite H_s1_s2_weight in H_over.
-    apply (Rplus_gt_compat_l (proj1_sig (Lib.SumWeights.weight v))) in H_over.
-    replace (proj1_sig (Lib.SumWeights.weight v) + (proj1_sig threshold - proj1_sig (Lib.SumWeights.weight v)))%R with (proj1_sig threshold)%R in H_over by ring.
+    apply (Rplus_gt_compat_l (proj1_sig (Measurable.weight v))) in H_over.
+    replace (proj1_sig (Measurable.weight v) + (proj1_sig threshold - proj1_sig (Measurable.weight v)))%R with (proj1_sig threshold)%R in H_over by ring.
     rewrite <- Rplus_assoc in H_over.
     apply Rgt_not_le in H_over.
     contradiction.

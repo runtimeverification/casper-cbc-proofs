@@ -7,15 +7,14 @@ From CasperCBC
     Lib.Preamble
     Lib.ListExtras
     Lib.ListSetExtras
-    Lib.SumWeights
+    Lib.Measurable
     VLSM.Common
-    CBC.Common
-    CBC.Equivocation
-    Validator.State
-    Validator.Equivocation
+    VLSM.Decisions
+    VLSM.CBC.FullNode.Validator.State
+    VLSM.CBC.FullNode.Validator.Equivocation
     VLSM.Equivocation
     VLSM.ObservableEquivocation
-    VLSM.FullNode.Client
+    VLSM.CBC.FullNode.Client
     .
 
 Section CompositeValidator.

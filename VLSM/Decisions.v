@@ -6,7 +6,6 @@ Import List Notations.
 From CasperCBC
   Require Import
     Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras
-    CBC.Protocol CBC.Common CBC.Definitions
     VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
 (* 3.1 Decisions on consensus values *)
@@ -220,6 +219,12 @@ End CommuteIndexed.
 (* Section 5 *)
 
 Section Estimators.
+
+  (* Defining the estimator function as a relation *)
+  Class Estimator state C :=
+    { estimator : state -> C -> Prop
+    ; estimator_total : forall s : state, exists c : C, estimator s c
+    }.
 
   Context
     {CV : consensus_values}

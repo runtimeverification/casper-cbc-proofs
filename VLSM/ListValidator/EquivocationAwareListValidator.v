@@ -6,9 +6,8 @@ From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
-  Lib.SumWeights
-  CBC.Common
-  CBC.Equivocation
+  Lib.Measurable
+  VLSM.Equivocation
   VLSM.Common
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation

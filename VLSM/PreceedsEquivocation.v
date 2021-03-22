@@ -9,9 +9,7 @@ From CasperCBC
     Preamble
     Lib.ListExtras
     Lib.ListSetExtras
-    Lib.SumWeights
-    CBC.Common
-    CBC.Equivocation
+    Lib.Measurable
     VLSM.Common
     VLSM.Composition
     VLSM.Equivocation

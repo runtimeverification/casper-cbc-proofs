@@ -1,14 +1,9 @@
 Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts IndefiniteDescription Classical Sorting.
 Import ListNotations.
 From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol Lib.RealsExtras Lib.SumWeights.
+Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists VLSM.Equivocation CBC.Protocol Lib.RealsExtras VLSM.Decisions Lib.Measurable.
 
 Class InhabitedTwice V := { inhabited_twice : exists (v1 v2 : V), v1 <> v2 }.
-
-Class ReachableThreshold V `{Hm : Measurable V} :=
-  { threshold : {r | (r >= 0)%R}
-  ; reachable_threshold : exists (vs:list V), NoDup vs /\ (sum_weights vs > (proj1_sig threshold))%R
-  }.
 
 Class DistinctChoice V `{HscV : StrictlyComparable V} `{Hit : InhabitedTwice V}.
 
@@ -183,12 +178,6 @@ Proof.
     rewrite Rplus_0_r in Hgt.
     assumption.
 Qed.
-
-(* Defining the estimator function as a relation *)
-Class Estimator state C :=
-  { estimator : state -> C -> Prop
-  ; estimator_total : forall s : state, exists c : C, estimator s c
-  }.
 
 Definition get_estimate {state C} `{Estimator state C} (s : state) :=
   proj1_sig (constructive_indefinite_description (estimator s) (estimator_total s)).

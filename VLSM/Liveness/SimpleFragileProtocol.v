@@ -6,7 +6,7 @@ Require Import
   Lib.Preamble
   Lib.Classes
   Lib.ListSetExtras
-  Lib.SumWeights
+  Lib.Measurable
   CBC.FullNode.Validator.State
   VLSM.Common
   VLSM.Liveness
@@ -480,7 +480,7 @@ Section Protocol_Proofs.
     {EqC: EqDecision C}
     {EqV: EqDecision V}
     (c0:C)
-    {Hweights: Lib.SumWeights.Measurable V}
+    {Hweights: Measurable.Measurable V}
     (plan : nat -> V -> Prop)
     {plan_dec : RelDecision plan}
     {HPlan : Plan V plan}

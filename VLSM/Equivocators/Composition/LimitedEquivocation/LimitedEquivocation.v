@@ -7,8 +7,8 @@ Require Import
 Import ListNotations.
 From CasperCBC
   Require Import
-    Preamble ListExtras FinExtras SumWeights
-    CBC.Common
+    Preamble ListExtras FinExtras
+    Lib.Measurable
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
