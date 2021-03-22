@@ -31,17 +31,17 @@ Context
   {mdec : EqDecision (@message index index_listing)}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
-  
+
   Local Notation get_history' := (@get_history index index_listing idec).
   Local Notation last_sent' := (@last_sent index index_self index_listing idec).
   Local Notation unfold_history_cons' := (@unfold_history_cons index index_listing Hfinite).
-  
+
   (** Observations will consist of an observation type, an index and a state.
      When talking about "raw" observations, we refer to the underlying states.
-     Raw observations regarding a certain validator <<target> 
+     Raw observations regarding a certain validator <<target>
      are extracted by traversing the state recursively and collecting
      all projections onto <<target>>, eliminating <<Bottom>> values at the end *)
-  
+
   Fixpoint get_raw_observations' (target : index) (d : nat) (s : state) : set state :=
     match s with
     | Bottom => []
@@ -53,26 +53,26 @@ Context
              (set_union decide_eq (List.fold_right (set_union decide_eq) [] children_res) [project s target])
          end
     end.
-      
+
   Definition get_raw_observations (s : state) (target : index) : set state :=
     get_raw_observations' target (depth s) s.
-      
-  Remark raw_observations_consensus 
+
+  Remark raw_observations_consensus
     (s : state)
     (b : bool)
     (target : index) :
     get_raw_observations s target = get_raw_observations (update_consensus s b) target.
   Proof.
     unfold get_raw_observations.
-    assert (depth s = depth (update_consensus s b)) by (destruct s;intuition). 
+    assert (depth s = depth (update_consensus s b)) by (destruct s;intuition).
     rewrite <- H.
     unfold get_raw_observations'.
     destruct (depth s); destruct s; intuition.
   Qed.
-  
-  (** It is sufficient to call [get_raw_observations'] with depth 
+
+  (** It is sufficient to call [get_raw_observations'] with depth
      to <<(depth s)>> *)
-    
+
   Lemma get_observations_depth_redundancy
       (target : index)
       (d : nat)
@@ -102,7 +102,7 @@ Context
            discriminate Heqdpth.
        + destruct d.
          lia.
-         simpl. 
+         simpl.
          f_equal. f_equal. f_equal.
          apply map_ext_in.
          intros.
@@ -129,7 +129,7 @@ Context
          rewrite H2 in H.
          intuition.
    Qed.
-   
+
   Lemma get_observations_nodup
       (target : index)
       (s : state) :
@@ -239,9 +239,9 @@ Context
        unfold project.
        lia.
   Qed.
-  
+
   (** Some useful shortcuts for relating observations of states and their projections. *)
-  
+
   Lemma unfold_raw_observations
     (s s': state)
     (Hnb : s <> Bottom)
@@ -284,7 +284,7 @@ Context
           left.
           intuition.
    Qed.
-   
+
      Lemma refold_raw_observations1
       (s s': state)
       (Hnb : s <> Bottom /\ s' <> Bottom)
@@ -307,7 +307,7 @@ Context
         intuition.
         intuition.
      Qed.
-     
+
      Lemma refold_raw_observations2
       (s s': state)
       (Hnb : s <> Bottom)
@@ -349,7 +349,7 @@ Context
         apply no_bottom_in_observations in Hini.
         intuition.
     Qed.
-    
+
     Remark raw_observations_in_project
       (s : state)
       (Hsnb : s <> Bottom)
@@ -362,8 +362,8 @@ Context
       exists i.
       intuition.
     Qed.
-    
-    Remark something_in_obs_nb 
+
+    Remark something_in_obs_nb
       (s s' : state)
       (i : index)
       (Hin : In s' (get_raw_observations s i)) :
@@ -373,7 +373,7 @@ Context
       - simpl in Hin. intuition.
       - congruence.
     Qed.
-    
+
     Lemma cross_observations
       (s s1 s2: state)
       (i j : index)
@@ -407,37 +407,37 @@ Context
           apply (@depth_parent_child index index_listing).
           intuition.
         }
-        
+
         specialize (Hproj s2 s1 Hin2 (project s k) Hink eq_refl).
         apply raw_observations_in_project in Hproj.
         intuition.
         intuition.
     Qed.
-    
+
     (** The simplified observation model (or event) has two types of observations:
        - Message observations (we do not distinguish between Sent and Received *
-       - State observations (in practice, these will be observations of the 
+       - State observations (in practice, these will be observations of the
          current state of a certain validator) *)
-    
+
     Inductive simp_lv_event_type : Type :=
     | State'
     | Message'.
-    
+
     Global Instance simp_event_type_eq_dec : EqDecision simp_lv_event_type.
       solve_decision.
     Defined.
-    
+
     Record simp_lv_event : Type := SimpObs {
       get_simp_event_type : simp_lv_event_type;
       get_simp_event_subject : index;
       get_simp_event_state : (@state index index_listing);
     }.
-    
+
     Global Instance simp_event_eq_dec : EqDecision simp_lv_event.
       solve_decision.
-    Defined. 
-    
-    Definition simp_lv_event_comp_eq 
+    Defined.
+
+    Definition simp_lv_event_comp_eq
       (e : simp_lv_event) :
       e = SimpObs (get_simp_event_type e) (get_simp_event_subject e) (get_simp_event_state e).
     Proof.
@@ -445,14 +445,14 @@ Context
       simpl.
       reflexivity.
     Qed.
-    
+
     (** Comparing two events defaults to comparing their underlying states
        using the [state_lt'] relation defined in [Equivocation.v], except
        for the case in which the lhs is a state observation and the
        rhs is a message observation, which returns False. This is done because
        in practice the only way the current state of a validator compares less
-       than one of its messages is that said message is an equivocation. *) 
-    
+       than one of its messages is that said message is an equivocation. *)
+
     Definition simp_lv_event_lt (e1 e2 : simp_lv_event) : Prop :=
     match e1, e2 with
       SimpObs type1 subject1 state1, SimpObs type2 subject2 state2 =>
@@ -461,10 +461,10 @@ Context
         | _ => match type1, type2 with
                | State', Message' => False
                | _, _ => state_lt' subject1 state1 state2
-               end  
+               end
         end
     end.
-    
+
     Lemma simp_lv_event_lt_dec : RelDecision simp_lv_event_lt.
     Proof.
       unfold RelDecision. intros.
@@ -475,41 +475,41 @@ Context
       - destruct type1 eqn : eq1; destruct type2 eqn : eq2.
         + exact (state_lt'_dec subject1 state1 state2).
         + right; auto.
-        + exact (state_lt'_dec subject1 state1 state2). 
+        + exact (state_lt'_dec subject1 state1 state2).
         + exact (state_lt'_dec subject1 state1 state2).
       - right. auto.
     Qed.
-    
+
     (** State observations concerning target can only be provided by <<target>> itself *)
-      
+
     Definition simp_lv_state_observations (s : state) (target : index) : set simp_lv_event :=
       match decide_eq target index_self with
       | left _ => [SimpObs State' index_self s]
       | right _ => []
       end.
-    
+
     (** Message observations consist simply of all the raw observations in the state, tagged
        with the appropriate type and subject *)
-    
+
     Definition simp_lv_message_observations (s : state) (target : index) : set simp_lv_event :=
       List.map (SimpObs Message' target) (get_raw_observations s target).
-    
+
     Definition simp_lv_observations (s : state) (target : index) : set simp_lv_event :=
       set_union decide_eq (simp_lv_message_observations s target) (simp_lv_state_observations s target).
-    
-    Remark cons_clean_message_obs 
+
+    Remark cons_clean_message_obs
       (s : state)
       (target : index)
-      (b : bool) : 
+      (b : bool) :
       simp_lv_message_observations s target = simp_lv_message_observations (update_consensus s b) target.
     Proof.
       unfold simp_lv_message_observations.
       rewrite raw_observations_consensus with (b := b).
       intuition.
     Qed.
-    
+
     (** A variety of shortcuts. *)
-    
+
     Remark in_simp_lv_message_observations
       (s : state)
       (target : index)
@@ -522,7 +522,7 @@ Context
       destruct Hin as [x [Heqx Hinx]].
       rewrite <- Heqx; intuition.
     Qed.
-    
+
     Remark in_simp_lv_state_observations
       (s : state)
       (target : index)
@@ -538,7 +538,7 @@ Context
         all : intuition.
       - intuition.
     Qed.
-    
+
     Remark in_simp_lv_message_observations'
       (s : state)
       (target : index)
@@ -550,7 +550,7 @@ Context
       apply set_union_iff.
       left. intuition.
     Qed.
-    
+
     Remark in_simp_lv_state_observations'
       (s : state)
       (target : index)
@@ -562,7 +562,7 @@ Context
       apply set_union_iff.
       right. intuition.
     Qed.
-    
+
     Remark in_simp_lv_observations
       (s : state)
       (target : index)
@@ -576,7 +576,7 @@ Context
       - apply in_simp_lv_message_observations in H. intuition.
       - apply in_simp_lv_state_observations in H. intuition.
     Qed.
-       
+
    Remark in_and_message
     (s : state)
     (target : index)
@@ -591,9 +591,9 @@ Context
     - intuition.
     - apply in_simp_lv_state_observations in H.
       destruct H as [H _].
-      congruence. 
+      congruence.
   Qed.
-  
+
   Remark in_and_state
     (s : state)
     (target : index)
@@ -608,10 +608,10 @@ Context
     - apply in_simp_lv_message_observations in H.
       destruct H as [H _].
       congruence.
-    - intuition. 
+    - intuition.
   Qed.
-    
-    Remark simp_lv_observations_other 
+
+    Remark simp_lv_observations_other
       (s : state)
       (target : index)
       (Hdif : target <> index_self) :
@@ -622,35 +622,35 @@ Context
       rewrite decide_False by intuition.
       simpl; reflexivity.
     Qed.
-    
-    Definition get_simp_event_subject_some 
+
+    Definition get_simp_event_subject_some
       (e : simp_lv_event) :=
       Some (get_simp_event_subject e).
-    
+
     (** Instantiation of the observable equivocation typeclasses
        using our newly defined observation type. *)
-    
+
     Program Instance simp_lv_observable_events :
-      observable_events (@state index index_listing) simp_lv_event := 
-      state_observable_events_instance 
+      observable_events (@state index index_listing) simp_lv_event :=
+      state_observable_events_instance
       (@state index index_listing)
       index
       simp_lv_event
       decide_eq
       simp_lv_observations
       (fun (s : state) => index_listing).
-      
+
     Program Instance simp_observable_full :
       (observation_based_equivocation_evidence
        (@state index index_listing)
        index
        simp_lv_event
        simp_lv_observable_events
-       decide_eq 
+       decide_eq
        simp_lv_event_lt
-       simp_lv_event_lt_dec 
+       simp_lv_event_lt_dec
        get_simp_event_subject_some).
-   
+
    Existing Instance simp_observable_full.
 
    Definition get_validators {State : Type} (s : State) : list index := index_listing.
@@ -685,8 +685,8 @@ Context
     apply idec.
   Defined.
 
-  Existing Instance simp_lv_basic_equivocation.  
-  
+  Existing Instance simp_lv_basic_equivocation.
+
     Lemma message_cross_observations
       (s : state)
       (e1 e2 : simp_lv_event)
@@ -709,18 +709,18 @@ Context
       simpl in *.
       apply in_map_iff.
       exists s2.
-      split;[intuition|]. 
+      split;[intuition|].
       apply cross_observations with (s1 := s1) (i := i).
       intuition.
       intuition.
     Qed.
-    
+
     Remark raw_message
       (s s' : state)
       (target : index) :
       In (SimpObs Message' target s') (simp_lv_message_observations s target) <-> In s' (get_raw_observations s target).
     Proof.
-      split; intros; unfold simp_lv_message_observations in *. 
+      split; intros; unfold simp_lv_message_observations in *.
       - apply in_map_iff in H.
         destruct H as [x [Heqx Hinx]].
         inversion Heqx.
@@ -729,11 +729,11 @@ Context
         exists s'.
         intuition.
     Qed.
-   
+
    Remark in_message_observations_nb
     (s : state)
     (target : index)
-    (e : simp_lv_event) 
+    (e : simp_lv_event)
     (Hin : In e (simp_lv_message_observations s target)) :
     get_simp_event_state e <> Bottom.
     Proof.
@@ -744,9 +744,9 @@ Context
       rewrite <- Hes.
       intuition.
     Qed.
-   
+
    (** Similar shortcuts as done for raw observations. *)
-   
+
    Lemma unfold_simp_lv_observations
       (s : state)
       (Hnb : s <> Bottom)
@@ -762,7 +762,7 @@ Context
       assert (et = Message') by intuition.
       assert (ev = target) by intuition.
       subst et. subst ev.
-      apply raw_message in H as Hraw. 
+      apply raw_message in H as Hraw.
       apply unfold_raw_observations in Hraw.
       2 : {
         intuition.
@@ -775,7 +775,7 @@ Context
           apply raw_message in Hini.
           intuition.
    Qed.
-   
+
     Lemma refold_simp_lv_observations1
       (s : state)
       (Hprs : s <> Bottom)
@@ -794,7 +794,7 @@ Context
       apply refold_raw_observations1.
       all : intuition.
     Qed.
-    
+
     Lemma refold_simp_lv_observations2
       (s : state)
       (Hnb : s <> Bottom)
@@ -815,11 +815,11 @@ Context
      intuition.
      exists i; intuition.
    Qed.
-  
+
   (** [get_history] is the backbone of our [has_been_sent] and [has_been_received] capabilities,
      so the following is a simple way of showing that send/received messages
      are present as observations *)
-  
+
   Lemma in_history_in_observations
     (s es : state)
     (target : index)
@@ -831,7 +831,7 @@ Context
     induction l.
     - intros. intuition.
     - intros.
-      
+
       assert (Hnb : s <> Bottom /\ (project s target) <> Bottom). {
         rewrite Heql in Hin.
         split.
@@ -841,7 +841,7 @@ Context
           unfold project in eq. rewrite eq in Hin. intuition.
           + congruence.
       }
-    
+
       rewrite unfold_history_cons' in Heql by intuition.
       inversion Heql.
       simpl in Hin.
@@ -860,13 +860,13 @@ Context
          exists target.
          intuition.
   Qed.
-  
+
   (** The following lemmas describes what happens to observations in a given state <<s>>
      when it undergoes an update. We will be talking mostly about message observations,
      because they are persistent, while state observations are transient. *)
-  
+
   (** Doing a valid update keeps all the existing observations. *)
-  
+
   Lemma old_incl_new
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
@@ -880,20 +880,20 @@ Context
       unfold update_state.
       destruct s; intuition congruence.
     }
-  
+
     unfold incl.
     intros e H.
     unfold simp_lv_message_observations in *.
     apply in_map_iff in H.
     destruct H as [es' Hinx].
-      
+
     destruct Hinx as [Heqe Hines'].
-    
+
     assert (Hes'nb : es' <> Bottom). {
       apply no_bottom_in_observations in Hines'.
       intuition.
-    }  
-    
+    }
+
     apply in_map_iff.
     exists es'.
     split. intuition.
@@ -948,10 +948,10 @@ Context
           rewrite (@project_different index index_listing) by intuition.
           intuition.
     Qed.
-    
+
    (** The message observations present in the update value <<so>> will
       end up in the message observations of the updated state (<<s'>>*)
-    
+
    Lemma received_incl_new
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
@@ -965,21 +965,21 @@ Context
       unfold update_state.
       destruct s; intuition congruence.
     }
-   
+
     unfold incl. intros e H.
     unfold s'.
     unfold simp_lv_message_observations in *.
     apply in_map_iff in H.
     destruct H as [es' Hines'].
     destruct Hines' as [Heqe Hines'].
-    
+
     assert (es' <> Bottom). {
       apply no_bottom_in_observations in Hines'.
       intuition.
     }
-    
+
     apply in_map_iff.
-    exists es'. 
+    exists es'.
     split; [intuition|].
     apply refold_raw_observations2.
     intuition.
@@ -987,14 +987,14 @@ Context
     rewrite (@project_same index index_listing Hfinite) by intuition.
     intuition.
    Qed.
-   
+
    (** A message observation of the updated state <<s'>> is either
       - an observation of the old state <<s>>
       - an observation of the update value <<so>>
-      
+
       IF the update occurs on a projection that is NOT the subject
-      of the observations *) 
-      
+      of the observations *)
+
    Lemma new_incl_rest_diff
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
@@ -1031,18 +1031,18 @@ Context
        +  rewrite (@project_different index index_listing Hfinite) in Hink by intuition.
           left.
           apply refold_simp_lv_observations2;[intuition|..].
-          exists k. 
+          exists k.
           intuition.
    Qed.
-   
+
    (** A message observation of the updated state <<s'>> is either
       - an observation of the old state <<s>>
       - an observation of the update value <<so>>
       - the observation (Message' i so)
-      
+
       IF the update occurs on the projection that IS the subject
-      of the observations *) 
-  
+      of the observations *)
+
   Lemma new_incl_rest_same
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
@@ -1077,13 +1077,13 @@ Context
           apply set_union_iff.
           left.
           apply refold_simp_lv_observations2;[intuition|..].
-          exists k. 
+          exists k.
           intuition.
-  Qed. 
-   
+  Qed.
+
    (** The above holds in general regardless of relation between
       <<i>> and <<j>>. *)
-   
+
    Lemma new_incl_rest
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
@@ -1120,7 +1120,7 @@ Context
        + subst k.
           rewrite (@project_same index index_listing Hfinite) in Hink by intuition.
           left.
-          apply set_union_iff. 
+          apply set_union_iff.
           right.
           intuition.
        + rewrite (@project_different index index_listing Hfinite) in Hink by intuition.
@@ -1130,12 +1130,12 @@ Context
           apply refold_simp_lv_observations2;[intuition|..].
           exists k. intuition.
   Qed.
-  
+
   (** If a message observation <<e>> compares with a state observation
      <(State' index_self s)>, it will also compare to the state
      observation of its updated version,
      <(State' index_self s'> *)
-  
+
   Lemma state_obs_stuff
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
@@ -1143,9 +1143,9 @@ Context
     (Hfull : project s i = project so i)
     (s' := update_state s so i)
     (s_obs := (SimpObs State' index_self s))
-    (s'_obs := (SimpObs State' index_self s')) 
+    (s'_obs := (SimpObs State' index_self s'))
     (e : simp_lv_event)
-    (Hns : get_simp_event_type e <> State') 
+    (Hns : get_simp_event_type e <> State')
     (Hsubj : get_simp_event_subject e = index_self)
     (Hcomp: comparable simp_lv_event_lt e s_obs) :
     comparable simp_lv_event_lt e s'_obs.
@@ -1166,7 +1166,7 @@ Context
         unfold simp_lv_event_lt in *.
         rewrite decide_True in * by intuition.
         destruct et eqn : eq_et.
-        * simpl in Hns. congruence. 
+        * simpl in Hns. congruence.
         * unfold state_lt' in *.
           destruct (decide (i = ev)).
           -- subst i.
@@ -1188,12 +1188,12 @@ Context
         destruct et eqn : eq_et.
         * simpl in Hns.
           congruence.
-        * intuition. 
+        * intuition.
   Qed.
-  
+
   (** Same with an update_consensus inserted.
      The silly duplication will be taken care of shortly. :) *)
-  
+
   Lemma state_obs_stuff_cons
     (s so : state)
     (Hnb : s <> Bottom /\ so <> Bottom)
@@ -1202,9 +1202,9 @@ Context
     (b : bool)
     (s' := update_consensus (update_state s so i) b)
     (s_obs := (SimpObs State' index_self s))
-    (s'_obs := (SimpObs State' index_self s')) 
+    (s'_obs := (SimpObs State' index_self s'))
     (e : simp_lv_event)
-    (Hns : get_simp_event_type e <> State') 
+    (Hns : get_simp_event_type e <> State')
     (Hsubj : get_simp_event_subject e = index_self)
     (Hcomp: comparable simp_lv_event_lt e s_obs) :
     comparable simp_lv_event_lt e s'_obs.
@@ -1225,7 +1225,7 @@ Context
         unfold simp_lv_event_lt in *.
         rewrite decide_True in * by intuition.
         destruct et eqn : eq_et.
-        * simpl in Hns. congruence. 
+        * simpl in Hns. congruence.
         * unfold state_lt' in *.
           destruct (decide (i = ev)).
           -- subst i.
@@ -1249,49 +1249,49 @@ Context
         destruct et eqn : eq_et.
         * simpl in Hns.
           congruence.
-        * intuition. 
+        * intuition.
   Qed.
-  
+
   (** The following concerns the complete observation model, which distinguishes between sent
      and received message observations. It was written before we decided to opt for the
      simplified type in the common futures theorem. *)
-     
+
   Inductive lv_event_type : Type :=
     | State
     | Sent
     | Received.
-    
+
     Instance event_type_eq_dec : EqDecision lv_event_type.
       solve_decision.
-    Defined. 
-    
+    Defined.
+
     Inductive lv_event : Type :=
       Obs: lv_event_type -> index -> (@state index index_listing) -> lv_event.
-    
+
     Global Instance event_eq_dec : EqDecision lv_event.
       solve_decision.
-    Defined. 
-    
+    Defined.
+
     Definition get_event_subject (e : lv_event) : index :=
-    match e with 
+    match e with
       Obs type subject state => subject
     end.
-        
-    Definition get_event_subject_some 
+
+    Definition get_event_subject_some
       (e : lv_event) :=
       Some (get_event_subject e).
-    
+
     Definition get_event_type (e : lv_event) :=
       match e with
        Obs type subject state => type
       end.
-      
+
     Definition get_event_state (e : lv_event) :=
       match e with
         Obs type subject state => state
       end.
-      
-    Definition lv_event_comp_eq 
+
+    Definition lv_event_comp_eq
       (e : lv_event) :
       e = Obs (get_event_type e) (get_event_subject e) (get_event_state e).
     Proof.
@@ -1299,7 +1299,7 @@ Context
       simpl.
       reflexivity.
     Qed.
-    
+
     Definition lv_event_lt (e1 e2 : lv_event) : Prop :=
     match e1, e2 with
       Obs type1 subject1 state1, Obs type2 subject2 state2 =>
@@ -1310,10 +1310,10 @@ Context
                | State, Sent => False
                | State, Received => False
                | _, _ => state_lt' subject1 state1 state2
-               end  
+               end
         end
     end.
-    
+
     Lemma lv_event_trans
       (e1 e2 e3 : lv_event)
       (Hlt : lv_event_lt e1 e2 /\ lv_event_lt e2 e3) :
@@ -1328,21 +1328,21 @@ Context
       assert (ev2 = ev3) by (destruct(decide(ev2 = ev3)); intuition).
       rewrite decide_True in Hlt1 by intuition.
       rewrite decide_True in Hlt2 by intuition.
-      
+
       assert (ev1 = ev3). {
         apply eq_trans with (y := ev2); intuition.
       }
-      
+
       assert (et1 <> State). {
         intros contra. rewrite contra in Hlt1.
         destruct et2; intuition.
       }
-      
+
       assert (et2 <> State). {
         intros contra. rewrite contra in Hlt2.
         destruct et3; intuition.
       }
-      
+
       destruct et1 eqn : eq_et1.
       - intuition.
       - destruct et2 eqn : eq_et2.
@@ -1366,7 +1366,7 @@ Context
           apply (@state_lt'_trans index index_listing Hfinite) with (s2 := es2).
           rewrite <- H in Hlt2. intuition.
     Qed.
-    
+
     Lemma lv_event_lt_dec : RelDecision lv_event_lt.
     Proof.
       unfold RelDecision. intros.
@@ -1380,20 +1380,20 @@ Context
         + exact (state_lt'_dec subject1 state1 state2).
       - right. auto.
     Qed.
-    
+
     Definition lv_sent_states (s : state) (target : index) : set (@state index index_listing) :=
       match decide_eq target index_self with
       | left _ => get_history s index_self
       | right _ => []
       end.
-    
+
     Definition lv_sent_observations (s : state) (target : index) : set lv_event :=
       match decide_eq target index_self with
       | left _ => List.map (Obs Sent index_self) (lv_sent_states s target)
       | right _ => []
       end.
-      
-    Lemma in_lv_sent 
+
+    Lemma in_lv_sent
       (s : state)
       (target : index)
       (e : lv_event)
@@ -1411,7 +1411,7 @@ Context
         all : intuition.
       - intuition.
     Qed.
-      
+
     Definition lv_received_observations (s : state) (target : index) : set lv_event :=
       let obs := (get_raw_observations s target) in
       let sent_obs := lv_sent_states s target in
@@ -1419,8 +1419,8 @@ Context
       | left _ => []
       | right _ => List.map (Obs Received target) (set_remove_list sent_obs obs)
       end.
-      
-    Lemma in_lv_received 
+
+    Lemma in_lv_received
       (s : state)
       (target : index)
       (e : lv_event)
@@ -1435,14 +1435,14 @@ Context
         rewrite <- Hobs; simpl.
         intuition.
     Qed.
-      
+
     Definition lv_state_observations (s : state) (target : index) : set lv_event :=
       match decide_eq target index_self with
       | left _ => [Obs State index_self s]
       | right _ => []
       end.
-    
-    Lemma in_lv_state 
+
+    Lemma in_lv_state
       (s : state)
       (target : index)
       (e : lv_event)
@@ -1458,7 +1458,7 @@ Context
         all : intuition.
       - intuition.
     Qed.
-        
+
     Lemma raw_received
       (s s' : state)
       (target : index)
@@ -1482,13 +1482,13 @@ Context
         rewrite decide_False by intuition.
         intuition.
     Qed.
-      
+
     Definition lv_message_observations (s : state) (target : index) : set lv_event :=
       set_union decide_eq (lv_sent_observations s target) (lv_received_observations s target).
-      
+
     Definition lv_observations (s : state) (target : index) : set lv_event :=
       set_union decide_eq (lv_state_observations s target) (lv_message_observations s target).
-    
+
         Lemma get_event_state_nb
       (s s': state)
       (i : index)

@@ -83,7 +83,7 @@ Proof.
   exists a.
   assumption.
 Qed.
-   
+
 Lemma forall_and_commute
   {A : Type}
   (P Q : A -> Prop)

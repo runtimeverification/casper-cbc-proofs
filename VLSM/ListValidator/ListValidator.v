@@ -479,14 +479,14 @@ Proof.
   destruct (inb decide_eq (Some b) modes) eqn : eq_b.
   - left. intuition.
   - destruct (inb decide_eq None modes); intuition.
-Qed. 
+Qed.
 
 Definition estimator (s : state) (b : bool) : Prop :=
   let ob_dec := (option_eq_dec) in
   let decision_modes := mode (global_decisions s) in
   match s with
   | Bottom => True
-  | Something c some => in_mode decision_modes b 
+  | Something c some => in_mode decision_modes b
   end.
 
 (** Labels describe the type of transitions: either updates (with boolean values) or receiving of messages. **)
@@ -629,6 +629,6 @@ Definition get_history (s : state) (who : index) : list state :=
       negb (send_oracle s m).
 
     Definition not_receive_oracle (s : state) (m : message) : bool :=
-      negb (receive_oracle s m). 
-   
-End ListNode. 
+      negb (receive_oracle s m).
+
+End ListNode.

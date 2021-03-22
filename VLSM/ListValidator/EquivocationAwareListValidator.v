@@ -15,12 +15,12 @@ Require Import
   .
 
 (** This is a version of the List Validator node which uses an
-   "equivocation aware" estimator. 
-   
+   "equivocation aware" estimator.
+
    This estimator ignores projections onto indices
    that correspond to validators that can be proven equivocating using
    the node's local observations.
-   
+
    See [ListValidator.v] for the traditional LV estimator. *)
 
 Section EquivocationAwareValidator.
@@ -64,7 +64,7 @@ Section EquivocationAwareValidator.
     | Bottom => True
     | Something c some => in_mode (mode decisions) b
     end.
-  
+
   Global Instance equivocation_aware_estimator_dec : RelDecision equivocation_aware_estimator.
   Proof.
     unfold RelDecision. intros s b.
@@ -72,11 +72,11 @@ Section EquivocationAwareValidator.
     destruct s;[left; intuition|].
     apply in_mode_dec.
   Qed.
- 
+
   (** If at least one projection is non-equivocating,
      the estimator is non-empty (it relates to either true or false). *)
-     
-  Lemma ea_estimator_total 
+
+  Lemma ea_estimator_total
     (s : state)
     (b : bool)
     (Hne : no_equivocating_decisions s (equivocating_validators s) <> [])
@@ -87,25 +87,25 @@ Section EquivocationAwareValidator.
     destruct s;[intuition|].
     unfold in_mode in *.
     remember (mode
-             (no_equivocating_decisions 
-             (Something b0 is) 
+             (no_equivocating_decisions
+             (Something b0 is)
              (equivocating_validators (Something b0 is))))
              as modes.
-    
+
     destruct (inb decide_eq (Some b) modes) eqn : eq_inb; [intuition|].
-   
+
     assert (Hsome : exists (ob : option bool), In ob (modes)). {
       assert (modes <> []) by (rewrite Heqmodes; apply mode_not_empty; intuition).
       destruct modes;[intuition congruence|].
       exists o. simpl. left. intuition.
     }
-    
+
     destruct Hsome as [ob Hob].
     destruct ob eqn : eq_ob.
     - destruct (inb decide_eq (Some (negb b)) modes) eqn : eq_inb2;[intuition|].
       apply in_correct in Hob.
       destruct b; destruct b1; simpl in *; intuition congruence.
-    - apply in_correct in Hob. intuition congruence. 
+    - apply in_correct in Hob. intuition congruence.
   Qed.
 
   Definition VLSM_equivocation_aware_list : VLSM message

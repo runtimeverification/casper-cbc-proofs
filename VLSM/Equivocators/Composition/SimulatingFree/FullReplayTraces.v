@@ -493,7 +493,7 @@ Proof.
         ; inversion Ht_s_replay_epref_i; subst s_replay_epref_i' om_replay_epref_i'; clear Ht_s_replay_epref_i
         ; destruct (decide (eqv = i)).
         -- subst i. rewrite! state_update_eq. simpl.
-          rewrite! Heqfull_replay_state_i in *. simpl in *. 
+          rewrite! Heqfull_replay_state_i in *. simpl in *.
           split; [lia|]. split; [reflexivity|].
           split; intros.
           ++ assert (Hi : id + S nfull_replay_state_i < S (S ns_replay_epref_i)) by lia.
@@ -518,7 +518,7 @@ Proof.
           split; [assumption|]. split; [reflexivity|].
           assumption.
         -- subst i.
-          rewrite! state_update_eq. 
+          rewrite! state_update_eq.
           simpl.
           rewrite! Heqfull_replay_state_i in *.
           split; [assumption|]. split; [reflexivity|].
@@ -939,7 +939,7 @@ Proof.
   eexists _. eexists _. exists Htrs_replay.
   split.
   - rewrite map_app, last_app. simpl.
-    subst. 
+    subst.
     reflexivity.
   - apply Exists_exists in Heqv.
     destruct Heqv as [mitem [Hmitem Houtput]].
@@ -959,7 +959,7 @@ Proof.
     apply (finite_protocol_trace_from_app_iff SeededXE) in Hepref.
     apply proj1 in Hepref.
     specialize (trace_to_plan_to_trace SeededXE _ _ Hepref) as Hfst.
-    
+
     replace (fst(composite_apply_plan equivocator_IM is
       (composite_trace_to_plan equivocator_IM
         (pref ++ [mitem])))) with (pref ++ [mitem])

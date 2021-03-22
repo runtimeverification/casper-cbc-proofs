@@ -235,7 +235,7 @@ Proof.
     ) as (str_final_eqv', omtr_final_eqv') eqn:Ht_tr_final_eqv.
     simpl in Heqa_app. inversion Heqa_app. subst a_items a_final. clear Heqa_app.
     simpl in Heqa_fold.
-    subst. 
+    subst.
     unfold_equivocators_transition_item_project.
     rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
     rewrite state_update_eq.
@@ -249,7 +249,7 @@ Proof.
       destruct (le_lt_dec (S nstr_final_eqv') eqv_i); [lia|].
       rewrite! eq_dec_if_false by lia.
       match goal with
-      |- context [if f_di then ?x else ?x] => 
+      |- context [if f_di then ?x else ?x] =>
         replace (if f_di then x else x) with x
           by (destruct f_di; reflexivity)
       end.
@@ -602,7 +602,7 @@ Proof.
           }
           apply has_been_sent_consistency; [assumption| assumption| ].
           eexists _. eexists _. exists Happ_pre, Hlst.
-        
+
           apply Exists_app. right. subst.
           spec Houtput n.
           clear - Hfinal Houtput Hom n Heqv_state_final.

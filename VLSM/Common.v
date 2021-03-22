@@ -172,19 +172,19 @@ In Coq, we can define these objects (which we name [transition_item]s) as consis
       := List.Exists (message_selector msg) tr.
 
     (** Defines a message received but not sent by within the trace. *)
-    Definition trace_received_not_sent
+    Definition trace_received_not_sent_before_or_after
       (tr : list transition_item)
       (m : message)
       : Prop
       := trace_has_message (field_selector input) m tr /\
          ~trace_has_message (field_selector output) m tr.
 
-    (** States that a property holds for all messages received but not dent by a trace. *)
-    Definition trace_received_not_sent_invariant
+    (** States that a property holds for all messages received but not sent by a trace. *)
+    Definition trace_received_not_sent_before_or_after_invariant
       (tr : list transition_item)
       (P : message -> Prop)
       : Prop
-      := forall m, trace_received_not_sent tr m -> P m.
+      := forall m, trace_received_not_sent_before_or_after tr m -> P m.
 
   (** 'proto_run's are used for an alternative definition of 'protocol_prop' which
   takes into account transitions. See 'vlsm_run_prop'.
@@ -933,7 +933,7 @@ decompose the above properties in proofs.
         as Ht.
       rewrite map_app in Ht. simpl in Ht. rewrite last_is_last in Ht. assumption.
     Qed.
-    
+
 
     Lemma protocol_trace_output_is_protocol
       (is : state)
@@ -981,7 +981,7 @@ decompose the above properties in proofs.
       - intro Htr.
         inversion Htr.
         assumption.
-      - destruct te. simpl. intro Ht. 
+      - destruct te. simpl. intro Ht.
         apply protocol_transition_destination in Ht as Hdestination0.
         constructor; [|assumption]. constructor. assumption.
     Qed.
@@ -1140,7 +1140,7 @@ traces.
       replace (Some m) with (output x) by assumption.
       assumption.
     Qed.
-    
+
     (* End Hide *)
 
 (**
@@ -2477,7 +2477,7 @@ Proof.
       assert (His_tr: finite_protocol_trace X is []).
       { split; [|assumption]. constructor.
         apply initial_is_protocol. assumption.
-      } 
+      }
       apply Hincl in His_tr.
       destruct His_tr as [_ HisY].
       split; [|assumption].

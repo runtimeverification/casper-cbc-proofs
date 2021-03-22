@@ -30,7 +30,7 @@ Section apply_plans.
     .
 
   (** If we don't concern ourselves with the validity of the traces obtained
-  upon applying a plan, then a [VLSM_type] and a [transition] function 
+  upon applying a plan, then a [VLSM_type] and a [transition] function
   suffice for defining plan application and related results.
   The advantage of this approach is that the same definition works for
   pre_loaded versions as well as for all constrained variants of a composition.
@@ -262,7 +262,7 @@ Section protocol_plans.
     match goal with
     |- context[vtransition X ?l ?lst] => replace (vtransition X l lst) with (destination x, output x)
     end.
-    destruct x. 
+    destruct x.
     reflexivity.
   Qed.
 
@@ -371,9 +371,9 @@ Section protocol_plans.
     let res := vtransition X (label_a a) (s, input_a a) in
     finite_protocol_plan_from s [a] <-> protocol_transition X (label_a a) (s, input_a a) res.
   Proof.
-    split; 
-    intros; 
-    destruct a; 
+    split;
+    intros;
+    destruct a;
     unfold apply_plan,_apply_plan in *; simpl in *;
     unfold finite_protocol_plan_from in *;
     unfold apply_plan, _apply_plan in *; simpl in *.

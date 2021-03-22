@@ -1519,7 +1519,7 @@ All results from regular projections carry to these "free" projections.
         destruct om;exact I.
       + rewrite state_update_neq; try assumption. apply IHHs.
   Qed.
-  
+
   (* The following results concern facts about applying a [plan X] <<P>>
      to a [vstate X] <<s'>>, knowing its effects on a different [vstate X] <<s>>
      which shares some relevant features with <<s'>>. *)
@@ -1788,7 +1788,7 @@ All results from regular projections carry to these "free" projections.
           simpl in *.
           apply (f_equal snd) in eq_xsa.
           apply (f_equal snd) in eq_xsa'.
-          
+
           replace sx' with (snd (composite_apply_plan IM sa' [x])).
           replace sx with (snd (composite_apply_plan IM sa [x])).
           setoid_rewrite Hdiff.

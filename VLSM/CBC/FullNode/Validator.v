@@ -736,21 +736,21 @@ Section proper_sent_received.
         specialize (H is tr Htr Hlst). assumption.
   Qed.
 
-  Definition VLSM_full_validator_send_oracle 
-    (s : vstate vlsm) 
+  Definition VLSM_full_validator_send_oracle
+    (s : vstate vlsm)
     (m : message) :
     Prop :=
     In m (State.sent_messages s).
-  
+
   Global Instance VLSM_full_validator_send_oracle_dec : RelDecision VLSM_full_validator_send_oracle.
   Proof.
     unfold RelDecision; intros s m.
     unfold VLSM_full_validator_send_oracle.
     destruct (inb decide_eq m (State.sent_messages s)) eqn : eq_inb.
     - apply in_correct in eq_inb. left. intuition.
-    - apply in_correct' in eq_inb. right. intuition. 
+    - apply in_correct' in eq_inb. right. intuition.
   Qed.
-  
+
   Global Instance VLSM_full_validator_has_been_sent : has_been_sent_capability vlsm.
   Proof.
     apply (@has_been_sent_capability_from_stepwise _ vlsm VLSM_full_validator_send_oracle _).
@@ -779,13 +779,13 @@ Section proper_sent_received.
              destruct om.
              ++ destruct m0 as [c0 v0 j] eqn : eq_m0.
                 apply set_add_elim in H.
-                rewrite H2. 
+                rewrite H2.
                 destruct H.
                 ** left. f_equal. intuition.
                 ** right. destruct m as [c1 v1 j0].
                    inversion H2.
                    subst j. simpl in *.
-                   intuition. 
+                   intuition.
              ++ simpl in H. intuition.
           -- simpl in *.
              inversion Htrans.
@@ -795,7 +795,7 @@ Section proper_sent_received.
              left. f_equal. intuition.
         * simpl in *.
           unfold State.sent_messages in *.
-          destruct im eqn : eq_im. 
+          destruct im eqn : eq_im.
           -- inversion Htrans.
              rewrite <- H1 in H.
              destruct s_pointer eqn : eq_pointer; simpl in *.
@@ -828,7 +828,7 @@ Section proper_sent_received.
              ++ destruct m0 as [c0 v0 j] eqn : eq_m0.
                 destruct H;[intuition congruence|intuition].
              ++ destruct H;[intuition congruence|intuition].
-          -- inversion Htrans. 
+          -- inversion Htrans.
              destruct s_pointer eqn : eq_pointer; simpl in *.
              ++ destruct m as [c0 v0 j] eqn : eq_m.
                 destruct H;[intuition congruence|intuition].
@@ -877,22 +877,22 @@ Section proper_sent_received.
       apply (get_messages_in_futures s0 s Hfutures).
       subst s0. simpl. apply set_add_iff. left. reflexivity.
   Qed.
-  
-  Definition VLSM_full_validator_receive_oracle 
-    (s : vstate vlsm) 
+
+  Definition VLSM_full_validator_receive_oracle
+    (s : vstate vlsm)
     (m : message) :
     Prop :=
     In m (State.received_messages s).
-  
+
   Global Instance VLSM_full_validator_receive_oracle_dec : RelDecision VLSM_full_validator_receive_oracle.
   Proof.
     unfold RelDecision; intros s m.
     unfold VLSM_full_validator_receive_oracle.
     destruct (inb decide_eq m (State.received_messages s)) eqn : eq_inb.
     - apply in_correct in eq_inb. left. intuition.
-    - apply in_correct' in eq_inb. right. intuition. 
+    - apply in_correct' in eq_inb. right. intuition.
   Qed.
-  
+
   Global Instance VLSM_full_validator_has_been_received : has_been_received_capability vlsm.
   Proof.
     apply (@has_been_received_capability_from_stepwise _ vlsm VLSM_full_validator_receive_oracle _).
@@ -922,7 +922,7 @@ Section proper_sent_received.
              destruct H as [Hin Hnin].
              apply set_add_iff in Hin.
              destruct Hin.
-             ++ subst msg. 
+             ++ subst msg.
                 contradict Hnin.
                 apply set_add_iff.
                 left. intuition.
@@ -939,7 +939,7 @@ Section proper_sent_received.
              destruct H as [Hin Hnin].
              apply set_add_iff in Hin.
              destruct Hin.
-             ++ subst msg. 
+             ++ subst msg.
                 contradict Hnin; intuition.
              ++ apply set_diff_iff.
                 split;[intuition|].
@@ -953,7 +953,7 @@ Section proper_sent_received.
              ++ left. f_equal. intuition.
              ++ right. apply set_diff_iff.
                 intuition.
-          -- inversion Htrans. subst s'. subst om. 
+          -- inversion Htrans. subst s'. subst om.
              apply set_diff_iff in H.
              destruct H as [Hin Hnin]; simpl in *.
              right. apply set_diff_iff.
@@ -995,13 +995,13 @@ Section proper_sent_received.
                       subst msg. simpl; intuition.
                     }
                   intuition.
-         * unfold State.sent_messages in H. 
+         * unfold State.sent_messages in H.
            destruct im eqn : eq_im; simpl in *.
            -- destruct s_pointer eqn : eq_pointer; simpl in *.
               ++ destruct m0 as [c v0 j] eqn : eq_m0.
                  inversion Htrans.
                  subst s'. subst om. simpl.
-                 destruct H. 
+                 destruct H.
                  ** inversion H.
                     subst msg.
                     apply set_diff_iff.
@@ -1041,7 +1041,7 @@ Section proper_sent_received.
                    destruct H;split; [apply set_add_iff; right; intuition|intuition].
               ++ inversion Htrans. subst s'. subst om. simpl in *.
                  destruct H.
-                 ** apply set_diff_iff. 
+                 ** apply set_diff_iff.
                     split.
                     --- apply set_add_iff. inversion H. intuition.
                     --- intuition.

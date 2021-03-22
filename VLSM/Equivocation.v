@@ -1235,18 +1235,6 @@ Proof.
   assumption.
 Qed.
 
-Lemma has_been_observed_stepwise_from_trace
-      [message : Type]
-      [vlsm: VLSM message]
-      (Hhbo: has_been_observed_capability vlsm):
-  oracle_stepwise_props item_sends_or_receives (has_been_observed vlsm).
-Proof.
-  apply stepwise_props_from_trace.
-  apply has_been_observed_dec.
-  apply proper_observed.
-  apply proper_not_observed.
-Defined.
-
 (** A received message introduces no additional equivocations to a state
     if it has already been observed in s or it is an initial message.
 *)
@@ -2009,7 +1997,7 @@ Lemma state_received_not_sent_trace_iff
   (tr : list transition_item)
   (Htr : finite_protocol_trace PreX is tr)
   (Hlst : last (List.map destination tr) is = s)
-  : state_received_not_sent s m <-> trace_received_not_sent tr m.
+  : state_received_not_sent s m <-> trace_received_not_sent_before_or_after tr m.
 Proof.
   assert (Hs : protocol_state_prop PreX s).
   { apply proj1 in Htr.  apply finite_ptrace_last_pstate in Htr.
@@ -2046,7 +2034,7 @@ Lemma state_received_not_sent_invariant_trace_iff
   (Htr : finite_protocol_trace PreX is tr)
   (Hlst : last (List.map destination tr) is = s)
   : state_received_not_sent_invariant s P <->
-    trace_received_not_sent_invariant tr P.
+    trace_received_not_sent_before_or_after_invariant tr P.
 Proof.
   split; intros Hinv m Hm
   ; apply Hinv
@@ -2098,16 +2086,16 @@ Qed.
 
   Context
     (Hno_resend : cannot_resend_message_stepwise_prop).
-  
+
   Lemma lift_preloaded_trace_to_seeded
     (P : message -> Prop)
     (tr: list transition_item)
-    (Htrm: trace_received_not_sent_invariant tr P)
+    (Htrm: trace_received_not_sent_before_or_after_invariant tr P)
     (is: state)
     (Htr: finite_protocol_trace PreX is tr)
     : finite_protocol_trace (pre_loaded_vlsm X P) is tr.
   Proof.
-    unfold trace_received_not_sent_invariant in Htrm.
+    unfold trace_received_not_sent_before_or_after_invariant in Htrm.
     split; [|apply Htr].
     induction tr using rev_ind; intros.
     - apply (finite_ptrace_empty  (pre_loaded_vlsm X P)).

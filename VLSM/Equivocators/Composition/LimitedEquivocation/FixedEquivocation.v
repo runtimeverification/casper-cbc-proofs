@@ -129,7 +129,7 @@ Proof.
   - rewrite map_app. simpl. rewrite last_is_last.
     specialize
       (protocol_transition_to equivocators_fixed_equivocations_vlsm
-        is tr tr' [] item  
+        is tr tr' [] item
       ) as Ht.
     subst. spec Ht (proj1 Htr).
     spec Ht. { rewrite app_assoc. rewrite app_nil_r. reflexivity. }
@@ -500,7 +500,7 @@ Existing Instance equivocating_i0.
 (**
 This is a property of the [fixed_equivocation_constraint] which also
 trivially holds for the free constraint.  This property is sufficient for
-proving the [_equivocators_protocol_trace_project] lemma, 
+proving the [_equivocators_protocol_trace_project] lemma,
 which lets that lemma be used for both the composition of equivocators with
 fixed state-equivocation and the free composition.
 
@@ -989,7 +989,7 @@ Proof.
   elim Hno.
   revert Hobs_m.
   apply in_futures_preserving_oracle_from_stepwise with item_sends_or_receives.
-  - apply has_been_observed_stepwise_from_trace.
+  - apply has_been_observed_stepwise_props.
   - subst lst_trX. subst s. simpl. simpl in Hfinal_state.
     rewrite Hfinal_state. subst trX.
     rewrite map_app. rewrite last_app.
@@ -1235,9 +1235,9 @@ the messages observed in the state @sx@.
 To prove that, we consider a trace witness for the mesage having been sent,
 we use [projection_has_not_been_observed_is_equivocating] to derive that
 it must have been sent by one of the machines allowed to equivocate, from this
-we derive that it can be sent by the restriction of the composition of 
+we derive that it can be sent by the restriction of the composition of
 equivocators to just the equivocating nodes, pre-loaded with the messages
-observed in the projection, then we use 
+observed in the projection, then we use
 the [seeded_equivocators_protocol_trace_project] result to reach our conclusion.
 *)
 Lemma fixed_equivocation_constraint_has_constraint_has_been_sent_prop
@@ -1388,7 +1388,7 @@ Proof.
     apply Hfinal_descriptors_m.
   }
   spec Hsub_project.
-  { clear -Hproject. 
+  { clear -Hproject.
     revert Hproject.
     apply VLSM_incl_finite_protocol_trace.
     apply pre_loaded_equivocators_composition_sub_projection_commute.

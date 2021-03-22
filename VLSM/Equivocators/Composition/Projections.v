@@ -1471,7 +1471,7 @@ Proof.
         x _ _ _ Hproject_x _ _ Hproject_sub_x
       )
       as Hfinal_sub'.
-    
+
     destruct Hfinal_sub' as [Hfinal_sub' Hpr_sub_x].
     subst final_sub_descriptors'.
     specialize (IHtr _ Htr_subX').

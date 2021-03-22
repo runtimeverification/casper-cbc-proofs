@@ -361,7 +361,7 @@ Local Ltac unfold_transition H :=
 or a simpler way of defining the equivocator_transition
 - it's not nice to need to pick apart these cases from inside
 equivocator_transition inside of so many proofs.
-*)  
+*)
 
 (** If the state obtained after one transition has no equivocation, then
 the descriptor of the label of the transition must be Existing 0 false
