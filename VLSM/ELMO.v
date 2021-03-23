@@ -9,7 +9,7 @@ Import ListNotations.
 From CasperCBC
   Require Import
     Preamble
-    Lib.SumWeights
+    Lib.Measurable
     VLSM.Common
     .
 
