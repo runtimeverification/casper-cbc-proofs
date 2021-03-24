@@ -4,6 +4,7 @@ Require Import
   List Coq.Vectors.Fin
   Arith.Compare_dec Lia
   Program Reals Lra ListSet Nat
+  Coq.Logic.ProofIrrelevance
   .
 Import ListNotations.
 From CasperCBC
@@ -11,6 +12,7 @@ From CasperCBC
     Preamble
     Lib.Measurable
     VLSM.Common
+    VLSM.Composition
     .
 
 Require Import List.
@@ -276,3 +278,48 @@ Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold 
        ; transition := elmo_transition component weights treshold
     |}.
 
+
+Section composition.
+
+  Context
+    (weights : list pos_R)
+    (weights_nonempty : weights <> [])
+    (treshold : R)
+  .
+
+  Definition index := { n : nat | n < length weights }.
+
+  Lemma index_eqdec : EqDecision index.
+  Proof.
+    Unset Printing Notations.
+    unfold EqDecision. intros x y.
+    unfold Decision.
+    destruct x as [x' Hx'].
+    destruct y as [y' Hy'].
+    destruct (decide (x'=y')).
+    + left. subst.
+      rewrite (proof_irrelevance _ Hx' Hy').
+      reflexivity.
+    + right. intros Contra.
+      inversion Contra.
+      contradiction.
+  Qed.
+  
+  
+  Lemma zero_lt_len_weights : 0 < length weights.
+  Proof.
+    destruct weights.
+    { contradiction. }
+    simpl. lia.
+  Qed.
+  
+  
+  Lemma index_inhabited : Inhabited index.
+  Proof.
+    constructor.
+    exact (exist _ 0 zero_lt_len_weights).
+  Qed.
+  
+  Check @composite_vlsm.
+
+End composition.
