@@ -1,10 +1,10 @@
-Require Import Bool.
-Require Import Coq.Lists.ListSet.
-Require Import List.
+From Coq Require Import Bool List ListSet.
 Import ListNotations.
 
 Require Import CasperCBC.Lib.Preamble.
 Require Import CasperCBC.Lib.ListExtras.
+
+(** * List set utility definitions and lemmas *)
 
 Definition set_eq {A} (s1 s2 : set A) : Prop :=
   incl s1 s2 /\ incl s2 s1.

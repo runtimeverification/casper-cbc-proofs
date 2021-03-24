@@ -1,6 +1,9 @@
 Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ProofIrrelevance Eqdep_dec.
-From CasperCBC Require Export Classes.
 Import ListNotations.
+
+From CasperCBC Require Export Classes.
+
+(** * General utility definitions, lemmas, and tactics *)
 
 Tactic Notation "spec" hyp(H) :=
   match type of H with ?a -> _ =>

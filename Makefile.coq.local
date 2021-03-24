@@ -7,7 +7,7 @@ HTMLFILES = resources/header.html resources/footer.html
 DEPFILES = resources/deps.png resources/map.html
 
 COQDOCDIR = docs/coqdoc
-COQDOCHTMLFLAGS = --toc --toc-depth 2 --index indexpage --html -s \
+COQDOCHTMLFLAGS = --toc --toc-depth 3 --index indexpage --html -s \
   --interpolate --no-lib-name --parse-comments \
   --with-header resources/header.html --with-footer resources/footer.html
 

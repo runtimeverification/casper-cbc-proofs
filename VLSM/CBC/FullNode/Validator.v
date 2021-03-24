@@ -1,5 +1,4 @@
-Require Import Bool List ListSet.
-
+From Coq Require Import Bool List ListSet.
 Import ListNotations.
 
 From CasperCBC
@@ -16,6 +15,8 @@ From CasperCBC
     VLSM.ObservableEquivocation
     VLSM.CBC.FullNode.Client
     .
+
+(** * VLSM Full Node Composite Validator *)
 
 Section CompositeValidator.
 
@@ -107,7 +108,7 @@ Section CompositeValidator.
     := @basic_observable_equivocation (state C V) V message
         message_eq _ (validator_message_preceeds_dec C V) full_node_validator_observable_messages full_node_message_subject_of_observation full_node_validator_observation_based_equivocation_evidence _ _ _  full_node_validator_state_validators full_node_validator_state_validators_nodup.
 
-  (** * Full-node validator VLSM instance
+  (** ** Full-node validator VLSM instance
 
   Here we define a VLSM for a full-node validator identifying itself as
   <<v>> when sending messages.

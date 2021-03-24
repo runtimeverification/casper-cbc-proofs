@@ -1,12 +1,10 @@
-Require Import List Streams Nat Bool.
+From Coq Require Import List Streams Nat Bool Lia FunctionalExtensionality FinFun Eqdep.
 Import ListNotations.
-Require Import Lia.
-Require Import Logic.FunctionalExtensionality.
-
-Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
 
 From CasperCBC
 Require Import Lib.StreamExtras Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition.
+
+(** * VLSM Projection Traces *)
 
 Section ProjectionTraces.
 

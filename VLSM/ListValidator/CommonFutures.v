@@ -1,6 +1,6 @@
-Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Basics.
-Require Import Lia.
+From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Basics Lia.
 Import ListNotations.
+
 From CasperCBC
 Require Import
   Lib.Preamble
@@ -21,6 +21,8 @@ Require Import
   VLSM.ObservableEquivocation
   .
 
+(** * VLSM List Validator Common Futures *)
+
 (**
 Also see:
    - [Observations.v] for the observation model used here
@@ -28,7 +30,6 @@ Also see:
    - [EquivocationAwareComposition.v] for results concerning this type of composition
    - [Equivocation.v] and [ListValidator.v] for some general
      facts about List Validators. *)
-
 
 Section CommonFutures.
 

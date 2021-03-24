@@ -1,7 +1,10 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts IndefiniteDescription Classical Sorting.
+From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts IndefiniteDescription Classical Sorting.
 Import ListNotations.
+
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists VLSM.Equivocation CBC.Protocol Lib.RealsExtras VLSM.Decisions Lib.Measurable.
+
+(** * CBC General Definitions and Lemmas *)
 
 Class InhabitedTwice V := { inhabited_twice : exists (v1 v2 : V), v1 <> v2 }.
 

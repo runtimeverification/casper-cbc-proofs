@@ -1,6 +1,8 @@
 From Coq Require Import Reals List ListSet.
 
-From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
+From CasperCBC Require Import Preamble ListExtras ListSetExtras.
+
+(** * Measure-related definitions and lemmas *)
 
 Definition pos_R := {r : R | (r > 0)%R}.
 

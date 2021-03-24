@@ -1,10 +1,10 @@
-From Coq Require Import List Streams.
-From Coq Require Import Program.Equality.
-From CasperCBC Require Import Lib.SsrExport Lib.Traces Lib.TraceProperties Lib.TraceClassicalProperties.
-From CasperCBC Require Import Lib.StreamExtras Lib.Preamble VLSM.Common.
+From Coq Require Import List Streams Program.Equality.
 Import ListNotations.
 
-(** * Protocols described by possibly-infinite traces *)
+From CasperCBC Require Import Lib.SsrExport Lib.Traces Lib.TraceProperties Lib.TraceClassicalProperties.
+From CasperCBC Require Import Lib.StreamExtras Lib.Preamble VLSM.Common.
+
+(** * VLSM Protocols Described by Possibly-Infinite Traces *)
 
 Section VLSM.
 

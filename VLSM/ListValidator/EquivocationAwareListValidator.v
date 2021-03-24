@@ -14,6 +14,8 @@ Require Import
   VLSM.ListValidator.Observations
   .
 
+(** * VLSM Equivocation Aware List Validator *)
+
 (** This is a version of the List Validator node which uses an
    "equivocation aware" estimator.
 

@@ -1,5 +1,4 @@
-Require Import FinFun List ListSet RelationClasses.
-
+From Coq Require Import FinFun List ListSet RelationClasses.
 Import ListNotations.
 
 From CasperCBC
@@ -21,9 +20,9 @@ From CasperCBC
     ObservableEquivocation
     .
 
-Section ConstrainedValidators.
+(** * VLSM Composing Validators with Limited Equivocation *)
 
-(** * Composing validators with limited equivocation *)
+Section ConstrainedValidators.
 
   Context
     {C V : Type}

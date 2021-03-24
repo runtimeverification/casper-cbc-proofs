@@ -1,16 +1,10 @@
-Require Import Bool List ListSet FinFun
-  Reals.
+From Coq Require Import Bool List ListSet FinFun Reals.
 Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras ListSetExtras
-    Lib.Classes
-    Lib.Measurable
-    VLSM.Common VLSM.Composition VLSM.Equivocation
-    VLSM.ProjectionTraces
-    .
 
-(** * Observable equivocation
+From CasperCBC Require Import Preamble ListExtras ListSetExtras Lib.Classes Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces.
+
+(** * VLSM Observable Equivocation
 
 In this section we define a notion of equivocation based on observations.
 

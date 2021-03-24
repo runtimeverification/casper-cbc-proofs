@@ -15,6 +15,8 @@ From CasperCBC
     VLSM.Equivocators.Composition.Common
     .
 
+(** * VLSM Limited Equivocation *)
+
 Section equivocators_composition_projections.
 
 Context {message : Type}

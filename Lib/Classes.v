@@ -4,7 +4,6 @@ From Coq.Program Require Import Basics Syntax.
 
 Global Generalizable All Variables.
 
-
 (** * General typeclasses *)
 
 (** This typeclass hierarchy has been adapted mainly from the
@@ -164,6 +163,7 @@ Instance bool_decision {b:bool} : Decision b :=
           | true => left I
           | false => right (fun H => H)
   end.
+
 (** ** Basic instances *)
 
 Instance prop_inhabited : Inhabited Prop := populate True.

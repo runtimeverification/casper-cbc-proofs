@@ -1,13 +1,9 @@
-From CasperCBC
-  Require Import
-    Lib.Preamble
-    VLSM.Common VLSM.Composition VLSM.Decisions VLSM.ProjectionTraces
-    .
+From CasperCBC Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Decisions VLSM.ProjectionTraces.
 
-(** * Common Futures and Decision Consistency *)
+(** * VLSM Common Futures and Decision Consistency *)
 
 (**
-In this section we provide a definition for the [HasCommonFuturesEstimates]
+In this module we provide a definition for the [HasCommonFuturesEstimates]
 property and then we show that a VLSM equiped with this property
 has [final_and_consistent] decisions.
 *)

@@ -1,8 +1,17 @@
-Require Import List ListSet Streams ProofIrrelevance Coq.Arith.Plus Coq.Arith.Minus Coq.Logic.FinFun Rdefinitions.
+From Coq Require Import List ListSet Streams ProofIrrelevance Arith.Plus Arith.Minus FinFun Rdefinitions.
 Import ListNotations.
 
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.Measurable VLSM.Decisions VLSM.Common VLSM.Composition VLSM.ProjectionTraces .
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.Measurable VLSM.Decisions VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
+
+(** * VLSM Equivocation Definitions **)
+
+(**
+ This module is dedicated to building the language for discussing equivocation.
+ Equivocation occurs on the receipt of a message which has not been previously sent.
+ The designated sender (validator) of the message is then said to be equivocating.
+ Our main purpose is to keep track of equivocating senders in a composite context
+ and limit equivocation by means of a composition constraint.
+**)
 
 Lemma exists_proj1_sig {A:Type} (P:A -> Prop) (a:A):
   (exists xP:{x | P x}, proj1_sig xP = a) <-> P a.
@@ -14,17 +23,6 @@ Proof.
     exists (exist _ a Ha).
     reflexivity.
 Qed.
-
-(** * Equivocation definitions **)
-
-(**
-*** Summary
-This chapter is dedicated to building the language for discussing equivocation.
-    Equivocation occurs on the receipt of a message which has not been previously sent.
-    The designated sender (validator) of the message is then said to be equivocating.
-    Our main purpose is to keep track of equivocating senders in a composite context
-    and limit equivocation by means of a composition constraint.
-**)
 
 (** ** Basic equivocation **)
 

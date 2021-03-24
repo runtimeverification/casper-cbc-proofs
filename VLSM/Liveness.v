@@ -1,5 +1,4 @@
-Require Import List.
-Require Import Coq.Logic.FinFun.
+From Coq Require Import List FinFun.
 
 From CasperCBC
   Require Import
@@ -9,8 +8,13 @@ From CasperCBC
     VLSM.Common
     VLSM.Decisions
     VLSM.Composition
-    VLSM.Equivocation (* for has_been_sent *)
-.
+    VLSM.Equivocation. (* for has_been_sent *)
+
+(** * VLSM Liveness *)
+
+(**
+ A composite VLSM is live if every complete trace reaches a [decision].
+*)
 
 (**
    This module defines liveness, and contains basic defintiions
@@ -19,10 +23,8 @@ From CasperCBC
    stating the assumptions under which those protocols are live.
  *)
 
-(** * Liveness
+(** ** Liveness definitions *)
 
- A composite VLSM is live if every complete trace reaches a [decision]
- *)
 Section Liveness.
 
   Context
@@ -49,7 +51,7 @@ Definition live : Prop :=
 
 End Liveness.
 
-(** * Clocks
+(** ** Clocks
 
 Liveness always requires some notion of time, and assumptions
 that messages are not infinitely delayed.
@@ -98,7 +100,7 @@ Section Clocks.
 
 End Clocks.
 
-(** * Plans
+(** ** Plans
 
 Protocols may be designed so that only a subset of validators
 are expected to send messages in each phase.
@@ -136,7 +138,7 @@ Section Plan.
     }.
 End Plan.
 
-(** * Synchrony Constraint
+(** ** Synchrony Constraints
 
 Synchrony assumptions will be expresed with composition constraints.
 

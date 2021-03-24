@@ -1,9 +1,6 @@
-Require Import
-  List ListSet Coq.Vectors.Fin
-  Arith.Compare_dec Lia
-  Program
-  .
+From Coq Require Import List ListSet Vectors.Fin Arith.Compare_dec Lia Program.
 Import ListNotations.
+
 From CasperCBC
   Require Import
     Preamble ListExtras ListSetExtras FinExtras
@@ -11,9 +8,11 @@ From CasperCBC
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     .
 
+(** * VLSM Message Properties *)
+
 Section equivocator_vlsm_message_properties.
 
-(** * Lifting properties about sent messages to the equivocators
+(** ** Lifting properties about sent messages to the equivocators
 
 In this section we first prove some general properties about sent messages
 being preserved and reflected by the [equivocator_vlsm], and then we show

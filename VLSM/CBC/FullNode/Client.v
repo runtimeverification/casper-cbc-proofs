@@ -15,10 +15,11 @@ From CasperCBC
     VLSM.ObservableEquivocation
     .
 
+(** * VLSM Full-Node Client *)
+
 Section CompositeClient.
 
-(** * Full-node client as a VLSM
-
+(**
 This section defines a full-node client as a VLSM.
 The full node client does not produce messages, but incorporates received
 messages, implementing a limited equivocation tolerance policy.

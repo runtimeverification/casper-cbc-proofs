@@ -1,7 +1,9 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts.
+From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts.
 Import ListNotations.
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol.
+
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol.
+
+(** * CBC Binary Consensus Protocol *)
 
 (** Building blocks for instancing CBC_protocol_eq with a concrete binary consensus protocol **)
 (** Set equality on states **)

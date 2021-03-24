@@ -1,9 +1,8 @@
-Require Import FinFun Streams.
-From CasperCBC
-Require Import Lib.Preamble VLSM.Common VLSM.Composition.
+From Coq Require Import FinFun Streams.
 
-(**
-* Validating projections
+From CasperCBC Require Import Lib.Preamble VLSM.Common VLSM.Composition.
+
+(** * VLSM Validating Projections
 
 In the sequel we fix a composite VLSM <<X>> obtained from an indexed family
 of VLSMs <<IM>> and a <<constraint>>, and an index <<i>>, corresponding to
@@ -120,8 +119,7 @@ Proof.
     exists s. split; assumption.
 Qed.
 
-(**
-** Validating projections and Byzantine behavior
+(** ** Validating projections and Byzantine behavior
 
 In the sequel we assume that <<X>> has the [validating_projection_prop]erty for
 component <<i>>.  Let <<Xi>> be the projection of <<X>> to component <<i>>
@@ -169,9 +167,7 @@ End pre_loaded_with_all_messages_validating_proj.
 
 End validating_projection.
 
-(**
-* VLSM self-validation
-*)
+(** ** VLSM self-validation *)
 
 Section validating_vlsm.
 

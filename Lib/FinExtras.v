@@ -1,8 +1,7 @@
-Require Import
-    List Coq.Vectors.Fin
-    FinFun
-    Program.
+From Coq Require Import List Vectors.Fin FinFun Program.
 Import ListNotations.
+
+(** * Finite type utility definitions and lemmas *)
 
 Fixpoint fin_t_listing
   (n : nat)

@@ -1,10 +1,10 @@
 Require Import Bool List Streams Logic.Epsilon Reals ProofIrrelevance Fin FinFun.
 Import ListNotations.
+
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras Lib.Measurable VLSM.Equivocation VLSM.Decisions CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions CBC.FullNode.
 
-
-(** * Full-node model as a single VLSM instance *)
+(** * CBC Full Node Model as a Single VLSM Instance *)
 
 Section Full.
 

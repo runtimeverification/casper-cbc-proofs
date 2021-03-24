@@ -20,10 +20,9 @@ From CasperCBC
     Validator.Equivocation
     .
 
-Section ClientsAndValidators.
+(** * VLSM Full Node Clients and Validators Free Composition *)
 
-(** * Full-node VLSM clients and validators  free composition
-*)
+Section ClientsAndValidators.
 
   Context
     {C V : Type}

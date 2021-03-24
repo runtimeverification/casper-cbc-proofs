@@ -16,6 +16,8 @@ From CasperCBC
     VLSM.Plans
     .
 
+(** * VLSM Equivocator Full Replay Traces *)
+
 Section all_equivocating.
 
 Context {message : Type}

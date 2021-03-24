@@ -1,19 +1,13 @@
-Require Import
-  List Coq.Vectors.Fin
-  Arith.Compare_dec Lia
-  Program
-  .
+From Coq Require Import List Vectors.Fin Arith.Compare_dec Lia Program.
 Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras
-    VLSM.Common
-    VLSM.Equivocators.Common
-    .
+
+From CasperCBC Require Import Preamble ListExtras VLSM.Common VLSM.Equivocators.Common.
+
+(** * VLSM Projecting Equivocator Traces *)
 
 Section equivocator_vlsm_projections.
-(** *Projecting equivocator traces
 
+(**
 Given an [equivocator_vlsm] trace ending in a state <<s>>, we can obtain a
 trace in the original vlsm leading to the <<si>>, the  <<i>>th internal
 state in <<s>>, by extracting a path leading to si.

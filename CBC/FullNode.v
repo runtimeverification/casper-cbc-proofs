@@ -1,7 +1,10 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts .
+From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts .
 Import ListNotations.
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common CBC.Definitions.
+
+From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras RealsExtras.
+From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common CBC.Definitions.
+
+(** * CBC Full Node Protocol *)
 
 (* Implementation -instantiates-> Level Specific *)
 (** Building blocks for instancing CBC_protocol with full node version **)

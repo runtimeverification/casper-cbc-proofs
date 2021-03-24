@@ -1,7 +1,10 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical Sorting.
+From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical Sorting.
 Import ListNotations.
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common.
+
+From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras SortedLists.
+From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common.
+
+(** * CBC Light Node Protocol *)
 
 (* Lists of state hashes *)
 Definition justification_type (hash : Type) : Type := list hash.

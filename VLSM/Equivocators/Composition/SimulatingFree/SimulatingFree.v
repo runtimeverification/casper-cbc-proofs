@@ -17,6 +17,8 @@ From CasperCBC
     VLSM.Plans
     .
 
+(** * VLSM Equivocators Simulating Free Composite *)
+
 Section all_equivocating.
 
 Context {message : Type}

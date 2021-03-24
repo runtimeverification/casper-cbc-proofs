@@ -1,6 +1,9 @@
-Require Import List FinFun.
+From Coq Require Import List FinFun.
 Import ListNotations.
+
 From CasperCBC Require Import Preamble ListExtras.
+
+(** * Finite function utility definitions and lemmas *)
 
 Lemma map_option_listing
       {A B : Type} (f: A -> option B) (g: B -> A)

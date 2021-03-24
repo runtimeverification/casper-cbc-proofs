@@ -1,8 +1,10 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical.
+From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical.
 Import ListNotations.
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Common.
 
+From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras RealsExtras Measurable.
+From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions CBC.Common.
+
+(** * CBC State Definitions and Lemmas *)
 
 Inductive state {C V : Type} : Type :=
   | Empty : state

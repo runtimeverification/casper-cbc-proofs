@@ -3,10 +3,10 @@ Require Import Arith.
 Require Import List ListSet.
 Require Import Lia.
 Import ListNotations.
-
 Require Import Coq.Logic.FinFun.
-
 From CasperCBC.Lib Require Import Preamble.
+
+(** * Utility lemmas about lists *)
 
 (** It is decidable whether a list is null or not *)
 Lemma null_dec {S} (l : list S) : Decision (l = []).

@@ -1,20 +1,9 @@
-Require Import
-  Bool Reals
-  List ListSet
-  Coq.Classes.RelationClasses
-  .
+From Coq Require Import Bool Reals List ListSet Classes.RelationClasses.
 
-From CasperCBC
-  Require Import
-    Preamble
-    Lib.ListExtras
-    Lib.ListSetExtras
-    Lib.Measurable
-    VLSM.Common
-    VLSM.Composition
-    VLSM.Equivocation
-    VLSM.ObservableEquivocation
-    .
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ObservableEquivocation.
+
+(** * VLSM Preceeds Equivocation *)
 
 (** ** Message-based equivocation
 
@@ -245,7 +234,7 @@ Qed.
 
 End equivocation_properties.
 
-(** * VLSM equivocation based-on full-node-like  [message_equivocation_evidence]
+(** ** VLSM equivocation based-on full-node-like  [message_equivocation_evidence]
 
 Given a [VLSM] X over a type of messages which [message_equivocation_evidence], we say
 that @X@ has [vlsm_message_equivocation_evidence] if [message_preceeds_fn]

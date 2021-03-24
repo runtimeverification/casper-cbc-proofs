@@ -16,6 +16,8 @@ From CasperCBC
     VLSM.Equivocators.Composition.Projections
     .
 
+(** * VLSM Equivocators Fixed Equivocation *)
+
 Section equivocators_fixed_equivocations_vlsm.
 
 Context

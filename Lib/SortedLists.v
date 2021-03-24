@@ -1,9 +1,9 @@
-Require Import List Bool Sorting RelationClasses Relations Orders ListSet.
+From Coq Require Import List Bool Sorting RelationClasses Relations Orders ListSet.
 Import ListNotations.
-From CasperCBC
-Require Import Lib.Preamble Lib.ListSetExtras.
 
-(** Sorted Lists **)
+From CasperCBC Require Import Lib.Preamble Lib.ListSetExtras.
+
+(** * Sorted list utility functions and lemmas **)
 
 Fixpoint list_compare {A} (compare : A -> A -> comparison)
     (l1 l2 : list A) : comparison :=

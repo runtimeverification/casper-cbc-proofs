@@ -1,5 +1,4 @@
-Require Import List ListSet.
-Require Import Lia.
+From Coq Require Import List ListSet Lia.
 
 From CasperCBC
 Require Import
@@ -14,12 +13,14 @@ Require Import
   VLSM.Equivocation (* for has_been_sent *)
 .
 
+(** * VLSM Simple Live Protocol *)
+
 (**
 This module defines a simple consensus protocol, and
 proves that it is live when there are no synchronization faults.
  *)
 
-(** * Validators
+(** ** Validators
 
 The components are similar to [CBC.FullNode.Validator], except
 that the states and messages all carry times, and the nodes
@@ -468,7 +469,7 @@ Arguments validator_state _ _ : clear implicits.
 Arguments Validator {C V} {EqC EqV} _ _ _ _.
 
 
-(** * Composition and Proofs
+(** ** Composition and Proofs
 
 This section defines the composed protocol,
 and gives proofs about it.
@@ -497,7 +498,7 @@ Section Protocol_Proofs.
   Definition simple_liveness_VLSM :=
     (Composition.composite_vlsm IM).
 
-  (** *** Constructing a variant to show that
+  (** Constructing a variant to show that
       a component's clock eventually ticks.
    *)
 

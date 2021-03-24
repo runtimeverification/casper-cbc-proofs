@@ -1,14 +1,13 @@
-Require Import Bool List Reals FinFun Program.
-Require Import Lia.
+From Coq Require Import Bool List Reals FinFun Program Lia.
 Import ListNotations.
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition VLSM.Equivocation .
+
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition VLSM.Equivocation.
+
+(** * VLSM List Validator Protocol *)
 
 Section ListNode.
 
 (**
-
-*** Minimal List Validator Protocol
 
 We introduce here the "minimal list validator protocol", by quoting the official
 documentation:

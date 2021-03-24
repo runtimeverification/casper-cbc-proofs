@@ -1,4 +1,6 @@
-Require Import Coq.Reals.Reals.
+From Coq Require Import Reals.
+
+(** * Real number utility lemmas *)
 
 (** This lemma is needed in fault_weight_state_backwards **)
 Lemma Rplusminus_assoc : forall r1 r2 r3,

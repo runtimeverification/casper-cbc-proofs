@@ -1,13 +1,10 @@
-Require Import List Nat Bool.
+From Coq Require Import List Nat Bool Lia FunctionalExtensionality Lia Program FinFun Eqdep.
 Import ListNotations.
-Require Import Lia.
-Require Import Logic.FunctionalExtensionality.
-Require Import Program.
-
-Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
 
 From CasperCBC
 Require Import Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition VLSM.Equivocation.
+
+(** * VLSM Subcomposition *)
 
 Section sub_composition.
 

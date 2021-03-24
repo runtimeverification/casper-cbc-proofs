@@ -1,6 +1,6 @@
-Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Basics.
-Require Import Lia.
+From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Basics Lia.
 Import ListNotations.
+
 From CasperCBC
 Require Import
   Lib.Preamble
@@ -19,6 +19,8 @@ Require Import
   VLSM.ListValidator.EquivocationAwareListValidator
   VLSM.ObservableEquivocation
   .
+
+(** * VLSM Free Composition of List Validators *)
 
 (**   This file describes a free composition <X> of List Validator nodes, each using
    an [equivocation_aware_estimator]. Also see:

@@ -10,7 +10,7 @@ From CasperCBC
     VLSM.Common
     .
 
-(** * Equivocator VLSMs
+(** * VLSM Equivocation
 
 An [equivocator_vlsm] for a given [VLSM] <<X>> is a VLSM which
 - starts as a regular machine X
@@ -31,14 +31,14 @@ To achieve this, we'll extend the labels of <<X>>, say <<L_X>> as follows
 
 The second component of the label tells which internal machine should be
 used for performing the transition. It can be one of the following:
-* [NewMachine <<s>>] where <<s>> is an state of <<X>>, will
+- [NewMachine <<s>>] where <<s>> is an state of <<X>>, will
   extend the state with a new machine initialized with <<s>>
   and will perform the transition on that machine.
-* [Existing <<i>> <<is_equiv>>] perform transition on internal machine <<i>>
+- [Existing <<i>> <<is_equiv>>] perform transition on internal machine <<i>>
   but may equivocate, depending on the <<is_equiv>> as follows:
 
-  * if <<is_equiv>> is [false], update the state of machine <<i>>
-  * if <<is_equiv>> is [true], duplicate the state of machine <<i>> and
+  - if <<is_equiv>> is [false], update the state of machine <<i>>
+  - if <<is_equiv>> is [true], duplicate the state of machine <<i>> and
     perform transition on the copy
 
 These changes are reflected in the validity and transition functions.

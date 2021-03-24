@@ -10,8 +10,10 @@ From CasperCBC
     VLSM.Common
     VLSM.Plans
     .
-(**
 
+(** * VLSM Composition *)
+
+(**
 This module provides Coq definitions for composite VLSMs and their projections
 to components.
 *)
@@ -19,11 +21,8 @@ to components.
 Section VLSM_composition.
 
 (**
-* VLSM composition
-
 Let us fix a type for <<message>>s, and an <<index>> type for the VLSM components
 such that equality on <<index>> is decidable.
-
 *)
 
   Context {message : Type}
@@ -34,9 +33,7 @@ such that equality on <<index>> is decidable.
 
   Section composite_type.
 
-(**
-
-** The type of a composite VLSM
+(** ** The type of a composite VLSM
 
 Let IM be a family of VLSMs indexed by <<index>>. Note that all
 [VLSM]s share the same type of <<message>>s.
@@ -162,9 +159,7 @@ The next few results describe several properties of the [state_update] operation
   End composite_type.
 
   Section composite_sig.
-(**
-
-** The signature of a composite VLSM
+(** ** The signature of a composite VLSM
 
 Assume an non-empty <<index>> type and let <<IT>> be
 an <<index>>ed family of [VLSM_type]s, and for each index <<i>>, let <<IS i>> be
@@ -299,9 +294,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
   End composite_sig.
 
   Section composite_vlsm.
-(**
-
-** Constrained VLSM composition
+(** ** Constrained VLSM composition
 
 Assume an non-empty <<index>> type, let
 <<IT>> be an <<index>>ed family of [VLSM_type]s, and for each index <<i>>, let
@@ -421,9 +414,7 @@ the [composite_valid]ity.
     Definition composite_trace_to_plan := (@_trace_to_plan _ composite_type).
 
     Section constraint_subsumption_part_one.
-(**
-
-** Constraint subssumption
+(** ** Constraint subsumption
 
 A <<constraint1>> is subssumed by <<constraint2>> if <<constraint1> is stronger
 than <<constraint2>> for any input.
@@ -480,9 +471,7 @@ Lemma [basic_VLSM_inclusion]
 
     End constraint_subsumption_part_one.
 
-(**
-
-** Free VLSM composition
+(** ** Free VLSM composition
 
 The [free_constraint] is defined to be [True] for all inputs.
 Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
@@ -897,7 +886,6 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
 
 End VLSM_composition.
 
-
 (**
    These basic projection lemmas relate
    the [protocol_state_prop] and [protocol_transition] of
@@ -1058,8 +1046,8 @@ Proof.
 Qed.
 
 Section projections.
-(**
-* Composite VLSM projections
+
+(** ** Composite VLSM projections
 
 Let us fix an indexed set of VLSMs <<IM>> and their composition <<X>> using <<constraint>>.
 
@@ -1145,9 +1133,7 @@ having the same transition function as <<IM i>>, the <<i>>th component of
 
   Section fixed_projection.
 
-(**
-
-** Projection traces are Byzantine
+(** ** Projection traces are Byzantine
 
 Let us fix an index <<j>> and let <<Xj>> be the projection of <<X>> on
 component <<j>>.
@@ -1467,9 +1453,8 @@ We can now finally prove the main result for this section:
 End projections.
 
 Section free_projections.
-(**
 
-** Projections of free compositions
+(** ** Projections of free compositions
 
 These projections are simple instances of the projections defined above in which
 the composition constraint is taken to be [True].
@@ -1869,9 +1854,7 @@ End free_projections.
 
 Section binary_free_composition.
 
-(**
-
-* Free composition of two VLSMs
+(** ** Free composition of two VLSMs
 
 This serves an example of how composition can be built, but is also being
 used in definiting the [byzantine_trace_prop]erties.

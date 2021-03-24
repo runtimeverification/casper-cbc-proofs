@@ -5,6 +5,7 @@ Require Import
   Coq.Logic.JMeq
   .
 Import ListNotations.
+
 From CasperCBC
   Require Import
     Preamble ListExtras FinExtras
@@ -14,6 +15,8 @@ From CasperCBC
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
     .
+
+(** * VLSM Equivocator Composition Projections *)
 
 Section equivocators_composition_projections.
 

@@ -11,6 +11,8 @@ From CasperCBC
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     .
 
+(** * VLSM Merging of Projections *)
+
 Section trace_mixer.
 
 Context

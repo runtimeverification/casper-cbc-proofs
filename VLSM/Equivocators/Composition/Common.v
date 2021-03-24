@@ -5,6 +5,7 @@ Require Import
   Coq.Logic.JMeq
   .
 Import ListNotations.
+
 From CasperCBC
   Require Import
     Preamble ListExtras FinExtras FinFunExtras
@@ -13,7 +14,7 @@ From CasperCBC
     VLSM.Equivocators.MessageProperties
     .
 
-(** ** Equivocator composition
+(** * VLSM Equivocator Composition
 
 Given a composition <<X>> of VLSMs, we can model equivocator behavior by
 creating an _equivocator composition_ which replaces each component of <<X>>

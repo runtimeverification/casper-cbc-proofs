@@ -1,6 +1,6 @@
-Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting.
-Require Import Lia.
+From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
 Import ListNotations.
+
 From CasperCBC
 Require Import
   Lib.Preamble
@@ -15,6 +15,8 @@ Require Import
   VLSM.ListValidator.Equivocation
   VLSM.ObservableEquivocation
   .
+
+(** * VLSM List Validator Observations *)
 
 Section Observations.
 

@@ -1,7 +1,9 @@
-Require Import List.
+From Coq Require Import List.
 Import ListNotations.
-From CasperCBC
-  Require Import ListExtras VLSM.Common.
+
+From CasperCBC Require Import Lib.ListExtras VLSM.Common.
+
+(** * VLSM Plans *)
 
 Section plans.
   Context
