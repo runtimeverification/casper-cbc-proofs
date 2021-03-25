@@ -328,7 +328,7 @@ Proof.
 Qed.
 
 (* `component` is equivocating and we have an evidence in the state `s` (of another component) *)
-Definition is_equivocator (s : Prestate) (component : nat) : bool :=
+Definition is_equivocator (component : nat) (s : Prestate) : bool :=
   let obs := observationsOf s in
   existsb
     (fun ob1 =>
@@ -401,6 +401,15 @@ Section composition.
   Definition IM' (i : index) := elmo_vlsm_machine (index_to_component i) weights treshold.
   Definition IM (i : index) := mk_vlsm (IM' i).
 
+  (* `component` is equivocating and we have an evidence in some state
+     of the list `states` *)
+  Definition is_equivocator_states (states : list Prestate) (component : nat) : bool :=
+    let eq := map (is_equivocator component) states in
+    fold_right andb true eq.
+
+  Definition equivocators (states : list Prestate) : list nat :=
+    filter (is_equivocator_states states) (seq 0 (length indices)).
+  
   (* TODO *)
   Definition composition_constraint
              (cl : composite_label IM)
@@ -412,9 +421,10 @@ Section composition.
        | Some m =>
          let states := map cs indices in
          let transitions := map (fun i => @transition _ _ _ (IM' i)) indices in
-         let new_states := zip_with (fun s t => t Receive (s, Some m))
+         let new_states := zip_with (fun s t => fst (t Receive (s, Some m)))
                                     states
                                     transitions in
+         let eqs := equivocators new_states in
          True
        end.
   
