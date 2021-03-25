@@ -1798,3 +1798,13 @@ Definition list_sum_project_right
   : list B
   :=
   map_option sum_project_right x.
+
+Fixpoint zip_with {A B C : Type} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
+  match l1 with
+  | [] => []
+  | x::xs =>
+    match l2 with
+    |  [] => []
+    |  y::ys => (f x y) :: zip_with f xs ys
+    end
+  end.

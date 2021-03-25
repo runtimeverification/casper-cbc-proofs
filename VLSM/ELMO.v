@@ -11,6 +11,7 @@ From CasperCBC
   Require Import
     Preamble
     Lib.Measurable
+    Lib.ListExtras
     VLSM.Common
     VLSM.Composition
     .
@@ -279,17 +280,6 @@ Definition elmo_transition
          let s := Cprestate (observationsOf state ++ [ob]) in
          (s, None)
     end.
-
-(* TODO move to Lib/ListExtras.v *)
-Fixpoint zip_with {A B C : Type} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
-  match l1 with
-  | [] => []
-  | x::xs =>
-    match l2 with
-    |  [] => []
-    |  y::ys => (f x y) :: zip_with f xs ys
-    end
-  end.
 
 Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold : R)
   : @VLSM_class Premessage elmo_type elmo_sig
