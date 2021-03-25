@@ -271,13 +271,22 @@ Definition elmo_transition
          (s, None)
     end.
 
+Fixpoint zip_with {A B C : Type} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
+  match l1 with
+  | [] => []
+  | x::xs =>
+    match l2 with
+    |  [] => []
+    |  y::ys => (f x y) :: zip_with f xs ys
+    end
+  end.
+
 Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold : R)
   : @VLSM_class Premessage elmo_type elmo_sig
   :=
     {| valid := elmo_valid weights treshold
        ; transition := elmo_transition component weights treshold
     |}.
-
 
 Section composition.
 
@@ -332,14 +341,27 @@ Section composition.
     apply finite_index.
   Qed.
   
-                                  
-  Definition IM (i : index) := mk_vlsm (elmo_vlsm_machine (index_to_component i) weights treshold).
+
+  Definition IM' (i : index) := elmo_vlsm_machine (index_to_component i) weights treshold.
+  Definition IM (i : index) := mk_vlsm (IM' i).
 
   (* TODO *)
   Definition composition_constraint
              (cl : composite_label IM)
              (sm : composite_state IM * option Premessage) : Prop
-    := True.
+    := let cs := fst sm in
+       let om := snd sm in
+       match om with
+       | None => True
+       | Some m =>
+         let states := map cs indices in
+         let transitions := map (fun i => @transition _ _ _ (IM' i)) indices in
+         let new_states := zip_with (fun s t => t Receive (s, Some m))
+                                    states
+                                    transitions in
+         True
+       end.
+  
   
   Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
 
