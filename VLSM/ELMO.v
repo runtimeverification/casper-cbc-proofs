@@ -336,12 +336,13 @@ Definition is_equivocator (s : Prestate) (component : nat) : bool :=
          (fun ob2 =>
             bool_decide (labelOf ob1 = Receive) &&
             bool_decide (labelOf ob2 = Receive) &&
+            bool_decide (authorOf (messageOf ob1) = component) &&
+            bool_decide (authorOf (messageOf ob2) = component) &&
             bool_decide (equivocation_evidence (messageOf ob1) (messageOf ob2))
          )
          obs
     )
     obs.
-
 
 Section composition.
 
