@@ -29,6 +29,15 @@ Premessage : Type :=
 | Cpremessage: Prestate -> nat -> Premessage
 .
 
+Instance Label_eqdec : EqDecision Label.
+Proof.
+  intros l1 l2.
+  unfold Decision.
+  decide equality.
+Qed.
+
+ 
+
 Lemma Prestate_eqdec : forall (s1 s2 : Prestate), {s1 = s2} + {s1 <> s2}
 with  Observation_eqdec : forall (o1 o2 : Observation), {o1 = o2} + {o1 <> o2}
 with  Premessage_eqdec : forall (m1 m2 : Premessage), {m1 = m2} + {m1 <> m2}.
@@ -271,6 +280,7 @@ Definition elmo_transition
          (s, None)
     end.
 
+(* TODO move to Lib/ListExtras.v *)
 Fixpoint zip_with {A B C : Type} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
   match l1 with
   | [] => []
@@ -287,6 +297,51 @@ Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold 
     {| valid := elmo_valid weights treshold
        ; transition := elmo_transition component weights treshold
     |}.
+
+
+(* m1 is a prefix of m2 *)
+Definition is_prefix_of (m1 m2 : Premessage) : Prop :=
+  let s1 := stateOf m1 in
+  let s2 := stateOf m2 in
+  observationsOf s1 = firstn (length (observationsOf s1)) (observationsOf s2).
+
+Lemma is_prefix_of_dec : RelDecision is_prefix_of.
+Proof.
+  intros m1 m2.
+  unfold is_prefix_of.
+  apply list_eq_dec.
+  apply Observation_eqdec.
+Qed.
+
+Definition equivocation_evidence (m1 m2 : Premessage) : Prop :=
+  authorOf m1 = authorOf m2 /\
+  ~ is_prefix_of m1 m2 /\
+  ~ is_prefix_of m2 m1.
+
+Instance equivocation_evidence_dec : RelDecision equivocation_evidence.
+Proof.
+  intros m1 m2.
+  unfold equivocation_evidence.
+  apply Decision_and.
+  { unfold Decision. decide equality. }
+  apply Decision_and; apply Decision_not; apply is_prefix_of_dec.
+Qed.
+
+(* `component` is equivocating and we have an evidence in the state `s` (of another component) *)
+Definition is_equivocator (s : Prestate) (component : nat) : bool :=
+  let obs := observationsOf s in
+  existsb
+    (fun ob1 =>
+       existsb
+         (fun ob2 =>
+            bool_decide (labelOf ob1 = Receive) &&
+            bool_decide (labelOf ob2 = Receive) &&
+            bool_decide (equivocation_evidence (messageOf ob1) (messageOf ob2))
+         )
+         obs
+    )
+    obs.
+
 
 Section composition.
 
