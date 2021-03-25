@@ -410,8 +410,7 @@ Section composition.
   Definition equivocators (states : list Prestate) : list nat :=
     filter (is_equivocator_states states) (seq 0 (length indices)).
   
-  (* TODO *)
-  Definition composition_constraint
+  Program Definition composition_constraint
              (cl : composite_label IM)
              (sm : composite_state IM * option Premessage) : Prop
     := let cs := fst sm in
@@ -425,8 +424,11 @@ Section composition.
                                     states
                                     transitions in
          let eqs := equivocators new_states in
-         True
+         ((@sum_weights _ (Build_Measurable _ (fun idx => nth idx weights (exist _ 1%R _))) eqs) < treshold)%R
        end.
+  Next Obligation.
+    lra.
+  Defined.
   
   
   Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
