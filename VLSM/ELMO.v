@@ -4,7 +4,7 @@ Require Import
   List Coq.Vectors.Fin
   Arith.Compare_dec Lia
   Program Reals Lra ListSet Nat
-  Coq.Logic.ProofIrrelevance
+  Coq.Logic.FinFun
   .
 Import ListNotations.
 From CasperCBC
@@ -283,43 +283,64 @@ Section composition.
 
   Context
     (weights : list pos_R)
-    (weights_nonempty : weights <> [])
     (treshold : R)
+    (index : Type)
+    {i0 : Inhabited index}
+    {IndEqDec : EqDecision index}
+    (indices : list index)
+    (finite_index : Listing indices)
+    (indices_weights_eqlenght : length indices = length weights)
   .
 
-  Definition index := { n : nat | n < length weights }.
+  Fixpoint index_to_component' (idx : index) (component : nat) (indices : list index) :=
+    match indices with
+    | [] => component
+    | x::xs
+      => if decide (x = idx)
+         then component
+         else index_to_component' idx (S component) xs
+    end.
 
-  Lemma index_eqdec : EqDecision index.
+  Lemma index_to_component'_valid (idx : index) (component : nat) (indices': list index) :
+    In idx indices' -> index_to_component' idx component indices' < length indices' + component.
   Proof.
-    Unset Printing Notations.
-    unfold EqDecision. intros x y.
-    unfold Decision.
-    destruct x as [x' Hx'].
-    destruct y as [y' Hy'].
-    destruct (decide (x'=y')).
-    + left. subst.
-      rewrite (proof_irrelevance _ Hx' Hy').
-      reflexivity.
-    + right. intros Contra.
-      inversion Contra.
-      contradiction.
+    intros Hin.
+    move: component.
+    induction indices'.
+    - simpl in Hin. inversion Hin.
+    - intros component.
+      simpl.
+      destruct (decide (a = idx)); simpl.
+      + lia.
+      + simpl in Hin.
+        destruct Hin as [Haeqidx|Hin].
+        * contradiction.
+        * specialize (IHindices' Hin).
+          specialize (IHindices' (S component)).
+          lia.
+  Qed.
+
+  Definition index_to_component (idx : index) :=
+    index_to_component' idx 0 indices.
+
+  Lemma index_to_component_valid (idx : index) : index_to_component idx < length indices.
+  Proof.
+    pose proof (P := index_to_component'_valid).
+    specialize (P idx 0 indices).
+    rewrite Nat.add_0_r in P.
+    apply P.
+    apply finite_index.
   Qed.
   
+                                  
+  Definition IM (i : index) := mk_vlsm (elmo_vlsm_machine (index_to_component i) weights treshold).
+
+  (* TODO *)
+  Definition composition_constraint
+             (cl : composite_label IM)
+             (sm : composite_state IM * option Premessage) : Prop
+    := True.
   
-  Lemma zero_lt_len_weights : 0 < length weights.
-  Proof.
-    destruct weights.
-    { contradiction. }
-    simpl. lia.
-  Qed.
-  
-  
-  Lemma index_inhabited : Inhabited index.
-  Proof.
-    constructor.
-    exact (exist _ 0 zero_lt_len_weights).
-  Qed.
-  
-  Check @composite_vlsm.
+  Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
 
 End composition.
