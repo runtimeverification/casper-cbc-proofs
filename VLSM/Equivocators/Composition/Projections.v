@@ -997,7 +997,7 @@ Proof.
   }
   exists final_descriptors.
   subst final.
-  assert (Hfinal_descriptors_proper : proper_equivocator_descriptors final_descriptors (last (map Common.destination tr) is)).
+  assert (Hfinal_descriptors_proper : proper_equivocator_descriptors final_descriptors (finite_trace_last is tr)).
   { apply not_equivocating_equivocator_descriptors_proper. assumption. }
   destruct (preloaded_equivocators_protocol_trace_from_project  _ _ _ Hfinal_descriptors_proper Htr)
     as [trX [initial_descriptors [Hproject_tr _]]].
@@ -1169,7 +1169,7 @@ Proof.
         as [final_descriptors_m [initial_descriptors_m [trXm [Hfinal_descriptors_m [Hproject_trXm Hex]]]]].
       specialize (H (length tr')).
       spec H. { rewrite app_length. simpl. lia. }
-      assert (Hfinal_descriptors_m_proper : proper_equivocator_descriptors final_descriptors_m (last (map Common.destination tr') is))
+      assert (Hfinal_descriptors_m_proper : proper_equivocator_descriptors final_descriptors_m (finite_trace_last is tr'))
         by (apply not_equivocating_equivocator_descriptors_proper; assumption).
       specialize (H tr' (conj Htr Hinit) eq_refl final_descriptors_m Hfinal_descriptors_m_proper).
       destruct H as [trXm' [initial_descriptors_m' [Hproper_initial_m [Hproject_trXm' [Hpr_fin_tr' HtrXm]]]]].

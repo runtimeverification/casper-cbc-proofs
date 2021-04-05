@@ -665,7 +665,7 @@ Proof.
       specialize (Hall is tr' (ptrace_add_default_last Htr')).
       destruct (equivocators_trace_project_output_reflecting_inv IM _ _ (proj1 Htr'pre) _ Hall)
         as [final_descriptors_m [initial_descriptors_m [trXm [_Hfinal_descriptors_m [Hproject_trXm Hex]]]]].
-      assert (Hfinal_descriptors_m : proper_fixed_equivocator_descriptors final_descriptors_m (last (map Common.destination tr') is)).
+      assert (Hfinal_descriptors_m : proper_fixed_equivocator_descriptors final_descriptors_m (finite_trace_last is tr')).
       { apply not_equivocating_equivocatos_descriptors_proper_fixed; [|assumption].
         apply finite_ptrace_last_pstate. assumption.
       }
@@ -681,7 +681,7 @@ Proof.
         |].
       rewrite <- Hstate_project.
       apply Hconstraint_hbs; [assumption| apply Hproper'|].
-      assert (Hlst'pre : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeE) (last (map Common.destination tr') is)).
+      assert (Hlst'pre : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeE) (finite_trace_last is tr')).
       { apply finite_ptrace_last_pstate. apply Htr'pre. }
       apply proper_sent; [assumption|].
       apply has_been_sent_consistency; [assumption| assumption| ].

@@ -409,7 +409,7 @@ the [composite_valid]ity.
       (start : composite_state)
       (a : list plan_item)
       (after_a := composite_apply_plan start a)
-      : last (map destination (fst after_a)) start = snd after_a
+      : finite_trace_last start (fst after_a) = snd after_a
       := (@_apply_plan_last _ composite_type composite_transition start a).
     Definition composite_trace_to_plan := (@_trace_to_plan _ composite_type).
 

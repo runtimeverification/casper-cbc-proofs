@@ -187,7 +187,7 @@ Section protocol_plans.
     (start : vstate X)
     (a : plan)
     (after_a := apply_plan start a)
-    : last (map destination (fst after_a)) start = snd after_a
+    : finite_trace_last start (fst after_a) = snd after_a
     := (@_apply_plan_last _ (type X) (vtransition X) start a).
 
   (** A plan is protocol w.r.t. a state if by applying it to that state we

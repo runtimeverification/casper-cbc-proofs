@@ -1052,7 +1052,7 @@ decompose the above properties in proofs.
           (te : transition_item)
           (Htr : finite_protocol_trace_from s tr)
           (Heq : tr = tr1 ++ [te] ++ tr2)
-          (lst1 := last (List.map destination tr1) s)
+          (lst1 := finite_trace_last s tr1)
       : protocol_transition (l te) (lst1, input te) (destination te, output te).
     Proof.
       generalize dependent s. generalize dependent tr.
@@ -1061,7 +1061,7 @@ decompose the above properties in proofs.
       - specialize (IHtr1 (tr1 ++ [te] ++ tr2) eq_refl).
         intros tr Heq is Htr; subst. inversion Htr; subst.
         simpl in IHtr1. specialize (IHtr1 s H2).
-        rewrite map_cons, unroll_last.
+        rewrite finite_trace_last_cons.
         assumption.
     Qed.
 
@@ -1078,7 +1078,7 @@ decompose the above properties in proofs.
       rewrite app_assoc in Heq.
       specialize (protocol_transition_to s tr (tr1 ++ [te1]) tr2 te2 Htr Heq)
         as Ht.
-      rewrite map_app in Ht. simpl in Ht. rewrite last_is_last in Ht. assumption.
+      rewrite finite_trace_last_is_last in Ht. assumption.
     Qed.
 
 
@@ -2234,38 +2234,6 @@ This relation is often used in stating safety and liveness properties.*)
         apply finite_ptrace_first_pstate in Hseg.
         assumption.
     Qed.
-(* alternate proof without assuming protocol_transition implies protocol_state
-      destruct n.
-      - exists None.
-        destruct tr as [s0 l | s0 l]
-        ; inversion Hnth; try (unfold Str_nth in H0; simpl in H0); subst; clear Hnth
-        ; destruct Htr as [_ Hinit]
-        ; replace s with (proj1_sig (exist _ s Hinit)); try reflexivity
-        ;  apply protocol_initial_state.
-      - specialize (trace_prefix_fn_protocol tr Htr (S n)); intro Hpref_tr.
-        remember (trace_prefix_fn tr (S n)) as pref_tr.
-        destruct pref_tr as [s0 l | s0 l]
-        ; try (destruct tr as [s' l' | s' l']; inversion Heqpref_tr)
-        ; subst; clear Heqpref_tr
-        ; destruct Hpref_tr as [Hpref_tr Hinit]
-        ; specialize (trace_is_protocol_state (exist _ s' Hinit)); intro Hps
-        ; specialize (Hps (list_prefix l' (S n))) || specialize (Hps (stream_prefix l' (S n)))
-        ; specialize (Hps Hpref_tr)
-        ; rewrite list_prefix_map in Hps || rewrite stream_prefix_map in Hps
-        ; destruct Hps as [om Hps]
-        ; exists om
-        .
-        + replace s with (last (list_prefix (List.map destination l') (S n)) s')
-          ; try assumption.
-          symmetry.
-          apply list_prefix_nth_last.
-          assumption.
-        + replace s with (last (stream_prefix (Streams.map destination l') (S n)) s')
-          ; try assumption.
-          rewrite stream_prefix_nth_last.
-          inversion Hnth.
-          reflexivity.
-*)
 
     Lemma in_futures_protocol_snd
       (first second : state)
