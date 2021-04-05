@@ -1,9 +1,6 @@
-Require Import
-  List ListSet Coq.Vectors.Fin
-  Arith.Compare_dec Lia
-  Program
-  .
+From Coq Require Import List ListSet Vectors.Fin Arith.Compare_dec Lia Program.
 Import ListNotations.
+
 From CasperCBC
   Require Import
     Preamble ListExtras ListSetExtras FinExtras
@@ -11,9 +8,11 @@ From CasperCBC
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     .
 
+(** * VLSM Message Properties *)
+
 Section equivocator_vlsm_message_properties.
 
-(** * Lifting properties about sent messages to the equivocators
+(** ** Lifting properties about sent messages to the equivocators
 
 In this section we first prove some general properties about sent messages
 being preserved and reflected by the [equivocator_vlsm], and then we show
@@ -128,7 +127,7 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
         In item tr /\
         exists (dfinal dfirst : MachineDescriptor),
           proper_descriptor X dfirst bs /\
-          proper_descriptor X dfinal bf /\
+          not_equivocating_descriptor X dfinal (finite_trace_last bs btr) /\
           equivocator_vlsm_trace_project _ btr dfinal = Some (tr, dfirst).
 Proof.
   specialize (preloaded_equivocator_vlsm_protocol_trace_project_inv2 X bs bf btr) as Hinv2.
@@ -198,11 +197,18 @@ Proof.
   destruct Hinv2 as [Hdfinal Hdinitial].
   split.
   - apply in_app_iff. right. left. reflexivity.
-  - eexists _. eexists _. repeat split; [..|apply Htr]; [|assumption].
+  - eexists _. eexists _. repeat split; [..|apply Htr].
+    2:{
+      apply equivocator_vlsm_trace_project_inv with (fj:=false).
+      destruct bprefix;discriminate.
+      fold equivocator_vlsm in Htr.
+      rewrite Htr.
+      discriminate.
+    }
     clear -Hdinitial.
     destruct dfirst as [sn | j fj].
     + destruct Hdinitial as [_ Hinit]. assumption.
-    + destruct Hdinitial as [Hdinitial _]. assumption.
+    + destruct Hdinitial as [Hdinitial _]. assumption.      
 Qed.
 
 (**
@@ -218,7 +224,7 @@ Lemma equivocator_vlsm_trace_project_output_reflecting_inv
   : exists
     (j i : MachineDescriptor)
     (Hi : proper_descriptor X i is)
-    (Hj : proper_descriptor X j (finite_trace_last is tr))
+    (Hj : not_equivocating_descriptor X j (finite_trace_last is tr))
     (trX: list (vtransition_item X))
     (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
     ,

@@ -1,15 +1,12 @@
-Require Import Coq.Logic.FinFun.
-Require Import Bool List Streams Logic.Epsilon.
-Require Import Coq.Arith.Compare_dec.
-Require Import Lia.
-Import List Notations.
+From Coq Require Import FinFun Bool List Streams Logic.Epsilon Arith.Compare_dec Lia.
+Import ListNotations.
+
 From CasperCBC
   Require Import
     Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras
-    CBC.Protocol CBC.Common CBC.Definitions
     VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
-(* 3.1 Decisions on consensus values *)
+(** * VLSM Decisions on Consensus Values *)
 
 (* Need to add consensus values (and decision functions) to VLSM definitions? *)
 Class consensus_values :=
@@ -220,6 +217,12 @@ End CommuteIndexed.
 (* Section 5 *)
 
 Section Estimators.
+
+  (* Defining the estimator function as a relation *)
+  Class Estimator state C :=
+    { estimator : state -> C -> Prop
+    ; estimator_total : forall s : state, exists c : C, estimator s c
+    }.
 
   Context
     {CV : consensus_values}

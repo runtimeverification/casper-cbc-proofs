@@ -1,8 +1,8 @@
-Require Import FinFun Streams.
-From CasperCBC
-Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
+From Coq Require Import FinFun List.
 
-(** * Byzantine Traces
+From CasperCBC Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
+
+(** * VLSM Byzantine Traces
 
 In this section, we introduce two definitions of Byzantine traces,
 then show them equivalent (Lemma [byzantine_alt_byzantine_iff]),
@@ -389,44 +389,48 @@ Since we know that <<PreloadedX>> contains precisely
 the byzantine traces of <<X>>, to prove our main result we just need to show
 that <<PreLoadedX>> is included in <<FreeX>>.
 
-First let us show that each [valid] <<PreloadedX>> message is a
-[protocol_message] for <<FreeX>>.
-*)
-
-    Lemma pre_loaded_with_all_messages_composite_free_protocol_message
-        (l : label)
-        (s : state)
-        (om : option message)
-        (Hv : vvalid PreLoadedX l (s, om))
-        : option_protocol_message_prop FreeX om.
-    Proof.
-        destruct l as (i, li).
-        destruct Hv as [Hv Hconstraint].
-        specialize (Hvalidating i li (s i, om) Hv).
-        specialize (constraint_subsumption_protocol_prop IM constraint (free_constraint IM))
-        ; intro Hprotocol.
-        assert (Hsubsum : constraint_subsumption IM constraint (free_constraint IM))
-          by (intro; intros; exact I).
-        specialize (Hprotocol Hsubsum).
-        destruct Hvalidating as [sX [Hsi [Hps [[_s HpmX] H0]]]].
-        apply Hprotocol in HpmX.
-        exists _s. assumption.
-    Qed.
-
-(**
-We can now apply the meta-lemma [basic_VLSM_incl], using
-Lemma [pre_loaded_with_all_messages_composite_free_protocol_message] above to prove that:
 *)
     Lemma pre_loaded_with_all_messages_composite_free_incl
         : VLSM_incl PreLoadedX FreeX.
     Proof.
-        apply basic_VLSM_incl
-        ; intros; try (assumption || reflexivity).
-        - apply pre_loaded_with_all_messages_composite_free_protocol_message with l s.
-          assumption.
-        - intros. destruct H as [_ [_ [Hv Hc]]].
-          split; try assumption.
-          exact I.
+        apply VLSM_incl_finite_traces_characterization.
+        intros.
+        split; [|apply H].
+        destruct H as [Htr Hs].
+        induction tr using rev_ind.
+        - constructor. apply initial_is_protocol. assumption.
+        - apply finite_protocol_trace_from_app_iff in Htr.
+          destruct Htr as [Htr Hx].
+          specialize (IHtr Htr).
+          apply (finite_protocol_trace_from_app_iff FreeX).
+          split; [assumption|].
+          apply (first_transition_valid FreeX).
+          apply first_transition_valid in Hx.
+          destruct Hx as [Hvx Htx].
+          split; [|assumption].
+          apply finite_ptrace_last_pstate in IHtr.
+          simpl in *.
+          match type of IHtr with
+          | protocol_state_prop _ ?s => remember s as lst
+          end.
+          split; [assumption|].
+          repeat split; [|apply Hvx].
+          destruct Hvx as [Hlst [_ [Hv _]]].
+          destruct x. destruct l as (i, li). simpl in *.
+          specialize (protocol_state_project_preloaded_to_preloaded _ IM constraint lst i Hlst)
+            as Hlsti.
+          assert (Hpv : protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (lst i, input)).
+          { split; [assumption|]. split; [|assumption].
+            eexists _. apply (pre_loaded_with_all_messages_message_protocol_prop (IM i)).
+          }
+          apply Hvalidating in Hpv.
+          clear -Hpv.
+          destruct Hpv as [_ [_ [_ [Hinput _]]]].
+          destruct Hinput as [s Hinput].
+          exists s.
+          revert Hinput.
+          apply (constraint_subsumption_protocol_prop IM constraint).
+          intro. intros. exact I.
     Qed.
 
 (**

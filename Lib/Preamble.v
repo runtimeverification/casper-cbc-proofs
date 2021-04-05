@@ -1,6 +1,9 @@
 Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ProofIrrelevance Eqdep_dec.
-From CasperCBC Require Export Classes.
 Import ListNotations.
+
+From CasperCBC Require Export Classes.
+
+(** * General utility definitions, lemmas, and tactics *)
 
 Tactic Notation "spec" hyp(H) :=
   match type of H with ?a -> _ =>
@@ -84,6 +87,13 @@ Proof.
   assumption.
 Qed.
 
+Lemma forall_and_commute
+  {A : Type}
+  (P Q : A -> Prop)
+  : ((forall a, P a) /\ (forall a, Q a)) <-> forall a, P a /\ Q a.
+Proof.
+  firstorder.
+Qed.
 
 Lemma mirror_reflect: forall X (f : X -> bool) (P : X -> Prop),
   (forall x : X, f x = true <-> P x) ->
@@ -391,7 +401,7 @@ Definition comparable
   : Prop
   :=
   a = b \/ R a b \/ R b a.
-  
+
 Lemma comparable_commutative
    {A : Type}
    (R : A -> A -> Prop)

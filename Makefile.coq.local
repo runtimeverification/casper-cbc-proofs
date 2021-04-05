@@ -7,7 +7,7 @@ HTMLFILES = resources/header.html resources/footer.html
 DEPFILES = resources/deps.png resources/map.html
 
 COQDOCDIR = docs/coqdoc
-COQDOCHTMLFLAGS = --toc --toc-depth 2 --index indexpage --html -s \
+COQDOCHTMLFLAGS = --toc --toc-depth 3 --index indexpage --html -s \
   --interpolate --no-lib-name --parse-comments \
   --with-header resources/header.html --with-footer resources/footer.html
 
@@ -18,6 +18,10 @@ ALECTRYON = ~/alectryon/alectryon.py
 ALECTRYONDIR = docs/alectryon
 ALECTRYONHTMLFLAGS = --frontend coqdoc --webpage-style windowed
 ALECTRYONHTMLFILES = $(VFILES:.v=.alectryon.html)
+
+DPDFILES = $(VFILES:.v=.dpd)
+DOTFILES = $(VFILES:.v=.dot)
+SVGFILES = $(VFILES:.v=.svg)
 
 coqdoc: $(GLOBFILES) $(VFILES) $(CSSFILES) $(JSFILES) $(HTMLFILES) $(DEPFILES)
 	$(SHOW)'COQDOC -d $(COQDOCDIR)'
@@ -75,5 +79,18 @@ resources/map.html: deps.map
 resources/index.html: resources/index.md
 	pandoc -s -o $@ $<
 
+$(DPDFILES): %.dpd: %.v %.glob %.vo
+	echo "Set DependGraph File \"$@\". Print FileDependGraph $(addprefix CasperCBC.,$(subst /,.,$(basename $@)))." | $(COQTOP) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -require-import-from rvdpdgraph rvdpdgraph -load-vernac-object $(addprefix CasperCBC.,$(subst /,.,$(basename $@))) -quiet > /dev/null 2>&1
+
+$(DOTFILES): %.dot: %.dpd
+	rvdpd2dot -graphname rvdpdgraph -o $@ $<
+
+$(SVGFILES): %.svg: %.dot
+	dot -T svg $< > $(COQDOCDIR)/$(addprefix CasperCBC.,$(subst /,.,$@))
+.PHONY: $(SVGFILES)
+
+rvdpd: $(SVGFILES)
+.PHONY: rvdpd
+
 clean::
-	$(HIDE)rm -f deps.dot deps.map $(DEPFILES) resources/index.html
+	$(HIDE)rm -f deps.dot deps.map $(DEPFILES) $(DPDFILES) $(DOTFILES) resources/index.html

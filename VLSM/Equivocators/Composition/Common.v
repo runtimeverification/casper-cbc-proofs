@@ -5,6 +5,7 @@ Require Import
   Coq.Logic.JMeq
   .
 Import ListNotations.
+
 From CasperCBC
   Require Import
     Preamble ListExtras FinExtras FinFunExtras
@@ -13,7 +14,7 @@ From CasperCBC
     VLSM.Equivocators.MessageProperties
     .
 
-(** ** Equivocator composition
+(** * VLSM Equivocator Composition
 
 Given a composition <<X>> of VLSMs, we can model equivocator behavior by
 creating an _equivocator composition_ which replaces each component of <<X>>
@@ -70,6 +71,34 @@ Definition equivocating_indices
   : list index
   :=
   filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
+
+(**
+The statement below is obvious a transition cannot make an already equivocating
+component non-equivocating.
+*)
+Lemma equivocators_transition_preserves_equivocating_indices
+  (index_listing : list index)
+  (s: composite_state equivocator_IM)
+  (iom oom: option message)
+  (l: _composite_label equivocator_IM)
+  (s0: composite_state equivocator_IM)
+  (Ht: composite_transition equivocator_IM l (s0, iom) = (s, oom))
+  : incl (equivocating_indices index_listing s0) (equivocating_indices index_listing s).
+Proof.
+  intros i Hi.
+  apply filter_In. apply filter_In in Hi.
+  split; [apply Hi|]. destruct Hi as [_ Hi].
+  apply bool_decide_eq_true. apply bool_decide_eq_true in Hi.
+  intro Hsi. elim Hi. clear Hi. unfold is_singleton_state in *.
+  simpl in *.
+  destruct l as (j, lj).
+  destruct (vtransition (equivocator_IM j) lj (s0 j, iom)) as (sj', om') eqn:Htj.
+  inversion Ht. subst. clear Ht.
+  destruct (decide (i = j)); [|rewrite state_update_neq in Hsi; assumption].
+  subst. rewrite state_update_eq in Hsi.
+  revert Hsi. apply equivocator_transition_reflects_singleton_state with iom oom lj.
+  assumption.
+Qed.
 
 Context
   {index_listing : list index}
@@ -149,23 +178,23 @@ Proof.
   intro eqv. apply not_equivocating_descriptor_proper. apply Hne.
 Qed.
 
-Definition zero_choice
+Definition zero_descriptor
   (eqv : equiv_index)
   : MachineDescriptor (IM eqv)
   := Existing _ 0 false.
 
-Lemma zero_choice_not_equivocating
+Lemma zero_descriptor_not_equivocating
   (s : vstate equivocators_free_vlsm)
-  : not_equivocating_equivocator_descriptors zero_choice s.
+  : not_equivocating_equivocator_descriptors zero_descriptor s.
 Proof.
   intro eqv. simpl. lia.
 Qed.
 
-Lemma zero_choice_proper
+Lemma zero_descriptor_proper
   (s : vstate equivocators_free_vlsm)
-  : proper_equivocator_descriptors zero_choice s.
+  : proper_equivocator_descriptors zero_descriptor s.
 Proof.
-  apply not_equivocating_equivocator_descriptors_proper. apply zero_choice_not_equivocating.
+  apply not_equivocating_equivocator_descriptors_proper. apply zero_descriptor_not_equivocating.
 Qed.
 
 Lemma proper_equivocator_descriptors_state_update_eqv
@@ -240,14 +269,31 @@ Proof.
   unfold equivocator_descriptors_update. destruct (decide (j = i)); congruence.
 Qed.
 
+(**
+A generalized version of [equivocator_descriptors_update_eq] parametric on the
+hypothesis equating the indices.
+*)
+Lemma equivocator_descriptors_update_eq_rew
+  (s : equivocator_descriptors)
+  (i : equiv_index)
+  (si : MachineDescriptor (IM i))
+  (j : equiv_index)
+  (Heq : j = i)
+  : equivocator_descriptors_update s i si j = eq_rect_r (fun i => MachineDescriptor (IM i)) si Heq.
+Proof.
+  unfold equivocator_descriptors_update.
+  destruct (decide (j = i)); [|congruence]. subst.
+  f_equal.
+  apply Eqdep_dec.UIP_dec. assumption.
+Qed.
+
 Lemma equivocator_descriptors_update_eq
   (s : equivocator_descriptors)
   (i : equiv_index)
   (si : MachineDescriptor (IM i))
   : equivocator_descriptors_update s i si i = si.
 Proof.
-  unfold equivocator_descriptors_update.
-  rewrite eq_dec_refl. reflexivity.
+  rewrite equivocator_descriptors_update_eq_rew with (Heq := eq_refl). reflexivity.
 Qed.
 
 Lemma equivocator_descriptors_update_id

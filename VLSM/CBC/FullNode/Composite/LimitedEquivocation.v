@@ -1,5 +1,4 @@
-Require Import FinFun List ListSet RelationClasses.
-
+From Coq Require Import FinFun List ListSet RelationClasses.
 Import ListNotations.
 
 From CasperCBC
@@ -7,16 +6,17 @@ From CasperCBC
     Preamble
     ListExtras
     ListSetExtras
+    Lib.Measurable
     TopSort
-    CBC.Common
-    CBC.Equivocation
+    VLSM.Equivocation
+    VLSM.Decisions
     VLSM.Common
     VLSM.Composition
-    Validator.State
-    Validator.Equivocation
-    FullNode.Validator
-    FullNode.Client
-    VLSM.FullNode.Composite.Free
+    VLSM.CBC.FullNode.Validator.State
+    VLSM.CBC.FullNode.Validator.Equivocation
+    VLSM.CBC.FullNode.Validator
+    VLSM.CBC.FullNode.Client
+    VLSM.CBC.FullNode.Composite.Free
     ObservableEquivocation
     .
 
@@ -45,9 +45,9 @@ Local Tactic Notation "destruct_match" "as" simple_intropattern(pats) "in" ident
 Local Tactic Notation "destruct_match" "as" simple_intropattern(pats) "eqn" ":" ident(Heq) "in" ident(H)
   := destruct_match_in_tac H pats Heq.
 
-Section ConstrainedValidators.
+(** * VLSM Composing Validators with Limited Equivocation *)
 
-(** * Composing validators with limited equivocation *)
+Section ConstrainedValidators.
 
   Context
     {C V : Type}

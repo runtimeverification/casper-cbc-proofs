@@ -1,9 +1,8 @@
-Require Import FinFun Streams.
-From CasperCBC
-Require Import Lib.Preamble VLSM.Common VLSM.Composition.
+From Coq Require Import FinFun List.
 
-(**
-* Validating projections
+From CasperCBC Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
+
+(** * VLSM Validating Projections
 
 In the sequel we fix a composite VLSM <<X>> obtained from an indexed family
 of VLSMs <<IM>> and a <<constraint>>, and an index <<i>>, corresponding to
@@ -33,7 +32,7 @@ Definition validating_projection_received_messages_prop
     :=
     forall (li : vlabel (IM i)) (si : vstate (IM i)) (mi : message),
         ~ vvalid Xi li (si, Some mi)
-        -> ~ vvalid (IM i) li (si, Some mi).
+        -> ~ protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, Some mi).
 
 (**
 We can slightly generalize the definition above to also include empty messages
@@ -43,7 +42,7 @@ requiring that [valid]ity in the component implies [projection_valid]ity.
 
 Definition validating_projection_prop :=
     forall (li : vlabel (IM i)) (siomi : vstate (IM i) * option message),
-        vvalid (IM i) li siomi ->
+        protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li siomi ->
         vvalid Xi li siomi.
 
 (**
@@ -54,11 +53,8 @@ Lemma validating_projection_messages_received
     : validating_projection_prop -> validating_projection_received_messages_prop.
 Proof.
     unfold validating_projection_prop. unfold validating_projection_received_messages_prop. intros.
-    intro Hvalid. apply H0. clear H0.
-    specialize (H li (si, Some mi) Hvalid). clear Hvalid.
-    destruct H as [ps [Hsi [Hps [Hpm [Hvalid Hctr]]]]].
-    exists ps.
-    repeat split; assumption.
+    intro Hvalid. elim H0. clear H0.
+    specialize (H li (si, Some mi) Hvalid). assumption.
 Qed.
 
 (**
@@ -73,7 +69,7 @@ Definition validating_transitions :=
         (omi : option message)
         (li : vlabel (IM i))
         ,
-        vvalid (IM i) li (si, omi)
+        protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, omi)
         ->
         (exists
             (s s' : vstate X)
@@ -120,8 +116,7 @@ Proof.
     exists s. split; assumption.
 Qed.
 
-(**
-** Validating projections and Byzantine behavior
+(** ** Validating projections and Byzantine behavior
 
 In the sequel we assume that <<X>> has the [validating_projection_prop]erty for
 component <<i>>.  Let <<Xi>> be the projection of <<X>> to component <<i>>
@@ -143,12 +138,27 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
     Lemma pre_loaded_with_all_messages_validating_proj_incl
         : VLSM_incl PreLoaded Xi.
     Proof.
-        apply (basic_VLSM_incl (machine PreLoaded) (machine Xi))
-        ; intros; try (assumption || reflexivity).
-        - apply Hvalidating in H. destruct H as [_ [_ [_ [Hopm _]]]].
-          apply protocol_message_projection. assumption.
-        - destruct H as [_ [_ H]].
-          apply Hvalidating in H. assumption.
+        apply VLSM_incl_finite_traces_characterization.
+        intros.
+        split; [|apply H].
+        destruct H as [Htr Hs].
+        induction tr using rev_ind.
+        - constructor. apply initial_is_protocol. assumption.
+        - apply finite_protocol_trace_from_app_iff in Htr.
+          destruct Htr as [Htr Hx].
+          specialize (IHtr Htr).
+          apply (finite_protocol_trace_from_app_iff Xi).
+          split; [assumption|].
+          apply (first_transition_valid Xi).
+          apply first_transition_valid in Hx.
+          destruct Hx as [Hvx Htx].
+          split; [|assumption].
+          match goal with
+          |- protocol_valid _ ?l ?siom =>
+            specialize (Hvalidating l siom)
+          end.
+          apply Hvalidating in Hvx.
+          apply projection_valid_protocol. assumption.
     Qed.
 
 (**
@@ -169,9 +179,7 @@ End pre_loaded_with_all_messages_validating_proj.
 
 End validating_projection.
 
-(**
-* VLSM self-validation
-*)
+(** ** VLSM self-validation *)
 
 Section validating_vlsm.
 
@@ -189,8 +197,8 @@ VLSM, respectively.
 Definition validating_vlsm_prop
     :=
     forall (l : label) (s : state) (om : option message),
-        vvalid X l (s, om) ->
-        protocol_state_prop X s /\ option_protocol_message_prop X om.
+        protocol_valid (pre_loaded_with_all_messages_vlsm X) l (s, om) ->
+        protocol_valid X l (s, om).
 
 (**
 In the sequel we will show that a VLSM with the [validating_vlsm_prop]erty
@@ -218,12 +226,25 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
     Lemma pre_loaded_with_all_messages_validating_vlsm_incl
         : VLSM_incl PreLoaded X.
     Proof.
-        apply (basic_VLSM_incl (machine PreLoaded) (machine X))
-        ; intros; try destruct H as [_ [_ H]]; try (assumption || reflexivity).
-        apply Hvalidating in H.
-        destruct H as [_ Hpm].
-        destruct X as (T, (S, M)); simpl.
-        assumption.
+        unfold validating_vlsm_prop  in Hvalidating.
+        destruct X as [T [S M]]. simpl in *.
+        apply VLSM_incl_finite_traces_characterization.
+        intros.
+        split; [|apply H].
+        destruct H as [Htr Hs].
+        induction tr using rev_ind.
+        - constructor. apply initial_is_protocol. assumption.
+        - apply finite_protocol_trace_from_app_iff in Htr.
+          destruct Htr as [Htr Hx].
+          specialize (IHtr Htr).
+          apply (finite_protocol_trace_from_app_iff (mk_vlsm M)).
+          split; [assumption|].
+          apply (first_transition_valid (mk_vlsm M)).
+          apply first_transition_valid in Hx.
+          destruct Hx as [Hvx Htx].
+          split; [|assumption].
+          revert Hvx.
+          apply Hvalidating.
     Qed.
 
 (**

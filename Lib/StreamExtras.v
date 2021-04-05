@@ -1,9 +1,9 @@
-Require Import List Streams Coq.Arith.Compare_dec.
-Require Import Lia.
+From Coq Require Import List Streams Compare_dec Lia.
 Import ListNotations.
 
-From CasperCBC
-Require Import Lib.ListExtras Preamble.
+From CasperCBC Require Import Lib.ListExtras Preamble.
+
+(** * Stream utility definitions and lemmas *)
 
 Lemma recons
   {A : Type}

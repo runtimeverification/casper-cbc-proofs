@@ -10,8 +10,10 @@ From CasperCBC
     VLSM.Common
     VLSM.Plans
     .
-(**
 
+(** * VLSM Composition *)
+
+(**
 This module provides Coq definitions for composite VLSMs and their projections
 to components.
 *)
@@ -19,11 +21,8 @@ to components.
 Section VLSM_composition.
 
 (**
-* VLSM composition
-
 Let us fix a type for <<message>>s, and an <<index>> type for the VLSM components
 such that equality on <<index>> is decidable.
-
 *)
 
   Context {message : Type}
@@ -34,9 +33,7 @@ such that equality on <<index>> is decidable.
 
   Section composite_type.
 
-(**
-
-** The type of a composite VLSM
+(** ** The type of a composite VLSM
 
 Let IM be a family of VLSMs indexed by <<index>>. Note that all
 [VLSM]s share the same type of <<message>>s.
@@ -162,9 +159,7 @@ The next few results describe several properties of the [state_update] operation
   End composite_type.
 
   Section composite_sig.
-(**
-
-** The signature of a composite VLSM
+(** ** The signature of a composite VLSM
 
 Assume an non-empty <<index>> type and let <<IT>> be
 an <<index>>ed family of [VLSM_type]s, and for each index <<i>>, let <<IS i>> be
@@ -240,14 +235,14 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       - exact (lift_to_composite_state j destination).
       - exact output.
     Defined.
-    
+
     Definition lift_to_composite_state'
       (s : composite_state)
       (j : index)
       (sj : vstate (IM j))
       : composite_state
       := state_update s j sj.
-    
+
     Definition lift_to_composite_transition_item'
       (s : composite_state)
       (j : index)
@@ -261,11 +256,17 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
       - exact (lift_to_composite_state' s j destination).
       - exact output.
     Defined.
-    
+
+    (**
+    Composite versions for [plan_item] and [plan].
+    *)
+    Definition composite_plan_item := @plan_item _ composite_type.
+    Definition composite_plan := list composite_plan_item.
+
     Definition lift_to_composite_plan_item
       (i : index)
       (a : vplan_item (IM i)) :
-      @plan_item _ composite_type.
+      composite_plan_item.
     Proof.
       destruct a.
       split.
@@ -293,9 +294,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
   End composite_sig.
 
   Section composite_vlsm.
-(**
-
-** Constrained VLSM composition
+(** ** Constrained VLSM composition
 
 Assume an non-empty <<index>> type, let
 <<IT>> be an <<index>>ed family of [VLSM_type]s, and for each index <<i>>, let
@@ -394,10 +393,28 @@ the [composite_valid]ity.
       inversion Ht. apply state_update_eq.
     Qed.
 
-    Section constraint_subsumption_part_one.
-(**
+    (** Composite versions for the generic [_apply_plan]-related definitions and
+    results.
+    *)
+    Definition composite_apply_plan := (@_apply_plan _ composite_type composite_transition).
+    Definition composite_apply_plan_app
+      (start : composite_state)
+      (a a' : list plan_item)
+      : composite_apply_plan start (a ++ a') =
+        let (aitems, afinal) := composite_apply_plan start a in
+        let (a'items, a'final) := composite_apply_plan afinal a' in
+         (aitems ++ a'items, a'final)
+      := (@_apply_plan_app _ composite_type composite_transition start a a').
+    Definition composite_apply_plan_last
+      (start : composite_state)
+      (a : list plan_item)
+      (after_a := composite_apply_plan start a)
+      : last (map destination (fst after_a)) start = snd after_a
+      := (@_apply_plan_last _ composite_type composite_transition start a).
+    Definition composite_trace_to_plan := (@_trace_to_plan _ composite_type).
 
-** Constraint subssumption
+    Section constraint_subsumption_part_one.
+(** ** Constraint subsumption
 
 A <<constraint1>> is subssumed by <<constraint2>> if <<constraint1> is stronger
 than <<constraint2>> for any input.
@@ -454,9 +471,7 @@ Lemma [basic_VLSM_inclusion]
 
     End constraint_subsumption_part_one.
 
-(**
-
-** Free VLSM composition
+(** ** Free VLSM composition
 
 The [free_constraint] is defined to be [True] for all inputs.
 Thus, the [free_composite_vlsm] is the [composite_vlsm] using the
@@ -776,7 +791,7 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
       apply (protocol_prop_composite_free_lift_generalized_initial P P); [|assumption].
       intro m. exact id.
     Qed.
-    
+
     Lemma protocol_message_prop_composite_free_lift
       (j : index)
       (m : message)
@@ -1031,8 +1046,8 @@ Proof.
 Qed.
 
 Section projections.
-(**
-* Composite VLSM projections
+
+(** ** Composite VLSM projections
 
 Let us fix an indexed set of VLSMs <<IM>> and their composition <<X>> using <<constraint>>.
 
@@ -1118,9 +1133,7 @@ having the same transition function as <<IM i>>, the <<i>>th component of
 
   Section fixed_projection.
 
-(**
-
-** Projection traces are Byzantine
+(** ** Projection traces are Byzantine
 
 Let us fix an index <<j>> and let <<Xj>> be the projection of <<X>> on
 component <<j>>.
@@ -1186,7 +1199,7 @@ the initial ones available from <<X>>.
         set (lX := existT (fun n => vlabel (IM n)) j l) in Hv.
         apply protocol_prop_valid_out in Hv.
         simpl in Hv.
-        unfold vstate in Hv. 
+        unfold vstate in Hv.
         rewrite H0 in Hv.
         eexists; exact Hv.
     Qed.
@@ -1440,9 +1453,8 @@ We can now finally prove the main result for this section:
 End projections.
 
 Section free_projections.
-(**
 
-** Projections of free compositions
+(** ** Projections of free compositions
 
 These projections are simple instances of the projections defined above in which
 the composition constraint is taken to be [True].
@@ -1492,14 +1504,14 @@ All results from regular projections carry to these "free" projections.
         destruct om;exact I.
       + rewrite state_update_neq; try assumption. apply IHHs.
   Qed.
-  
-  (* The following results concern facts about applying a [vplan X] <<P>>
+
+  (* The following results concern facts about applying a [plan X] <<P>>
      to a [vstate X] <<s'>>, knowing its effects on a different [vstate X] <<s>>
      which shares some relevant features with <<s'>>. *)
-  
+
   (* A transition on component <<i>> is protocol from <<s'>> if it is
      protocol from <<s>> and their <<i>>'th components are equal *)
-     
+
   Lemma relevant_component_transition
     (s s' : vstate X)
     (l : vlabel X)
@@ -1510,7 +1522,7 @@ All results from regular projections carry to these "free" projections.
     (Hpr : protocol_valid X l (s, input)) :
     protocol_valid X l (s', input).
   Proof.
-    unfold protocol_valid in *. 
+    unfold protocol_valid in *.
     split; [intuition|intuition|..].
     unfold valid in *; simpl in *.
     unfold constrained_composite_valid in *.
@@ -1523,9 +1535,9 @@ All results from regular projections carry to these "free" projections.
     rewrite <- Heq.
     assumption.
   Qed.
-  
+
   (* The effect of the transition is also the same *)
-  
+
   Lemma relevant_component_transition2
     (s s' : vstate X)
     (l : vlabel X)
@@ -1533,7 +1545,7 @@ All results from regular projections carry to these "free" projections.
     (i := projT1 l)
     (Heq : (s i) = (s' i))
     (Hprs : protocol_state_prop X s') :
-    let (dest, output) := vtransition X l (s, input) in 
+    let (dest, output) := vtransition X l (s, input) in
     let (dest', output') := vtransition X l (s', input) in
     output = output' /\ (dest i) = (dest' i).
   Proof.
@@ -1549,7 +1561,7 @@ All results from regular projections carry to these "free" projections.
     rewrite state_update_eq.
     reflexivity.
   Qed.
-  
+
   Lemma relevant_components_one
     (s s' : vstate X)
     (Hprs' : protocol_state_prop X s')
@@ -1558,18 +1570,23 @@ All results from regular projections carry to these "free" projections.
     (Heq : (s i) = (s' i))
     (Hpr : finite_protocol_plan_from X s [ai]) :
     let res' := snd (apply_plan X s' [ai]) in
-    let res := snd (apply_plan X s [ai]) in 
-    finite_protocol_plan_from X s' [ai] /\ 
+    let res := snd (apply_plan X s [ai]) in
+    finite_protocol_plan_from X s' [ai] /\
     (res' i) = res i.
   Proof.
     simpl.
     unfold finite_protocol_plan_from in *.
-    unfold apply_plan in *.
+    unfold apply_plan, _apply_plan in *.
     destruct ai; simpl in *.
-    destruct (vtransition X label_a (s', input_a)) eqn : eq_trans'.
-    destruct (vtransition X label_a (s, input_a)) eqn : eq_trans.
+    match goal with
+    |- context [let (_, _) := let (_, _) := ?t in _ in _] =>
+      destruct t eqn : eq_trans'
+    end.
+    match goal with
+    |- context [let (_, _) := let (_, _) := ?t in _ in _] =>
+      destruct t eqn : eq_trans
+    end.
     inversion Hpr.
-    
     split.
     - assert (protocol_transition X label_a (s', input_a) (s0, o)). {
         unfold protocol_transition in *.
@@ -1577,7 +1594,7 @@ All results from regular projections carry to these "free" projections.
         apply relevant_component_transition with (s' := s') in Hpr_valid.
         all : intuition.
       }
-      
+
       apply finite_ptrace_extend.
       apply finite_ptrace_empty.
       apply protocol_transition_destination in H7; assumption.
@@ -1586,34 +1603,38 @@ All results from regular projections carry to these "free" projections.
       specialize (relevant_component_transition2 s s' l input_a) as Hrel.
       simpl in Hrel. unfold i in Heq. rewrite <- H in Heq. specialize (Hrel Heq Hprs').
       rewrite H in Hrel.
-      rewrite eq_trans in Hrel.
-      rewrite eq_trans' in Hrel.
+      match type of Hrel with
+      | let (_, _) := ?t in _ => replace t with (s1, o0) in Hrel
+      end.
+      match type of Hrel with
+      | let (_, _) := ?t in _ => replace t with (s0, o) in Hrel
+      end.
       unfold i.
       intuition.
   Qed.
-  
-  (* Transitioning on some index different from <<i>> does not affect 
+
+  (* Transitioning on some index different from <<i>> does not affect
      component i. *)
-  
+
   Lemma irrelevant_components_one
     (s : state)
-    (ai : vplan_item X)
+    (ai : composite_plan_item IM)
     (i : index)
     (Hdif : i <> projT1 (label_a ai)) :
-    let res := snd (apply_plan X s [ai]) in  
+    let res := snd (composite_apply_plan IM s [ai]) in
     (res i) = (s i).
   Proof.
-    unfold apply_plan.
+    unfold composite_apply_plan, apply_plan, _apply_plan.
     simpl.
     destruct ai.
-    destruct (vtransition X label_a (s, input_a)) eqn : eq_trans.
-    replace (@vtransition message X label_a (@pair (@vstate message X) (option message) s input_a))
-    with (s0, o); simpl in *.
+    match goal with
+    |- context [let (_, _) := let (_, _) := ?t in _ in _] =>
+      destruct t eqn : eq_trans
+    end.
+    simpl in *.
     unfold vtransition in eq_trans.
-    unfold transition in eq_trans.
     simpl in eq_trans.
     destruct label_a; simpl in *.
-    unfold vtransition in eq_trans. 
     match type of eq_trans with
     | (let (si', om') := ?t in _) = _ => destruct t end.
     inversion eq_trans.
@@ -1621,59 +1642,57 @@ All results from regular projections carry to these "free" projections.
     reflexivity.
     assumption.
   Qed.
-  
+
   (* Same as the previous result, but for multiple transitions. *)
-  
+
   Lemma irrelevant_components
     (s : state)
-    (a : vplan X)
+    (a : composite_plan IM)
     (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
     (i : index)
     (Hdif : ~In i a_indices) :
-    let res := snd (apply_plan X s a) in  
+    let res := snd (composite_apply_plan IM s a) in
     (res i) = (s i).
   Proof.
     induction a using rev_ind.
     - simpl; intuition.
     - simpl in *.
-      rewrite apply_plan_app.
-      destruct (apply_plan X s a) eqn : eq_a; simpl in *.
-      destruct (apply_plan X v [x]) eqn : eq_x; simpl in *.
-      
+      rewrite (composite_apply_plan_app IM).
+      destruct (composite_apply_plan IM s a) as (tra, sa) eqn : eq_a; simpl in *.
+      destruct (composite_apply_plan IM sa [x]) as (trx, sx) eqn : eq_x; simpl in *.
+
       unfold a_indices in Hdif.
       rewrite map_app in Hdif.
       rewrite map_app in Hdif.
-      
+
       spec IHa. {
         intuition.
       }
-      
+
       rewrite <- IHa.
-      replace v0 with (snd (apply_plan X v [x])).
+      replace sx with (snd (composite_apply_plan IM sa [x])) by (rewrite eq_x; reflexivity).
       apply irrelevant_components_one.
       intros contra.
       rewrite contra in Hdif.
 
       rewrite in_app_iff in Hdif; simpl in Hdif.
       intuition.
-      rewrite eq_x.
-      intuition.
   Qed.
-  
+
   (* Same as relevant_components_one but for multiple transitions *)
-  
+
   Lemma relevant_components
     (s s' : vstate X)
     (Hprs' : protocol_state_prop X s')
-    (a : vplan X)
+    (a : plan X)
     (a_indices := List.map (@projT1 _ _) (List.map (@label_a _ _) a))
     (li : list index)
     (Heq : forall (i : index), In i li -> (s' i) = (s i))
     (Hincl : incl a_indices li)
     (Hpr : finite_protocol_plan_from X s a) :
     let res' := snd (apply_plan X s' a) in
-    let res := snd (apply_plan X s a) in 
-    finite_protocol_plan_from X s' a /\ 
+    let res := snd (apply_plan X s a) in
+    finite_protocol_plan_from X s' a /\
     (forall (i : index), In i li -> (res' i) = res i).
   Proof.
     induction a using rev_ind.
@@ -1684,7 +1703,7 @@ All results from regular projections carry to these "free" projections.
     - simpl in *.
       apply finite_protocol_plan_from_app_iff in Hpr.
       destruct Hpr as [Hrem Hsingle].
-      
+
       spec IHa. {
         remember (map (projT1 (P:=fun n : index => vlabel (IM n))) (map label_a a)) as small.
         apply incl_tran with (m := a_indices).
@@ -1694,22 +1713,22 @@ All results from regular projections carry to these "free" projections.
         rewrite map_app.
         all : intuition.
       }
-      
+
       spec IHa. {
         assumption.
       }
-      
+
       destruct IHa as [IHapr IHaind].
-      
+
       specialize (relevant_components_one (snd (apply_plan X s a)) (snd (apply_plan X s' a))) as Hrel.
-      
+
       spec Hrel. {
         apply apply_plan_last_protocol.
         all : intuition.
       }
-      
+
       specialize (Hrel x); simpl in *.
-      
+
       spec Hrel. {
         specialize (IHaind (projT1 (label_a x))).
         symmetry.
@@ -1723,39 +1742,45 @@ All results from regular projections carry to these "free" projections.
         apply in_app_iff.
         right; simpl; intuition.
       }
-      
+
       specialize (Hrel Hsingle).
       destruct Hrel as [Hrelpr Hrelind].
       split.
       + apply finite_protocol_plan_from_app_iff.
         split; intuition.
-      + intros.
-        rewrite apply_plan_app.
-        rewrite apply_plan_app.
-        destruct (apply_plan X s' a) eqn : eq_as'.
-        destruct (apply_plan X s a) eqn : eq_as.
+      + intros i Hi.
+        specialize (IHaind i Hi).
+        specialize (Heq i Hi).
+        rewrite !apply_plan_app.
         simpl in *.
-        destruct (apply_plan X v [x]) eqn : eq_xv.
-        destruct (apply_plan X v0 [x]) eqn : eq_xv0.
+        destruct (apply_plan X s' a)
+          as (tra', sa') eqn : eq_as'.
+        destruct (apply_plan X s a)
+          as (tra, sa) eqn : eq_as.
+        simpl in *.
+        destruct (apply_plan X sa [x])
+          as (trx, sx) eqn : eq_xsa.
+        destruct (apply_plan X sa' [x])
+          as (trx', sx') eqn : eq_xsa'.
         simpl in *.
         destruct (decide (i = (projT1 (label_a x)))).
         * rewrite e; intuition.
-        * specialize (irrelevant_components_one v) as Hdiff.
+        * specialize (irrelevant_components_one sa) as Hdiff.
           specialize (Hdiff x i n).
-          
-          specialize (irrelevant_components_one v0) as Hdiff0.
+
+          specialize (irrelevant_components_one sa') as Hdiff0.
           specialize (Hdiff0 x i n).
           simpl in *.
-          replace v1 with (snd (apply_plan X v [x])).
-          replace v2 with (snd (apply_plan X v0 [x])).
-          rewrite Hdiff.
-          rewrite Hdiff0.
-          apply IHaind.
-          intuition.
-          rewrite eq_xv0; intuition.
-          rewrite eq_xv; intuition.
-    Qed.
-  
+          apply (f_equal snd) in eq_xsa.
+          apply (f_equal snd) in eq_xsa'.
+
+          replace sx' with (snd (composite_apply_plan IM sa' [x])).
+          replace sx with (snd (composite_apply_plan IM sa [x])).
+          setoid_rewrite Hdiff.
+          setoid_rewrite Hdiff0.
+          assumption.
+  Qed.
+
   Lemma pre_loaded_with_all_messages_projection_protocol_transition_eq
     (s1 s2 : vstate X)
     (om1 om2 : option message)
@@ -1823,9 +1848,7 @@ End free_projections.
 
 Section binary_free_composition.
 
-(**
-
-* Free composition of two VLSMs
+(** ** Free composition of two VLSMs
 
 This serves an example of how composition can be built, but is also being
 used in definiting the [byzantine_trace_prop]erties.

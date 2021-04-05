@@ -1,7 +1,9 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ProofIrrelevance.
+From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ProofIrrelevance.
 Import ListNotations.
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
+
+From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras.
+
+(** * CBC Protocol Definitions and Lemmas *)
 
 (* Level 0 : *)
 Class PartialOrder (A : Type) :=

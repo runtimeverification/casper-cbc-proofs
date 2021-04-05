@@ -1,17 +1,30 @@
 Require Import
-  List ListSet FinFun
+  List ListSet FinFun Arith Bool
   .
 Import ListNotations.
 From CasperCBC
 Require Import
   Lib.Preamble
-  CBC.Common
-  CBC.Equivocation
+  Lib.ListExtras
+  Lib.Measurable
+  VLSM.Equivocation
   VLSM.Common
   VLSM.ListValidator.ListValidator
   VLSM.ListValidator.Equivocation
+  VLSM.ListValidator.Observations
   .
-(*
+
+(** * VLSM Equivocation Aware List Validator *)
+
+(** This is a version of the List Validator node which uses an
+   "equivocation aware" estimator.
+
+   This estimator ignores projections onto indices
+   that correspond to validators that can be proven equivocating using
+   the node's local observations.
+
+   See [ListValidator.v] for the traditional LV estimator. *)
+
 Section EquivocationAwareValidator.
 
   Context
@@ -23,7 +36,7 @@ Section EquivocationAwareValidator.
     (X := @VLSM_list _ index_self index_listing idec)
     {Mindex : Measurable index}
     {Rindex : ReachableThreshold index}
-    (eqv := @lv_basic_equivocation index index_listing Hfinite idec Mindex Rindex)
+    (eqv := @simp_lv_basic_equivocation index index_self index_listing Hfinite idec Mindex Rindex)
     .
 
   Existing Instance eqv.
@@ -49,16 +62,56 @@ Section EquivocationAwareValidator.
   Definition equivocation_aware_estimator (s : state) (b : bool) : Prop :=
     let eqv_validators := equivocating_validators s in
     let decisions := no_equivocating_decisions s eqv_validators in
-    let none_count := List.count_occ decide_eq decisions None in
-    let our_count := List.count_occ decide_eq decisions (Some b) in
-    let other_count := List.count_occ decide_eq decisions (Some (negb b)) in
     match s with
     | Bottom => True
-    | Something c some => (none_count >= our_count /\ none_count >= other_count) \/ our_count >= other_count
+    | Something c some => in_mode (mode decisions) b
     end.
+
+  Global Instance equivocation_aware_estimator_dec : RelDecision equivocation_aware_estimator.
+  Proof.
+    unfold RelDecision. intros s b.
+    unfold equivocation_aware_estimator.
+    destruct s;[left; intuition|].
+    apply in_mode_dec.
+  Qed.
+
+  (** If at least one projection is non-equivocating,
+     the estimator is non-empty (it relates to either true or false). *)
+
+  Lemma ea_estimator_total
+    (s : state)
+    (b : bool)
+    (Hne : no_equivocating_decisions s (equivocating_validators s) <> [])
+    (Hnotb : ~ equivocation_aware_estimator s b) :
+    equivocation_aware_estimator s (negb b).
+  Proof.
+    unfold equivocation_aware_estimator in *.
+    destruct s;[intuition|].
+    unfold in_mode in *.
+    remember (mode
+             (no_equivocating_decisions
+             (Something b0 is)
+             (equivocating_validators (Something b0 is))))
+             as modes.
+
+    destruct (inb decide_eq (Some b) modes) eqn : eq_inb; [intuition|].
+
+    assert (Hsome : exists (ob : option bool), In ob (modes)). {
+      assert (modes <> []) by (rewrite Heqmodes; apply mode_not_empty; intuition).
+      destruct modes;[intuition congruence|].
+      exists o. simpl. left. intuition.
+    }
+
+    destruct Hsome as [ob Hob].
+    destruct ob eqn : eq_ob.
+    - destruct (inb decide_eq (Some (negb b)) modes) eqn : eq_inb2;[intuition|].
+      apply in_correct in Hob.
+      destruct b; destruct b1; simpl in *; intuition congruence.
+    - apply in_correct in Hob. intuition congruence.
+  Qed.
 
   Definition VLSM_equivocation_aware_list : VLSM message
     :=
     @VLSM_list index index_self index_listing idec equivocation_aware_estimator.
 
-End EquivocationAwareValidator. *)
+End EquivocationAwareValidator.

@@ -1,12 +1,10 @@
-Require Import List Streams Nat Bool.
+From Coq Require Import List Streams Nat Bool Lia FunctionalExtensionality FinFun Eqdep.
 Import ListNotations.
-Require Import Lia.
-Require Import Logic.FunctionalExtensionality.
-
-Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
 
 From CasperCBC
 Require Import Lib.StreamExtras Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition.
+
+(** * VLSM Projection Traces *)
 
 Section ProjectionTraces.
 
@@ -842,6 +840,20 @@ Proof.
     }
     apply projection_friendly_in_futures' with sx trx sj Hall n1 n2; try assumption
     ; rewrite Hproj; rewrite <- Hs1 || rewrite <- Hs2; symmetry; assumption.
+Qed.
+
+Lemma projection_valid_protocol
+  (l : vlabel Xj)
+  (som : vstate Xj * option message)
+  (Hv : vvalid Xj l som)
+  : protocol_valid Xj l som.
+Proof.
+  destruct som as (s, om).
+  destruct (id Hv) as [sX [Hsi [Hps [Hopm _]]]].
+  repeat split.
+  - subst. apply protocol_state_projection. assumption.
+  - apply protocol_message_projection. assumption.
+  - assumption.
 Qed.
 
 End ProjectionTraces.

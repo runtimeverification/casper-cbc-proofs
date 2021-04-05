@@ -1,16 +1,10 @@
-Require Import Bool List ListSet FinFun
-  Reals.
+From Coq Require Import Bool List ListSet FinFun Reals.
 Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras ListSetExtras
-    Lib.Classes
-    CBC.Common CBC.Equivocation
-    VLSM.Common VLSM.Composition VLSM.Equivocation
-    VLSM.ProjectionTraces
-    .
 
-(** * Observable equivocation
+From CasperCBC Require Import Preamble ListExtras ListSetExtras Lib.Classes Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces.
+
+(** * VLSM Observable Equivocation
 
 In this section we define a notion of equivocation based on observations.
 
@@ -909,7 +903,7 @@ Context
   `{EqDecision event}
   {index : Type}
   `{EqDecision index}
-  (index_listing : list index)
+  (index_listing witness_set : list index)
   (IM : index -> VLSM message)
   (Hstate_events_fn : forall (i : index), vstate (IM i) -> validator -> set event)
   (Hstate_validators : forall (i : index), vstate (IM i) -> set validator)
@@ -924,7 +918,7 @@ Definition composite_state_events_fn
   (v : validator)
   : set event
   :=
-  fold_right (set_union decide_eq) [] (map (fun i => Hstate_events_fn i (s i) v) index_listing).
+  fold_right (set_union decide_eq) [] (map (fun i => Hstate_events_fn i (s i) v) witness_set).
 
 Definition composite_validators
   (s : composite_state IM)
@@ -1246,7 +1240,7 @@ Lemma trace_generated_index
 Proof.
   destruct (decide ((A v) = i)); [assumption|].
   specialize
-    (protocol_transition_to X is item tr prefix suffix Heq (proj1 Htr))
+    (protocol_transition_to X _ _ _ _ _ (proj1 Htr) Heq)
     as Hpt.
   specialize
     (sent_messages_unforgeability s s' (input item) (output item) (l item) Hpt v n e)

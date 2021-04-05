@@ -1,11 +1,9 @@
-Require Import Bool List ListSet Compare_dec RelationClasses.
-Require Import Lia.
+From Coq Require Import Bool List ListSet Compare_dec RelationClasses Lia.
 Import ListNotations.
 
-From CasperCBC
-Require Import Preamble ListExtras ListSetExtras.
+From CasperCBC Require Import Preamble ListExtras ListSetExtras.
 
-(** * Topological sorting algorithm *)
+(** * Topological sorting implementation *)
 
 (**
 This module describes an algorithm producing a linear extension for a

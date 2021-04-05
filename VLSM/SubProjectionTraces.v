@@ -1,13 +1,10 @@
-Require Import List Nat Bool.
+From Coq Require Import List Nat Bool Lia FunctionalExtensionality Lia Program FinFun Eqdep.
 Import ListNotations.
-Require Import Lia.
-Require Import Logic.FunctionalExtensionality.
-Require Import Program.
-
-Require Import Coq.Logic.FinFun Coq.Logic.Eqdep.
 
 From CasperCBC
 Require Import Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition VLSM.Equivocation.
+
+(** * VLSM Subcomposition *)
 
 Section sub_composition.
 
@@ -67,7 +64,7 @@ Proof.
   apply H.
   apply bool_decide_eq_true_proof_irrelevance.
 Qed.
- 
+
 
 Definition free_sub_vlsm_composition : VLSM message
   := free_composite_vlsm sub_IM.
@@ -462,7 +459,7 @@ Definition composite_state_sub_projection_lift
   match (decide (sub_index_prop i)) with
   | left e => ss (dec_exist _ i e)
   | _ => proj1_sig (composite_s0 IM) i
-  end. 
+  end.
 
 Definition sub_constraint
   (l : composite_label sub_IM)
@@ -510,12 +507,12 @@ Proof.
     apply VLSM_incl_trans with (machine (pre_loaded_vlsm v (fun m => True)))
   end.
   - match goal with
-    |- context [pre_loaded_vlsm ?v _] => 
+    |- context [pre_loaded_vlsm ?v _] =>
       apply (pre_loaded_vlsm_incl v seed (fun m => True))
     end.
     intuition.
   - match goal with
-    |- context [pre_loaded_with_all_messages_vlsm ?v] => 
+    |- context [pre_loaded_with_all_messages_vlsm ?v] =>
       specialize (pre_loaded_with_all_messages_vlsm_is_pre_loaded_with_True v) as Hincl
     end.
     apply VLSM_eq_incl_iff in Hincl.
@@ -523,6 +520,12 @@ Proof.
     assumption.
 Qed.
 
+(**
+Property of a composite trace requiring that every message received in an
+transition involving a machine in the chosen subset must either belong to
+the set specified by [seed], or it must [have_been_sent] by some machine
+in the chosen subset (prior to it being received).
+*)
 Definition trace_sub_item_input_is_seeded_or_sub_previously_sent
   (tr : list (composite_transition_item IM))
   : Prop
@@ -569,7 +572,7 @@ Proof.
   apply finite_protocol_trace_from_app_iff.
   split; [assumption|].
   specialize (Hmsg tr x []).
-  match goal with 
+  match goal with
   |- finite_protocol_trace_from _ ?l _ => remember l as lst
   end.
   assert (Hlst : protocol_state_prop Xj lst).
