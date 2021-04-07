@@ -598,26 +598,17 @@ Section proper_sent_received.
     (Hitem : In item prefix)
     : input item = None /\ output item = None /\ destination item = pair [] None /\ l item = None.
   Proof.
-    induction prefix using rev_ind.
+    remember ([],None) as sf in Hprefix.
+    induction Hprefix using @finite_protocol_trace_from_to_rev_ind.
     - inversion Hitem.
     - apply in_app_iff in Hitem.
-      apply finite_protocol_trace_from_to_app_split in Hprefix.
-      destruct Hprefix as [Hprefix Hx].
-      inversion Hx; clear Hx; subst s' f x tl.
-      inversion H3; subst s0 s; clear H3 H.
-      destruct H4 as [_ Ht].
+      subst sf. destruct H as [_ Ht].
       simpl in Ht. unfold vtransition in Ht. simpl in Ht.
-      simpl type in Hprefix.
-      destruct
-        (finite_trace_last start prefix)
-        as (msgs, final) in Hprefix, Ht.
+      destruct s as [msgs final].
       destruct l as [c|];[discriminate Ht|].
       destruct iom as [msg|]; inversion Ht; subst; clear Ht.
       + contradict H0. apply set_add_not_empty.
-      + specialize (IHprefix Hprefix).
-        destruct Hitem as [Hin |[Heq |[]]].
-        * exact (IHprefix Hin).
-        * subst item. simpl. repeat split; reflexivity.
+      + destruct Hitem as [Hin|[<- |[]]];auto.
   Qed.
 
   Lemma last_state_empty_trace

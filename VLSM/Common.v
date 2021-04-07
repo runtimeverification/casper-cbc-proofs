@@ -1432,6 +1432,34 @@ that include the final state, and give appropriate induction principles.
         apply finite_ptrace_from_to_extend; auto.
     Qed.
 
+    Lemma finite_protocol_trace_from_to_rev_ind
+      (P : state -> state -> list transition_item -> Prop)
+      (Hempty: forall si,
+        protocol_state_prop si -> P si si nil)
+      (Hextend : forall si s tr,
+        P si s tr ->
+        forall sf iom oom l,
+        protocol_transition l (s,iom) (sf,oom) ->
+        P si sf (tr++[{|l:=l; input:=iom; destination:=sf; output:=oom|}])):
+      forall si sf tr,
+        finite_protocol_trace_from_to si sf tr ->
+        P si sf tr.
+    Proof.
+      intros si sf tr Htr.
+      revert sf Htr.
+      induction tr using rev_ind;
+      intros sf Htr.
+      - inversion Htr;subst. apply Hempty;assumption.
+      - apply finite_protocol_trace_from_to_app_split in Htr.
+        destruct Htr as [Htr Hstep].
+        inversion Hstep;subst.
+        inversion H3;subst.
+        revert H4.
+        apply Hextend.
+        apply IHtr.
+        assumption.
+    Qed.
+
 (** *** Infinite [protcol_trace]s *)
 
 (** We now define [infinite_protocol_trace]s. The definitions
