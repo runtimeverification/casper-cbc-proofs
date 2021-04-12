@@ -14,6 +14,7 @@ From CasperCBC
     Lib.ListExtras
     VLSM.Common
     VLSM.Composition
+    VLSM.Validating
     .
 
 Require Import List.
@@ -395,7 +396,7 @@ Section composition.
      of the list `states` *)
   Definition is_equivocator_states (states : list Prestate) (component : nat) : bool :=
     let eq := map (is_equivocator component) states in
-    fold_right andb true eq.
+    fold_right orb false eq.
 
   Definition equivocators (states : list Prestate) : list nat :=
     filter (is_equivocator_states states) (seq 0 (length indices)).
@@ -422,5 +423,28 @@ Section composition.
   
   
   Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
+
+
+  Context
+        (i : index)
+        (Xi := composite_vlsm_constrained_projection IM composition_constraint i)
+  .
+  
+  
+  Theorem elmo_validating:
+    validating_projection_prop IM composition_constraint i.
+  Proof.
+    intros li siomi H.
+    unfold protocol_valid in H.
+    unfold vvalid. unfold valid. unfold machine. simpl.
+    unfold projection_valid.
+    destruct siomi as [si omi].
+    destruct H as [Hpsp [Hopmp Hvalid]].
+    unfold valid in Hvalid. unfold machine in Hvalid. simpl in Hvalid. unfold IM in Hvalid.
+    unfold IM' in Hvalid. inversion Hvalid.
+    unfold vvalid in Hvalid.
+  Abort.
+  
+
 
 End composition.
