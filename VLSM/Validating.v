@@ -45,6 +45,63 @@ Definition validating_projection_prop :=
         protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li siomi ->
         vvalid Xi li siomi.
 
+
+Definition valid_subsumes_constraint_prop : Prop :=
+  forall (li : vlabel (IM i)) (si : vstate (IM i)) (om : option message),
+    protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, om) ->
+    constraint (existT _ i li) (lift_to_composite_state IM i si, om).
+
+Definition valid_message_is_protocol_in_composition_prop : Prop :=
+  forall
+    (m : message)
+    (li : vlabel (IM i))
+    (si : vstate (IM i)),
+    protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, Some m) ->
+    protocol_message_prop X m.
+
+Lemma validating_projection_prop_impl_valid_subsumes_constraint_prop:
+  validating_projection_prop ->
+  valid_subsumes_constraint_prop.
+Proof.
+  intros Hvalidating li si omi H.
+  unfold validating_projection_prop in Hvalidating.
+
+
+  specialize (Hvalidating li (si, omi) H).
+  (*
+  remember (lift_to_composite_state IM i si i) as si'.
+  assert (Hsi'eqsi: si' = si).
+  { rewrite Heqsi'. unfold lift_to_composite_state.
+    rewrite state_update_eq. reflexivity.
+  }
+  rewrite <- Hsi'eqsi in H. rewrite Heqsi' in H.
+  specialize (Hvalidating li (lift_to_composite_state IM i si i, omi) H).
+  *)
+  (* lift_to_composite_state IM i si *)
+  unfold vvalid in Hvalidating. unfold valid in Hvalidating.
+  unfold machine in Hvalidating. simpl in Hvalidating.
+  destruct Hvalidating as [s [Hsi [Hpsp [Hopmp Hccv]]]].
+  unfold constrained_composite_valid in Hccv.
+  destruct Hccv as [Hcv Hconstraint].
+  Search lift_to_composite_state.
+  Fail apply Hconstraint.
+Abort.
+
+Lemma validating_projection_prop_impl_valid_message_is_protocol_in_composition_prop:
+  validating_projection_prop -> valid_message_is_protocol_in_composition_prop.
+Proof.
+  intros Hvalidating mi li si Hpv.
+  unfold validating_projection_prop in Hvalidating.
+  specialize (Hvalidating li (si, Some mi) Hpv).
+  clear Hpv.
+  unfold vvalid in Hvalidating. simpl in Hvalidating.
+  destruct Hvalidating as [s [Hsi [Hpsp [Hopmp Hccv]]]].
+  inversion Hopmp.
+  unfold protocol_message_prop.
+  exists x. apply H.
+Qed.
+
+
 (**
 It is easy to see that the [validating_projection_prop]erty includes the
 [validating_projection_received_messages_prop]erty.
