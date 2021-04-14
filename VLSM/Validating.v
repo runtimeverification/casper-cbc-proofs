@@ -50,7 +50,7 @@ Definition valid_subsumes_constraint_prop : Prop :=
   forall (li : vlabel (IM i)) (si : vstate (IM i)) (om : option message),
     protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, om) ->
     constraint (existT _ i li) (lift_to_composite_state IM i si, om).
-
+(*
 Definition valid_message_is_protocol_in_composition_prop : Prop :=
   forall
     (m : message)
@@ -58,6 +58,61 @@ Definition valid_message_is_protocol_in_composition_prop : Prop :=
     (si : vstate (IM i)),
     protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, Some m) ->
     protocol_message_prop X m.
+*)
+Definition valid_message_is_protocol_in_composition_prop : Prop :=
+  forall
+  (om : option message)
+  (li : vlabel (IM i))
+  (si : vstate (IM i)),
+  protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, om) ->
+  option_protocol_message_prop X om.
+
+Lemma alt_impl_validating_projection_prop:
+  valid_subsumes_constraint_prop ->
+  valid_message_is_protocol_in_composition_prop ->
+  validating_projection_prop.
+Proof.
+  intros Hcp Hpcp li [si omi] Hpv.
+  specialize (Hcp li si omi Hpv).
+  unfold valid_message_is_protocol_in_composition_prop in Hpcp.
+
+  specialize (Hpcp omi li si Hpv).
+  (*clear Hpv.*)
+  unfold vvalid. unfold valid. unfold machine. simpl.
+  exists (lift_to_composite_state IM i si).
+  split.
+  { unfold lift_to_composite_state. rewrite state_update_eq. reflexivity. }
+  unfold protocol_message_prop in Hpcp.
+  destruct Hpcp as [s Hpp].
+  split.
+  {
+    unfold protocol_valid in Hpv.
+    destruct Hpv as [Hpsp [Hopmp Hvalid]].
+    unfold protocol_state_prop. unfold protocol_state_prop in Hpsp.
+    Search protocol_state_prop lift_to_composite_state.
+    destruct Hpsp as [om Hpp'].
+    exists om.
+    Search protocol_prop lift_to_composite_state.
+    (*apply protocol_prop_composite_free_lift.*)
+    
+    admit.
+  }
+  split.
+  { unfold option_protocol_message_prop.
+    exists s.
+    apply Hpp.
+  }
+  unfold constrained_composite_valid.
+  split.
+  { unfold composite_valid. unfold lift_to_composite_state. rewrite state_update_eq.
+    unfold protocol_valid in Hpv. destruct Hpv as [_ [_ Hvalid]]. apply Hvalid.
+  }
+  apply Hcp.
+Abort.
+
+  
+  
+
 
 Lemma validating_projection_prop_impl_valid_subsumes_constraint_prop:
   validating_projection_prop ->
