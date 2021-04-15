@@ -45,20 +45,25 @@ Definition validating_projection_prop :=
         protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li siomi ->
         vvalid Xi li siomi.
 
+Definition lifted_state_satisfying_constraint
+  (li : vlabel (IM i)) (si : vstate (IM i)) (om : option message) (s : vstate X) : Prop
+  := protocol_state_prop X s /\ s i = si /\  constraint (existT _ i li) (s, om).
 
 Definition valid_subsumes_constraint_prop : Prop :=
   forall (li : vlabel (IM i)) (si : vstate (IM i)) (om : option message),
     protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, om) ->
-    constraint (existT _ i li) (lift_to_composite_state IM i si, om).
-(*
-Definition valid_message_is_protocol_in_composition_prop : Prop :=
-  forall
-    (m : message)
-    (li : vlabel (IM i))
-    (si : vstate (IM i)),
-    protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, Some m) ->
-    protocol_message_prop X m.
-*)
+    exists (s : vstate X), lifted_state_satisfying_constraint li si om s.
+
+Lemma validating_projection_prop_impl_valid_subsumes_constraint_prop :
+  validating_projection_prop -> valid_subsumes_constraint_prop.
+Proof.
+  intros Hvalidating.
+  intros li si om Hv.
+  apply Hvalidating in Hv.
+  destruct Hv as [s [Heq [Hs [_ [_ Hc]]]]].
+  exists s. repeat split; assumption.
+Qed.
+
 Definition valid_message_is_protocol_in_composition_prop : Prop :=
   forall
   (om : option message)
@@ -67,49 +72,95 @@ Definition valid_message_is_protocol_in_composition_prop : Prop :=
   protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (si, om) ->
   option_protocol_message_prop X om.
 
+
+Lemma validating_projection_prop_impl_valid_message_is_protocol_in_composition_prop:
+  validating_projection_prop -> valid_message_is_protocol_in_composition_prop.
+Proof.
+  intros Hvalidating mi li si Hpv.
+  unfold validating_projection_prop in Hvalidating.
+  specialize (Hvalidating li (si, mi) Hpv).
+  clear Hpv.
+  unfold vvalid in Hvalidating. simpl in Hvalidating.
+  destruct Hvalidating as [s [Hsi [Hpsp [Hopmp Hccv]]]].
+  inversion Hopmp.
+  unfold protocol_message_prop.
+  exists x. apply H.
+Qed.
+
+
+Lemma lift_reachability_to_protocol :
+  valid_subsumes_constraint_prop ->
+  valid_message_is_protocol_in_composition_prop ->
+  forall si,
+  protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) si ->
+  exists s, s i = si /\ protocol_state_prop (composite_vlsm IM constraint) s.
+Proof.
+      intros Hcp Hpcp si Hsi.
+      apply protocol_state_prop_iff in  Hsi.
+      destruct Hsi as [[[s Hs] Heq] | [l [(s, om) [om' Ht]]]]. 
+      - simpl in Heq. subst si. exists (lift_to_composite_state IM i s).
+        unfold lift_to_composite_state. rewrite state_update_eq.
+        split; [reflexivity|].
+        apply initial_is_protocol.
+        intro n.
+        destruct (decide (n = i)).
+        + subst n. rewrite state_update_eq. assumption.
+        + rewrite state_update_neq by assumption.  apply (proj2_sig (vs0 (IM n))).
+      - destruct Ht as [Hv Ht].
+        apply Hcp in Hv as Hcpv.
+        apply Hpcp in Hv as Hpcpv.
+        destruct Hcpv as [s0 [Hs0 [Heq Hc]]].
+        destruct (composite_transition IM (existT _ i l) (s0, om)) as (s', _om') eqn:Hct.
+        exists s'.
+        split.
+        + simpl in Hct. rewrite Heq in Hct.
+          match type of Hct with
+          | (let (_,_) := ?t in _) = _ => replace t with (si, om') in Hct
+          end.
+          inversion Hct.
+          subst _om' s'. clear Hct.
+          rewrite state_update_eq.
+          reflexivity.
+        + apply protocol_state_prop_iff. right.
+          exists (existT _ i l), (s0, om), _om'.
+          split; [|assumption].
+          destruct Hv as [_ [_ Hv]].
+          repeat split; try assumption.
+          simpl. rewrite Heq. assumption.
+Qed.
+
+
 Lemma alt_impl_validating_projection_prop:
   valid_subsumes_constraint_prop ->
   valid_message_is_protocol_in_composition_prop ->
   validating_projection_prop.
 Proof.
   intros Hcp Hpcp li [si omi] Hpv.
-  specialize (Hcp li si omi Hpv).
-  unfold valid_message_is_protocol_in_composition_prop in Hpcp.
-
-  specialize (Hpcp omi li si Hpv).
+  pose proof (Hcp' := Hcp li si omi Hpv).
+  pose proof (Hpcp' := Hpcp omi li si Hpv).
+  destruct Hcp' as [s [Hs [Hsi Hconstraint]]].
   (*clear Hpv.*)
   unfold vvalid. unfold valid. unfold machine. simpl.
-  exists (lift_to_composite_state IM i si).
+  (*exists (lift_to_composite_state IM i si).*)
+  exists s.
   split.
-  { unfold lift_to_composite_state. rewrite state_update_eq. reflexivity. }
-  unfold protocol_message_prop in Hpcp.
-  destruct Hpcp as [s Hpp].
-  split.
-  {
-    unfold protocol_valid in Hpv.
-    destruct Hpv as [Hpsp [Hopmp Hvalid]].
-    unfold protocol_state_prop. unfold protocol_state_prop in Hpsp.
-    Search protocol_state_prop lift_to_composite_state.
-    destruct Hpsp as [om Hpp'].
-    exists om.
-    Search protocol_prop lift_to_composite_state.
-    (*apply protocol_prop_composite_free_lift.*)
-    
-    admit.
-  }
+  { apply Hsi. }
+  unfold protocol_message_prop in Hpcp'.
+  destruct Hpcp' as [s' Hpp].
+  split; [assumption|].
+  
   split.
   { unfold option_protocol_message_prop.
-    exists s.
+    exists s'.
     apply Hpp.
   }
   unfold constrained_composite_valid.
   split.
-  { unfold composite_valid. unfold lift_to_composite_state. rewrite state_update_eq.
+  { unfold composite_valid. rewrite Hsi.
     unfold protocol_valid in Hpv. destruct Hpv as [_ [_ Hvalid]]. apply Hvalid.
   }
-  apply Hcp.
-Abort.
-
+  apply Hconstraint.
+Qed.
   
   
 
@@ -141,20 +192,6 @@ Proof.
   Search lift_to_composite_state.
   Fail apply Hconstraint.
 Abort.
-
-Lemma validating_projection_prop_impl_valid_message_is_protocol_in_composition_prop:
-  validating_projection_prop -> valid_message_is_protocol_in_composition_prop.
-Proof.
-  intros Hvalidating mi li si Hpv.
-  unfold validating_projection_prop in Hvalidating.
-  specialize (Hvalidating li (si, Some mi) Hpv).
-  clear Hpv.
-  unfold vvalid in Hvalidating. simpl in Hvalidating.
-  destruct Hvalidating as [s [Hsi [Hpsp [Hopmp Hccv]]]].
-  inversion Hopmp.
-  unfold protocol_message_prop.
-  exists x. apply H.
-Qed.
 
 
 (**
