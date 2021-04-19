@@ -15,6 +15,7 @@ From CasperCBC
     VLSM.Common
     VLSM.Composition
     VLSM.Validating
+    VLSM.Equivocation
     .
 
 Require Import List.
@@ -89,6 +90,21 @@ Definition messageOf (ob : Observation) : Premessage :=
 Definition witnessOf (ob : Observation) : nat :=
   match ob with
   | Cobservation _ _ w => w
+  end.
+
+Definition isWitnessedBy (component : nat) (ob : Observation) : bool :=
+  witnessOf ob =? component.
+
+Definition isReceive (ob : Observation) : bool :=
+  match ob with
+  | Cobservation Receive _ _ => true
+  | _ => false
+  end.
+
+Definition isSend (ob : Observation) : bool :=
+  match ob with
+  | Cobservation Send _ _ => true
+  | _ => false
   end.
 
 Definition stateOf (m : Premessage) : Prestate :=
@@ -289,6 +305,26 @@ Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold 
        ; transition := elmo_transition component weights treshold
     |}.
 
+
+Section capabilities.
+  Context
+    (component : nat)
+    (weights : list pos_R)
+    (treshold : R)
+    (vlsm := mk_vlsm (elmo_vlsm_machine component weights treshold))
+  .
+
+  Check (field_selector input).
+  Check oracle_stepwise_props.
+
+  Definition elmo_input_message_oracle (l : list Observation) (m : Premessage) : Prop :=
+    List.In m (map messageOf (filter isReceive (filter (isWitnessedBy component) l))).
+
+  Definition elmo_output_message_oracle (l : list Observation) (m : Premessage) : Prop :=
+    List.In m (map messageOf (filter isSend (filter (isWitnessedBy component) l))).
+
+  
+End capabilities.
 
 (* m1 is a prefix of m2 *)
 Definition is_prefix_of (m1 m2 : Premessage) : Prop :=
