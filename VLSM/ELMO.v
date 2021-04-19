@@ -401,6 +401,13 @@ Section capabilities.
         * inversion H.
         * left. exact H.
   Qed.
+
+  Definition elmo_input_message_oracle_stepwise_props
+    : @oracle_stepwise_props _ vlsm (field_selector input) elmo_input_message_oracle
+    := {| oracle_no_inits := elmo_input_message_oracle_no_inits;
+          oracle_step_update := elmo_input_message_oracle_step_update;
+       |}
+  .
   
 End capabilities.
 
