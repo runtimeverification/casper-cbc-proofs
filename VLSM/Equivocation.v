@@ -3,6 +3,8 @@ Import ListNotations.
 
 From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.Measurable VLSM.Decisions VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
+Require Import Coq.Program.Tactics.
+
 (** * VLSM Equivocation Definitions **)
 
 (**
@@ -1441,34 +1443,30 @@ Section NoEquivocationInvariants.
     : finite_protocol_trace (pre_loaded_with_all_messages_vlsm X) is tr -> finite_protocol_trace X is tr.
   Proof.
     intro Htr.
-    induction tr using rev_ind.
-    - apply proj2 in Htr. split; [|assumption].
-      apply (finite_ptrace_empty X). apply (initial_is_protocol X). assumption.
-    - destruct Htr as [Htr His].
-      apply finite_protocol_trace_from_app_iff in Htr.
-      destruct Htr as [Htr Hx].
-      specialize (IHtr (conj Htr His)).
-      apply first_transition_valid in Hx.
+    induction Htr using finite_protocol_trace_rev_ind.
+    - split;[|assumption].
+      rapply @finite_ptrace_empty.
+      apply initial_is_protocol.
+      assumption.
+    - destruct IHHtr as [IHtr His].
       split; [|assumption].
-      apply (finite_protocol_trace_from_app_iff X).
-      split; [apply IHtr|].
-      apply (first_transition_valid X).
-      destruct IHtr as [HtrX HsX].
-      apply finite_ptrace_last_pstate in HtrX as HlstX.
-      repeat split; [assumption|  | apply Hx | apply Hx].
-      destruct x. simpl in *.
-      destruct Hx as [[_ [_ Hv]] _].
+      rapply extend_right_finite_trace_from;[assumption|].
+      apply protocol_transition_origin in Hx as Hlst'.
+      destruct Hx as [Hvalid Htrans].
+      split;[|exact Htrans].
+      apply finite_ptrace_last_pstate in IHtr as Hstate.
+      split;[assumption|]. clear Hstate.
+      split;[|apply Hvalid].
+      destruct Hvalid as [_ [_ Hv]].
       apply Henforced in Hv.
-      destruct input as [m|]; [|apply option_protocol_message_None].
+      destruct iom as [m|]; [|apply option_protocol_message_None].
       apply option_protocol_message_Some.
       destruct Hv as [Hbsm | Him]
       ; [|apply initial_message_is_protocol; assumption].
-      apply finite_ptrace_last_pstate in Htr as Hlst.
       apply proper_sent in Hbsm; [|assumption].
-      apply ptrace_add_default_last in Htr.
-      specialize (Hbsm is tr (conj Htr His)).
-      specialize (can_emit_from_protocol_trace X _ _ _ (conj HtrX HsX) Hbsm).
+      specialize (Hbsm _ tr (ptrace_add_default_last Htr)).
       apply can_emit_protocol.
+      apply (can_emit_from_protocol_trace X _ _ _ (conj IHtr His) Hbsm).
   Qed.
 
   Lemma preloaded_incl_no_equivocations
@@ -1895,8 +1893,8 @@ Section Composite.
       revert Hpr.
       apply VLSM_incl_finite_protocol_trace_init_to.
       apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
-    }    
-    apply protocol_trace_output_is_protocol with (is0 := is) (tr0 := tr).
+    }
+    apply protocol_trace_output_is_protocol with (is0:=is) (tr0:=tr).
     - apply ptrace_forget_last in Hpr; apply Hpr.
     - apply (proper_sent _ _ H) in Hcomp.
       apply (Hcomp is tr Hpr_pre).
@@ -2041,78 +2039,49 @@ Qed.
   Proof.
     unfold trace_received_not_sent_before_or_after_invariant in Htrm.
     split; [|apply Htr].
-    induction tr using rev_ind; intros.
-    - apply (finite_ptrace_empty  (pre_loaded_vlsm X P)).
-      apply initial_is_protocol. apply Htr.
-    - assert (Htr' := Htr).
-      destruct Htr as [Htr Hinit].
-      apply finite_protocol_trace_from_app_iff in Htr.
-      destruct Htr as [Htr Hx].
-      eapply ptrace_add_last in Htr'
-      ;[|apply finite_trace_last_is_last].
-      spec IHtr.
-      { intros m [Hbrm Hnbsm]. apply Htrm. split.
-      - apply Exists_app. left. assumption.
-      - unfold trace_has_message. rewrite Exists_app. intros [contra|contra]; [contradiction|].
-        inversion contra; [|inversion H0]. subst. simpl in H0.
-        match type of Hx with
-        | finite_protocol_trace_from _ ?l _ => remember l as s
-        end.
-        destruct x as (l, iom, s0, oom). apply first_transition_valid in Hx.
-        pose proof (protocol_transition_destination PreX Hx) as Hs.
-        simpl in *. subst oom.
-        specialize (Hno_resend _ _ _ _ _ Hx) as Hnrs.
-        destruct Hnrs as [_ Hnrs].
-        elim Hnrs.
-        apply proper_received; [assumption|].
-        apply has_been_received_consistency; [assumption|assumption|].
-        eexists is,_,Htr'.
-        apply Exists_app. left. assumption.
+    induction Htr using finite_protocol_trace_rev_ind; intros.
+    - rapply @finite_ptrace_empty.
+      apply initial_is_protocol. assumption.
+    - assert (trace_received_not_sent_before_or_after_invariant tr P) as Htrm'.
+      { intros m [Hrecv Hsend]. apply (Htrm m);clear Htrm.
+        split;[apply Exists_app;left;assumption|].
+        contradict Hsend.
+        unfold trace_has_message in Hsend.
+        rewrite Exists_app, Exists_cons, Exists_nil in Hsend.
+        simpl in Hsend.
+        cut (oom <> Some m);[tauto|clear Hsend].
+        intros ->.
+        cut (has_been_received X sf m);[apply (Hno_resend _ _ _ _ _ Hx)|].
+        apply (has_been_received_step_update Hx);right.
+        erewrite oracle_partial_trace_update.
+        - left;exact Hrecv.
+        - apply has_been_received_stepwise_from_trace.
+        - apply ptrace_add_default_last. apply Htr.
       }
-      specialize (IHtr (conj Htr Hinit)).
-      apply (finite_protocol_trace_from_app_iff ((pre_loaded_vlsm X P) )).
-      split; [assumption|].
-      apply finite_ptrace_last_pstate in IHtr as Hlst.
-      match type of Hx with
-      | finite_protocol_trace_from _ ?s _ => remember s as tr_last
-      end.
-      match type of Hlst with
-      | protocol_state_prop _ ?l => replace l with tr_last in *
-      end.
-      change [x] with ([] ++ [x]).
-      inversion Hx. subst s' tl. clear Hx H2.
-      replace (destination x) with s in Htr' by (subst x;reflexivity).
-      apply (extend_right_finite_trace_from (pre_loaded_vlsm X P)).
-      + apply (finite_ptrace_empty (pre_loaded_vlsm X P)).
-        assumption.
-      + simpl. split; [|apply H3]. split; [assumption|].
-        destruct (id H3) as [[_ [_ Hv]] _]. simpl in *.
-        split; [|apply Hv].
-        destruct iom as [m|]; [|apply option_protocol_message_None].
-        apply option_protocol_message_Some.
-        assert (Hdec : Decision (List.Exists (field_selector output m) (tr ++ [x]))).
-        { apply (@Exists_dec _). intros. apply decide_eq. }
-        destruct (decide (List.Exists (field_selector output m) (tr ++ [x]))).
-        * apply Exists_app in e.
-          destruct e as [e|e]; [apply (protocol_trace_output_is_protocol _ _ _ IHtr _ e)|].
-          inversion e; [|inversion H1]. subst x0 l0.
-          rewrite <- H in H1. simpl in H1. subst oom.
-          pose proof (protocol_transition_destination PreX H3) as Hs.
-          apply Hno_resend in H3.
-          destruct H3 as [_ Hnrs].
-          elim Hnrs.
-          apply proper_received; [assumption|].
-          apply has_been_received_consistency; [assumption|assumption|].
-          exists is,(tr ++ [x]),Htr'.
-          apply Exists_app. right. constructor. subst. reflexivity.
-        * spec Htrm m. spec Htrm.
-          { split; [| assumption].
-            apply Exists_app. right. left. subst. reflexivity.
-          }
-          apply protocol_message_prop_iff. left.
-          cut (vinitial_message_prop ((pre_loaded_vlsm X P)) m).
-          { intro Hm. exists (exist _ m Hm). reflexivity. }
-          right. assumption.
+      specialize (IHHtr Htrm').
+      apply (extend_right_finite_trace_from _ IHHtr).
+      repeat split;try apply Hx;
+      [apply finite_ptrace_last_pstate;assumption|].
+      destruct iom as [m|];[|apply option_protocol_message_None].
+      (* If m was sent during tr, it is protocol because it was
+         produced in a valid (by IHHtr) trace.
+         If m was not sent during tr, 
+       *)
+      assert (Decision (trace_has_message (field_selector output) m tr)) as [Hsent|Hnot_sent].
+      apply (@Exists_dec _). intros. apply decide_eq.
+      + exact (protocol_trace_output_is_protocol _ _ _ IHHtr _ Hsent).
+      + apply initial_message_is_protocol.
+        right. apply Htrm.
+        split.
+        * apply Exists_app. right;apply Exists_cons. left;reflexivity.
+        * intro Hsent;destruct Hnot_sent.
+          unfold trace_has_message in Hsent.
+          rewrite Exists_app, Exists_cons, Exists_nil in Hsent.
+          destruct Hsent as [Hsent|[[=->]|[]]];[assumption|exfalso].
+          apply Hno_resend in Hx as Hx'.
+          apply (proj2 Hx');clear Hx'.
+          rewrite (has_been_received_step_update Hx).
+          left;reflexivity.
   Qed.
 
   Lemma lift_preloaded_state_to_seeded

@@ -141,24 +141,14 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
         apply VLSM_incl_finite_traces_characterization.
         intros.
         split; [|apply H].
-        destruct H as [Htr Hs].
-        induction tr using rev_ind.
-        - constructor. apply initial_is_protocol. assumption.
-        - apply finite_protocol_trace_from_app_iff in Htr.
-          destruct Htr as [Htr Hx].
-          specialize (IHtr Htr).
-          apply (finite_protocol_trace_from_app_iff Xi).
-          split; [assumption|].
-          apply (first_transition_valid Xi).
-          apply first_transition_valid in Hx.
+        induction H using finite_protocol_trace_rev_ind.
+        - apply (finite_ptrace_empty Xi). apply initial_is_protocol. assumption.
+        - apply (extend_right_finite_trace_from Xi);[assumption|].
           destruct Hx as [Hvx Htx].
           split; [|assumption].
-          match goal with
-          |- protocol_valid _ ?l ?siom =>
-            specialize (Hvalidating l siom)
-          end.
-          apply Hvalidating in Hvx.
-          apply projection_valid_protocol. assumption.
+          apply projection_valid_protocol.
+          apply Hvalidating.
+          assumption.
     Qed.
 
 (**

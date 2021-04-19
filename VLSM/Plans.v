@@ -248,24 +248,18 @@ Section protocol_plans.
     (Htr : finite_protocol_trace_from X s tr)
     : fst (apply_plan s (trace_to_plan tr)) = tr.
   Proof.
-    induction tr using rev_ind; try reflexivity.
-    apply finite_protocol_trace_from_app_iff in Htr.
-    destruct Htr as [Htr Hx].
-    specialize (IHtr Htr).
-    setoid_rewrite map_app. rewrite apply_plan_app.
-    specialize (apply_plan_last s (map _transition_item_to_plan_item tr)) as Hlst.
-    destruct (apply_plan s (map _transition_item_to_plan_item tr)) as (aitems, afinal)
-      eqn:Hapl.
-    setoid_rewrite Hapl in IHtr. simpl in IHtr.
+    induction Htr using finite_protocol_trace_from_rev_ind
+    ;[reflexivity|].
+    unfold trace_to_plan, _trace_to_plan.
+    rewrite map_app, apply_plan_app.
+    change (map _ tr) with (trace_to_plan tr).
+    specialize (apply_plan_last s (trace_to_plan tr)) as Hlst.
+    destruct (apply_plan s (trace_to_plan tr))
+      as (sitems,afinal) eqn:Hapl.
     simpl in *. subst.
-    apply first_transition_valid in Hx.
-    destruct Hx as [_ Ht].
-    unfold _transition_item_to_plan_item. simpl. unfold apply_plan, _apply_plan.
+    unfold _transition_item_to_plan_item, apply_plan, _apply_plan.
     simpl.
-    match goal with
-    |- context[vtransition X ?l ?lst] => replace (vtransition X l lst) with (destination x, output x)
-    end.
-    destruct x.
+    replace (vtransition X l _) with (sf,oom) by (symmetry;apply Hx).
     reflexivity.
   Qed.
 
