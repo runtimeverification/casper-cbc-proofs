@@ -371,9 +371,36 @@ Section capabilities.
         * inversion H; subst.
           right. left. reflexivity.
         * left. exact H.
-    - 
-Abort.
-
+    - split; intros H.
+      + right. exact H.
+      + destruct H.
+        * inversion H.
+        * exact H.
+    - split; intros H.
+      + right. exact H.
+      + destruct H.
+        * inversion H; subst.
+          inversion Hvalid.
+          destruct H1.
+          simpl in H2. unfold vvalid in H2. simpl in H2. inversion H2.
+        * exact H.
+    - rewrite filter_app.
+      rewrite filter_app.
+      rewrite map_app.
+      rewrite in_app_iff.
+      simpl. unfold isWitnessedBy. simpl.
+      destruct (bool_decide (component = component)) eqn:Heq.
+      2: { apply bool_decide_eq_false in Heq. contradiction. }
+      clear Heq.
+      simpl.
+      split.
+      + intros [H|H].
+        * right. exact H.
+        * inversion H.
+      + intros [H|H].
+        * inversion H.
+        * left. exact H.
+  Qed.
   
 End capabilities.
 
