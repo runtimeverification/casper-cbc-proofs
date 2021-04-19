@@ -93,7 +93,7 @@ Definition witnessOf (ob : Observation) : nat :=
   end.
 
 Definition isWitnessedBy (component : nat) (ob : Observation) : bool :=
-  witnessOf ob =? component.
+  bool_decide (witnessOf ob = component).
 
 Definition isReceive (ob : Observation) : bool :=
   match ob with
@@ -317,11 +317,62 @@ Section capabilities.
   Check (field_selector input).
   Check oracle_stepwise_props.
 
-  Definition elmo_input_message_oracle (l : list Observation) (m : Premessage) : Prop :=
-    List.In m (map messageOf (filter isReceive (filter (isWitnessedBy component) l))).
+  Definition elmo_input_message_oracle (s : Prestate) (m : Premessage) : Prop :=
+    List.In m (map messageOf (filter isReceive (filter (isWitnessedBy component) (observationsOf s)))).
 
-  Definition elmo_output_message_oracle (l : list Observation) (m : Premessage) : Prop :=
-    List.In m (map messageOf (filter isSend (filter (isWitnessedBy component) l))).
+  Definition elmo_output_message_oracle (s : Prestate) (m : Premessage) : Prop :=
+    List.In m (map messageOf (filter isSend (filter (isWitnessedBy component) (observationsOf s)))).
+
+  Lemma elmo_input_message_oracle_no_inits:
+    forall (s : vstate vlsm),
+      initial_state_prop (VLSM_sign := sign vlsm) s ->
+      forall m, ~elmo_input_message_oracle s m.
+  Proof.
+    intros s Hinitial m Hcontra.
+    simpl in Hinitial. unfold elmo_initial_state_prop in Hinitial.
+    unfold elmo_input_message_oracle in Hcontra. rewrite Hinitial in Hcontra.
+    simpl in Hcontra.
+    exact Hcontra.
+  Qed.
+
+
+  Lemma elmo_input_message_oracle_step_update:
+    forall l s im s' om,      
+      protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
+      forall msg, elmo_input_message_oracle s' msg <->
+                  ((field_selector input) msg {|l:=l; input:=im; destination:=s'; output:=om|}
+                   \/ elmo_input_message_oracle s msg).
+  Proof.
+    intros l s im s' om Hpt msg.
+    simpl.
+
+    destruct Hpt as [Hvalid Htransition].
+    simpl in Htransition.
+    unfold vtransition in Htransition. simpl in Htransition.
+    
+    unfold elmo_input_message_oracle.
+    destruct l, im; inversion Htransition; subst; clear Htransition; simpl.
+    - rewrite filter_app.
+      rewrite filter_app.
+      rewrite map_app.
+      rewrite in_app_iff.
+      simpl. unfold isWitnessedBy. simpl.
+      destruct (bool_decide (component = component)) eqn:Heq.
+      2: { apply bool_decide_eq_false in Heq. contradiction. }
+      clear Heq.
+      simpl.
+      split.
+      + intros [H|H].
+        * right. exact H.
+        * left. destruct H as [H|H].
+          ** congruence.
+          ** inversion H.
+      + intros [H|H].
+        * inversion H; subst.
+          right. left. reflexivity.
+        * left. exact H.
+    - 
+Abort.
 
   
 End capabilities.
