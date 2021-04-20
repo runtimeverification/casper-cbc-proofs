@@ -317,31 +317,44 @@ Section capabilities.
   Check (field_selector input).
   Check oracle_stepwise_props.
 
-  Definition elmo_input_message_oracle (s : Prestate) (m : Premessage) : Prop :=
+  Definition elmo_has_been_received_oracle (s : Prestate) (m : Premessage) : Prop :=
     List.In m (map messageOf (filter isReceive (filter (isWitnessedBy component) (observationsOf s)))).
 
-  Definition elmo_output_message_oracle (s : Prestate) (m : Premessage) : Prop :=
+  Definition elmo_has_been_sent_oracle (s : Prestate) (m : Premessage) : Prop :=
     List.In m (map messageOf (filter isSend (filter (isWitnessedBy component) (observationsOf s)))).
 
-  Lemma elmo_input_message_oracle_no_inits:
+  Lemma elmo_has_been_received_oracle_dec : RelDecision elmo_has_been_received_oracle.
+  Proof.
+    intros x y.
+    apply list_in_dec.
+  Qed.
+
+  Lemma elmo_has_been_sent_oracle_dec : RelDecision elmo_has_been_sent_oracle.
+  Proof.
+    intros x y.
+    apply list_in_dec.
+  Qed.
+
+  
+  Lemma elmo_has_been_received_oracle_no_inits:
     forall (s : vstate vlsm),
       initial_state_prop (VLSM_sign := sign vlsm) s ->
-      forall m, ~elmo_input_message_oracle s m.
+      forall m, ~elmo_has_been_received_oracle s m.
   Proof.
     intros s Hinitial m Hcontra.
     simpl in Hinitial. unfold elmo_initial_state_prop in Hinitial.
-    unfold elmo_input_message_oracle in Hcontra. rewrite Hinitial in Hcontra.
+    unfold elmo_has_been_received_oracle in Hcontra. rewrite Hinitial in Hcontra.
     simpl in Hcontra.
     exact Hcontra.
   Qed.
 
 
-  Lemma elmo_input_message_oracle_step_update:
+  Lemma elmo_has_been_received_oracle_step_update:
     forall l s im s' om,      
       protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
-      forall msg, elmo_input_message_oracle s' msg <->
+      forall msg, elmo_has_been_received_oracle s' msg <->
                   ((field_selector input) msg {|l:=l; input:=im; destination:=s'; output:=om|}
-                   \/ elmo_input_message_oracle s msg).
+                   \/ elmo_has_been_received_oracle s msg).
   Proof.
     intros l s im s' om Hpt msg.
     simpl.
@@ -350,7 +363,7 @@ Section capabilities.
     simpl in Htransition.
     unfold vtransition in Htransition. simpl in Htransition.
     
-    unfold elmo_input_message_oracle.
+    unfold elmo_has_been_received_oracle.
     destruct l, im; inversion Htransition; subst; clear Htransition; simpl.
     - rewrite filter_app.
       rewrite filter_app.
@@ -402,33 +415,33 @@ Section capabilities.
         * left. exact H.
   Qed.
 
-  Definition elmo_input_message_oracle_stepwise_props
-    : @oracle_stepwise_props _ vlsm (field_selector input) elmo_input_message_oracle
-    := {| oracle_no_inits := elmo_input_message_oracle_no_inits;
-          oracle_step_update := elmo_input_message_oracle_step_update;
+  Definition elmo_has_been_received_oracle_stepwise_props
+    : @oracle_stepwise_props _ vlsm (field_selector input) elmo_has_been_received_oracle
+    := {| oracle_no_inits := elmo_has_been_received_oracle_no_inits;
+          oracle_step_update := elmo_has_been_received_oracle_step_update;
        |}
   .
 
 
-  Lemma elmo_output_message_oracle_no_inits:
+  Lemma elmo_has_been_sent_oracle_no_inits:
     forall (s : vstate vlsm),
       initial_state_prop (VLSM_sign := sign vlsm) s ->
-      forall m, ~elmo_output_message_oracle s m.
+      forall m, ~elmo_has_been_sent_oracle s m.
   Proof.
     intros s Hinitial m Hcontra.
     simpl in Hinitial. unfold elmo_initial_state_prop in Hinitial.
-    unfold elmo_output_message_oracle in Hcontra. rewrite Hinitial in Hcontra.
+    unfold elmo_has_been_sent_oracle in Hcontra. rewrite Hinitial in Hcontra.
     simpl in Hcontra.
     exact Hcontra.
   Qed.
 
 
-  Lemma elmo_output_message_oracle_step_update:
+  Lemma elmo_has_been_sent_oracle_step_update:
     forall l s im s' om,      
       protocol_transition (pre_loaded_with_all_messages_vlsm vlsm) l (s,im) (s',om) ->
-      forall msg, elmo_output_message_oracle s' msg <->
+      forall msg, elmo_has_been_sent_oracle s' msg <->
                   ((field_selector output) msg {|l:=l; input:=im; destination:=s'; output:=om|}
-                   \/ elmo_output_message_oracle s msg).
+                   \/ elmo_has_been_sent_oracle s msg).
   Proof.
     intros l s im s' om Hpt msg.
     simpl.
@@ -437,7 +450,7 @@ Section capabilities.
     simpl in Htransition.
     unfold vtransition in Htransition. simpl in Htransition.
     
-    unfold elmo_output_message_oracle.
+    unfold elmo_has_been_sent_oracle.
     destruct l, im; inversion Htransition; subst; clear Htransition; simpl.
     - rewrite filter_app.
       rewrite filter_app.
@@ -485,14 +498,27 @@ Section capabilities.
         * left. exact H.
   Qed.
 
-  Definition elmo_output_message_oracle_stepwise_props
-    : @oracle_stepwise_props _ vlsm (field_selector output) elmo_output_message_oracle
-    := {| oracle_no_inits := elmo_output_message_oracle_no_inits;
-          oracle_step_update := elmo_output_message_oracle_step_update;
+  Definition elmo_has_been_sent_oracle_stepwise_props
+    : @oracle_stepwise_props _ vlsm (field_selector output) elmo_has_been_sent_oracle
+    := {| oracle_no_inits := elmo_has_been_sent_oracle_no_inits;
+          oracle_step_update := elmo_has_been_sent_oracle_step_update;
        |}
   .
 
+  Lemma elmo_has_been_sent_capability : has_been_sent_capability vlsm.
+  Proof.
+    eapply has_been_sent_capability_from_stepwise.
+    2: apply elmo_has_been_sent_oracle_stepwise_props.
+    apply elmo_has_been_sent_oracle_dec.
+  Qed.
 
+  Lemma elmo_has_been_received_capability : has_been_received_capability vlsm.
+  Proof.
+    eapply has_been_received_capability_from_stepwise.
+    2: apply elmo_has_been_received_oracle_stepwise_props.
+    apply elmo_has_been_received_oracle_dec.
+  Qed.
+  
   
 End capabilities.
 
