@@ -519,8 +519,46 @@ Section capabilities.
     apply elmo_has_been_received_oracle_dec.
   Qed.
   
-  
 End capabilities.
+
+
+
+Lemma isProtocol_implies_protocol weights treshold m:
+  isProtocol (stateOf m) (authorOf m) weights treshold  ->
+  let vlsm := mk_vlsm (elmo_vlsm_machine (authorOf m) weights treshold) in
+  protocol_message_prop vlsm m.
+Proof.
+  intros Hproto.
+  unfold isProtocol in Hproto.
+  remember (observationsOf (stateOf m)) as l.
+  revert Heql.
+  induction l; intros Heql.
+  - simpl in Hproto. simpl in Heql.
+    unfold protocol_message_prop.
+    destruct m. destruct p. simpl in Heql. subst l. simpl.
+    
+    set (mk_vlsm (elmo_vlsm_machine n weights treshold)) as vlsm.
+    pose proof (Hgen := protocol_generated vlsm Send).
+    eexists.
+    simpl in Hgen.
+    assert (Hpp0: protocol_prop vlsm (Cprestate [], None)).
+    { apply protocol_initial.
+      reflexivity.
+      reflexivity.
+    }
+    specialize (Hgen _ _ Hpp0). clear Hpp0.
+
+    specialize (Hgen (Cprestate []) None).
+    simpl in Hgen.
+    apply Hgen.
+    2: auto.
+    clear Hgen.
+    apply protocol_initial. reflexivity. reflexivity.
+  - (* Step *)
+    
+Abort.    
+
+  
 
 (* m1 is a prefix of m2 *)
 Definition is_prefix_of (m1 m2 : Premessage) : Prop :=
