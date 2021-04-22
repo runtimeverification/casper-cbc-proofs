@@ -205,11 +205,12 @@ Next Obligation.
 Defined.
 
 
-Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : R)
-           (args : bool * nat * list Observation * list Prestate * set nat) (ob : Observation)
-  : bool * nat * list Observation * list Prestate * set nat
+Definition isProtocol_step
+           (component : nat) (weights : list pos_R) (treshold : R) (observations : list Observation)
+           (args : bool * nat * list Prestate * set nat) (ob : Observation)
+  : bool * nat * list Prestate * set nat
   :=
-    let: (result, i, observations, curState, curEq) := args in
+    let: (result, i,  curState, curEq) := args in
     match result with
     | false => args
     | true =>
@@ -222,30 +223,30 @@ Definition isProtocol_step (component : nat) (weights : list pos_R) (treshold : 
       let i := S i in
       (* w <> component *)
       if negb (bool_decide (w=component)) then
-        (false, i, observations, curState, curEq)
+        (false, i, curState, curEq)
       else (* w = component *)
         if bool_decide (a=component) then
           match l with
           | Send =>
             let result := bool_decide (observationsOf p = prefix) in
-            (result, i, observations, curState, curEq)
+            (result, i, curState, curEq)
           | Receive =>
             let result := bool_decide (In (Cobservation Send m component) prefix) in
-            (result, i, observations, curState, curEq)
+            (result, i, curState, curEq)
           end
         else
           (* a <> component *)
           match l with
           | Send =>
             let result := false in
-            (result, i, observations, curState, curEq)
+            (result, i, curState, curEq)
           | Receive =>
             if negb (fullNode m prefix component) then
               let result := false in
-              (result, i, observations, curState, curEq)
+              (result, i, curState, curEq)
             else
               let: (result, curState, curEq) := update m component weights treshold curState curEq in
-              (result, i, observations, curState, curEq)
+              (result, i, curState, curEq)
           end 
     end.
 
@@ -257,8 +258,8 @@ Definition isProtocol
   :=
     let initialState := map (fun x => Cprestate nil) weights in
     let initialEq := @nil nat in
-    let result := (fold_left (isProtocol_step component weights treshold) (observationsOf prestate) (true, 0, observationsOf prestate, initialState, initialEq )) in
-    fst (fst (fst (fst result))).
+    let result := (fold_left (isProtocol_step component weights treshold (observationsOf prestate)) (observationsOf prestate) (true, 0, initialState, initialEq )) in
+    fst (fst (fst result)).
 
 Definition elmo_valid
            (weights : list pos_R)
@@ -521,6 +522,7 @@ Section capabilities.
   
 End capabilities.
 
+(*
 Lemma isProtocol_step_len component weights treshold b n l ss es o:
   let '(b', n', l', ss', es') := isProtocol_step component weights treshold (b, n, l, ss, es) o in
   l' = l.
@@ -558,13 +560,60 @@ Proof.
     destruct u as [[b3 ss3] es3].
     destruct fn1, fn2; simpl in *; inversion H0; inversion H1; subst; reflexivity.
 Qed.
+*)
 
+Lemma isProtocol_step_in component weights treshold l1 l2 args x:
+  let step := isProtocol_step component weights treshold in
+  step (l1 ++ x :: l2) args x =
+  step (l1 ++ [x]) args x.
+Proof.
+  simpl.
+  unfold isProtocol_step.
+  destruct x. destruct p.
+  destruct args as [[[b i] curState] curEq].
+  induction l1.
+  - destruct l; destruct b; destruct p; simpl; try reflexivity;
+    destruct (bool_decide (n0 = component));
+    destruct (bool_decide (n = component)); simpl; try reflexivity.
+    + remember (Cobservation Receive (Cpremessage (Cprestate l) n0) n) as x.
+      induction i.
+      * reflexivity.
+      * simpl.
+        destruct
+          (bool_decide (In (Cobservation Send (Cpremessage (Cprestate l) n0) component) (firstn i (x :: l2))))
+          eqn:Heq1;
+          destruct (bool_decide (In (Cobservation Send (Cpremessage (Cprestate l) n0) component) (firstn i [x])))
+                   eqn:Heq2;
+          inversion IHi; clear IHi;
+          simpl;
+          repeat (apply pair_equal_spec; split);
+          try reflexivity;
+          apply bool_decide_iff;
+          split; subst x; intros [H|H]; try inversion H
+        .
+        -- apply bool_decide_eq_true in Heq2.
+           (* Heq2 is a contradiction *)
+           destruct i; simpl in Heq2; try contradiction.
+           destruct Heq2; try contradiction.
+           inversion H0.
+           rewrite firstn_nil in H0.
+           inversion H0.
+        -- (* H is a contradiction *)
+          rewrite firstn_nil in H. inversion H.
+        -- (* Heq1 contradicts H *)
+          apply bool_decide_eq_false in Heq1.
+          destruct i; simpl in H; try contradiction.
+          destruct l2; simpl in H; try contradiction.
+          destruct H; subst.
+          ++ simpl in Heq1. exfalso. apply Heq1.
+             right. simpl in Heq2.
+Abort.
     
+  
 
 Lemma fold_isProtocol_step_app component weights treshold l1 l2 b n s es:
-  fold_left (isProtocol_step component weights treshold) l1 (b, n, l1 ++ l2, s, es)
-  = (let '(b', n', l', s', es') := fold_left (isProtocol_step component weights treshold) l1 (b, n, l1, s, es) in
-    (b', n', l'++l2, s', es')).
+  fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l1 (b, n, s, es)
+  = fold_left (isProtocol_step component weights treshold l1) l1 (b, n, s, es).
 Proof.
   generalize dependent l2.
   generalize dependent b.
@@ -586,8 +635,8 @@ Proof.
     { subst. reflexivity. }
     destruct H as [l1' [x Hl1]].
     remember (isProtocol_step component weights treshold) as step.
-    remember (fold_left step l1 (b, n, l1, s, es)) as fl.
-    destruct fl as [[[[b' n'] l'] s'] es'].
+    remember (fold_left (step l1) l1 (b, n, s, es)) as fl.
+    destruct fl as [[[b' n'] s'] es'].
     rewrite Hl1. rewrite fold_left_app. simpl.
     rewrite -app_assoc.
 
@@ -597,8 +646,8 @@ Proof.
     { lia. }
     simpl.
 
-    remember (fold_left step l1' (b, n, l1', s, es)) as fl'.
-    destruct fl' as [[[[b'' n''] l''] s''] es''].
+    remember (fold_left (step l1') l1' (b, n, s, es)) as fl'.
+    destruct fl' as [[[b'' n''] s''] es''].
     subst l1.
     (*rewrite Hl1 in Heqfl.*)
 
@@ -606,6 +655,8 @@ Proof.
     rewrite IHlen in Heqfl.
     { lia. }
     rewrite -Heqfl' in Heqfl.
+    rewrite Heqfl. rewrite Heqfl'.
+    Search n.
     Print isProtocol_step.
 
     
@@ -654,7 +705,7 @@ Proof.
 
     
     rewrite IHl1.
-  
+
 
 Lemma isProtocol_implies_protocol weights treshold m:
   isProtocol (stateOf m) (authorOf m) weights treshold  ->
@@ -687,14 +738,13 @@ Proof.
     clear Hgen.
     apply protocol_initial. reflexivity. reflexivity.
   - (* Step *)
-    Search fold_left "++".
     destruct x.
     rewrite fold_left_app in Hproto. simpl in Hproto.
     unfold isProtocol_step in Hproto at 1.
-    remember (fold_left (isProtocol_step n weights treshold) l
-                        (true, 0, l ++ [Cobservation l0 p n0], map (fun=> Cprestate []) weights, []))
+    remember (fold_left (isProtocol_step n weights treshold (l ++ [Cobservation l0 p n0])) l
+                        (true, 0, map (fun=> Cprestate []) weights, []))
       as fl.
-    destruct fl as [[[[b n'] obs] pss] sn].
+    destruct fl as [[[b n'] pss] sn].
     simpl in Hproto.
     destruct b.
     2: { simpl in Hproto. inversion Hproto. }
@@ -707,9 +757,12 @@ Proof.
       admit.
     + simpl in *.
       admit.
-    + destruct (fullNode (Cpremessage p n1) (firstn n' obs) n).
+    + destruct (fullNode (Cpremessage p n1) (firstn n' (l ++ [Cobservation Receive (Cpremessage p n1) n0])) n).
       2: { simpl in Hproto. inversion Hproto. }
-
+      simpl in Hproto. simpl in Heqfl.
+      (* We want to use Heqfl as the premise of IHl. But to do that, we must get rid
+         of the "++ [...]" part. *)
+      
       (*
       simpl in Hproto.
       destruct (update (Cpremessage p n1) n weights treshold pss sn).
@@ -719,10 +772,7 @@ Proof.
       clear Hproto.
 
 
-    (*rewrite <- Heqfl in IHl.*)
-
-
-
+      (*rewrite <- Heqfl in IHl.*)
       
     destruct (fold_left (isProtocol_step n weights treshold))
     simpl. simpl in IHl.
