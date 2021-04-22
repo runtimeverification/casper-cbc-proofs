@@ -521,7 +521,78 @@ Section capabilities.
   
 End capabilities.
 
+Lemma isProtocol_step_len component weights treshold b n l ss es o:
+  let '(b', n', l', ss', es') := isProtocol_step component weights treshold (b, n, l, ss, es) o in
+  length l' = length l.
+Proof.
+  induction l.
+  - simpl.
+    destruct b,o,p. simpl.
+    2: { reflexivity. }
+    destruct (bool_decide (n0 = component)).
+    2: { reflexivity. }
+    simpl.
+    destruct (bool_decide (n1 = component)); simpl; destruct l; try reflexivity.
+    rewrite firstn_nil.
+    destruct (fullNode (Cpremessage p n1) [] component); simpl.
+    2: { reflexivity. }
+    remember (update (Cpremessage p n1) component weights treshold ss es) as updated.
+    destruct updated as [[b' s'] es'].
+    reflexivity.
+  - remember (isProtocol_step component weights treshold) as step.
+    remember (step (b, n, l, ss, es) o) as result1.
+    destruct result1 as [[[[b1 n1] l1] ss1] es1].
+    remember (step (b, n, a::l, ss, es) o) as result2.
+    destruct result2 as [[[[b2 n2] l2] ss2] es2].
+    simpl.
+    rewrite Heqstep in Heqresult1,Heqresult2.
+    unfold isProtocol_step in Heqresult1,Heqresult2.
+    destruct b,o; simpl in *;
+      destruct p,(bool_decide (n0 = component)); simpl in *;
+        destruct l0, (bool_decide (n3 = component)); simpl in *;
+          inversion Heqresult1; inversion Heqresult2; subst; simpl; try reflexivity.
 
+    remember (fullNode (Cpremessage p n3) (firstn n l) component) as fn1.
+    remember (fullNode (Cpremessage p n3) (firstn n (a::l)) component) as fn2.
+    remember (update (Cpremessage p n3) component weights treshold ss es) as u.
+    destruct u as [[b3 ss3] es3].
+    destruct fn1, fn2; simpl in *; inversion H0; inversion H1; subst; reflexivity.
+Qed.
+
+    
+
+Lemma fold_isProtocol_step_app component weights treshold l1 l2 b n s es:
+  fold_left (isProtocol_step component weights treshold) l1 (b, n, l1 ++ l2, s, es)
+  = (let '(b', n', l', s', es') := fold_left (isProtocol_step component weights treshold) l1 (b, n, l1, s, es) in
+    (b', n', l'++l2, s', es')).
+Proof.
+  generalize dependent l2.
+  generalize dependent b.
+  generalize dependent n.
+  generalize dependent s.
+  generalize dependent es.
+  induction l1 using rev_ind; intros es s n b l2.
+  - reflexivity.
+  - set (isProtocol_step component weights treshold) as step.
+    remember (fold_left (isProtocol_step component weights treshold) l1 (b, n, l1, s, es)) as fl.
+    destruct fl as [[[[b' n'] l'] s'] es'].
+    rewrite fold_left_app. simpl.
+    rewrite <- app_assoc.
+    rewrite IHl1.
+    rewrite fold_left_app.
+    rewrite IHl1.
+    simpl.
+    rewrite <- Heqfl.
+    (* We need to apply IHl1 for l' *)
+    rewrite IHl1.
+    Search fold_left.
+    Check app_assoc.
+    destruct b, (bool_decide (witnessOf a = component)); simpl.
+    4: {  rewrite <- Heqfl.
+
+    
+    rewrite IHl1.
+  
 
 Lemma isProtocol_implies_protocol weights treshold m:
   isProtocol (stateOf m) (authorOf m) weights treshold  ->
@@ -530,12 +601,11 @@ Lemma isProtocol_implies_protocol weights treshold m:
 Proof.
   intros Hproto.
   unfold isProtocol in Hproto.
-  remember (observationsOf (stateOf m)) as l.
-  revert Heql.
-  induction l; intros Heql.
-  - simpl in Hproto. simpl in Heql.
+  destruct m. destruct p. simpl in Hproto. simpl.
+  induction l using rev_ind.
+  - simpl in Hproto.
     unfold protocol_message_prop.
-    destruct m. destruct p. simpl in Heql. subst l. simpl.
+    simpl.
     
     set (mk_vlsm (elmo_vlsm_machine n weights treshold)) as vlsm.
     pose proof (Hgen := protocol_generated vlsm Send).
@@ -555,7 +625,49 @@ Proof.
     clear Hgen.
     apply protocol_initial. reflexivity. reflexivity.
   - (* Step *)
-    
+    Search fold_left "++".
+    destruct x.
+    rewrite fold_left_app in Hproto. simpl in Hproto.
+    unfold isProtocol_step in Hproto at 1.
+    remember (fold_left (isProtocol_step n weights treshold) l
+                        (true, 0, l ++ [Cobservation l0 p n0], map (fun=> Cprestate []) weights, []))
+      as fl.
+    destruct fl as [[[[b n'] obs] pss] sn].
+    simpl in Hproto.
+    destruct b.
+    2: { simpl in Hproto. inversion Hproto. }
+    destruct (bool_decide (n0 = n)).
+    2: { simpl in Hproto. inversion Hproto. }
+    simpl in Hproto.
+    destruct p. simpl in Hproto.
+    destruct (bool_decide (n1 = n)), l0.
+    + simpl in Hproto.
+      admit.
+    + simpl in *.
+      admit.
+    + destruct (fullNode (Cpremessage p n1) (firstn n' obs) n).
+      2: { simpl in Hproto. inversion Hproto. }
+
+      (*
+      simpl in Hproto.
+      destruct (update (Cpremessage p n1) n weights treshold pss sn).
+      destruct p0. simpl in Hproto. Search b.
+       *)
+      (* Not usefull. Clear it. *)
+      clear Hproto.
+
+
+    (*rewrite <- Heqfl in IHl.*)
+
+
+
+      
+    destruct (fold_left (isProtocol_step n weights treshold))
+    simpl. simpl in IHl.
+    destruct (bool_decide (n0 = n)).
+    + simpl in Hproto.
+      admit.
+    + simpl in Hproto.
 Abort.    
 
   
