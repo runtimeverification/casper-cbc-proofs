@@ -523,7 +523,7 @@ End capabilities.
 
 Lemma isProtocol_step_len component weights treshold b n l ss es o:
   let '(b', n', l', ss', es') := isProtocol_step component weights treshold (b, n, l, ss, es) o in
-  length l' = length l.
+  l' = l.
 Proof.
   induction l.
   - simpl.
@@ -571,16 +571,78 @@ Proof.
   generalize dependent n.
   generalize dependent s.
   generalize dependent es.
-  induction l1 using rev_ind; intros es s n b l2.
+  
+  remember (length l1) as len.
+  assert (Hlen: length l1 <= len).
+  { lia. }
+  clear Heqlen.
+  revert Hlen.
+  generalize dependent l1.
+  induction len; intros l1 Hlen es s n b l2.
+  - destruct l1.
+    + reflexivity.
+    + simpl in Hlen. lia.
+  - destruct (null_or_exists_last l1).
+    { subst. reflexivity. }
+    destruct H as [l1' [x Hl1]].
+    remember (isProtocol_step component weights treshold) as step.
+    remember (fold_left step l1 (b, n, l1, s, es)) as fl.
+    destruct fl as [[[[b' n'] l'] s'] es'].
+    rewrite Hl1. rewrite fold_left_app. simpl.
+    rewrite -app_assoc.
+
+    assert (Hlenl1': length l1' <= len).
+    { subst l1. rewrite app_length in Hlen. simpl in Hlen. lia. }
+    rewrite IHlen.
+    { lia. }
+    simpl.
+
+    remember (fold_left step l1' (b, n, l1', s, es)) as fl'.
+    destruct fl' as [[[[b'' n''] l''] s''] es''].
+    subst l1.
+    (*rewrite Hl1 in Heqfl.*)
+
+    rewrite fold_left_app in Heqfl. simpl in Heqfl.
+    rewrite IHlen in Heqfl.
+    { lia. }
+    rewrite -Heqfl' in Heqfl.
+    Print isProtocol_step.
+
+    
+    destruct l''.
+    { admit. }
+    simpl.
+    
+    fold (fold_left step [o] (b'',n'', o, s'', es''))
+
+    rewrite IHlen.
+
+
+    rewrite IHlen.
+    { lia. }
+    rewrite fold_left_app.
+    rewrite IHl1.
+    { lia. }
+    simpl.
+    rewrite <- Heqfl.
+    (* We need to apply IHl1 for l' *)
+    rewrite IHl1.
+
+
+    
+  induction l1 using rev_ind; intros Hlen es s n b l2.
   - reflexivity.
   - set (isProtocol_step component weights treshold) as step.
     remember (fold_left (isProtocol_step component weights treshold) l1 (b, n, l1, s, es)) as fl.
     destruct fl as [[[[b' n'] l'] s'] es'].
     rewrite fold_left_app. simpl.
     rewrite <- app_assoc.
+    rewrite app_length in Hlen. simpl in Hlen.
     rewrite IHl1.
+    { lia. }
     rewrite fold_left_app.
     rewrite IHl1.
+    { lia. }
     simpl.
     rewrite <- Heqfl.
     (* We need to apply IHl1 for l' *)
