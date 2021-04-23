@@ -3,8 +3,8 @@ Require Import Arith.
 Require Import List ListSet.
 Require Import Lia.
 Import ListNotations.
-Require Import Coq.Logic.FinFun.
-From CasperCBC.Lib Require Import Preamble.
+Require Coq.Logic.FinFun.
+From CasperCBC.Lib Require Import Preamble ListTactics.
 
 (** * Utility lemmas about lists *)
 
@@ -415,6 +415,20 @@ Proof.
   - apply IHl1; try assumption; intros.
     + apply H1. right. assumption.
     + apply H2 in H. intro. apply H. right. assumption.
+Qed.
+
+Lemma NoDup_map_injective {A B} : forall (f : A -> B) xs,
+    (forall x y, In x xs -> In y xs ->
+            f x = f y -> x = y) ->
+    NoDup xs -> NoDup (map f xs).
+Proof using.
+  induction xs; intros.
+  - constructor.
+  - simpl. invc_NoDup. constructor.
+    + intro. do_in_map.
+      assert (x = a) by intuition.
+      congruence.
+    + intuition.
 Qed.
 
 Lemma last_is_last {A} : forall (l : list A) (x dummy: A),
@@ -1058,7 +1072,7 @@ Qed.
 Lemma forall_finite
   {index : Type}
   {index_listing : list index}
-  (Hfinite_index : Full index_listing)
+  (Hfinite_index : FinFun.Full index_listing)
   (P : index -> Prop)
   : (forall n : index, P n) <-> Forall P index_listing.
 Proof.
@@ -1071,7 +1085,7 @@ Qed.
 Lemma exists_finite
   {index : Type}
   {index_listing : list index}
-  (Hfinite_index : Full index_listing)
+  (Hfinite_index : FinFun.Full index_listing)
   (P : index -> Prop)
   : (exists n : index, P n) <-> List.Exists P index_listing.
 Proof.

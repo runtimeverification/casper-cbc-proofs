@@ -1,12 +1,14 @@
-Require Import
-  List Coq.Vectors.Fin
+Require Import 
+(*
   Arith.Compare_dec Lia
-  Program
+  Program *)
+  Lia List
   .
 Import ListNotations.
 From CasperCBC
   Require Import
     Preamble
+    Fin
     VLSM.Common
     .
 
@@ -60,7 +62,7 @@ Inductive MachineDescriptor : Type
 
 
 Definition equivocator_type : VLSM_type message :=
-  {| state := {n : nat & Fin.t (S n) -> vstate X};
+  {| state := {n : nat & fin (S n) -> vstate X};
      label := vlabel X * MachineDescriptor
   |}.
 
@@ -116,8 +118,8 @@ Definition equivocator_state_project
   : option (vstate X)
   :=
   let (n, s) := bs in
-  match (le_lt_dec (S n) i) with
-  | right lt_in => Some (s (of_nat_lt lt_in))
+  match fin_of_nat i (S n) with
+  | inleft lt_in => Some (s lt_in)
   | _ =>  None
   end.
 
@@ -138,25 +140,25 @@ Definition equivocator_state_descriptor_project
   | Existing j _ =>
     match equivocator_state_project s j with
     | Some sj => sj
-    | None => projT2 s F1
+    | None => projT2 s None
     end
   end.
 
 Definition equivocator_state_update
   (bs : equivocator_state)
   (n := projT1 bs)
-  (i : Fin.t (S n))
+  (i : fin (S n))
   (si : vstate X)
   : equivocator_state
   :=
   existT _ n
-    (fun j => if Fin.eq_dec i j then si else projT2 bs j).
+    (fun j => if @decide (i = j) (fin_eq_decision _ i j) then si else projT2 bs j).
 
 (** Some basic properties for 'equivocator_state_update' *)
 
 Lemma equivocator_state_update_size
   (bs : equivocator_state)
-  (i : Fin.t (S (projT1 bs)))
+  (i : fin (S (projT1 bs)))
   (si : vstate X)
   : projT1 (equivocator_state_update bs i si) = projT1 bs.
 Proof.
@@ -166,22 +168,22 @@ Qed.
 Lemma equivocator_state_update_eq
   (bs : equivocator_state)
   (n := projT1 bs)
-  (i : Fin.t (S n))
+  (i : fin (S n))
   (si : vstate X)
   : projT2 (equivocator_state_update bs i si) i = si.
 Proof.
-  simpl. rewrite eq_dec_if_true; reflexivity.
+  simpl. rewrite decide_True; reflexivity.
 Qed.
 
 Lemma equivocator_state_update_neq
   (bs : equivocator_state)
   (n := projT1 bs)
-  (i j : Fin.t (S n))
+  (i j : fin (S n))
   (si : vstate X)
   (Hij : i <> j)
   : projT2 (equivocator_state_update bs i si) j = projT2 bs j.
 Proof.
-  simpl. rewrite eq_dec_if_false by assumption. reflexivity.
+  simpl. rewrite decide_False by assumption. reflexivity.
 Qed.
 
 (**
@@ -195,16 +197,12 @@ Program Definition equivocator_state_extend
   let (n, is) := bs in
   existT _ (S n)
     (fun j =>
-      let (nj, Hnj) := to_nat j in
-      if (nat_eq_dec nj (S n)) then s else is (@of_nat_lt nj (S n) _)
+      let Snj := fin_to_nat j in
+      match fin_of_nat Snj (S n) with
+      | inleft nj => is nj
+      | _ => s
+      end
     ).
-Next Obligation.
-  lia.
-Defined.
-
-(** The original state index is present in any equivocator state*)
-Lemma Hzero (s : equivocator_state) : 0 < S (projT1 s).
-Proof. lia. Qed.
 
 (* An [equivocator_state] has the [initial_state_prop]erty if it only
 contains one state of original machine, and that state is initial.
@@ -212,7 +210,7 @@ contains one state of original machine, and that state is initial.
 Definition equivocator_initial_state_prop
   (bs : equivocator_state)
   : Prop
-  := projT1 bs = 0 /\ vinitial_state_prop X (projT2 bs (of_nat_lt (Hzero bs))).
+  := projT1 bs = 0 /\ vinitial_state_prop X (projT2 bs None).
 
 Definition equivocator_initial_state
   := sig equivocator_initial_state_prop.
@@ -252,9 +250,8 @@ Definition equivocator_transition
   | NewMachine sn  => (* creating a new machine with initial state sn*)
     (equivocator_state_extend bs sn, None)
   | Existing i is_equiv => (* transition using the state of machine i *)
-    match (le_lt_dec (S n) i) with
-    | right lt_in =>
-      let ni := of_nat_lt lt_in in
+    match fin_of_nat i (S n) with
+    | inleft ni =>
       let si := s ni in
       let (si', om') := vtransition X l (si, om) in
       match is_equiv with
@@ -277,8 +274,12 @@ Definition equivocator_valid
   match snd bl with
   | NewMachine sn  => (* state is initial *)
     vinitial_state_prop X sn /\ om = None
-  | Existing i is_equiv => (* the index is good, and transition valid for it *)
-    exists (Hi : i < S n), vvalid X l (s (of_nat_lt Hi), om)
+  | Existing i is_equiv =>
+    (* the index is good, and transition valid for it *)
+    match fin_of_nat i (S n) with
+    | inleft ni => vvalid X l (s ni, om)
+    | _ => False
+    end
   end.
 
 Definition equivocator_vlsm_machine
@@ -351,12 +352,6 @@ Proof.
   assumption.
 Qed.
 
-Local Ltac unfold_transition H :=
-  ( unfold transition in H; unfold equivocator_vlsm in H
-  ; unfold Common.equivocator_vlsm in H
-  ; unfold mk_vlsm in H; unfold machine in H
-  ; unfold projT2 in H; unfold equivocator_vlsm_machine in H
-  ; unfold equivocator_transition in H).
 (* TODO: derive some some simpler lemmas about the equivocator operations,
 or a simpler way of defining the equivocator_transition
 - it's not nice to need to pick apart these cases from inside
@@ -376,17 +371,24 @@ Lemma equivocator_transition_no_equivocation_zero_descriptor
   : snd l = Existing _ 0 false.
 Proof.
   unfold is_singleton_state in Hs'.
-  unfold vtransition in Ht. unfold_transition Ht.
+  unfold vtransition in Ht. simpl in Ht.
   destruct l as (l, [sn | ei ef]); unfold snd in Ht
   ; [inversion Ht; subst; destruct s; simpl; inversion Hs'|].
-  destruct Hv as [Hei _].
-  destruct (le_lt_dec (S (projT1 s)) ei); [lia|].
+  unfold vvalid in Hv. simpl in Hv.
+  destruct (fin_of_nat ei
+  (S
+     (@projT1 nat
+        (fun n : nat => forall _ : option (fin n), @vstate message X)
+        s)))
+    eqn:Hei
+  ; [|contradiction].
   match type of Ht with
   | (let (_, _) := ?t in _) = _ => destruct t as (_s', _om')
   end.
   destruct ef; inversion Ht; subst; clear Ht.
   - destruct s. inversion Hs'.
-  - destruct s. simpl in *. assert (ei = 0) by lia. subst. reflexivity.
+  - destruct s. simpl in *. subst.
+    f_equal. revert Hei. apply fin_of_nat_1_inleft.
 Qed.
 
 (** If the state obtained after one transition has no equivocation, then
@@ -400,11 +402,16 @@ Lemma equivocator_transition_reflects_singleton_state
   : is_singleton_state X s' -> is_singleton_state X s.
 Proof.
   unfold is_singleton_state.
-  unfold vtransition in Ht. unfold_transition Ht.
+  unfold vtransition in Ht. simpl in Ht.
   destruct l as (l, [sn | ei ef]); unfold snd in Ht
   ; [inversion Ht; subst; destruct s; simpl; congruence|].
-  destruct (le_lt_dec (S (projT1 s)) ei)
-  ; [inversion Ht; subst; exact id|].
+  destruct
+    (fin_of_nat ei
+    (S
+       (@projT1 nat
+          (fun n : nat => forall _ : option (fin n), @vstate message X)
+          s))) eqn:Hei
+  ; [|inversion Ht; subst; exact id].
   match type of Ht with
   | (let (_, _) := ?t in _) = _ => destruct t as (_s', _om')
   end.
@@ -418,29 +425,32 @@ original machine.  All components of a protocol state in the
 [equivocator_vlsm] are also protocol in the original machine.
 *)
 Lemma equivocator_state_project_protocol
-  (bs : vstate equivocator_vlsm)
-  (om : option message)
-  (Hbs : protocol_prop equivocator_vlsm (bs, om))
+  bsom
+  (Hbs : protocol_prop equivocator_vlsm bsom)
   :
+  let (bs, om) := bsom in
   option_protocol_message_prop X om /\
   let (n, bs) := bs in
-  forall (i : Fin.t (S n)), protocol_state_prop X (bs i).
+  forall (i : fin (S n)), protocol_state_prop X (bs i).
 Proof.
-  dependent induction Hbs; split.
-  - apply option_initial_message_is_protocol;assumption.
-  - destruct bs as [n bs]; intro i.
+  induction Hbs.
+  - split; [apply option_initial_message_is_protocol;assumption|].
+    destruct s as [n bs]; intro i.
     destruct Hs as [Hn0 Hinit].
     simpl in Hn0, Hinit.
     subst n.
-    dependent induction i;[|inversion i].
-    apply initial_is_protocol; assumption.
-  - specialize (IHHbs1 X s _om eq_refl JMeq_refl).
-    specialize (IHHbs2 X _s om0 eq_refl JMeq_refl).
+    specialize (fin_1_None i). intro. subst.
+    apply initial_is_protocol. assumption.
+  - destruct IHHbs1 as [_ IHHbs1].
+    destruct IHHbs2 as [Hom _].
     specialize (protocol_generated X) as Hgen.
     simpl in Hv.
     destruct l as (l, descriptor). simpl in Hv.
     destruct descriptor as [sn| i is_equiv].
-    + destruct Hv as [Hsn Hv]. subst om0.
+    + destruct Hv as [Hsn Hv]. subst om. simpl.
+      split; [apply option_protocol_message_None|].
+      unfold equivocator_state_extend.
+      destruct s; simpl in *.
       simpl in x. inversion x. subst. apply IHHbs2.
     + unfold_transition x.
       unfold snd in x. destruct Hv as [Hi Hv].
@@ -511,7 +521,7 @@ Lemma equivocator_state_project_protocol_state
   (Hbs : protocol_state_prop equivocator_vlsm bs)
   :
   let (n, bs) := bs in
-  forall (i : Fin.t (S n)), protocol_state_prop X (bs i).
+  forall (i : fin (S n)), protocol_state_prop X (bs i).
 Proof.
   destruct Hbs as [om Hbs].
   apply equivocator_state_project_protocol in Hbs.
@@ -539,7 +549,7 @@ corresponding to the original machine.
 Lemma preloaded_equivocator_state_project_protocol_state
   (bs : vstate equivocator_vlsm)
   (Hbs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs)
-  (i : Fin.t (S (projT1 bs)))
+  (i : fin (S (projT1 bs)))
   :
   protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 bs i).
 Proof.

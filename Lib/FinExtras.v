@@ -1,22 +1,15 @@
-From Coq Require Import List Vectors.Fin FinFun Program.
+From Coq Require Import List Program.
+From Coq Require FinFun.
 Import ListNotations.
+From CasperCBC.Lib Require Import Fin.
 
 (** * Finite type utility definitions and lemmas *)
 
-Fixpoint fin_t_listing
-  (n : nat)
-  : list (Fin.t n)
-  :=
-  match n with
-  | 0 => []
-  | S n' => F1 :: map FS (fin_t_listing n')
-  end.
-
 Lemma fin_t_listing_length
   (n : nat)
-  : length (fin_t_listing n) = n.
+  : length (all_fin n) = n.
 Proof.
-  induction n; try reflexivity.
+  induction n; [reflexivity|].
   simpl. f_equal.
   rewrite map_length.
   assumption.
@@ -24,13 +17,13 @@ Qed.
 
 Lemma fin_t_full
   (n : nat)
-  : Full (fin_t_listing n).
+  : FinFun.Full (all_fin n).
 Proof.
   induction n; intro x.
   - inversion x.
   - simpl.
-    dependent destruction x.
-    + left. reflexivity.
-    + right. apply in_map_iff. exists x.
-      split; try reflexivity. apply IHn.
+    simpl in x.
+    destruct x as [x|]; [|left;reflexivity].
+    right. apply in_map_iff. exists x.
+    split; [reflexivity|]. apply IHn.
 Qed.

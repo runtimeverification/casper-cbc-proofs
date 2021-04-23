@@ -6,6 +6,10 @@ Lib/SsrExport.v
 Lib/ListExtras.v
 Lib/ListSetExtras.v
 Lib/SortedLists.v
+Lib/StructTactics.v
+Lib/ListTactics.v
+Lib/ListUtil.v
+Lib/Fin.v
 Lib/FinExtras.v
 Lib/FinFunExtras.v
 Lib/RealsExtras.v
