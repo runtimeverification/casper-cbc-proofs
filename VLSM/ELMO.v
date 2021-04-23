@@ -573,40 +573,16 @@ Proof.
   destruct args as [[[b i] curState] curEq].
   induction l1.
   - destruct l; destruct b; destruct p; simpl; try reflexivity;
-    destruct (bool_decide (n0 = component));
-    destruct (bool_decide (n = component)); simpl; try reflexivity.
+    destruct (bool_decide (n0 = component)) eqn:Heqn0;
+    destruct (bool_decide (n = component)) eqn:Heqn; simpl; try reflexivity.
     + remember (Cobservation Receive (Cpremessage (Cprestate l) n0) n) as x.
-      induction i.
-      * reflexivity.
-      * simpl.
-        destruct
-          (bool_decide (In (Cobservation Send (Cpremessage (Cprestate l) n0) component) (firstn i (x :: l2))))
-          eqn:Heq1;
-          destruct (bool_decide (In (Cobservation Send (Cpremessage (Cprestate l) n0) component) (firstn i [x])))
-                   eqn:Heq2;
-          inversion IHi; clear IHi;
-          simpl;
-          repeat (apply pair_equal_spec; split);
-          try reflexivity;
-          apply bool_decide_iff;
-          split; subst x; intros [H|H]; try inversion H
-        .
-        -- apply bool_decide_eq_true in Heq2.
-           (* Heq2 is a contradiction *)
-           destruct i; simpl in Heq2; try contradiction.
-           destruct Heq2; try contradiction.
-           inversion H0.
-           rewrite firstn_nil in H0.
-           inversion H0.
-        -- (* H is a contradiction *)
-          rewrite firstn_nil in H. inversion H.
-        -- (* Heq1 contradicts H *)
-          apply bool_decide_eq_false in Heq1.
-          destruct i; simpl in H; try contradiction.
-          destruct l2; simpl in H; try contradiction.
-          destruct H; subst.
-          ++ simpl in Heq1. exfalso. apply Heq1.
-             right. simpl in Heq2.
+      remember (Cobservation Send (Cpremessage (Cprestate l) n0) component) as x'.
+      apply bool_decide_eq_true in Heqn0.
+      apply bool_decide_eq_true in Heqn.
+      subst n0. subst n.
+
+      repeat (apply pair_equal_spec; split); try reflexivity.
+      (* FIXME: For the lemma to be true, it must hold that x' is not in l2 *)
 Abort.
     
   
@@ -656,56 +632,7 @@ Proof.
     { lia. }
     rewrite -Heqfl' in Heqfl.
     rewrite Heqfl. rewrite Heqfl'.
-    Search n.
-    Print isProtocol_step.
-
-    
-    destruct l''.
-    { admit. }
-    simpl.
-    
-    fold (fold_left step [o] (b'',n'', o, s'', es''))
-
-    rewrite IHlen.
-
-
-    rewrite IHlen.
-    { lia. }
-    rewrite fold_left_app.
-    rewrite IHl1.
-    { lia. }
-    simpl.
-    rewrite <- Heqfl.
-    (* We need to apply IHl1 for l' *)
-    rewrite IHl1.
-
-
-    
-  induction l1 using rev_ind; intros Hlen es s n b l2.
-  - reflexivity.
-  - set (isProtocol_step component weights treshold) as step.
-    remember (fold_left (isProtocol_step component weights treshold) l1 (b, n, l1, s, es)) as fl.
-    destruct fl as [[[[b' n'] l'] s'] es'].
-    rewrite fold_left_app. simpl.
-    rewrite <- app_assoc.
-    rewrite app_length in Hlen. simpl in Hlen.
-    rewrite IHl1.
-    { lia. }
-    rewrite fold_left_app.
-    rewrite IHl1.
-    { lia. }
-    simpl.
-    rewrite <- Heqfl.
-    (* We need to apply IHl1 for l' *)
-    rewrite IHl1.
-    Search fold_left.
-    Check app_assoc.
-    destruct b, (bool_decide (witnessOf a = component)); simpl.
-    4: {  rewrite <- Heqfl.
-
-    
-    rewrite IHl1.
-
+Abort.
 
 Lemma isProtocol_implies_protocol weights treshold m:
   isProtocol (stateOf m) (authorOf m) weights treshold  ->
