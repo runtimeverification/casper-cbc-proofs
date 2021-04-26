@@ -562,6 +562,24 @@ Proof.
 Qed.
 *)
 
+Search Prestate.
+Lemma Observation_nested_neq ob1 ob2:
+  List.In ob1 (observationsOf (stateOf (messageOf ob2))) ->
+  ob1 <> ob2.
+Proof.
+  destruct ob2. simpl. destruct p. simpl. destruct p. simpl.
+  intros H.
+  induction l0.
+  - inversion H.
+  - simpl in H.
+    
+    destruct (bool_decide (In ob1 l0)) eqn:Heq.
+    + apply bool_decide_eq_true in Heq.
+    destruct ob1.
+    destruct H.
+    + subst.
+
+
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
   let step := isProtocol_step component weights treshold in
   step (l1 ++ x :: l2) args x =
@@ -582,6 +600,7 @@ Proof.
       subst n0. subst n.
 
       repeat (apply pair_equal_spec; split); try reflexivity.
+      Print isProtocol.
       (* FIXME: For the lemma to be true, it must hold that x' is not in l2 *)
 Abort.
     
@@ -687,6 +706,7 @@ Proof.
     + destruct (fullNode (Cpremessage p n1) (firstn n' (l ++ [Cobservation Receive (Cpremessage p n1) n0])) n).
       2: { simpl in Hproto. inversion Hproto. }
       simpl in Hproto. simpl in Heqfl.
+      remember (isProtocol_step n weights treshold) as step.
       (* We want to use Heqfl as the premise of IHl. But to do that, we must get rid
          of the "++ [...]" part. *)
       
