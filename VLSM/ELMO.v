@@ -32,6 +32,11 @@ Premessage : Type :=
 | Cpremessage: Prestate -> nat -> Premessage
 .
 
+Scheme Prestate_mut_ind := Induction for Prestate Sort Prop
+  with Observation_mut_ind := Induction for Observation Sort Prop
+  with Premessage_mut_ind := Induction for Premessage Sort Prop.
+
+
 Instance Label_eqdec : EqDecision Label.
 Proof.
   intros l1 l2.
@@ -562,6 +567,28 @@ Proof.
 Qed.
 *)
 
+Lemma in_notin_impl_not_eq {A : Type} (x : A) (l1 l2 : list A):
+  List.In x l1 ->
+  ~List.In x l2 ->
+  l1 <> l2.
+Proof.
+  intros.
+  generalize dependent l2.
+  induction l1; intros l2 H0.
+  - simpl in H. inversion H.
+  - destruct l2 as [| b l2].
+    + simpl in H.
+      discriminate.
+    + simpl in H. simpl in H0.
+      destruct H as [Heq|Hin].
+      * subst. intros Hcontra.
+        inversion Hcontra. subst.
+        apply H0. left. reflexivity.
+      * intros Hcontra. inversion Hcontra. subst. clear Hcontra.
+        apply H0. right. apply Hin.
+Qed.
+
+
 Search Prestate.
 Lemma Observation_nested_neq ob1 ob2:
   List.In ob1 (observationsOf (stateOf (messageOf ob2))) ->
@@ -569,16 +596,50 @@ Lemma Observation_nested_neq ob1 ob2:
 Proof.
   destruct ob2. simpl. destruct p. simpl. destruct p. simpl.
   intros H.
-  induction l0.
-  - inversion H.
-  - simpl in H.
-    
-    destruct (bool_decide (In ob1 l0)) eqn:Heq.
-    + apply bool_decide_eq_true in Heq.
-    destruct ob1.
-    destruct H.
-    + subst.
 
+  Print Observation_mut_ind.
+  revert n. revert n0. revert l. generalize dependent l0. generalize dependent ob1.
+  Check Observation_mut_ind.
+  eapply (Observation_mut_ind
+            (fun p : Prestate =>
+               forall l0' l1' l2' n0' n1' n n',
+                 In (Cobservation l2' (Cpremessage p n) n') l0' ->
+                 ~ (List.In (Cobservation l2' (Cpremessage p n) n') (observationsOf p)) ->
+                 Cobservation l2' (Cpremessage p n) n' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1'
+            )
+            
+            (fun ob1' : Observation =>
+               forall l0' ,
+               In ob1' l0' ->
+               forall l1' n0' n1',
+                 ob1' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1'
+            )
+
+            (fun p' : Premessage =>
+               forall l1' l2' l' l0' n0' n1' n',
+                 In (Cobservation l' p' n') l0' ->
+                 (*~ In (Cobservation l' p' n') (observationsOf ())*)
+                 Cobservation l2' p' n' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1')
+         ).
+  3: { intros p H.
+ 
+       (*destruct (decide (l2' = l')).
+       { subst. apply H. apply H0. }*)
+       destruct l2',l1',l'; try (apply H; apply H0); try congruence.
+       
+       1,2,3,4: admit.
+  }
+  
+  2: { intros. eapply H. apply H0. }
+
+  1: { intros. simpl in H0.
+       intros Hcontra. inversion Hcontra. subst. clear Hcontra.
+       eapply in_notin_impl_not_eq.
+       apply H. apply H0. reflexivity.
+  }
+  
+  
+Abort.
 
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
   let step := isProtocol_step component weights treshold in
