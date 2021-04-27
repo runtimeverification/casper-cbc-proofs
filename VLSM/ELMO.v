@@ -32,10 +32,141 @@ Premessage : Type :=
 | Cpremessage: Prestate -> nat -> Premessage
 .
 
-Scheme Prestate_mut_ind := Induction for Prestate Sort Prop
-  with Observation_mut_ind := Induction for Observation Sort Prop
-  with Premessage_mut_ind := Induction for Premessage Sort Prop.
+Scheme Prestate_mut_ind' := Induction for Prestate Sort Prop
+  with Observation_mut_ind' := Induction for Observation Sort Prop
+  with Premessage_mut_ind' := Induction for Premessage Sort Prop.
+(*
+  with ListObservation_mut_ind := Induction for (list Observation) Sort Prop.
+ *)
+Print Prestate_mut_ind'.
+Print Observation_mut_ind'.
+Print Premessage_mut_ind'.
 
+Section induction_principle.
+  Context
+    (Pps : Prestate -> Prop)
+    (Plo : list Observation -> Prop)
+    (Pob : Observation -> Prop)
+    (Ppm : Premessage -> Prop)
+    (Hps : forall (l : list Observation), Plo l -> Pps (Cprestate l))
+    (Hlonil : Plo nil)
+    (Hlocons : forall (a : Observation) (l : list Observation),
+        Pob a ->
+        Plo l ->
+        Plo (a::l)
+    )
+    (Hob : forall (l : Label) (p : Premessage) (n : nat),
+        Ppm p ->
+        Pob (Cobservation l p n))
+    (Hpm : forall (p : Prestate) (n : nat),
+        Pps p ->
+        Ppm (Cpremessage p n))
+  .
+
+  Print list_ind.
+  Check list_rec.
+  Check list_ind.
+
+  Fixpoint
+    Prestate_mut_ind (p : Prestate) : Pps p :=
+    match p as p0 return (Pps p0) with
+    | Cprestate l => Hps l (ListObservation_mut_ind l)
+    end
+  with
+  ListObservation_mut_ind (lo : list Observation) : Plo lo :=
+    match lo as lo0 return (Plo lo0) with
+    | [] => Hlonil
+    | y::lo0 => Hlocons y lo0 (Observation_mut_ind y) (ListObservation_mut_ind lo0)
+    end
+  with
+  Observation_mut_ind (o : Observation) : Pob o :=
+    match o as o0 return (Pob o0) with
+    | Cobservation l p n => Hob l p n (Premessage_mut_ind p)
+    end
+  with
+  Premessage_mut_ind (p : Premessage) : Ppm p :=
+    match p as p0 return (Ppm p0) with
+    | Cpremessage p0 n => Hpm p0 n (Prestate_mut_ind p0)
+    end
+  .
+
+(*  
+  (* Almost there *)
+  Fixpoint
+    Prestate_mut_ind (p : Prestate) : Pps p :=
+    match p as p0 return (Pps p0) with
+    | Cprestate l => Hps l (ListObservation_mut_ind l)
+    end
+  with
+  ListObservation_mut_ind (lo : list Observation) : Plo lo :=
+    match lo as lo0 return (Plo lo0) with
+    | [] => Hlonil
+    | y::lo0 => Hlocons y lo0 (Observation_mut_ind y) (ListObservation_mut_ind lo0)
+    end
+  with
+  Observation_mut_ind (o : Observation) : Pob o :=
+    match o as o0 return (Pob o0) with
+    | Cobservation l p n => Hob l p n (Premessage_mut_ind p)
+    end
+  with
+  Premessage_mut_ind (p : Premessage) : Ppm p :=
+    match p as p0 return (Ppm p0) with
+    | Cpremessage p0 n => Hpm p0 n (Prestate_mut_ind p0)
+    end
+  .
+*)
+  
+  (* Basically the original
+ 
+  Fixpoint
+    Prestate_mut_ind (p : Prestate) : Pps p :=
+    match p as p0 return (Pps p0) with
+    | Cprestate l => f l
+    end
+  with
+  Observation_mut_ind (o : Observation) : Pob o :=
+    match o as o0 return (Pob o0) with
+    | Cobservation l p n => f0 l p (Premessage_mut_ind p) n
+    end
+  with
+  Premessage_mut_ind (p : Premessage) : Ppm p :=
+    match p as p0 return (Ppm p0) with
+    | Cpremessage p0 n => f1 p0 (Prestate_mut_ind p0) n
+    end
+  .
+  *)
+
+  Print list_ind.
+
+  (*
+  (* Not strictly decreasing *)
+  Fixpoint
+    Prestate_mut_ind (p : Prestate) : Pps p :=
+    match p as p0 return (Pps p0) with
+    | Cprestate l =>
+      match l as l0 return (Pps l0) with
+      | [] => H0
+      | y::l0 => Prestate_mut_ind (Cprestate l0)
+      end
+      f l
+    end
+  with
+  Observation_mut_ind (o : Observation) : Pob o :=
+    match o as o0 return (Pob o0) with
+    | Cobservation l p n => f0 l p (Premessage_mut_ind p) n
+    end
+  with
+  Premessage_mut_ind (p : Premessage) : Ppm p :=
+    match p as p0 return (Ppm p0) with
+    | Cpremessage p0 n => f1 p0 (Prestate_mut_ind p0) n
+    end
+  .
+*)
+
+  
+End induction_principle.
+
+Check list_ind.
 
 Instance Label_eqdec : EqDecision Label.
 Proof.
@@ -603,9 +734,10 @@ Proof.
   eapply (Observation_mut_ind
             (fun p : Prestate =>
                forall l0' l1' l2' n0' n1' n n',
-                 In (Cobservation l2' (Cpremessage p n) n') l0' ->
-                 ~ (List.In (Cobservation l2' (Cpremessage p n) n') (observationsOf p)) ->
-                 Cobservation l2' (Cpremessage p n) n' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1'
+                 let ob := Cobservation l2' (Cpremessage p n) n' in
+                 In ob l0' ->
+                 (*~ (List.In (Cobservation l2' (Cpremessage p n) n') (observationsOf p)) ->*)
+                 ob <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1'
             )
             
             (fun ob1' : Observation =>
