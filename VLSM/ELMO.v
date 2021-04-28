@@ -69,14 +69,13 @@ Section induction_principle.
 
   Fixpoint
     Prestate_mut_ind (p : Prestate) : Pps p :=
-    match p as p0 return (Pps p0) with
-    | Cprestate l => Hps l (ListObservation_mut_ind l)
-    end
-  with
-  ListObservation_mut_ind (lo : list Observation) : Plo lo :=
+    let ListObservation_mut_ind := (fix ListObservation_mut_ind (lo : list Observation) : Plo lo :=
     match lo as lo0 return (Plo lo0) with
     | [] => Hlonil
     | y::lo0 => Hlocons y lo0 (Observation_mut_ind y) (ListObservation_mut_ind lo0)
+    end) in
+    match p as p0 return (Pps p0) with
+    | Cprestate l => Hps l (ListObservation_mut_ind l)
     end
   with
   Observation_mut_ind (o : Observation) : Pob o :=
