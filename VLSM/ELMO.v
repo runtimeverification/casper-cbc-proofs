@@ -725,18 +725,41 @@ Lemma Observation_nested_neq ob1 ob2:
   ob1 <> ob2.
 Proof.
   destruct ob2. simpl. destruct p. simpl. destruct p. simpl.
+  (*
+  destruct ob1.
+  destruct (decide (l1 = l)).
+  2: { congruence. }
+  subst.
+  destruct (decide (n1 = n)).
+  2: { congruence. }
+  subst.
   intros H.
 
   Print Observation_mut_ind.
-  revert n. revert n0. revert l. generalize dependent l0. generalize dependent ob1.
+  generalize dependent n. revert n0.
+  generalize dependent l. generalize dependent l0.
+  generalize dependent p.
   Check Observation_mut_ind.
+   *)
+  intros H.
+  move: l n0 n.
+  move: ob1 l0 H.
+  (*move: n0 n l0 l ob1.*)
+  (*intros.*)
   eapply (Observation_mut_ind
             (fun p : Prestate =>
-               forall l0' l1' l2' n0' n1' n n',
+               forall l0' l2' n n',
                  let ob := Cobservation l2' (Cpremessage p n) n' in
                  In ob l0' ->
+                 forall l1' n0' n1',
                  (*~ (List.In (Cobservation l2' (Cpremessage p n) n') (observationsOf p)) ->*)
                  ob <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1'
+            )
+            (fun lo : list Observation =>
+               forall ob : Observation,
+                 In ob lo ->
+                 forall lbl' n0' n1',
+                   ob <> Cobservation lbl' (Cpremessage (Cprestate lo) n0') n1'
             )
             
             (fun ob1' : Observation =>
@@ -747,11 +770,29 @@ Proof.
             )
 
             (fun p' : Premessage =>
-               forall l1' l2' l' l0' n0' n1' n',
+               forall l1' l' l0' n0' n1' n',
                  In (Cobservation l' p' n') l0' ->
                  (*~ In (Cobservation l' p' n') (observationsOf ())*)
-                 Cobservation l2' p' n' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1')
+                 Cobservation l' p' n' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1')
          ).
+  5: { intros. apply H. apply H0. }
+  4: { intros. apply H. apply H0. }
+  2: { intros ob H. inversion H. }
+  1: { intros.
+       remember (Cobservation l1' (Cpremessage (Cprestate l0') n0') n1') as ob2.
+       Check Observation_mut_ind.
+       assert (H': l0' <> l).
+       {
+         (* TODO: every observation in [l] is distinct from ob.
+            Therefore, [l] does not contain [ob], and since [l0'] does contain [ob],
+            we have that [l <> l0'].
+         *)
+         admit.
+       }
+       unfold ob. subst ob2. congruence.
+  }
+  
+  
   3: { intros p H.
  
        (*destruct (decide (l2' = l')).
