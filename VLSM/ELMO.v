@@ -698,6 +698,42 @@ Proof.
   congruence.
 Qed.
 
+Definition state_invariant s : Prop :=
+  let l := observationsOf s in
+  forall (i : nat),
+    i < length l ->
+    labelOf (nth i l dummy_observation) = Send ->
+    forall (j : nat),
+      j < i ->
+      List.In
+        (nth j l dummy_observation)
+        (observationsOf (stateOf (messageOf (nth i l dummy_observation))))
+
+.
+
+Lemma state_invariant_initial : state_invariant (Cprestate []).
+Proof.
+  intros i Hi Hx j Hj.
+  simpl in Hi.
+  inversion Hi.
+Qed.
+
+Print elmo_transition.
+
+Lemma state_invariant_step
+      (component : nat)
+      (weights : list pos_R)
+      (treshold : R)
+      (label : Label)
+      (bsom : Prestate * option Premessage) :
+  state_invariant (fst bsom) ->
+  elmo_valid weights treshold label bsom ->
+  state_invariant (fst (elmo_transition component weights treshold label bsom)).
+Proof.
+Abort.
+
+    
+  
 
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
   let step := isProtocol_step component weights treshold in
