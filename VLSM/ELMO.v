@@ -88,7 +88,7 @@ Section induction_principle.
     | Cpremessage p0 n => Hpm p0 n (Prestate_mut_ind p0)
     end
   .
-
+  
 (*  
   (* Almost there *)
   Fixpoint
@@ -165,7 +165,30 @@ Section induction_principle.
   
 End induction_principle.
 
-Check list_ind.
+
+Fixpoint
+  Prestate_weight (p : Prestate) : nat :=
+  let ListObservation_weight := (fix ListObservation_weight (lo : list Observation) : nat :=
+                                    match lo as lo0 return nat with
+                                    | [] => 0
+                                    | y::lo0 => (Observation_weight y) + (ListObservation_weight lo0)
+                                    end) in
+  match p as p0 return nat with
+  | Cprestate l => 1 + (ListObservation_weight l)
+  end
+with
+Observation_weight (o : Observation) : nat :=
+  match o as o0 return nat with
+  | Cobservation l p n => 1 + (Premessage_weight p)
+  end
+with
+Premessage_weight (p : Premessage) : nat :=
+  match p as p0 return nat with
+  | Cpremessage p0 n => 1 + (Prestate_weight p0)
+  end
+.
+
+
 
 Instance Label_eqdec : EqDecision Label.
 Proof.
@@ -777,10 +800,71 @@ Proof.
          ).
   5: { intros. apply H. apply H0. }
   4: { intros. apply H. apply H0. }
+  3: { intros.
+       
+       simpl in H1. destruct H1 as [H1|H1].
+       + subst. apply H. simpl. left. reflexivity.
+       + (*pose proof (H0' := H0 ob H1 lbl' n0' n1').*)
+         Check Observation_mut_ind.
+         
+         destruct ob.
+         destruct (decide (l0 = lbl')).
+         2: { congruence. }
+         subst.
+         destruct (decide (n = n1')).
+         2: { congruence. }
+         subst.
+
+         destruct p.
+         destruct (decide (n = n0')).
+         2: { congruence. }
+         subst.
+         destruct p.
+
+         destruct l0.
+         { congruence. }
+
+         destruct (decide (a = o)).
+         2: { congruence. }
+         subst.
+
+         assert (l0 <> l).
+         {
+           
+           admit.
+         }
+         congruence.
+
+         
+         assert (p <> Cpremessage (Cprestate (a::l)) n0').
+         {
+           destruct p
+           admit.
+
+         }
+         congruence.
+         
+         pose proof (H (a::l)).
+
+               
+         remember (a::ob::[]) as myl.
+         assert (Hain: In a myl).
+         { subst myl. simpl. left. reflexivity. }
+         assert (Hobin: In ob myl).
+         { subst myl. simpl. right. left. reflexivity. }
+         pose proof (H myl Hain).
+         pose proof (H0 _ Hain).
+        *)
+       
+       induction l; simpl in *.
+       + destruct H1; try contradiction. subst. apply H. simpl. left. reflexivity.
+       + destruct H1 as [H1|[H1|H1]]; subst.
+         * apply H. simpl. left. reflexivity.
+         * apply IHl.
+           
   2: { intros ob H. inversion H. }
   1: { intros.
        remember (Cobservation l1' (Cpremessage (Cprestate l0') n0') n1') as ob2.
-       Check Observation_mut_ind.
        assert (H': l0' <> l).
        {
          (* TODO: every observation in [l] is distinct from ob.
