@@ -32,16 +32,6 @@ Premessage : Type :=
 | Cpremessage: Prestate -> nat -> Premessage
 .
 
-Scheme Prestate_mut_ind' := Induction for Prestate Sort Prop
-  with Observation_mut_ind' := Induction for Observation Sort Prop
-  with Premessage_mut_ind' := Induction for Premessage Sort Prop.
-(*
-  with ListObservation_mut_ind := Induction for (list Observation) Sort Prop.
- *)
-Print Prestate_mut_ind'.
-Print Observation_mut_ind'.
-Print Premessage_mut_ind'.
-
 Section induction_principle.
   Context
     (Pps : Prestate -> Prop)
@@ -62,10 +52,6 @@ Section induction_principle.
         Pps p ->
         Ppm (Cpremessage p n))
   .
-
-  Print list_ind.
-  Check list_rec.
-  Check list_ind.
 
   Fixpoint
     Prestate_mut_ind (p : Prestate) : Pps p :=
@@ -89,80 +75,6 @@ Section induction_principle.
     end
   .
   
-(*  
-  (* Almost there *)
-  Fixpoint
-    Prestate_mut_ind (p : Prestate) : Pps p :=
-    match p as p0 return (Pps p0) with
-    | Cprestate l => Hps l (ListObservation_mut_ind l)
-    end
-  with
-  ListObservation_mut_ind (lo : list Observation) : Plo lo :=
-    match lo as lo0 return (Plo lo0) with
-    | [] => Hlonil
-    | y::lo0 => Hlocons y lo0 (Observation_mut_ind y) (ListObservation_mut_ind lo0)
-    end
-  with
-  Observation_mut_ind (o : Observation) : Pob o :=
-    match o as o0 return (Pob o0) with
-    | Cobservation l p n => Hob l p n (Premessage_mut_ind p)
-    end
-  with
-  Premessage_mut_ind (p : Premessage) : Ppm p :=
-    match p as p0 return (Ppm p0) with
-    | Cpremessage p0 n => Hpm p0 n (Prestate_mut_ind p0)
-    end
-  .
-*)
-  
-  (* Basically the original
- 
-  Fixpoint
-    Prestate_mut_ind (p : Prestate) : Pps p :=
-    match p as p0 return (Pps p0) with
-    | Cprestate l => f l
-    end
-  with
-  Observation_mut_ind (o : Observation) : Pob o :=
-    match o as o0 return (Pob o0) with
-    | Cobservation l p n => f0 l p (Premessage_mut_ind p) n
-    end
-  with
-  Premessage_mut_ind (p : Premessage) : Ppm p :=
-    match p as p0 return (Ppm p0) with
-    | Cpremessage p0 n => f1 p0 (Prestate_mut_ind p0) n
-    end
-  .
-  *)
-
-  Print list_ind.
-
-  (*
-  (* Not strictly decreasing *)
-  Fixpoint
-    Prestate_mut_ind (p : Prestate) : Pps p :=
-    match p as p0 return (Pps p0) with
-    | Cprestate l =>
-      match l as l0 return (Pps l0) with
-      | [] => H0
-      | y::l0 => Prestate_mut_ind (Cprestate l0)
-      end
-      f l
-    end
-  with
-  Observation_mut_ind (o : Observation) : Pob o :=
-    match o as o0 return (Pob o0) with
-    | Cobservation l p n => f0 l p (Premessage_mut_ind p) n
-    end
-  with
-  Premessage_mut_ind (p : Premessage) : Ppm p :=
-    match p as p0 return (Ppm p0) with
-    | Cpremessage p0 n => f1 p0 (Prestate_mut_ind p0) n
-    end
-  .
-*)
-
-  
 End induction_principle.
 
 
@@ -171,7 +83,7 @@ Fixpoint
   let ListObservation_weight := (fix ListObservation_weight (lo : list Observation) : nat :=
                                     match lo as lo0 return nat with
                                     | [] => 0
-                                    | y::lo0 => (Observation_weight y) + (ListObservation_weight lo0)
+                                    | y::lo0 => S ((Observation_weight y) + (ListObservation_weight lo0))
                                     end) in
   match p as p0 return nat with
   | Cprestate l => 1 + (ListObservation_weight l)
@@ -188,7 +100,11 @@ Premessage_weight (p : Premessage) : nat :=
   end
 .
 
-
+Definition ListObservation_weight := (fix ListObservation_weight (lo : list Observation) : nat :=
+                                    match lo as lo0 return nat with
+                                    | [] => 0
+                                    | y::lo0 => S ((Observation_weight y) + (ListObservation_weight lo0))
+                                    end).
 
 Instance Label_eqdec : EqDecision Label.
 Proof.
@@ -741,161 +657,47 @@ Proof.
         apply H0. right. apply Hin.
 Qed.
 
+Check Observation_weight.
 
-Search Prestate.
+
+Lemma Observation_in_list_weight ob l:
+  List.In ob l ->
+  Observation_weight ob < ListObservation_weight l.
+Proof.
+  intros H.
+  induction l.
+  + inversion H.
+  + simpl in H.
+    simpl.
+    destruct H as [H|H].
+    * subst. lia.
+    * specialize (IHl H). lia.
+Qed.
+
+
+Lemma Observation_nested_weight ob1 ob2:
+  List.In ob1 (observationsOf (stateOf (messageOf ob2))) ->
+  Observation_weight ob1 < Observation_weight ob2.
+Proof.
+  destruct ob2. destruct p. destruct p. simpl.
+  fold (ListObservation_weight l0).
+  intros H.
+  pose proof (H' := Observation_in_list_weight ob1 l0 H).
+  lia.
+Qed.
+
+
 Lemma Observation_nested_neq ob1 ob2:
   List.In ob1 (observationsOf (stateOf (messageOf ob2))) ->
   ob1 <> ob2.
 Proof.
-  destruct ob2. simpl. destruct p. simpl. destruct p. simpl.
-  (*
-  destruct ob1.
-  destruct (decide (l1 = l)).
-  2: { congruence. }
-  subst.
-  destruct (decide (n1 = n)).
-  2: { congruence. }
-  subst.
   intros H.
+  pose proof (H' := Observation_nested_weight ob1 ob2 H).
+  assert (Observation_weight ob1 <> Observation_weight ob2).
+  { lia. }
+  congruence.
+Qed.
 
-  Print Observation_mut_ind.
-  generalize dependent n. revert n0.
-  generalize dependent l. generalize dependent l0.
-  generalize dependent p.
-  Check Observation_mut_ind.
-   *)
-  intros H.
-  move: l n0 n.
-  move: ob1 l0 H.
-  (*move: n0 n l0 l ob1.*)
-  (*intros.*)
-  eapply (Observation_mut_ind
-            (fun p : Prestate =>
-               forall l0' l2' n n',
-                 let ob := Cobservation l2' (Cpremessage p n) n' in
-                 In ob l0' ->
-                 forall l1' n0' n1',
-                 (*~ (List.In (Cobservation l2' (Cpremessage p n) n') (observationsOf p)) ->*)
-                 ob <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1'
-            )
-            (fun lo : list Observation =>
-               forall ob : Observation,
-                 In ob lo ->
-                 forall lbl' n0' n1',
-                   ob <> Cobservation lbl' (Cpremessage (Cprestate lo) n0') n1'
-            )
-            
-            (fun ob1' : Observation =>
-               forall l0' ,
-               In ob1' l0' ->
-               forall l1' n0' n1',
-                 ob1' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1'
-            )
-
-            (fun p' : Premessage =>
-               forall l1' l' l0' n0' n1' n',
-                 In (Cobservation l' p' n') l0' ->
-                 (*~ In (Cobservation l' p' n') (observationsOf ())*)
-                 Cobservation l' p' n' <> Cobservation l1' (Cpremessage (Cprestate l0') n0') n1')
-         ).
-  5: { intros. apply H. apply H0. }
-  4: { intros. apply H. apply H0. }
-  3: { intros.
-       
-       simpl in H1. destruct H1 as [H1|H1].
-       + subst. apply H. simpl. left. reflexivity.
-       + (*pose proof (H0' := H0 ob H1 lbl' n0' n1').*)
-         Check Observation_mut_ind.
-         
-         destruct ob.
-         destruct (decide (l0 = lbl')).
-         2: { congruence. }
-         subst.
-         destruct (decide (n = n1')).
-         2: { congruence. }
-         subst.
-
-         destruct p.
-         destruct (decide (n = n0')).
-         2: { congruence. }
-         subst.
-         destruct p.
-
-         destruct l0.
-         { congruence. }
-
-         destruct (decide (a = o)).
-         2: { congruence. }
-         subst.
-
-         assert (l0 <> l).
-         {
-           
-           admit.
-         }
-         congruence.
-
-         
-         assert (p <> Cpremessage (Cprestate (a::l)) n0').
-         {
-           destruct p
-           admit.
-
-         }
-         congruence.
-         
-         pose proof (H (a::l)).
-
-               
-         remember (a::ob::[]) as myl.
-         assert (Hain: In a myl).
-         { subst myl. simpl. left. reflexivity. }
-         assert (Hobin: In ob myl).
-         { subst myl. simpl. right. left. reflexivity. }
-         pose proof (H myl Hain).
-         pose proof (H0 _ Hain).
-        *)
-       
-       induction l; simpl in *.
-       + destruct H1; try contradiction. subst. apply H. simpl. left. reflexivity.
-       + destruct H1 as [H1|[H1|H1]]; subst.
-         * apply H. simpl. left. reflexivity.
-         * apply IHl.
-           
-  2: { intros ob H. inversion H. }
-  1: { intros.
-       remember (Cobservation l1' (Cpremessage (Cprestate l0') n0') n1') as ob2.
-       assert (H': l0' <> l).
-       {
-         (* TODO: every observation in [l] is distinct from ob.
-            Therefore, [l] does not contain [ob], and since [l0'] does contain [ob],
-            we have that [l <> l0'].
-         *)
-         admit.
-       }
-       unfold ob. subst ob2. congruence.
-  }
-  
-  
-  3: { intros p H.
- 
-       (*destruct (decide (l2' = l')).
-       { subst. apply H. apply H0. }*)
-       destruct l2',l1',l'; try (apply H; apply H0); try congruence.
-       
-       1,2,3,4: admit.
-  }
-  
-  2: { intros. eapply H. apply H0. }
-
-  1: { intros. simpl in H0.
-       intros Hcontra. inversion Hcontra. subst. clear Hcontra.
-       eapply in_notin_impl_not_eq.
-       apply H. apply H0. reflexivity.
-  }
-  
-  
-Abort.
 
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
   let step := isProtocol_step component weights treshold in
