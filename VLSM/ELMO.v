@@ -730,7 +730,66 @@ Lemma state_invariant_step
   elmo_valid weights treshold label bsom ->
   state_invariant (fst (elmo_transition component weights treshold label bsom)).
 Proof.
-Abort.
+  destruct bsom as [bs om].
+  intros Hinit Hvalid.
+  simpl. simpl in Hinit.
+  destruct label.
+  - (* Receive *)
+    destruct om as [|msg].
+    + simpl.
+      unfold state_invariant.
+      simpl.
+      intros i Hi Hsend j Hj.
+      destruct (decide (i = length (observationsOf bs))).
+      * subst i.
+        rewrite nth_middle in Hsend.
+        simpl in Hsend.
+        inversion Hsend.
+      * rewrite app_length in Hi. simpl in Hi.
+        assert (Hi2: i < length (observationsOf bs)).
+        { lia. }
+        clear Hi. clear n.
+        unfold state_invariant in Hinit.
+        rewrite app_nth1.
+        { lia. }
+        rewrite app_nth1.
+        { assumption. }
+        rewrite app_nth1 in Hsend.
+        { apply Hi2. }
+        apply Hinit.
+        { apply Hi2. }
+        { apply Hsend. }
+        { apply Hj. }
+    + simpl. exact Hinit.
+  - destruct om as [|msg]; simpl.
+    + apply Hinit.
+    + unfold state_invariant. simpl.
+      intros i Hi Hsend j Hj.
+      destruct (decide (i = length (observationsOf bs))).
+      * subst i.
+        clear Hsend.
+        rewrite app_nth1.
+        { apply Hj. }
+        rewrite nth_middle.
+        simpl.
+        apply nth_In.
+        apply Hj.
+      * rewrite app_length in Hi. simpl in Hi.
+        assert (Hi2: i < length (observationsOf bs)).
+        { lia. }
+        clear Hi. clear n.
+        unfold state_invariant in Hinit.
+        rewrite app_nth1.
+        { lia. }
+        rewrite app_nth1.
+        { assumption. }
+        rewrite app_nth1 in Hsend.
+        { apply Hi2. }
+        apply Hinit.
+        { apply Hi2. }
+        { apply Hsend. }
+        { apply Hj. }
+Qed.
 
     
   
