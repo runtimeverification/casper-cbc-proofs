@@ -735,7 +735,7 @@ Proof.
   simpl. simpl in Hinit.
   destruct label.
   - (* Receive *)
-    destruct om as [|msg].
+    destruct om.
     + simpl.
       unfold state_invariant.
       simpl.
@@ -761,7 +761,7 @@ Proof.
         { apply Hsend. }
         { apply Hj. }
     + simpl. exact Hinit.
-  - destruct om as [|msg]; simpl.
+  - destruct om; simpl.
     + apply Hinit.
     + unfold state_invariant. simpl.
       intros i Hi Hsend j Hj.
@@ -790,7 +790,6 @@ Proof.
         { apply Hsend. }
         { apply Hj. }
 Qed.
-
     
   
 
