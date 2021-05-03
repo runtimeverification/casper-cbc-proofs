@@ -920,7 +920,7 @@ Proof.
 Qed.
 
 
-Lemma ob_sent_contains_previous_prop_impl_received_is_not_send_later component m l2:
+Lemma ob_sent_contains_previous_prop_impl_received_is_not_sent_later component m l2:
   ob_sent_contains_previous_prop ((Cobservation Receive m component) :: l2) ->
   ~List.In (Cobservation Send m component) l2.
 Proof.
@@ -959,11 +959,45 @@ Proof.
       eexact H.
 Qed.
 
+Lemma In_firstn_S {A : Type} {eqdec : EqDecision A} (l : list A) (x : A) (n : nat) :
+  List.In x (firstn n l) -> List.In x (firstn (S n) l).
+Proof.
+  move: n.
+  induction l; intros n H.
+  - rewrite firstn_nil in H. simpl in H. inversion H.
+  - simpl.
+    destruct (decide (a = x)).
+    { left. exact e. }
+    right.
+    destruct n.
+    { simpl in H. inversion H. }
+    apply IHl.
+    simpl in H.
+    destruct H; [contradiction|assumption].
+Qed.
+
+Lemma In_firstn {A : Type} (l : list A) (x : A) (n : nat):
+  List.In x (firstn n l) -> List.In x l.
+Proof.
+  move: n.
+  induction l; intros n H.
+  - rewrite firstn_nil in H. simpl in H. inversion H.
+  -  destruct n.
+    { simpl in H. inversion H. }
+    simpl in H. simpl.
+    destruct H as [H|H].
+    { left. exact H. }
+    right. eapply IHl. apply H.
+Qed.
+
+
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
+  ob_sent_contains_previous_prop (l1 ++ x :: l2) ->
   let step := isProtocol_step component weights treshold in
   step (l1 ++ x :: l2) args x =
   step (l1 ++ [x]) args x.
 Proof.
+  intros Hprev.
   simpl.
   unfold isProtocol_step.
   destruct x. destruct p.
@@ -974,11 +1008,34 @@ Proof.
     destruct (bool_decide (n = component)) eqn:Heqn; simpl; try reflexivity.
     + remember (Cobservation Receive (Cpremessage (Cprestate l) n0) n) as x.
       remember (Cobservation Send (Cpremessage (Cprestate l) n0) component) as x'.
+      remember (Cpremessage (Cprestate l) n0) as msg.
       apply bool_decide_eq_true in Heqn0.
       apply bool_decide_eq_true in Heqn.
       subst n0. subst n.
 
       repeat (apply pair_equal_spec; split); try reflexivity.
+      simpl in Hprev.
+      rewrite Heqx in Hprev.
+      epose proof (Pf := ob_sent_contains_previous_prop_impl_received_is_not_sent_later component msg l2 Hprev).
+      rewrite -Heqx' in Pf.
+
+      destruct i.
+      * reflexivity.
+      * simpl.
+        rewrite firstn_nil. simpl.
+        apply bool_decide_iff.
+        split; intros [H|H].
+        -- subst. inversion H.
+        -- Search In firstn.
+        Search bool_decide.
+        repeat rewrite bool_decide_decide.
+        destruct (decide (x = x' \/ In x' (firstn i l2))), (decide (x = x' \/ In x' ())).
+        -- destruct o.
+           { subst. inversion H. }
+           
+           
+        
+      
       Print isProtocol.
       (* FIXME: For the lemma to be true, it must hold that x' is not in l2 *)
 Abort.
