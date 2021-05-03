@@ -698,7 +698,7 @@ Proof.
   congruence.
 Qed.
 
-Definition state_invariant s : Prop :=
+Definition ob_sent_contains_previous_prop s : Prop :=
   let l := observationsOf s in
   forall (i : nat),
     i < length l ->
@@ -711,7 +711,7 @@ Definition state_invariant s : Prop :=
 
 .
 
-Lemma state_invariant_initial : state_invariant (Cprestate []).
+Lemma ob_sent_contains_previous_prop_initial : ob_sent_contains_previous_prop (Cprestate []).
 Proof.
   intros i Hi Hx j Hj.
   simpl in Hi.
@@ -720,15 +720,15 @@ Qed.
 
 Print elmo_transition.
 
-Lemma state_invariant_step
+Lemma ob_sent_contains_previous_prop_step
       (component : nat)
       (weights : list pos_R)
       (treshold : R)
       (label : Label)
       (bsom : Prestate * option Premessage) :
-  state_invariant (fst bsom) ->
+  ob_sent_contains_previous_prop (fst bsom) ->
   elmo_valid weights treshold label bsom ->
-  state_invariant (fst (elmo_transition component weights treshold label bsom)).
+  ob_sent_contains_previous_prop (fst (elmo_transition component weights treshold label bsom)).
 Proof.
   destruct bsom as [bs om].
   intros Hinit Hvalid.
@@ -737,7 +737,7 @@ Proof.
   - (* Receive *)
     destruct om.
     + simpl.
-      unfold state_invariant.
+      unfold ob_sent_contains_previous_prop.
       simpl.
       intros i Hi Hsend j Hj.
       destruct (decide (i = length (observationsOf bs))).
@@ -749,7 +749,7 @@ Proof.
         assert (Hi2: i < length (observationsOf bs)).
         { lia. }
         clear Hi. clear n.
-        unfold state_invariant in Hinit.
+        unfold ob_sent_contains_previous_prop in Hinit.
         rewrite app_nth1.
         { lia. }
         rewrite app_nth1.
@@ -763,7 +763,7 @@ Proof.
     + simpl. exact Hinit.
   - destruct om; simpl.
     + apply Hinit.
-    + unfold state_invariant. simpl.
+    + unfold ob_sent_contains_previous_prop. simpl.
       intros i Hi Hsend j Hj.
       destruct (decide (i = length (observationsOf bs))).
       * subst i.
@@ -778,7 +778,7 @@ Proof.
         assert (Hi2: i < length (observationsOf bs)).
         { lia. }
         clear Hi. clear n.
-        unfold state_invariant in Hinit.
+        unfold ob_sent_contains_previous_prop in Hinit.
         rewrite app_nth1.
         { lia. }
         rewrite app_nth1.
@@ -790,6 +790,8 @@ Proof.
         { apply Hsend. }
         { apply Hj. }
 Qed.
+
+
     
   
 
