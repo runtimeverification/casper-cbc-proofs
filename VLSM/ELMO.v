@@ -849,10 +849,38 @@ Proof.
 Qed.
 
 
-(*Lemma ob_sent_contains_previous_prop_impl_received_is_not_send_later component m l2:
+Lemma ob_sent_contains_previous_prop_impl_received_is_not_send_later component m l2:
   ob_sent_contains_previous_prop ((Cobservation Receive m component) :: l2) ->
-  ~List.In (Cobservation Send m component) l2
-*)
+  ~List.In (Cobservation Send m component) l2.
+Proof.
+  intros H.
+  induction l2.
+  - simpl. intros [].
+  - simpl. intros Hcontra.
+    destruct Hcontra.
+    + subst.
+      unfold ob_sent_contains_previous_prop in H.
+      specialize (H 1).
+      simpl in H.
+      assert (H1 : 1 < S (S (length l2))).
+      { lia. }
+      specialize (H H1 (eq_refl _) 0).
+      assert (H0 : 0 < 1).
+      { lia. }
+      specialize (H H0). clear H0 H1.
+      simpl in H.
+      remember (Cobservation Receive m component) as ob1.
+      assert (Hm: m = messageOf ob1).
+      { subst. reflexivity. }
+      rewrite Hm in H.
+      pose proof (Observation_nested_neq _ _ H).
+      contradiction.
+    + apply IHl2.
+      2: apply H0.
+      clear H0 IHl2.
+Abort.
+
+      
     
   
 
