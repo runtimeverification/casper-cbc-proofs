@@ -758,8 +758,7 @@ Proof.
     + specialize (H Hsend j Hj). destruct j.
       * exact H.
       * lia.
-    + Search app nth.
-      rewrite app_nth1 in H.
+    + rewrite app_nth1 in H.
       { lia. }
       specialize (H Hsend j Hj).
       destruct j.
@@ -768,6 +767,70 @@ Proof.
         { lia. }
         exact H.
 Qed.
+
+Lemma ob_sent_contains_previous_prop_middle l1 a l2:
+  ob_sent_contains_previous_prop (l1 ++ a :: l2) ->
+  ob_sent_contains_previous_prop (l1 ++ l2).
+Proof.
+  intros H.
+  induction l1.
+  - simpl in *.
+    eapply ob_sent_contains_previous_prop_tail.
+    apply H.
+  - simpl in *.
+    specialize (IHl1 (ob_sent_contains_previous_prop_tail _ _ H)).
+    intros i Hi Hsend j Hj.
+    destruct j.
+    + (* j = 0 -> use H *)
+      clear IHl1.
+      destruct i.
+      { lia. }
+      clear Hj.
+      simpl in *.
+      rewrite app_length in Hi.
+      (* I need to case split on whether i < length l1 or not *)
+      destruct (dec_lt i (length l1)).
+      * rewrite app_nth1.
+        { apply H0. }        
+        specialize (H (S i)).
+        simpl in H.
+        assert (Htmp: (S i) < S (length (l1 ++ a :: l2))).
+        { rewrite app_length. simpl. lia. }
+        specialize (H Htmp). clear Htmp.
+        rewrite app_nth1 in H.
+        { apply H0. }
+        rewrite app_nth1 in Hsend.
+        { apply H0. }
+        specialize (H Hsend). clear Hsend.
+        specialize (H 0).
+        assert (Htmp: 0 < S i).
+        { lia. }
+        specialize (H Htmp). clear Htmp.
+        simpl in H. exact H.
+      * rewrite app_nth2.
+        { lia. }
+        rewrite app_nth2 in Hsend.
+        { lia. }
+        specialize (H (S (S i))).
+        simpl in H.
+        rewrite app_nth2 in H.
+        { lia. }
+        assert (Htmp: (S i) - (length l1) = S (i - (length l1))).
+        { lia. }
+        rewrite Htmp in H. clear Htmp.
+        simpl in H.
+        assert (Htmp: S (S i) < S (length (l1 ++ a :: l2))).
+        { rewrite app_length. simpl. lia. }
+        specialize (H Htmp Hsend). clear Htmp.
+        specialize (H 0).
+        assert (Htmp: 0 < S (S i)).
+        { lia. }
+        specialize (H Htmp). clear Htmp.
+        simpl in H. exact H.
+        
+      
+    + (* j > 0 -> use IHl1 *)
+      clear H.
 
 
 Lemma ob_sent_contains_previous_prop_initial : ob_sent_contains_previous_prop [].
