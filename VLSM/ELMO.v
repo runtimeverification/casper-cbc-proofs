@@ -831,6 +831,14 @@ Proof.
       
     + (* j > 0 -> use IHl1 *)
       clear H.
+      simpl. simpl in Hsend.
+      destruct i.
+      { lia. }
+      apply IHl1.
+      3: { lia. }
+      2: { exact Hsend. }
+      simpl in Hi. lia.
+Qed.
 
 
 Lemma ob_sent_contains_previous_prop_initial : ob_sent_contains_previous_prop [].
