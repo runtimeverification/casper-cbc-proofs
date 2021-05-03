@@ -949,11 +949,15 @@ Proof.
     + apply IHl2.
       2: apply H0.
       clear H0 IHl2.
-Abort.
-
-      
-    
-  
+      assert (Heq1: Cobservation Receive m component :: a :: l2 = [Cobservation Receive m component] ++ a :: l2).
+      { reflexivity. }
+      rewrite Heq1 in H. clear Heq1.
+      assert (Heq2: Cobservation Receive m component :: l2 = [Cobservation Receive m component] ++ l2).
+      { reflexivity. }
+      rewrite Heq2. clear Heq2.
+      eapply ob_sent_contains_previous_prop_middle.
+      eexact H.
+Qed.
 
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
   let step := isProtocol_step component weights treshold in
