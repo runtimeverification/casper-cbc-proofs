@@ -698,8 +698,7 @@ Proof.
   congruence.
 Qed.
 
-Definition ob_sent_contains_previous_prop s : Prop :=
-  let l := observationsOf s in
+Definition ob_sent_contains_previous_prop l : Prop :=
   forall (i : nat),
     i < length l ->
     labelOf (nth i l dummy_observation) = Send ->
@@ -711,14 +710,72 @@ Definition ob_sent_contains_previous_prop s : Prop :=
 
 .
 
-Lemma ob_sent_contains_previous_prop_initial : ob_sent_contains_previous_prop (Cprestate []).
+
+Lemma ob_sent_contains_previous_prop_tail x xs:
+  ob_sent_contains_previous_prop (x :: xs) ->
+  ob_sent_contains_previous_prop xs.
+Proof.
+  unfold ob_sent_contains_previous_prop.
+  intros H.
+  intros i Hi Hsend j Hj.
+  simpl in H.
+  assert (Hi': S i < S (length xs)).
+  { lia. }
+  specialize (H (S i) Hi'). clear Hi'.
+  simpl in H.
+  assert (Hj': S j < S i).
+  { lia. }
+  specialize (H Hsend (S j) Hj'). clear Hj'.
+  simpl in H.
+  exact H.
+Qed.
+
+  
+
+Lemma ob_sent_contains_previous_prop_app l1 l2:
+  ob_sent_contains_previous_prop (l1 ++ l2) ->
+  ob_sent_contains_previous_prop l1 /\ ob_sent_contains_previous_prop l2.
+Proof.
+  intros H.
+  induction l1.
+  - simpl in H. split.
+    + unfold ob_sent_contains_previous_prop. intros i Hi. simpl in Hi. inversion Hi.
+    + exact H.
+  - simpl in H.
+    pose proof (Htail:= ob_sent_contains_previous_prop_tail _ _ H).
+    specialize (IHl1 Htail).
+    destruct IHl1 as [IHl11 IHl12].
+    split.
+    2: { exact IHl12. }
+    intros i Hi Hsend j Hj.
+    specialize (H i).
+    simpl in *.
+    rewrite app_length in H.
+    assert (Hi': i < S (length l1 + length l2)).
+    { lia. }
+    specialize (H Hi'). clear Hi'.
+    destruct i.
+    + specialize (H Hsend j Hj). destruct j.
+      * exact H.
+      * lia.
+    + Search app nth.
+      rewrite app_nth1 in H.
+      { lia. }
+      specialize (H Hsend j Hj).
+      destruct j.
+      * exact H.
+      * rewrite app_nth1 in H.
+        { lia. }
+        exact H.
+Qed.
+
+
+Lemma ob_sent_contains_previous_prop_initial : ob_sent_contains_previous_prop [].
 Proof.
   intros i Hi Hx j Hj.
   simpl in Hi.
   inversion Hi.
 Qed.
-
-Print elmo_transition.
 
 Lemma ob_sent_contains_previous_prop_step
       (component : nat)
@@ -726,9 +783,9 @@ Lemma ob_sent_contains_previous_prop_step
       (treshold : R)
       (label : Label)
       (bsom : Prestate * option Premessage) :
-  ob_sent_contains_previous_prop (fst bsom) ->
+  ob_sent_contains_previous_prop (observationsOf (fst bsom)) ->
   elmo_valid weights treshold label bsom ->
-  ob_sent_contains_previous_prop (fst (elmo_transition component weights treshold label bsom)).
+  ob_sent_contains_previous_prop (observationsOf (fst (elmo_transition component weights treshold label bsom))).
 Proof.
   destruct bsom as [bs om].
   intros Hinit Hvalid.
@@ -792,6 +849,10 @@ Proof.
 Qed.
 
 
+(*Lemma ob_sent_contains_previous_prop_impl_received_is_not_send_later component m l2:
+  ob_sent_contains_previous_prop ((Cobservation Receive m component) :: l2) ->
+  ~List.In (Cobservation Send m component) l2
+*)
     
   
 
