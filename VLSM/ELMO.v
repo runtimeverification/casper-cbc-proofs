@@ -1027,17 +1027,20 @@ Proof.
         split; intros [H|H].
         -- subst. inversion H.
         -- Search In firstn.
-        Search bool_decide.
-        repeat rewrite bool_decide_decide.
-        destruct (decide (x = x' \/ In x' (firstn i l2))), (decide (x = x' \/ In x' ())).
-        -- destruct o.
-           { subst. inversion H. }
-           
-           
-        
-      
-      Print isProtocol.
-      (* FIXME: For the lemma to be true, it must hold that x' is not in l2 *)
+           pose proof (In_firstn _ _ _ H).
+           contradiction.
+        -- left. exact H.
+        -- inversion H.
+    + apply bool_decide_eq_false in Heqn0.
+      apply bool_decide_eq_true in Heqn.
+      subst n.
+      destruct i.
+      { simpl. reflexivity. }
+      simpl. rewrite firstn_nil.
+      (* The call to [fullNode] on the RHS should return [false]?
+         Not necessarily. If [l] is empty, then the call on RHS evaluates to [true].
+      *)
+      unfold fullNode at 2. simpl
 Abort.
     
   
