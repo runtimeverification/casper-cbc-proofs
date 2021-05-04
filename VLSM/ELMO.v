@@ -1004,60 +1004,11 @@ Proof.
   simpl.
   unfold isProtocol_step.
   destruct x. destruct p.
-  (*destruct args as [[[b i] curState] curEq].*)
-  (*move: i Hi.*)
   subst i.
-  induction l1(*; intros i Hi*).
+  induction l1.
   - destruct l; destruct b; destruct p; simpl; try reflexivity;
     destruct (bool_decide (n0 = component)) eqn:Heqn0;
     destruct (bool_decide (n = component)) eqn:Heqn; simpl; try reflexivity.
-    (*
-    + remember (Cobservation Receive (Cpremessage (Cprestate l) n0) n) as x.
-      remember (Cobservation Send (Cpremessage (Cprestate l) n0) component) as x'.
-      remember (Cpremessage (Cprestate l) n0) as msg.
-      apply bool_decide_eq_true in Heqn0.
-      apply bool_decide_eq_true in Heqn.
-      subst n0. subst n.
-
-      repeat (apply pair_equal_spec; split); try reflexivity.
-      simpl in Hprev.
-      rewrite Heqx in Hprev.
-      epose proof (Pf := ob_sent_contains_previous_prop_impl_received_is_not_sent_later component msg l2 Hprev).
-      rewrite -Heqx' in Pf.
-
-      destruct i.
-      * reflexivity.
-      * simpl.
-        rewrite firstn_nil. simpl.
-        apply bool_decide_iff.
-        split; intros [H|H].
-        -- subst. inversion H.
-        -- Search In firstn.
-           pose proof (In_firstn _ _ _ H).
-           contradiction.
-        -- left. exact H.
-        -- inversion H.
-    + apply bool_decide_eq_false in Heqn0.
-      apply bool_decide_eq_true in Heqn.
-      subst n.
-      destruct i.
-      { simpl. reflexivity. }
-      simpl in Hi. inversion Hi.
-      (*
-      simpl. rewrite firstn_nil.
-      (* The call to [fullNode] on the RHS should return [false]?
-         Not necessarily. If [l] is empty, then the call on RHS evaluates to [true].
-      *)
-      unfold fullNode at 2. simpl
-       *)
-    +
-      apply bool_decide_eq_true in Heqn0.
-      apply bool_decide_eq_true in Heqn.
-      subst n n0.
-      simpl in Hi. subst i.
-      simpl.
-      reflexivity.
-*)
   - simpl in Hprev.
     specialize (IHl1 (ob_sent_contains_previous_prop_tail _ _ Hprev)).
     destruct b.
@@ -1086,10 +1037,15 @@ Proof.
       * right.
         apply bool_decide_iff_iff in H0.
         apply H0. apply H.
-    + 
-    
-Abort.
-    
+    + repeat rewrite firstn_app.
+      repeat rewrite Nat.sub_diag.
+      reflexivity.
+    + repeat rewrite firstn_app.
+      repeat rewrite Nat.sub_diag.
+      simpl. simpl in IHl1.
+      repeat rewrite -app_nil_end.
+      reflexivity.
+Qed.
   
 
 Lemma fold_isProtocol_step_app component weights treshold l1 l2 b n s es:
