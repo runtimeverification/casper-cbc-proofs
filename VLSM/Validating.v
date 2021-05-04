@@ -161,38 +161,6 @@ Proof.
   }
   apply Hconstraint.
 Qed.
-  
-  
-
-
-Lemma validating_projection_prop_impl_valid_subsumes_constraint_prop:
-  validating_projection_prop ->
-  valid_subsumes_constraint_prop.
-Proof.
-  intros Hvalidating li si omi H.
-  unfold validating_projection_prop in Hvalidating.
-
-
-  specialize (Hvalidating li (si, omi) H).
-  (*
-  remember (lift_to_composite_state IM i si i) as si'.
-  assert (Hsi'eqsi: si' = si).
-  { rewrite Heqsi'. unfold lift_to_composite_state.
-    rewrite state_update_eq. reflexivity.
-  }
-  rewrite <- Hsi'eqsi in H. rewrite Heqsi' in H.
-  specialize (Hvalidating li (lift_to_composite_state IM i si i, omi) H).
-  *)
-  (* lift_to_composite_state IM i si *)
-  unfold vvalid in Hvalidating. unfold valid in Hvalidating.
-  unfold machine in Hvalidating. simpl in Hvalidating.
-  destruct Hvalidating as [s [Hsi [Hpsp [Hopmp Hccv]]]].
-  unfold constrained_composite_valid in Hccv.
-  destruct Hccv as [Hcv Hconstraint].
-  Search lift_to_composite_state.
-  Fail apply Hconstraint.
-Abort.
-
 
 (**
 It is easy to see that the [validating_projection_prop]erty includes the
