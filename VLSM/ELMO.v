@@ -1047,6 +1047,117 @@ Proof.
       reflexivity.
 Qed.
   
+Print isProtocol_step.
+Check ob_sent_contains_previous_prop.
+
+Lemma isProtocol_step_fold_false component weights treshold l1 l2 n curState curEq:
+(fold_left (isProtocol_step component weights treshold l1) l2
+           (false, n, curState, curEq)).1.1.1 = false.
+Proof.
+  induction l2.
+  - reflexivity.
+  - simpl. apply IHl2.
+Qed.
+
+Lemma isProtocol_step_Sidx component weights treshold ob1 ob2 l n curState curEq:
+  (isProtocol_step component weights treshold
+                  (ob1 :: l)
+                  (true, S n, curState, curEq)
+                  ob2).1.1.1
+  = (isProtocol_step component weights treshold
+                  l
+                  (true, n, curState, curEq)
+                  ob2).1.1.1.
+Proof.
+  unfold isProtocol_step.
+  destruct (bool_decide (witnessOf ob2 = component)); simpl.
+  2: { reflexivity. }
+  destruct (bool_decide (authorOf (messageOf ob2) = component)), (labelOf ob2); simpl.
+  4: { reflexivity. }
+  2: { (* This does not hold. *)
+Abort.
+
+
+Lemma isProtocol_step_fold_Sidx component weights treshold m n l1 l2 b idx curState curEq:
+  (fold_left
+     (isProtocol_step component weights treshold (Cobservation Send m n :: l1))
+     l2
+     (b, S idx, curState, curEq))
+  =
+  let: (b', idx', curState', curEq') := (fold_left
+     (isProtocol_step component weights treshold l1)
+     l2
+     (b, idx, curState, curEq)) in
+  (b', S idx', curState', curEq')
+.
+Proof.
+  move: b idx curState curEq.
+  induction l2; intros b idx curState curEq.
+  - reflexivity.
+  - remember (fold_left (isProtocol_step component weights treshold l1) (a :: l2) (b, idx, curState, curEq)) as RHS.
+    destruct RHS as [[[b' idx'] curState'] curEq'].
+    simpl. simpl in HeqRHS.
+    destruct b; simpl; simpl in HeqRHS.
+    2: { rewrite IHl2. simpl. rewrite -HeqRHS. reflexivity. }
+    destruct (bool_decide (witnessOf a = component)) eqn:Heqwa; simpl; simpl in HeqRHS.
+    2: { rewrite IHl2. simpl. rewrite -HeqRHS. reflexivity. }
+    destruct (labelOf a) eqn:Heqloa, (bool_decide (authorOf (messageOf a) = component)) eqn:Haomoc; simpl; simpl in HeqRHS.
+    4: { rewrite IHl2. rewrite -HeqRHS. reflexivity. }
+    3: { rewrite IHl2.
+         remember (fold_left (isProtocol_step component weights treshold l1) l2
+      (bool_decide (observationsOf (stateOf (messageOf a)) = Cobservation Send m n :: firstn idx l1),
+       S idx, curState, curEq)) as LHS.
+         destruct LHS as [[[b'0 idx'0] curState'0] curEq'0].
+         destruct a. simpl in *. destruct p. simpl in *. destruct p. simpl in *.
+         (* Does not seem to hold *)
+Abort.
+
+  
+
+
+
+Lemma isProtocol_tail component weights treshold a l:
+  isProtocol (Cprestate (a :: l)) component weights treshold ->
+  isProtocol (Cprestate l) component weights treshold.
+Proof.
+  unfold isProtocol.
+  repeat rewrite [observationsOf _]/=.
+  simpl.
+
+  assert (Hfalse: (fold_left (isProtocol_step component weights treshold (a :: l)) l
+                             (false, 1, map (fun=> Cprestate []) weights, [])).1.1.1 = false).
+  { apply isProtocol_step_fold_false. }
+
+  assert (Hnottrue: ~(fold_left (isProtocol_step component weights treshold (a :: l)) l
+                                (false, 1, map (fun=> Cprestate []) weights, [])).1.1.1).
+  { intros H. inversion H. rewrite Hfalse in H1. inversion H1. }
+
+  
+  destruct (bool_decide (witnessOf a = component)); simpl.
+  2: { intros H. contradiction. }
+  destruct a. destruct p. simpl.
+  destruct (bool_decide (n0 = component)),l0; simpl.
+  4: { intros H. contradiction. }
+  2: { intros H.
+       destruct p. simpl in H.
+       destruct (bool_decide (l0 = [])).
+       2: { contradiction. }
+       
+       
+Abort.
+
+  
+
+Lemma isProtocol_implies_ob_sent_contains_previous_prop component weights treshold l:
+  isProtocol (Cprestate l) component weights treshold ->
+  ob_sent_contains_previous_prop l.
+Proof.
+  intros H.
+  induction l.
+  - unfold ob_sent_contains_previous_prop.
+    intros i Hi. simpl in Hi. inversion Hi.
+  - 
+
 
 Lemma fold_isProtocol_step_app component weights treshold l1 l2 b n s es:
   fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l1 (b, n, s, es)
