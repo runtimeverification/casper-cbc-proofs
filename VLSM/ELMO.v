@@ -992,20 +992,26 @@ Qed.
 
 
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
+  let: (result, i,  curState, curEq) := args in
+  i = length l1 ->
   ob_sent_contains_previous_prop (l1 ++ x :: l2) ->
   let step := isProtocol_step component weights treshold in
   step (l1 ++ x :: l2) args x =
   step (l1 ++ [x]) args x.
 Proof.
-  intros Hprev.
+  destruct args as [[[b i] curState] curEq].
+  intros Hi Hprev.
   simpl.
   unfold isProtocol_step.
   destruct x. destruct p.
-  destruct args as [[[b i] curState] curEq].
-  induction l1.
+  (*destruct args as [[[b i] curState] curEq].*)
+  (*move: i Hi.*)
+  subst i.
+  induction l1(*; intros i Hi*).
   - destruct l; destruct b; destruct p; simpl; try reflexivity;
     destruct (bool_decide (n0 = component)) eqn:Heqn0;
     destruct (bool_decide (n = component)) eqn:Heqn; simpl; try reflexivity.
+    (*
     + remember (Cobservation Receive (Cpremessage (Cprestate l) n0) n) as x.
       remember (Cobservation Send (Cpremessage (Cprestate l) n0) component) as x'.
       remember (Cpremessage (Cprestate l) n0) as msg.
@@ -1036,11 +1042,52 @@ Proof.
       subst n.
       destruct i.
       { simpl. reflexivity. }
+      simpl in Hi. inversion Hi.
+      (*
       simpl. rewrite firstn_nil.
       (* The call to [fullNode] on the RHS should return [false]?
          Not necessarily. If [l] is empty, then the call on RHS evaluates to [true].
       *)
       unfold fullNode at 2. simpl
+       *)
+    +
+      apply bool_decide_eq_true in Heqn0.
+      apply bool_decide_eq_true in Heqn.
+      subst n n0.
+      simpl in Hi. subst i.
+      simpl.
+      reflexivity.
+*)
+  - simpl in Hprev.
+    specialize (IHl1 (ob_sent_contains_previous_prop_tail _ _ Hprev)).
+    destruct b.
+    2: { reflexivity. }
+    destruct (bool_decide (witnessOf (Cobservation l (Cpremessage p n0) n) = component)); simpl.
+    2: { reflexivity. }
+    simpl in IHl1.
+    destruct (bool_decide (n0 = component)),l; simpl in *.
+    4: { reflexivity. }
+    + inversion IHl1. clear IHl1.
+      repeat (apply pair_equal_spec; split); try reflexivity.
+      apply bool_decide_iff.
+      split; intros [H|H].
+      * left. subst a. reflexivity.
+      * right.
+        rewrite firstn_app.
+        rewrite Nat.sub_diag.
+        simpl.
+        rewrite -app_nil_end.
+        rewrite firstn_app in H.
+        rewrite Nat.sub_diag in H.
+        simpl in H.
+        rewrite -app_nil_end in H.
+        exact H.
+      * left. subst a. reflexivity.
+      * right.
+        apply bool_decide_iff_iff in H0.
+        apply H0. apply H.
+    + 
+    
 Abort.
     
   
