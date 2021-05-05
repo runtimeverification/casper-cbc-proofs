@@ -1258,9 +1258,13 @@ Proof.
   remember (isProtocol_step component weights treshold (l ++ [x]) FL1 x) as ARG2.
   rewrite H.
   subst ARG2. clear H.
-  rewrite isProtocol_step_app in HeqFL1.
-  
-Abort.
+  pose proof (Htmp := isProtocol_step_app_fold component weights treshold l [x] l
+                                               (true, 0, map (fun=> Cprestate []) weights, [])).
+  simpl in Htmp.
+  rewrite Htmp in HeqFL1.
+  { lia. }
+  rewrite -HeqFL1. rewrite H'. reflexivity.
+Qed.
      
 
 Lemma isProtocol_implies_ob_sent_contains_previous_prop component weights treshold l:
