@@ -1059,6 +1059,33 @@ Proof.
   - simpl. apply IHl2.
 Qed.
 
+Lemma isProtocol_step_fold_result_true component weights treshold l1 l2 b n curState curEq:
+  (fold_left (isProtocol_step component weights treshold l1) l2
+             (b, n, curState, curEq)).1.1.1 = true ->
+  b = true
+.
+Proof.
+  intros H.
+  destruct b.
+  - reflexivity.
+  - pose proof (H' := isProtocol_step_fold_false component weights treshold l1 l2 n curState curEq).
+    rewrite H' in H.
+    exact H.
+Qed.
+
+Lemma isProtocol_step_result_true component weights treshold l args ob:
+  (isProtocol_step component weights treshold l args ob).1.1.1 = true ->
+  args.1.1.1 = true.
+Proof.
+  intros H. simpl in H.
+  destruct args as [[[b n] curState] curEq].
+  destruct b.
+  { reflexivity. }
+  simpl in H. exact H.
+Qed.
+
+
+
 Lemma isProtocol_step_Sidx component weights treshold ob1 ob2 l n curState curEq:
   (isProtocol_step component weights treshold
                   (ob1 :: l)
@@ -1142,21 +1169,59 @@ Proof.
        destruct p. simpl in H.
        destruct (bool_decide (l0 = [])).
        2: { contradiction. }
-       
-       
 Abort.
 
+Lemma isProtocol_step_app component weights treshold l1 l2 ob idx curState curEq:
+  idx < length l1 ->
+  isProtocol_step component weights treshold (l1 ++ l2)
+                  (true, idx, curState, curEq)
+                  ob
+  = isProtocol_step component weights treshold l1
+                    (true, idx, curState, curEq) ob.
+Proof.
+  intros Hidx.
+  unfold isProtocol_step.
+  repeat rewrite firstn_app.
+  assert (Hidx': idx - length l1 = 0).
+  { lia. }
+  repeat rewrite Hidx'.
+  rewrite app_nil_r.
+  reflexivity.
+Qed.  
+
+Lemma isProtocol_last component weights treshold l x:
+  isProtocol (Cprestate (l ++ [x])) component weights treshold ->
+  isProtocol (Cprestate l) component weights treshold.
+Proof.
+  unfold isProtocol.
+  simpl.
+  rewrite fold_left_app.
+  simpl.
+  intros H.
+  inversion H. clear H. rename H1 into H.
   
+  remember (fold_left (isProtocol_step component weights treshold (l ++ [x])) l
+            (true, 0, map (fun=> Cprestate []) weights, [])) as FL1.
+
+  pose proof (H' := isProtocol_step_result_true _ _ _ _ _ _ H).
+  remember (isProtocol_step component weights treshold (l ++ [x]) FL1 x) as ARG2.
+  rewrite H.
+  subst ARG2. clear H.
+  
+Abort.
+     
 
 Lemma isProtocol_implies_ob_sent_contains_previous_prop component weights treshold l:
   isProtocol (Cprestate l) component weights treshold ->
   ob_sent_contains_previous_prop l.
 Proof.
   intros H.
-  induction l.
+  induction l using rev_ind.
   - unfold ob_sent_contains_previous_prop.
     intros i Hi. simpl in Hi. inversion Hi.
   - 
+Abort.
+
 
 
 Lemma fold_isProtocol_step_app component weights treshold l1 l2 b n s es:
