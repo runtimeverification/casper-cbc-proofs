@@ -1172,7 +1172,7 @@ Proof.
 Abort.
 
 Lemma isProtocol_step_app component weights treshold l1 l2 ob idx curState curEq:
-  idx < length l1 ->
+  idx <= length l1 ->
   isProtocol_step component weights treshold (l1 ++ l2)
                   (true, idx, curState, curEq)
                   ob
@@ -1187,8 +1187,49 @@ Proof.
   repeat rewrite Hidx'.
   rewrite app_nil_r.
   reflexivity.
-Qed.  
+Qed.
 
+Lemma isProtocol_step_app_fold component weights treshold l1 l2 l3 args:
+  let: (b, idx, curState, curEq) := args in
+  length l3 + idx <= length l1 ->
+  fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l3 args
+  = fold_left (isProtocol_step component weights treshold l1) l3 args.
+Proof.
+  move: args.
+  induction l3; intros args.
+  - destruct args as [[[b idx] curState] curEq].
+    auto.
+  - destruct args as [[[b idx] curState] curEq].
+    intros Hlen.
+    simpl in Hlen.
+    cbn [ fold_left ].
+    destruct b.
+    + rewrite isProtocol_step_app.
+      { lia. }
+      remember (isProtocol_step component weights treshold l1 (true, idx, curState, curEq) a) as stp.
+      
+      simpl in IHl3.
+      specialize (IHl3 stp).
+      destruct stp as [[[b' idx'] curState'] curEq'] eqn:Heqstp'.
+      apply IHl3.
+      assert (idx' = S idx).
+      { unfold isProtocol_step in Heqstp.
+        destruct (bool_decide (witnessOf a = component)); simpl in Heqstp.
+        2: { inversion Heqstp. subst. reflexivity. }
+        destruct (bool_decide (authorOf (messageOf a) = component)), (labelOf a);
+          simpl in Heqstp; inversion Heqstp; subst; try reflexivity.
+        clear H0.
+        destruct (fullNode (messageOf a) (firstn idx l1) component);
+          simpl in Heqstp; inversion Heqstp.
+        2: reflexivity.
+        destruct (update (messageOf a) component weights treshold curState curEq).
+        destruct p.
+        inversion Heqstp. subst. reflexivity.
+      }
+      lia.
+    +
+Abort.
+  
 Lemma isProtocol_last component weights treshold l x:
   isProtocol (Cprestate (l ++ [x])) component weights treshold ->
   isProtocol (Cprestate l) component weights treshold.
@@ -1207,6 +1248,7 @@ Proof.
   remember (isProtocol_step component weights treshold (l ++ [x]) FL1 x) as ARG2.
   rewrite H.
   subst ARG2. clear H.
+  rewrite isProtocol_step_app in HeqFL1.
   
 Abort.
      
