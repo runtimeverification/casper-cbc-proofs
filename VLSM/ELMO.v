@@ -1047,8 +1047,12 @@ Proof.
       reflexivity.
 Qed.
   
-Print isProtocol_step.
-Check ob_sent_contains_previous_prop.
+Lemma isProtocol_step_false component weights treshold l x n curState curEq:
+  isProtocol_step component weights treshold l (false, n, curState, curEq) x
+  = (false, n, curState, curEq).
+Proof.
+  reflexivity.
+Qed.
 
 Lemma isProtocol_step_fold_false component weights treshold l1 l2 n curState curEq:
 (fold_left (isProtocol_step component weights treshold l1) l2
@@ -1203,32 +1207,38 @@ Proof.
     intros Hlen.
     simpl in Hlen.
     cbn [ fold_left ].
+    remember (isProtocol_step component weights treshold l1 (true, idx, curState, curEq) a) as stp.
+    destruct stp as [[[b' idx'] curState'] curEq'] eqn:Heqstp'.
+    assert (idx' = S idx).
+    { unfold isProtocol_step in Heqstp.
+      destruct (bool_decide (witnessOf a = component)); simpl in Heqstp.
+      2: { inversion Heqstp. subst. reflexivity. }
+      destruct (bool_decide (authorOf (messageOf a) = component)), (labelOf a);
+        simpl in Heqstp; inversion Heqstp; subst; try reflexivity.
+      clear H0.
+      destruct (fullNode (messageOf a) (firstn idx l1) component);
+        simpl in Heqstp; inversion Heqstp.
+      2: reflexivity.
+      destruct (update (messageOf a) component weights treshold curState curEq).
+      destruct p.
+      inversion Heqstp. subst. reflexivity.
+    }
     destruct b.
     + rewrite isProtocol_step_app.
       { lia. }
-      remember (isProtocol_step component weights treshold l1 (true, idx, curState, curEq) a) as stp.
-      
+
+      rewrite -Heqstp.
       simpl in IHl3.
       specialize (IHl3 stp).
-      destruct stp as [[[b' idx'] curState'] curEq'] eqn:Heqstp'.
+      rewrite Heqstp' in IHl3.
       apply IHl3.
-      assert (idx' = S idx).
-      { unfold isProtocol_step in Heqstp.
-        destruct (bool_decide (witnessOf a = component)); simpl in Heqstp.
-        2: { inversion Heqstp. subst. reflexivity. }
-        destruct (bool_decide (authorOf (messageOf a) = component)), (labelOf a);
-          simpl in Heqstp; inversion Heqstp; subst; try reflexivity.
-        clear H0.
-        destruct (fullNode (messageOf a) (firstn idx l1) component);
-          simpl in Heqstp; inversion Heqstp.
-        2: reflexivity.
-        destruct (update (messageOf a) component weights treshold curState curEq).
-        destruct p.
-        inversion Heqstp. subst. reflexivity.
-      }
       lia.
-    +
-Abort.
+    + repeat rewrite isProtocol_step_false.
+      remember (false, idx, curState, curEq) as args.
+      specialize (IHl3 args).
+      subst args. apply IHl3. lia.
+Qed.
+
   
 Lemma isProtocol_last component weights treshold l x:
   isProtocol (Cprestate (l ++ [x])) component weights treshold ->
