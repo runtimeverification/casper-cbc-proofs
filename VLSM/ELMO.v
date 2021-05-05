@@ -1275,7 +1275,52 @@ Proof.
   induction l using rev_ind.
   - unfold ob_sent_contains_previous_prop.
     intros i Hi. simpl in Hi. inversion Hi.
-  - 
+  - pose proof (isProtocol_last _ _ _ _ _ H).
+    specialize (IHl H0). clear H0.
+    unfold isProtocol in H.
+    rewrite fold_left_app in H.
+    simpl in H.
+    remember (fold_left (isProtocol_step component weights treshold (l ++ [x])) l
+                        (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
+    pose proof (HFLtrue := isProtocol_step_result_true _ _ _ _ _ _ H).
+    intros i Hi Hlbl j Hj.
+    rewrite app_length in Hi.
+    simpl in Hi.
+    destruct (decide(i = length l)).
+    2: { assert (i < length l).
+         { lia. }
+         rewrite app_nth1.
+         { lia. }
+         rewrite app_nth1.
+         { lia. }
+         rewrite app_nth1 in Hlbl.
+         { lia. }
+         apply IHl.
+         { lia. }
+         apply Hlbl.
+         exact Hj.
+    }
+    subst i.
+    rewrite app_nth1.
+    { exact Hj. }
+    rewrite nth_middle.
+    unfold isProtocol_step in H.
+    destruct FL as [[[tt i'] curState'] curEq'].
+    simpl in HFLtrue. subst tt.
+    destruct (bool_decide (witnessOf x = component)) eqn:Hwitness, (labelOf x) eqn:Hlabel; simpl in H.
+    4: { inversion H. }
+    3: { inversion H. }
+    { rewrite nth_middle in Hlbl. rewrite Hlabel in Hlbl. inversion Hlbl. }
+    destruct (bool_decide (authorOf (messageOf x) = component)) eqn:Hauthor; simpl in H.
+    2: { inversion H. }
+    clear Hlabel Hlbl.
+    destruct x. simpl in *.
+    destruct p. simpl in *.
+    destruct p. simpl in *.
+    apply bool_decide_eq_true in Hwitness. subst n.
+    apply bool_decide_eq_true in Hauthor. subst n0.
+    apply bool_decide_eq_true in H.
+    (* Now i' >= length l (in fact, i = length l); therefore, l1 is a prefix of l *)
 Abort.
 
 
