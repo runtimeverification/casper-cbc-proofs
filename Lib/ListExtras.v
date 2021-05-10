@@ -1808,3 +1808,55 @@ Fixpoint zip_with {A B C : Type} (f : A -> B -> C) (l1 : list A) (l2 : list B) :
     |  y::ys => (f x y) :: zip_with f xs ys
     end
   end.
+
+Lemma in_notin_impl_not_eq {A : Type} (x : A) (l1 l2 : list A):
+  List.In x l1 ->
+  ~List.In x l2 ->
+  l1 <> l2.
+Proof.
+  intros.
+  generalize dependent l2.
+  induction l1; intros l2 H0.
+  - simpl in H. inversion H.
+  - destruct l2 as [| b l2].
+    + simpl in H.
+      discriminate.
+    + simpl in H. simpl in H0.
+      destruct H as [Heq|Hin].
+      * subst. intros Hcontra.
+        inversion Hcontra. subst.
+        apply H0. left. reflexivity.
+      * intros Hcontra. inversion Hcontra. subst. clear Hcontra.
+        apply H0. right. apply Hin.
+Qed.
+
+Lemma In_firstn_S {A : Type} {eqdec : EqDecision A} (l : list A) (x : A) (n : nat) :
+  List.In x (firstn n l) -> List.In x (firstn (S n) l).
+Proof.
+  generalize dependent n.
+  induction l; intros n H.
+  - rewrite firstn_nil in H. simpl in H. inversion H.
+  - simpl.
+    destruct (decide (a = x)).
+    { left. exact e. }
+    right.
+    destruct n.
+    { simpl in H. inversion H. }
+    apply IHl.
+    simpl in H.
+    destruct H; [contradiction|assumption].
+Qed.
+
+Lemma In_firstn {A : Type} (l : list A) (x : A) (n : nat):
+  List.In x (firstn n l) -> List.In x l.
+Proof.
+  generalize dependent n.
+  induction l; intros n H.
+  - rewrite firstn_nil in H. simpl in H. inversion H.
+  -  destruct n.
+    { simpl in H. inversion H. }
+    simpl in H. simpl.
+    destruct H as [H|H].
+    { left. exact H. }
+    right. eapply IHl. apply H.
+Qed.
