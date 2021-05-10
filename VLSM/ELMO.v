@@ -1355,9 +1355,16 @@ Proof.
     rewrite H.
     (* Now l1 is a prefix of l *)
     (* First, i' = length l *)
-    Search fold_left isProtocol_step.
-    Lemma isProtocol_step_fold
-Abort.
+    pose proof (Hidx := isProtocol_step_fold_result_true_idx component weights treshold).
+    specialize (Hidx (l ++ [Cobservation l0 (Cpremessage (Cprestate l1) component) component])).
+    specialize (Hidx l (true, 0, map (fun=> Cprestate []) weights, [])).
+    simpl in Hidx.
+    rewrite -HeqFL in Hidx.
+    specialize (Hidx (eq_refl _)).
+    subst i'.
+    rewrite firstn_app. rewrite Nat.sub_diag. simpl. rewrite app_nil_r. rewrite firstn_all.
+    apply nth_In. apply Hj.
+Qed.
 
 
 
