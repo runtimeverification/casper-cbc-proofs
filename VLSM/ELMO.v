@@ -1059,6 +1059,65 @@ Proof.
   simpl in H. exact H.
 Qed.
 
+Lemma isProtocol_step_fold_result_true_idx component weights treshold l1 l2 args:
+  let: (_, n, _, _) := args in
+  let: (b', n', _, _) := (fold_left (isProtocol_step component weights treshold l1) l2 args) in
+  b' = true -> n' = n + length l2.
+Proof.
+  destruct args as [[[b n] curState] curEq].
+  move: b n curState curEq.
+  induction l2; intros b n curState curEq.
+  - simpl. auto.
+  - cbn [fold_left].
+    remember (isProtocol_step component weights treshold l1) as step.
+    remember (step (b,n,curState,curEq) a) as args1.
+    destruct args1 as [[[b1 n1] curState1] curEq1].
+    remember (fold_left step l2 (b1, n1, curState1, curEq1)) as result.
+    destruct result as [[[b' n'] curState'] curEq'].
+    intros Hb'. subst b'.
+    assert (Hfltrue: (fold_left step l2 (b1, n1, curState1, curEq1)).1.1.1 = true).
+    { rewrite -Heqresult. reflexivity. }
+    rewrite Heqstep in Hfltrue.
+    apply isProtocol_step_fold_result_true in Hfltrue.
+    subst b1.
+    simpl.
+    specialize (IHl2 true n1 curState1 curEq1).
+    rewrite -Heqresult in IHl2.
+    specialize (IHl2 (eq_refl _)).
+    subst n'.
+
+    assert (Hb: b = true).
+    {
+      pose proof (H := isProtocol_step_result_true component weights treshold l1 (b, n, curState, curEq) a).
+      rewrite Heqstep in Heqargs1.
+      rewrite -Heqargs1 in H.
+      simpl in H.
+      specialize (H (eq_refl _)).
+      exact H.
+    }
+    subst b.
+
+    assert (n1 = S n).
+    { clear Heqresult curEq' curState'.
+      rewrite Heqstep in Heqargs1.
+      cbn [isProtocol_step] in Heqargs1.
+      destruct (bool_decide (witnessOf a = component)); simpl in Heqargs1.
+      2: { inversion Heqargs1. }
+      destruct (bool_decide (authorOf (messageOf a) = component)), (labelOf a);
+        simpl in Heqargs1.
+      4: { inversion Heqargs1. }
+      2: { inversion Heqargs1. subst. reflexivity. }
+      1: { inversion Heqargs1. subst. reflexivity. }
+      destruct (fullNode (messageOf a) (firstn n l1) component); simpl in Heqargs1.
+      2: { inversion Heqargs1. }
+      destruct (update (messageOf a) component weights treshold curState curEq).
+      destruct p.
+      inversion Heqargs1. subst. reflexivity.
+    }
+    lia.
+Qed.
+
+    
 
 (*
 Lemma isProtocol_step_Sidx component weights treshold ob1 ob2 l n curState curEq:
@@ -1293,7 +1352,11 @@ Proof.
     apply bool_decide_eq_true in Hauthor. subst n0.
     apply bool_decide_eq_true in H.
     clear Hi.
+    rewrite H.
     (* Now l1 is a prefix of l *)
+    (* First, i' = length l *)
+    Search fold_left isProtocol_step.
+    Lemma isProtocol_step_fold
 Abort.
 
 
