@@ -677,6 +677,7 @@ Proof.
   congruence.
 Qed.
 
+(* Observations of send messages contain all previous messages *)
 Definition ob_sent_contains_previous_prop l : Prop :=
   forall (i : nat),
     i < length l ->
@@ -819,6 +820,8 @@ Proof.
       simpl in Hi. lia.
 Qed.
 
+(* We now prove that all the states of a single component satisfy [ob_sent_contains_previous_prop].
+   We start with an initial state *)
 
 Lemma ob_sent_contains_previous_prop_initial : ob_sent_contains_previous_prop [].
 Proof.
@@ -827,6 +830,7 @@ Proof.
   inversion Hi.
 Qed.
 
+(* And prove that the transition function preserves this property. *)
 Lemma ob_sent_contains_previous_prop_step
       (component : nat)
       (weights : list pos_R)
@@ -898,6 +902,9 @@ Proof.
         { apply Hj. }
 Qed.
 
+(* If we have an observation of a received message, the message is not sent later
+  (assuming [ob_sent_contains_previous_prop]).
+ *)
 
 Lemma ob_sent_contains_previous_prop_impl_received_is_not_sent_later component m l2:
   ob_sent_contains_previous_prop ((Cobservation Receive m component) :: l2) ->
@@ -938,6 +945,11 @@ Proof.
       eexact H.
 Qed.
 
+
+(* Now we can prove the lemma saying that [isProtocol_step] ignores the rest
+   of the list after [x]. Specifically, if [isProtocol_step] is given the index [i],
+   it uses only the observations with lower or equal index.
+ *)
 Lemma isProtocol_step_in component weights treshold l1 l2 args x:
   let: (result, i,  curState, curEq) := args in
   i = length l1 ->
@@ -993,7 +1005,19 @@ Proof.
       repeat rewrite -app_nil_end.
       reflexivity.
 Qed.
-  
+
+
+(* But how do we know that the assumption [ob_sent_contains_previous_prop]
+   of [isProtocol_step_in] holds? Yes, it holds on all local states, because we
+   proved it is an invariant; however, [isProtocol_step] is called with a list of observations
+   from a state contained in a received message. About the received message we know only that
+   it satisfies [isProtocol]; therefore, we need to prove that [isProtocol] implies
+   [ob_sent_contains_previous_prop], which is what
+   the lemma [isProtocol_implies_ob_sent_contains_previous_prop] is about.
+   Before that we prove some helper results.
+ *)
+
+
 Lemma isProtocol_step_false component weights treshold l x n curState curEq:
   isProtocol_step component weights treshold l (false, n, curState, curEq) x
   = (false, n, curState, curEq).
@@ -1036,7 +1060,7 @@ Proof.
 Qed.
 
 
-
+(*
 Lemma isProtocol_step_Sidx component weights treshold ob1 ob2 l n curState curEq:
   (isProtocol_step component weights treshold
                   (ob1 :: l)
@@ -1121,6 +1145,7 @@ Proof.
        destruct (bool_decide (l0 = [])).
        2: { contradiction. }
 Abort.
+ *)
 
 Lemma isProtocol_step_app component weights treshold l1 l2 ob idx curState curEq:
   idx <= length l1 ->
@@ -1267,7 +1292,8 @@ Proof.
     apply bool_decide_eq_true in Hwitness. subst n.
     apply bool_decide_eq_true in Hauthor. subst n0.
     apply bool_decide_eq_true in H.
-    (* Now i' >= length l (in fact, i = length l); therefore, l1 is a prefix of l *)
+    clear Hi.
+    (* Now l1 is a prefix of l *)
 Abort.
 
 
