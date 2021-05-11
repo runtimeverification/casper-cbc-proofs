@@ -1006,6 +1006,42 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma isProtocol_step_in' component weights treshold l1 l2 args x:
+  let: (result, i,  curState, curEq) := args in
+  i <= length l1 ->
+  ob_sent_contains_previous_prop (l1 ++ x :: l2) ->
+  let step := isProtocol_step component weights treshold in
+  step (l1 ++ x :: l2) args x =
+  step (l1 ++ [x]) args x.
+Proof.
+  Check firstn_skipn.
+  destruct args as [[[b n] curState] curEq].
+  destruct (decide (n = length l1)).
+  { subst. intros _.
+    pose proof (H := isProtocol_step_in component weights treshold l1 l2 (b, length l1, curState, curEq)).
+    cbv iota beta zeta in H. cbv zeta. apply H. reflexivity.
+  }
+  intros Hn'.
+  assert (n < length l1).
+  { lia. }
+  clear Hn'.
+  
+  rewrite -(firstn_skipn n l1).
+  intros Hn Hoscpp.
+  Search firstn skipn.
+  Check isProtocol_step_in.
+  remember (skipn n l1) as l1'.
+  destruct l1' as [|x' l1'].
+  { pose proof (Hl := skipn_length n l1).
+    rewrite -Heql1' in Hl. simpl in Hl. lia.
+  }
+  repeat rewrite -app_assoc.
+  rewrite [(x' :: l1') ++ x :: l2]/=.
+  rewrite [(x' :: l1') ++ [x]]/=.
+  pose proof (Htmp := isProtocol_step_in component weights treshold (firstn n l1) (l1' ++ x :: l2)).
+  specialize (Htmp (b, n, curState, curEq) x').
+  cbv iota beta zeta in Htmp. (*rewrite Htmp.*)
+Abort.
 
 (* But how do we know that the assumption [ob_sent_contains_previous_prop]
    of [isProtocol_step_in] holds? Yes, it holds on all local states, because we
@@ -1368,23 +1404,25 @@ Qed.
 
 
 
-Lemma fold_isProtocol_step_app component weights treshold l1 l2 b n s es:
-  fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l1 (b, n, s, es)
-  = fold_left (isProtocol_step component weights treshold l1) l1 (b, n, s, es).
+Lemma fold_isProtocol_step_app component weights treshold l1 l2 b (*n*) s es:
+  let FL := fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l1 (b, (*n*)0, s, es) in
+  FL.1.1.1 = true ->
+  FL = fold_left (isProtocol_step component weights treshold l1) l1 (b, (*n*)0, s, es).
 Proof.
+  simpl.
   generalize dependent l2.
   generalize dependent b.
-  generalize dependent n.
+  (*generalize dependent n.*)
   generalize dependent s.
   generalize dependent es.
-  
+  (* TODO assume n <= length l1 *)
   remember (length l1) as len.
   assert (Hlen: length l1 <= len).
   { lia. }
   clear Heqlen.
   revert Hlen.
   generalize dependent l1.
-  induction len; intros l1 Hlen es s n b l2.
+  induction len; intros l1 Hlen es s (*n*) b l2 Htrue.
   - destruct l1.
     + reflexivity.
     + simpl in Hlen. lia.
@@ -1392,27 +1430,79 @@ Proof.
     { subst. reflexivity. }
     destruct H as [l1' [x Hl1]].
     remember (isProtocol_step component weights treshold) as step.
-    remember (fold_left (step l1) l1 (b, n, s, es)) as fl.
+    remember (fold_left (step l1) l1 (b, (*n*)0, s, es)) as fl.
     destruct fl as [[[b' n'] s'] es'].
     rewrite Hl1. rewrite fold_left_app. simpl.
     rewrite -app_assoc.
 
     assert (Hlenl1': length l1' <= len).
     { subst l1. rewrite app_length in Hlen. simpl in Hlen. lia. }
+
+    assert (Htrue': (fold_left (step (l1' ++ [x] ++ l2)) l1' (b, 0, s, es)).1.1.1 = true).
+    {
+      subst.
+      rewrite fold_left_app in Htrue. simpl in Htrue.
+      apply isProtocol_step_result_true in Htrue.
+      rewrite app_assoc. exact Htrue.
+    }
+    
     rewrite IHlen.
     { lia. }
+    { exact Htrue'. }
     simpl.
 
-    remember (fold_left (step l1') l1' (b, n, s, es)) as fl'.
+    remember (fold_left (step l1') l1' (b, (*n*)0, s, es)) as fl'.
     destruct fl' as [[[b'' n''] s''] es''].
     subst l1.
     (*rewrite Hl1 in Heqfl.*)
 
     rewrite fold_left_app in Heqfl. simpl in Heqfl.
+
+
+    assert (Htrue'': (fold_left (step (l1' ++ [x])) l1' (b, 0, s, es)).1.1.1 = true).
+    { subst.
+      rewrite app_assoc in Htrue'.
+      pose proof (Htmp := isProtocol_step_app_fold component weights treshold (l1' ++ [x]) l2 l1' (b, 0, s, es)).
+      cbv beta iota in Htmp. rewrite Htmp in Htrue'.
+      { rewrite app_length. simpl. lia. }
+      exact Htrue'.
+    }
+    
+    
     rewrite IHlen in Heqfl.
     { lia. }
+    { exact Htrue''. }
+    
     rewrite -Heqfl' in Heqfl.
-    rewrite Heqfl. rewrite Heqfl'.
+    rewrite Heqfl.
+    rewrite Heqstep.
+
+    (*
+    assert (Htrue''': (fold_left (step (l1' ++ [x] ++ l2)) l1' (b, 0, s, es)).1.1.1 = true).
+    { subst. *)
+     
+
+    assert (n'' = length l1').
+    { subst.
+      pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights treshold l1' l1' (b, 0, s, es)).
+      cbv beta iota in Htmp. rewrite -Heqfl' in Htmp. simpl in Htmp.
+      apply Htmp. clear Htmp.
+      admit.
+    }
+    
+    (* now n'' <= length l1' (but we need to prove it *)
+    (*
+    (*rewrite Heqfl'.*)
+    Check isProtocol_step_in.
+    Search isProtocol_step app.
+    pose proof (Hs := isProtocol_step_in component weights treshold l1' l2 (b, (length l1'), s, es) x).
+    cbv iota zeta beta in Hs.
+    specialize (Hs (eq_refl _)).
+    Search n.
+    (*
+    rewrite Hs.
+    rewrite -> isProtocol_step_in.*)
+*)
 Abort.
 
 Lemma isProtocol_implies_protocol weights treshold m:
