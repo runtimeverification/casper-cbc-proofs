@@ -1405,6 +1405,7 @@ Qed.
 
 
 Lemma fold_isProtocol_step_app component weights treshold l1 l2 b (*n*) s es:
+  ob_sent_contains_previous_prop (l1 ++ l2) ->
   let FL := fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l1 (b, (*n*)0, s, es) in
   FL.1.1.1 = true ->
   FL = fold_left (isProtocol_step component weights treshold l1) l1 (b, (*n*)0, s, es).
@@ -1422,7 +1423,7 @@ Proof.
   clear Heqlen.
   revert Hlen.
   generalize dependent l1.
-  induction len; intros l1 Hlen es s (*n*) b l2 Htrue.
+  induction len; intros l1 Hlen es s (*n*) b l2 Hoscp Htrue.
   - destruct l1.
     + reflexivity.
     + simpl in Hlen. lia.
@@ -1448,6 +1449,7 @@ Proof.
     
     rewrite IHlen.
     { lia. }
+    { subst. rewrite app_assoc. exact Hoscp. }
     { exact Htrue'. }
     simpl.
 
@@ -1471,6 +1473,7 @@ Proof.
     
     rewrite IHlen in Heqfl.
     { lia. }
+    { exact (proj1 (ob_sent_contains_previous_prop_app _ _ Hoscp)). }
     { exact Htrue''. }
     
     rewrite -Heqfl' in Heqfl.
@@ -1505,18 +1508,10 @@ Proof.
     cbv iota zeta beta in Hs.
     specialize (Hs (eq_refl _)).
     apply Hs.
-    
-    (* now n'' <= length l1' (but we need to prove it *)
-    (*
-    (*rewrite Heqfl'.*)
-    Check isProtocol_step_in.
-    Search isProtocol_step app.
-    Search n.
-    (*
-    rewrite Hs.
-    rewrite -> isProtocol_step_in.*)
-*)
-Abort.
+    rewrite -app_assoc in Hoscp.
+    simpl in Hoscp.
+    exact Hoscp.
+Qed.
 
 Lemma isProtocol_implies_protocol weights treshold m:
   isProtocol (stateOf m) (authorOf m) weights treshold  ->
