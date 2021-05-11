@@ -1,11 +1,12 @@
 Require Import Bool List ListSet Reals FinFun Program RelationClasses Relations Relations_1 Sorting Basics ZArith.
 Require Import Lia.
 Require Import ZArith.BinInt.
+Require Import ZArith.Zpow_facts.
 Import ListNotations.
 
 From CasperCBC
   Require Import
-    Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras Lib.TopSort
+    Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras Lib.TopSort Lib.StdppFinSetExtras
     CBC.Protocol CBC.Common CBC.Definitions
     VLSM.Common VLSM.Composition VLSM.Decisions VLSM.Equivocation VLSM.ProjectionTraces.
 
@@ -42,6 +43,17 @@ Context
   (computable_sent : forall (i : index), computable_sent_messages (IM i))
   (computable_received : forall (i : index), computable_received_messages (IM i)). 
   
+  Lemma hb_subseteq 
+    (m1 m2 : message)
+    (Hhb : happens_before' m1 m2) :
+    downSet m1 ⊆ downSet m2.
+  Proof.
+    intros m'.
+    rewrite <- !HdownSetCorrect.
+    intros Hm1.
+    apply t_trans with (y := m1); intuition. 
+  Qed.
+  
   Lemma something_pretentious : 
     StrictOrder (preceeds_P happens_before' (fun _ : message => True)).
   Proof.
@@ -54,14 +66,19 @@ Context
       apply (RelationClasses.StrictOrder_Transitive (` x) (` y) (` z)); intuition.
   Qed.
   
+  Definition is_minimal_wrt_P
+    (m : message)
+    (P : message -> Prop) :=
+    P m /\ (forall m', P m' -> ~happens_before' m' m).
+  
   Lemma minimal_element_P
     (P : message -> Prop)
     (Pdec : forall m, Decision (P m))
     (m : message)
     (Hm : P m) :
-    ∃ m_min, P m_min /\ (
-      forall m', P m' -> ~ happens_before' m' m_min).
+    ∃ m_min : message, is_minimal_wrt_P m_min P.
   Proof.
+    unfold is_minimal_wrt_P.
     remember (downSet m) as d.
     remember (filter (fun m => bool_decide (P m)) (elements d)) as dP.
     destruct dP eqn : eq_dP.
@@ -215,19 +232,55 @@ Context
     sender m2 = i /\
     ~comparable happens_before' m1 m2.
   
+  Lemma is_equivocating_from_set_subseteq
+    (sm1 sm2: Cm)
+    (i : index)
+    (Hsub : sm1 ⊆ sm2) :
+    is_equivocating_from_set sm1 i ->
+    is_equivocating_from_set sm2 i.
+  Proof.
+    intros Hi.
+    unfold is_equivocating_from_set in *.
+    clear -Hi Hsub.
+    firstorder.
+  Qed.
+  
   Local Instance is_equivocating_from_set_dec : RelDecision is_equivocating_from_set.
   Proof.
   Admitted.
   
   Definition index_set : Ci := (list_to_set index_listing).
   
+  Remark index_set_listing
+    (ci : Ci) :
+    ci ⊆ index_set.
+  Proof.
+    intros i Hi.
+    apply elem_of_list_to_set.
+    apply elem_of_list_In.
+    apply Hfinite.
+  Qed.
+  
   Definition equivocators_from_set 
     (sm : Cm) :=
     set_filter (fun i => bool_decide (is_equivocating_from_set sm i)) _ index_set.
-      
+  
   Definition is_equivocating_from_message
      (m : message) :=
      is_equivocating_from_set (downSet m).
+  
+  Definition is_equivocating_from_message_hb
+    (m1 m2 : message) 
+    (i : index)
+    (Hhb : happens_before' m1 m2) :
+    is_equivocating_from_message m1 i->
+    is_equivocating_from_message m2 i.
+  Proof.
+    intros Hm1.
+    unfold is_equivocating_from_message in *.
+    apply is_equivocating_from_set_subseteq with (sm1 := downSet m1).
+    apply hb_subseteq. all : intuition.
+  Qed.
     
   Local Instance is_equivocating_from_message_dec : RelDecision is_equivocating_from_message.
   Proof.
@@ -528,7 +581,6 @@ Context
       (carrier : Cm) :=
       let divergent_senders := senders (divergent_last_messages m v) in
       (equivocators_from_message m) ∪ (equivocators_from_set (carrier ∪ (downSet m)) ∩ divergent_senders).
-      
     
     Record committee_skeleton : Type := {
       com_state : vstate X;
@@ -599,6 +651,7 @@ Context
     Theorem main
       (s : vstate X)
       (Hpr : protocol_state_prop X s)
+      (sigma := composite_observed s)
       (Com : committee)
       (skel := proj1_sig Com)
       (q := (q skel))
@@ -608,14 +661,19 @@ Context
       (Hbase : get_base skel = Some base)
       (Htop : get_top skel = Some top)
       (Hstate : com_state skel = s)
-      (Pdown := fun m' => 
+      (fake_u : message)
+      (Pdown := fun m' =>
+        (happens_before' m' fake_u \/ m' = fake_u) /\ 
         m' ∈ (composite_observed s) /\
         vote m' <> Some value /\
         (exists m'',  
         m'' ∈ (downSet m') /\ 
         m'' ∈ top))
-      (Htouch : exists m, Pdown m) :
-      (size (equivocators_from_state s)) * (2 ^ k) >=  
+      (u : message)
+      (Hu_P : Pdown u)
+      (Hu_minimal : is_minimal_wrt_P u Pdown)
+      (Au := A u (Some value) sigma) :
+      (size Au) * (2 ^ k) >=  
       (2 * q - n) * (2 ^ k - 1).
     Proof.
       destruct Com as [skel' Hcom]. simpl in *.
@@ -625,10 +683,13 @@ Context
       remember (Inspector.value skel') as value'.
       remember (Inspector.q skel') as q'.
       remember (com skel') as com'.
-
+    
+      generalize dependent fake_u.
+      generalize dependent u.
       generalize dependent base.
       generalize dependent top.
       generalize dependent skel'.
+
       induction Hcom.
       - intros.
         simpl in *.
@@ -636,23 +697,8 @@ Context
         rewrite <- Heqcom'. simpl. lia.
       - intros.
         
-        destruct Htouch as [u' Hdown].
-        assert (HPdec : forall m, Decision (Pdown m)). {
-          intros. unfold Decision.
-          unfold Pdown.
-          apply Decision_and.
-          - apply elem_of_dec_slow. 
-          - apply Decision_and.
-            + apply Decision_not. apply decide_eq.
-            + apply set_Exists_dec.
-              intros.
-              apply elem_of_dec_slow.
-        }
-        
-        specialize (minimal_element_P Pdown HPdec u' Hdown) as Hminimal. 
-        destruct Hminimal as [u [Hu_P Hu_minimal]].
-        
         unfold Pdown in Hu_P.
+        destruct Hu_P as [_ Hu_P].
         apply and_assoc in Hu_P.
         
         destruct Hu_P as [Hu_P Huc].
@@ -739,27 +785,33 @@ Context
           unfold q.
           unfold senders.
           unfold senders in Hdensity.
-          (*
-          rewrite map_size.
-          rewrite map_length in Hdensity.
-          assert (length
-                  (filter (fun v : message => bool_decide (happens_before' v u)) 
-                  (relevant_messages sm1 sm2)) >=
-                  length
-                  (filter (fun v : message => bool_decide (happens_before' v uk))
-                  (relevant_messages sm1 sm2))). {
-            rewrite Z.ge_le_iff.
-            apply inj_le.
-            apply filter_length_fn.
-            rewrite Forall_forall.
-            intros.
-            rewrite bool_decide_eq_true.
-            rewrite bool_decide_eq_true in H0.
-            apply Huk_u.
+          remember (set_filter (λ v : message, bool_decide (happens_before' v uk))
+                   (λ x : message, Is_true_dec (bool_decide (happens_before' x uk)))
+                   (relevant_messages sm1 sm2)) as fm1.
+          remember (set_filter (λ v : message, bool_decide (happens_before' v u))
+                   (λ x : message, Is_true_dec (bool_decide (happens_before' x u)))
+                   (relevant_messages sm1 sm2)) as fm2.
+          
+          assert (fm_incl : fm1 ⊆ fm2). {
+            rewrite Heqfm1.
+            rewrite Heqfm2.
+            apply filter_subprop.
+            intros m.
+            rewrite <- !Is_true_iff_eq_true.
+            rewrite !bool_decide_eq_true.
             intuition.
-          } 
-          lia. *)
-          admit.
+          }
+
+          assert (map_fm_incl : set_map (D := Ci) sender fm1 ⊆ set_map (D := Ci) sender fm2). {
+            apply set_map_subset; intuition.
+          }
+          
+          assert (size (set_map (D := Ci) sender fm1) <= size (set_map (D := Ci) sender fm2)). {
+            apply inj_le.
+            apply subseteq_size.
+            intuition.
+          }
+          lia.
         }
         
         (* remember (set_filter (fun i => bool_decide (is_equivocating_from_message u i)) _ Vk_1) as Veq. *)
@@ -853,13 +905,6 @@ Context
             rewrite Hsendermi.
             intuition.
         }
-        
-        (*
-        assert (Hdectemp: forall i, Decision (~In i Veq /\ ~In i Vchange)). {
-          intros.
-          apply Decision_and; apply Decision_not; apply in_dec; apply idec.
-        } *)
-        
         remember (Vk_1 ∖ (Veq ∪ Vchange)) as value_voters.
         
         assert (Hvoters_size1 : (size value_voters + size Veq + size Vchange = size Vk_1)). {
@@ -924,17 +969,11 @@ Context
           rewrite HeqEu.
           rewrite HeqVeq.
           unfold equivocators_from_message.
-          unfold subseteq.
-          unfold set_subseteq_instance. intros x Hf.
-          apply elem_of_filter in Hf.
-          apply elem_of_filter.
-          split;[intuition|].
-          destruct Hf as [_ Hf].
-          apply elem_of_elements.
-          admit.
+          apply filter_subset.
+          apply index_set_listing.
         }
         
-        assert (n - size Eu <= n - size Veq). {
+        assert (Hineq2 : n - size Eu <= n - size Veq). {
           cut (size Veq <= size Eu). {
             lia.
           }
@@ -943,15 +982,47 @@ Context
           apply HVeq_incl_Eu.
         }
         
-        assert (2 * q <= n + size Veq + 2 * (size Vchange)) by lia.
+        assert (Hineq3 : 2 * q <= n + size Veq + 2 * (size Vchange)) by lia.
         
-        destruct Vchange eqn : eqd_Vchange.
-        + admit.
+        assert (H_Veq_incl_Au : Veq ⊆ Au). {
+          unfold Au.
+          unfold A.
+          rewrite HeqEu in HVeq_incl_Eu.
+          clear -HVeq_incl_Eu.
+          set_solver.
+        }
+        
+        destruct (elements Vchange) eqn : eqd_Vchange.
+        + apply elements_empty' in eqd_Vchange.
+          rewrite eqd_Vchange in Hineq3.
+          rewrite size_empty in Hineq3. simpl in Hineq3.
+          assert (HszVeqAu : size Veq <= size Au). {
+            apply subseteq_size in H_Veq_incl_Au.
+            lia.
+          }
+          assert (size Veq >= 2 * q - n) by lia.
+          assert (size Au >= 2 * q - n) by lia.
+          assert (2 ^ k0 - 1 >= 0). {
+            unfold k0. 
+            unfold k.
+            assert ((length (com skel') - 1)%nat >= 0) by lia.
+            unfold Z.pow.
+            rewrite <- Heqcom'.
+            simpl.
+            specialize (Zpower2_le_lin (S (length l))) as Zpow.
+            spec Zpow. lia.
+            lia.
+          }
+          nia.
         + assert (Hu': exists u', happens_before' u' u /\
                              (vote u' <> Some value) /\
-                             (exists v, In v (downSet u') /\ In v sm2)). {
+                             (exists v, v ∈ (downSet u') /\ v ∈ sm2)). {
             move Hin_vchange at bottom.
             specialize (Hin_vchange i).
+            assert (HiniVchange : i ∈ Vchange). {
+              apply elem_of_elements.
+              rewrite eqd_Vchange. clear -eqd_Vchange. set_solver.
+            }
             spec Hin_vchange. intuition.
             destruct Hin_vchange as [H_i_non_equiv Hinvchange].
             destruct Hinvchange as [u'' [Hlatest_u'' Hvote_u'']].
@@ -966,17 +1037,14 @@ Context
             * apply latest_message_from_compares in Hlatest_u''.
               intuition. 
             * split;[intuition|].
-              assert (Hini : In i Vk_1). {
-                assert (Htemp : In i (filter (fun i1 : index => inb decide_eq i1 (senders latest_divergent)) Vk_1)). {
-                  rewrite <- HeqVchange.
-                  intuition.
-                }
-                apply filter_In in Htemp.
+              assert (Hini : i ∈ Vk_1). {
+                rewrite HeqVchange in HiniVchange.
+                apply elem_of_intersection in HiniVchange. 
                 intuition.
               }
               assert (Hini' := Hini).
               apply Hinvk2 in Hini.
-              destruct Hini as [mi [Hsender Hmi]].
+              destruct Hini as [mi [Hsender Hmi2]].
               exists mi.
               split;[|intuition].
               
@@ -1005,15 +1073,171 @@ Context
           specialize (IHHcom eq_refl).
           specialize (IHHcom sm2). unfold get_top in IHHcom. simpl in IHHcom.
           specialize (IHHcom eq_refl).
+          specialize (IHHcom base).
           
           spec IHHcom. {
-            destruct Hu' as [u'' Hu''].
-            exists u''.
-            split.
-            - apply protocol_state_closed with (u := u).
-              all : intuition.
-            - intuition.
+            move Hbase at bottom.
+            unfold get_base in Hbase.
+            rewrite <- Heqcom' in Hbase.
+            unfold get_base. simpl.
+            simpl in Hbase.
+            destruct l.
+            * intuition.
+            * rewrite unroll_last.
+              rewrite unroll_last in Hbase.
+              intuition.
           }
+          
+          destruct Hu' as [u'' Hu''].
+          
+          remember (fun u' => (happens_before' u' u \/ u' = u) /\ 
+                             u' ∈ (composite_observed s) /\
+                             (vote u' <> Some value) /\
+                             (exists v, v ∈ (downSet u') /\ v ∈ sm2)) as Pdown'.
+          specialize (minimal_element_P Pdown') as Hmin_u'.
+          
+            spec Hmin_u'. {
+              intros. unfold Decision.
+              rewrite HeqPdown'.
+              apply Decision_and.
+              - apply Decision_or.
+                apply happens_before'_dec.
+                apply decide_eq.
+              - apply Decision_and.
+                apply elem_of_dec_slow. 
+                apply Decision_and.
+                apply Decision_not. apply decide_eq.
+                apply set_Exists_dec.
+                intros.
+                apply elem_of_dec_slow.
+          }
+          
+          specialize (Hmin_u' u'').
+          
+          assert (Hu''_obs : u'' ∈ (composite_observed s)). {
+            apply protocol_state_closed with (u := u).
+            all : intuition.
+          }
+          
+          spec Hmin_u'. {
+            rewrite HeqPdown'.
+            intuition.
+          }
+          
+          destruct Hmin_u' as [u' Hmin_u'].
+
+          specialize (IHHcom u' u).
+          
+          spec IHHcom. {
+            unfold is_minimal_wrt_P in Hmin_u'.
+            rewrite HeqPdown' in Hmin_u'.
+            intuition.
+          }
+          
+          spec IHHcom. {
+            rewrite HeqPdown' in Hmin_u'.
+            unfold is_minimal_wrt_P in *.
+            destruct Hmin_u' as [Hmin_u'1 Hmin_u'2].
+            split.
+            - intuition.
+            - intros.
+              specialize (Hmin_u'2 m').
+              intuition.
+          }
+          
+          unfold k in IHHcom. simpl in IHHcom.
+          
+          remember (A u' (Some value) sigma) as Au'.
+          
+          assert (Hineq2main : (size (Au' ∪ Veq) + size Vchange) * 2 ^ k0 >= (2 * q0 - n) * (2 ^ k0 - 1)). {
+            specialize (union_size_ge_average Au' Veq) as Havg.
+            
+            assert (Hineq_temp1 : 2 * (size (Au' ∪ Veq) + size Vchange) >= size Au' + size Veq + 2 * size Vchange) by lia.
+            
+            move Hineq1 at bottom.
+            unfold k0. unfold k. simpl.
+            rewrite <- Heqcom'. simpl.
+            unfold value in HeqAu'.
+            rewrite <- HeqAu' in IHHcom.
+            
+            assert (Z.succ (length l) = S (length l)) by lia.
+            rewrite <- H13.
+            rewrite Z.pow_succ_r by lia.
+            clear -Havg Hineq_temp1 Hineq1 Hineq3 IHHcom.
+            assert ((length l - 0)%nat = length l) by lia.
+            rewrite H in IHHcom.
+            unfold q in Hineq3.
+            clear Hineq1 H.
+            assert (2 * q0 - n <= size Veq + 2 * size Vchange) by lia.
+            clear Hineq3.
+            remember (2 ^ length l) as p2.
+            cut ((size (Au' ∪ Veq) + size Vchange) * (2 * p2) >= (2 * q0 - n) * (2 * p2) - (2 * q0 - n)). {
+              lia.
+            }
+            rewrite Zmult_assoc.
+            rewrite Zmult_plus_distr_l.
+            replace (size (Au' ∪ Veq) * 2) with (2 * size (Au' ∪ Veq)) by lia.
+            rewrite Zmult_plus_distr_l.
+            assert (p2 > 0). {
+              rewrite Heqp2.
+              unfold Z.pow.
+              destruct (Z.of_nat (length l)) eqn : eqzp.
+              - lia.
+              - specialize (Zpower_pos_pos 2 p). lia.
+              - lia.
+            }
+            replace (2 * size (Au' ∪ Veq) * p2 + size Vchange * 2 * p2) with (2 * (size (Au' ∪ Veq) + size Vchange) * p2) by lia.
+            assert ((size Au' + size Veq + 2 * size Vchange) * p2 >= (2 * q0 - n) * (2 * p2) - (2 * q0 - n)). {
+              nia.
+            }
+            
+            nia.
+          }
+          
+          rewrite HeqPdown' in Hmin_u'.
+          unfold is_minimal_wrt_P in Hmin_u'.
+          destruct Hmin_u' as [Hu' Hmin_u'].
+          
+          destruct Hu' as [Hu_u' Hu'].
+          
+          assert (HAu'_sub_Au : Au' ⊆ Au). {
+            intros v Hv.
+            rewrite HeqAu' in Hv.
+            unfold Au.
+            unfold A in Hv. unfold A.
+            apply elem_of_union in Hv.
+            destruct Hv as [Hv|Hv].
+            - apply elem_of_union.
+              left.
+              unfold equivocators_from_message in Hv.
+              unfold equivocators_from_message.
+              specialize (filter_subprop ((λ i1 : index, bool_decide (is_equivocating_from_message u' i1)))) as Hsubpr.
+              specialize (Hsubpr ((λ i1 : index, bool_decide (is_equivocating_from_message u i1))) _ _ index_set).
+              spec Hsubpr. {
+                intros j.
+                rewrite <- !Is_true_iff_eq_true.
+                rewrite !bool_decide_eq_true.
+                destruct Hu_u' as [Hu_u'|Hu_u'].
+                + apply is_equivocating_from_message_hb.
+                  intuition.
+                + intuition congruence.
+              }
+              clear -Hv Hsubpr.
+              set_solver.
+            - apply elem_of_union.
+              right.
+              apply elem_of_intersection in Hv.
+              apply elem_of_intersection.
+          }
+          
+          assert (HVchange_sub_Au : Vchange ⊆ Au). {
+            intros v Hv.
+            move Hin_vchange at bottom.
+            specialize (Hin_vchange v Hv).
+            destruct Hin_vchange as [_ Hin_vchange].
+            destruct Hin_vchange as [vdif Hdif].
+            admit.
+          } 
     Admitted.
       
 End Inspector.

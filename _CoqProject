@@ -60,4 +60,5 @@ Lib/SsrExport.v
 Lib/FinExtras.v
 Lib/FinFunExtras.v
 Lib/Classes.v
+Lib/StdppFinSetExtras.v
 VLSM/SubProjectionTraces.v
