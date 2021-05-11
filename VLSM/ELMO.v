@@ -1480,24 +1480,37 @@ Proof.
     (*
     assert (Htrue''': (fold_left (step (l1' ++ [x] ++ l2)) l1' (b, 0, s, es)).1.1.1 = true).
     { subst. *)
-     
+
+    assert (Htrue''': (fold_left (step l1') l1' (b, 0, s, es)).1.1.1 = true).
+    { subst.
+      pose proof (Htmp := isProtocol_step_app_fold component weights treshold l1' [x] l1' (b, 0, s, es)).
+      simpl in Htmp.
+      rewrite Htmp in Htrue''.
+      { lia. }
+      exact Htrue''.
+    }
 
     assert (n'' = length l1').
     { subst.
       pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights treshold l1' l1' (b, 0, s, es)).
       cbv beta iota in Htmp. rewrite -Heqfl' in Htmp. simpl in Htmp.
       apply Htmp. clear Htmp.
-      admit.
+      rewrite -Heqfl' in Htrue'''.
+      simpl in Htrue'''.
+      exact Htrue'''.
     }
+    subst n''.
+
+    pose proof (Hs := isProtocol_step_in component weights treshold l1' l2 (b'', (length l1'), s'', es'') x).
+    cbv iota zeta beta in Hs.
+    specialize (Hs (eq_refl _)).
+    apply Hs.
     
     (* now n'' <= length l1' (but we need to prove it *)
     (*
     (*rewrite Heqfl'.*)
     Check isProtocol_step_in.
     Search isProtocol_step app.
-    pose proof (Hs := isProtocol_step_in component weights treshold l1' l2 (b, (length l1'), s, es) x).
-    cbv iota zeta beta in Hs.
-    specialize (Hs (eq_refl _)).
     Search n.
     (*
     rewrite Hs.
