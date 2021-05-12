@@ -1596,6 +1596,25 @@ Proof.
       destruct Hob as [Hob _].
       specialize (IHl Hob).
       clear Hob.
+      (****)
+      destruct IHl as [s Hs].
+      unfold protocol_message_prop.
+      (* Since [Cpremessage (Cprestate l) n] is not an initial message,
+         the message must be an output of the transition function, together with the state [s].
+       *)
+      inversion Hs; subst.
+      { simpl in Hom. inversion Hom. }
+      destruct l0; destruct om; try inversion H0.
+      subst. clear H0.
+      simpl in Hs.
+      (* Now [Cprestate l] is a protocol state (see the hypothesis Hps) *)
+      (* We also need the message [Cpremessage p n1] to be protocol *)
+      (*remember (mk_vlsm (elmo_vlsm_machine n weights treshold)) as X.*)
+      simpl.
+      Print protocol_prop.
+      pose proof (Hnext := protocol_generated (mk_vlsm (elmo_vlsm_machine n weights treshold)) Receive (Cprestate l) _om Hps).
+      Print protocol_message_prop.
+      Search protocol_message_prop.
 Abort.    
 
   
