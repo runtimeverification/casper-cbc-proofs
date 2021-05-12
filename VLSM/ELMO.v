@@ -1009,43 +1009,6 @@ Proof.
       reflexivity.
 Qed.
 
-Lemma isProtocol_step_in' component weights treshold l1 l2 args x:
-  let: (result, i,  curState, curEq) := args in
-  i <= length l1 ->
-  ob_sent_contains_previous_prop (l1 ++ x :: l2) ->
-  let step := isProtocol_step component weights treshold in
-  step (l1 ++ x :: l2) args x =
-  step (l1 ++ [x]) args x.
-Proof.
-  Check firstn_skipn.
-  destruct args as [[[b n] curState] curEq].
-  destruct (decide (n = length l1)).
-  { subst. intros _.
-    pose proof (H := isProtocol_step_in component weights treshold l1 l2 (b, length l1, curState, curEq)).
-    cbv iota beta zeta in H. cbv zeta. apply H. reflexivity.
-  }
-  intros Hn'.
-  assert (n < length l1).
-  { lia. }
-  clear Hn'.
-  
-  rewrite -(firstn_skipn n l1).
-  intros Hn Hoscpp.
-  Search firstn skipn.
-  Check isProtocol_step_in.
-  remember (skipn n l1) as l1'.
-  destruct l1' as [|x' l1'].
-  { pose proof (Hl := skipn_length n l1).
-    rewrite -Heql1' in Hl. simpl in Hl. lia.
-  }
-  repeat rewrite -app_assoc.
-  rewrite [(x' :: l1') ++ x :: l2]/=.
-  rewrite [(x' :: l1') ++ [x]]/=.
-  pose proof (Htmp := isProtocol_step_in component weights treshold (firstn n l1) (l1' ++ x :: l2)).
-  specialize (Htmp (b, n, curState, curEq) x').
-  cbv iota beta zeta in Htmp. (*rewrite Htmp.*)
-Abort.
-
 (* But how do we know that the assumption [ob_sent_contains_previous_prop]
    of [isProtocol_step_in] holds? Yes, it holds on all local states, because we
    proved it is an invariant; however, [isProtocol_step] is called with a list of observations
@@ -1155,95 +1118,6 @@ Proof.
     }
     lia.
 Qed.
-
-    
-
-(*
-Lemma isProtocol_step_Sidx component weights treshold ob1 ob2 l n curState curEq:
-  (isProtocol_step component weights treshold
-                  (ob1 :: l)
-                  (true, S n, curState, curEq)
-                  ob2).1.1.1
-  = (isProtocol_step component weights treshold
-                  l
-                  (true, n, curState, curEq)
-                  ob2).1.1.1.
-Proof.
-  unfold isProtocol_step.
-  destruct (bool_decide (witnessOf ob2 = component)); simpl.
-  2: { reflexivity. }
-  destruct (bool_decide (authorOf (messageOf ob2) = component)), (labelOf ob2); simpl.
-  4: { reflexivity. }
-  2: { (* This does not hold. *)
-Abort.
-
-
-Lemma isProtocol_step_fold_Sidx component weights treshold m n l1 l2 b idx curState curEq:
-  (fold_left
-     (isProtocol_step component weights treshold (Cobservation Send m n :: l1))
-     l2
-     (b, S idx, curState, curEq))
-  =
-  let: (b', idx', curState', curEq') := (fold_left
-     (isProtocol_step component weights treshold l1)
-     l2
-     (b, idx, curState, curEq)) in
-  (b', S idx', curState', curEq')
-.
-Proof.
-  move: b idx curState curEq.
-  induction l2; intros b idx curState curEq.
-  - reflexivity.
-  - remember (fold_left (isProtocol_step component weights treshold l1) (a :: l2) (b, idx, curState, curEq)) as RHS.
-    destruct RHS as [[[b' idx'] curState'] curEq'].
-    simpl. simpl in HeqRHS.
-    destruct b; simpl; simpl in HeqRHS.
-    2: { rewrite IHl2. simpl. rewrite -HeqRHS. reflexivity. }
-    destruct (bool_decide (witnessOf a = component)) eqn:Heqwa; simpl; simpl in HeqRHS.
-    2: { rewrite IHl2. simpl. rewrite -HeqRHS. reflexivity. }
-    destruct (labelOf a) eqn:Heqloa, (bool_decide (authorOf (messageOf a) = component)) eqn:Haomoc; simpl; simpl in HeqRHS.
-    4: { rewrite IHl2. rewrite -HeqRHS. reflexivity. }
-    3: { rewrite IHl2.
-         remember (fold_left (isProtocol_step component weights treshold l1) l2
-      (bool_decide (observationsOf (stateOf (messageOf a)) = Cobservation Send m n :: firstn idx l1),
-       S idx, curState, curEq)) as LHS.
-         destruct LHS as [[[b'0 idx'0] curState'0] curEq'0].
-         destruct a. simpl in *. destruct p. simpl in *. destruct p. simpl in *.
-         (* Does not seem to hold *)
-Abort.
-
-  
-
-
-
-Lemma isProtocol_tail component weights treshold a l:
-  isProtocol (Cprestate (a :: l)) component weights treshold ->
-  isProtocol (Cprestate l) component weights treshold.
-Proof.
-  unfold isProtocol.
-  repeat rewrite [observationsOf _]/=.
-  simpl.
-
-  assert (Hfalse: (fold_left (isProtocol_step component weights treshold (a :: l)) l
-                             (false, 1, map (fun=> Cprestate []) weights, [])).1.1.1 = false).
-  { apply isProtocol_step_fold_false. }
-
-  assert (Hnottrue: ~(fold_left (isProtocol_step component weights treshold (a :: l)) l
-                                (false, 1, map (fun=> Cprestate []) weights, [])).1.1.1).
-  { intros H. inversion H. rewrite Hfalse in H1. inversion H1. }
-
-  
-  destruct (bool_decide (witnessOf a = component)); simpl.
-  2: { intros H. contradiction. }
-  destruct a. destruct p. simpl.
-  destruct (bool_decide (n0 = component)),l0; simpl.
-  4: { intros H. contradiction. }
-  2: { intros H.
-       destruct p. simpl in H.
-       destruct (bool_decide (l0 = [])).
-       2: { contradiction. }
-Abort.
- *)
 
 Lemma isProtocol_step_app component weights treshold l1 l2 ob idx curState curEq:
   idx <= length l1 ->
