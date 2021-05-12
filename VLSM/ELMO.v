@@ -1513,12 +1513,20 @@ Proof.
     exact Hoscp.
 Qed.
 
+(*
+Print Cobservation.
+Lemma isProtocol_nested weights treshold author:
+  isProtocol (Cprestate (l::(Cobservation))) author weights treshold ->
+  isProtool author weights treshold.
+*)
+
 Lemma isProtocol_implies_protocol weights treshold m:
   isProtocol (stateOf m) (authorOf m) weights treshold  ->
   let vlsm := mk_vlsm (elmo_vlsm_machine (authorOf m) weights treshold) in
   protocol_message_prop vlsm m.
 Proof.
   intros Hproto.
+  pose proof (Hproto' := Hproto).
   unfold isProtocol in Hproto.
   destruct m. destruct p. simpl in Hproto. simpl.
   pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
@@ -1594,7 +1602,9 @@ Proof.
       clear n' pss sn.
       apply ob_sent_contains_previous_prop_app in Hob.
       destruct Hob as [Hob _].
-      specialize (IHl Hob).
+      simpl in IHl.
+      simpl in Hproto'.
+      specialize (IHl (isProtocol_last _ _ _ _ _ Hproto') Hob).
       clear Hob.
       (****)
       destruct IHl as [s Hs].
