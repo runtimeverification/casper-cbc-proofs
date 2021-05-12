@@ -334,8 +334,9 @@ Definition isProtocol
     let initialEq := @nil nat in
     let result := (fold_left (isProtocol_step component weights treshold (observationsOf prestate)) (observationsOf prestate) (true, 0, initialState, initialEq )) in
     fst (fst (fst result)).
-
+Print fullNode.
 Definition elmo_valid
+           (component : nat)
            (weights : list pos_R)
            (treshold : R)
            (label : Label)
@@ -346,7 +347,9 @@ Definition elmo_valid
   | Send, None => true
   | Send, Some _ => false
   | Receive, None => false
-  | Receive, Some m => isProtocol (stateOf m) (authorOf m) weights treshold
+  | Receive, Some m =>
+    fullNode m (observationsOf state) component &&
+    isProtocol (stateOf m) (authorOf m) weights treshold
   end.
 
 Definition elmo_transition
@@ -376,7 +379,7 @@ Definition elmo_transition
 Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold : R)
   : @VLSM_class Premessage elmo_type elmo_sig
   :=
-    {| valid := elmo_valid weights treshold
+    {| valid := elmo_valid component weights treshold
        ; transition := elmo_transition component weights treshold
     |}.
 
@@ -838,7 +841,7 @@ Lemma ob_sent_contains_previous_prop_step
       (label : Label)
       (bsom : Prestate * option Premessage) :
   ob_sent_contains_previous_prop (observationsOf (fst bsom)) ->
-  elmo_valid weights treshold label bsom ->
+  elmo_valid component weights treshold label bsom ->
   ob_sent_contains_previous_prop (observationsOf (fst (elmo_transition component weights treshold label bsom))).
 Proof.
   destruct bsom as [bs om].
