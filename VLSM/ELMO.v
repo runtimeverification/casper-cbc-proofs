@@ -599,49 +599,6 @@ Section capabilities.
   
 End capabilities.
 
-(*
-Lemma isProtocol_step_len component weights treshold b n l ss es o:
-  let '(b', n', l', ss', es') := isProtocol_step component weights treshold (b, n, l, ss, es) o in
-  l' = l.
-Proof.
-  induction l.
-  - simpl.
-    destruct b,o,p. simpl.
-    2: { reflexivity. }
-    destruct (bool_decide (n0 = component)).
-    2: { reflexivity. }
-    simpl.
-    destruct (bool_decide (n1 = component)); simpl; destruct l; try reflexivity.
-    rewrite firstn_nil.
-    destruct (fullNode (Cpremessage p n1) [] component); simpl.
-    2: { reflexivity. }
-    remember (update (Cpremessage p n1) component weights treshold ss es) as updated.
-    destruct updated as [[b' s'] es'].
-    reflexivity.
-  - remember (isProtocol_step component weights treshold) as step.
-    remember (step (b, n, l, ss, es) o) as result1.
-    destruct result1 as [[[[b1 n1] l1] ss1] es1].
-    remember (step (b, n, a::l, ss, es) o) as result2.
-    destruct result2 as [[[[b2 n2] l2] ss2] es2].
-    simpl.
-    rewrite Heqstep in Heqresult1,Heqresult2.
-    unfold isProtocol_step in Heqresult1,Heqresult2.
-    destruct b,o; simpl in *;
-      destruct p,(bool_decide (n0 = component)); simpl in *;
-        destruct l0, (bool_decide (n3 = component)); simpl in *;
-          inversion Heqresult1; inversion Heqresult2; subst; simpl; try reflexivity.
-
-    remember (fullNode (Cpremessage p n3) (firstn n l) component) as fn1.
-    remember (fullNode (Cpremessage p n3) (firstn n (a::l)) component) as fn2.
-    remember (update (Cpremessage p n3) component weights treshold ss es) as u.
-    destruct u as [[b3 ss3] es3].
-    destruct fn1, fn2; simpl in *; inversion H0; inversion H1; subst; reflexivity.
-Qed.
-*)
-
-Check Observation_weight.
-
-
 Lemma Observation_in_list_weight ob l:
   List.In ob l ->
   Observation_weight ob < ListObservation_weight l.
