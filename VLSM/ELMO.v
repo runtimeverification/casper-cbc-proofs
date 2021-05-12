@@ -1521,6 +1521,8 @@ Proof.
   intros Hproto.
   unfold isProtocol in Hproto.
   destruct m. destruct p. simpl in Hproto. simpl.
+  pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
+                                                                       
   induction l using rev_ind.
   - simpl in Hproto.
     unfold protocol_message_prop.
@@ -1575,18 +1577,25 @@ Proof.
       destruct (update (Cpremessage p n1) n weights treshold pss sn).
       destruct p0. simpl in Hproto. Search b.
        *)
-      (* Not usefull. Clear it. *)
+      (* Not useful. Clear it. *)
       clear Hproto.
-
-
-      (*rewrite <- Heqfl in IHl.*)
-      
-    destruct (fold_left (isProtocol_step n weights treshold))
-    simpl. simpl in IHl.
-    destruct (bool_decide (n0 = n)).
-    + simpl in Hproto.
-      admit.
-    + simpl in Hproto.
+      set (fold_left (step (l ++ [Cobservation Receive (Cpremessage p n1) n0])) l
+                          (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
+      assert (HFLtrue: FL.1.1.1 = true).
+      { unfold FL. rewrite -Heqfl. reflexivity. }
+      Check fold_isProtocol_step_app.
+      subst step.
+      (*unfold FL in HFLtrue.*)
+      pose proof (Htmp := fold_isProtocol_step_app _ _ _ _ _ _ _ _ Hob HFLtrue).
+      unfold FL in HFLtrue.
+      rewrite Htmp in HFLtrue.
+      specialize (IHl HFLtrue).
+      clear FL Heqfl Htmp HFLtrue.
+      clear n' pss sn.
+      apply ob_sent_contains_previous_prop_app in Hob.
+      destruct Hob as [Hob _].
+      specialize (IHl Hob).
+      clear Hob.
 Abort.    
 
   
