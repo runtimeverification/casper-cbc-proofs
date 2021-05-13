@@ -61,7 +61,7 @@ Lemma equivocator_Hbs
 Proof.
   unfold equivocator_IM.
   apply equivocator_has_been_sent_capability. apply Hbs.
-Qed.
+Defined.
 
 Existing Instance is_equivocating_state_dec.
 

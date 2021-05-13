@@ -249,6 +249,69 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma exists_equivocator_transition_item_project
+  (item : vtransition_item equivocator_vlsm)
+  (s : vstate equivocator_vlsm)
+  (Hs : existing_descriptor X (snd (l item)) s)
+  (Hv : vvalid equivocator_vlsm (l item) (s, input item))
+  (Ht : vtransition equivocator_vlsm (l item) (s, input item) = (destination item, output item))
+  : exists eqv,
+      not_equivocating_descriptor X eqv (destination item)
+      /\ exists eqv',
+        proper_descriptor X eqv' s
+        /\ equivocator_vlsm_transition_item_project item eqv = Some
+          (Some
+            {| l := fst (l item); input := input item; output := output item; destination := equivocator_state_descriptor_project X (destination item) eqv |} , eqv').
+Proof.
+  destruct item. simpl in *.
+  destruct l as (l, dl). destruct destination as (ndest, bdest).
+  simpl in *.
+  destruct dl as [sn | i fi]; [inversion Hs| ].
+  unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+  destruct Hv as [Hi Hv].
+  destruct (le_lt_dec (S (projT1 s)) i); [lia|].
+  replace (of_nat_lt l0) with (of_nat_lt Hi) in * by (apply of_nat_ext).
+  destruct
+    (vtransition X (fst (l, Existing X i fi)) (projT2 s (of_nat_lt Hi), input))
+    as (si', om') eqn:Hti.
+  destruct fi as [|].
+  - exists (Existing _ (S (projT1 s)) false).
+    inversion Ht; subst; clear Ht.
+    destruct s as (ns, bs). simpl in H0.
+    inversion H0. subst. simpl_existT. clear H0.
+    split; [simpl; lia|].
+    unfold equivocator_vlsm_transition_item_project, equivocator_state_extend, projT1.
+    destruct (le_lt_dec (S (S ns)) (S ns)); [lia|].
+    destruct (nat_eq_dec (S (S ns)) (S (S ns))); [|congruence].
+    exists (Existing X i true).
+    split; [simpl; assumption|].
+    repeat f_equal.
+    unfold equivocator_state_descriptor_project.
+    unfold projT2.
+    unfold equivocator_state_project.
+    destruct (le_lt_dec (S (S ns)) (S ns)); [lia|].
+    replace (of_nat_lt l2) with (of_nat_lt l1) by (apply of_nat_ext).
+    reflexivity.
+  - exists (Existing _ i false).
+    inversion Ht; subst; clear Ht.
+    simpl_existT.
+    split; [assumption|].
+    exists (Existing X i false).
+    split; [assumption|].
+    unfold equivocator_vlsm_transition_item_project.
+    destruct (le_lt_dec (S (projT1 s)) i); [lia|].
+    replace (of_nat_lt l1) with (of_nat_lt Hi) by (apply of_nat_ext).
+    destruct (nat_eq_dec i i); [|congruence].
+    repeat f_equal.
+    unfold equivocator_state_descriptor_project.
+    unfold projT2.
+    unfold equivocator_state_project.
+    destruct (le_lt_dec  (S (projT1 s)) i); [lia|].
+    replace (of_nat_lt l2) with (of_nat_lt Hi) by (apply of_nat_ext).
+    reflexivity.
+Qed.
+
+
 
 Lemma equivocator_transition_item_project_proper_characterization
   (item : vtransition_item equivocator_vlsm)

@@ -1045,6 +1045,22 @@ Proof.
   apply protocol_transition_preloaded_project_any.
 Qed.
 
+Lemma can_emit_composite_free_project
+  {message} `{EqDecision V} `{Inhabited V} {IM: V -> VLSM message} {constraint}
+  (X := composite_vlsm IM constraint)
+  (m : message)
+  (Hemit: can_emit (pre_loaded_with_all_messages_vlsm X) m)
+  : exists (j : V), can_emit (pre_loaded_with_all_messages_vlsm (IM j)) m.
+Proof.
+  apply can_emit_iff in Hemit.
+  destruct Hemit as [s2 [(s1, oim) [l Ht]]].
+  exists (projT1 l).
+  apply can_emit_iff.
+  exists (s2 (projT1 l)).
+  exists (s1 (projT1 l), oim), (projT2 l).
+  revert Ht. apply protocol_transition_preloaded_project_active.
+Qed.
+
 Section projections.
 
 (** ** Composite VLSM projections

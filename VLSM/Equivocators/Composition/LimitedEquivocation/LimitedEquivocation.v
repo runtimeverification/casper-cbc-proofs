@@ -134,6 +134,35 @@ Context
 
 Existing Instance X_has_been_observed_capability.
 
+Lemma additional_equivocations_guarantees_sender
+  l s im
+  (Hequiv : ~ no_additional_equivocations_constraint X l (s, Some im))
+  (Him : protocol_message_prop X im)
+  : exists i, sender im = Some i.
+Proof.
+  destruct (sender im) as [i|] eqn:Hsender; [exists i; reflexivity|].
+  specialize (sender_safety sender (fun i => i) IM Hbs Hbr)
+    as Hsafety.
+  apply can_emit_protocol_iff in Him.
+  unfold no_additional_equivocations_constraint, no_additional_equivocations in Hequiv.
+  destruct Him as [Him | Him]; [elim Hequiv; right; assumption|].
+  apply pre_loaded_with_all_messages_can_emit, can_emit_composite_free_project in Him.
+  destruct Him as [i Himi].
+  specialize (Hsafety i im Himi).
+  congruence.
+Qed.
+
+Lemma no_additional_equivocations_constraint_dec
+  (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
+  : RelDecision (no_additional_equivocations_constraint X).
+Proof.
+  intros l (s, om).
+  destruct om; [|left; exact I].
+  apply no_additional_equivocations_dec.
+  apply (composite_decidable_initial_message IM finite_index).
+  assumption.
+Qed.
+
 Class known_equivocators_capability :=
   { known_equivocators_nodup :
     forall s, NoDup (globally_known_equivocators s)
@@ -278,6 +307,7 @@ Context
   (Free_has_been_received_capability : has_been_received_capability Free := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
   (Free_has_been_observed_capability : has_been_observed_capability Free := has_been_observed_capability_from_sent_received Free)
   (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free comopsite_initial_decidable)
+  (Free_no_additional_equivocation_constraint_dec : RelDecision (no_additional_equivocations_constraint Free):= no_additional_equivocations_constraint_dec finite_index IM Hbs Hbr i0 Hdec_init)
   (* index_equivocating_prop : index -> Prop := sub_index_prop equivocating *)
   (* equivocating_index : Type := sub_index equivocating *)
   (* equivocating_i0 : Inhabited equivocating_index := sub_index_i0 equivocating Hi0_equiv *)
@@ -642,6 +672,69 @@ Proof.
   ; unfold constraint_has_been_sent_prop; intros; exact I.
 Qed.
 
+Lemma free_equivocators_protocol_message_project
+  : forall m : message,
+    protocol_message_prop XE m -> protocol_message_prop (free_composite_vlsm IM) m.
+Proof.
+  intros m Hm.
+  apply can_emit_protocol_iff in Hm.
+  destruct Hm as [Hinit | Hm]; [apply initial_message_is_protocol; assumption|].
+  apply can_emit_iff in Hm. destruct Hm as [s2 [(s1, iom) [l Ht]]].
+  apply exists_right_finite_trace_from in Ht as Hts.
+  destruct Hts as [s0 [ts [[Hs0 Hts] Hs1]]].
+  specialize
+    (exists_equivocators_transition_item_project IM
+      {| l := l; input := iom; destination := s2; output := Some m |}
+      s1
+    ) as Hexists.
+  destruct Ht as [[_ [_ [Hv _]]] Ht].
+  spec Hexists.
+  { simpl. clear -Ht Hv.
+    unfold transition in Ht. simpl in Ht.
+    destruct l as (i, (li, di)). simpl in *.
+    unfold vvalid in Hv. simpl in Hv.
+    destruct (vtransition (equivocator_IM IM i) (li, di) (s1 i, iom)) as (si', om') eqn:Hti.
+    inversion Ht. subst om'. clear Ht.
+    unfold vtransition in Hti. simpl in Hti.
+    destruct di as [sn| j fj]; [congruence|].
+    destruct Hv as [Hj Hv].
+    assumption.
+  }
+  specialize (Hexists Hv Ht).
+  simpl in Hexists.
+  destruct Hexists
+    as [final_descriptors [Hfinal_descriptors [final_descriptors' [Hfinal_descriptors' Hpr_item]]]].
+  specialize
+    (free_equivocators_protocol_trace_project
+      final_descriptors
+      s0
+      (ts ++ [{| l := l; input := iom; destination := s2; output := Some m |}])
+    ) as Hpr.
+  rewrite finite_trace_last_is_last in Hpr.
+  simpl in Hpr.
+  apply not_equivocating_equivocator_descriptors_proper in Hfinal_descriptors as Hfinal_proper.
+  spec Hpr Hfinal_proper.
+  spec Hpr.
+  { split ; [|assumption].
+    revert Hs0. apply finite_protocol_trace_from_to_forget_last.
+  }
+  destruct Hpr as [trX [initial_descriptors [Hinitial_descriptors [Hpr [Hpr_s2 HtrX]]]]].
+  apply equivocators_trace_project_app_iff in Hpr.
+  destruct Hpr as [preX [sufX [_final_descriptors' [_Hpr_item [Hpr_tr Heq_trX]]]]].
+  simpl in _Hpr_item.
+  rewrite Hpr_item in _Hpr_item.
+  inversion _Hpr_item.
+  subst _final_descriptors'. clear _Hpr_item.
+  subst trX sufX.
+  clear -HtrX.
+  apply proj1,finite_protocol_trace_from_app_iff, proj2 in HtrX.
+  inversion HtrX.
+  apply can_emit_protocol.
+  apply can_emit_iff.
+  unfold protocol_generated_prop.
+  eexists _, _, _. apply H6.
+Qed.
+
 Lemma full_node_limited_equivocation_constraint_hbo
   s
   l input
@@ -691,10 +784,169 @@ Proof.
     unfold equivocator_state_project.
     destruct (s i). assumption.
   - destruct Ht as [[Hs [Hom [Hv Hc]]] Ht].
-    specialize
+    destruct
       (equivocators_transition_item_project_proper_descriptor_characterization IM
         descriptors (Build_transition_item l om s' om') (Hdescriptors (projT1 l))
-      ).
+      ) as [oitem [eqv_descriptors' [Hoitem [Hitem Hchar]]]].
+    simpl in Hitem, Hchar.
+    specialize (Hchar s Hv Ht).
+    specialize (IHHs eqv_descriptors').
+    destruct Hchar as [Hdescriptorsi' [Heq_descriptors' [Heq_s Hoitem']]].
+    spec IHHs.
+    { rewrite Heq_s, Heq_descriptors'.
+      intro i.
+      destruct (decide (i = projT1 l)).
+      - subst. rewrite state_update_eq, equivocator_descriptors_update_eq.
+        assumption.
+      - rewrite state_update_neq, equivocator_descriptors_update_neq by assumption.
+        apply Hdescriptors.
+    }
+    destruct oitem as [itemx|].
+    + specialize (Hoitem' (equivocators_state_project IM eqv_descriptors' s) eq_refl).
+      destruct Hitem as [Heq_lx [Heq_om [Heq_om' [Hdestinationx Heq_descriptorsi']]]].
+      destruct itemx as (lx, omx, sx', omx').
+      simpl in *.
+      subst omx omx' lx. rewrite Heq_descriptorsi' in *. clear Heq_descriptorsi'.
+      destruct Hoitem' as [Hvx Htx].
+      destruct om as [im|]
+      ; [destruct
+        (Free_no_additional_equivocation_constraint_dec
+          (existT (fun n : index => vlabel (IM n)) (projT1 l) (fst (projT2 l)))
+          (equivocators_state_project IM eqv_descriptors' s, Some im)
+        )|].
+      * specialize
+          (known_equivocators_transition_no_equiv finite_index IM Hbs Hbr i0
+            sender globally_known_equivocators
+            (existT (fun n : index => vlabel (IM n)) (projT1 l) (fst (projT2 l)))
+            _ _ _ _ Htx n
+          ) as Heq.
+        apply
+          (equivocators_transition_preserves_equivocating_indices IM index_listing
+            _ _ _ _ _ Ht
+          ).
+        apply IHHs.
+        apply Heq.
+        subst.  assumption.
+      * specialize
+          (additional_equivocations_guarantees_sender finite_index IM Hbs Hbr i0 sender
+            _ _ _ n
+          ) as Hsender.
+        spec Hsender.
+        { apply free_equivocators_protocol_message_project.
+          assumption.
+        }
+        destruct Hsender as [i Hsender].
+      
+        specialize
+          (known_equivocators_transition_equiv finite_index IM Hbs Hbr i0
+            sender globally_known_equivocators
+            (existT (fun n : index => vlabel (IM n)) (projT1 l) (fst (projT2 l)))
+            _ _ _ _ i Htx n
+          ) as Heq.
+        spec Heq.
+        { destruct Hc as [Hfull Hlimited].
+          clear -Hfull Heq_descriptors'.
+          unfold full_node_equivocators_constraint in Hfull.
+          destruct l as (i, (li, desc)).
+          simpl in *.
+          revert Hfull.
+          apply
+            (dependent_messages_global_full_node_condition_from_local sender (fun i => i) IM Hbs Hbr finite_index).
+          subst eqv_descriptors'.
+          unfold equivocators_state_project.
+          rewrite equivocator_descriptors_update_eq.
+          reflexivity.
+        }
+        spec Heq Hsender.
+        subst sx' sX.
+        apply Heq in Heqv.
+        apply set_add_iff in Heqv.
+        apply or_comm in Heqv.
+        destruct Heqv as [Heqv | Heq_eqv].
+        { 
+          apply
+          (equivocators_transition_preserves_equivocating_indices IM index_listing
+            _ _ _ _ _ Ht
+          ).
+          apply IHHs.
+          assumption.
+        }
+        subst i.
+        unfold no_additional_equivocations_constraint, no_additional_equivocations in n.
+        assert (Hno : ~ has_been_observed Free (equivocators_state_project IM eqv_descriptors' s) im)
+          by (clear -n; intuition).
+        assert (Hni : ~vinitial_message_prop Free im)
+          by (clear -n; intuition).
+        destruct Hc as [Hfull [[[Hbs_im | Hinit_im] _] Hlimited]]
+        ; [|contradiction].
+        destruct Hbs_im as [i Hbsi_im].
+        unfold has_been_sent, equivocator_Hbs in Hbsi_im.
+        simpl in Hbsi_im.
+        unfold equivocator_has_been_sent in Hbsi_im.
+        destruct (s i) as (nsi, ssi) eqn:Heq_si.
+        destruct Hbsi_im as [ji Hbsi_im].
+        specialize (proper_sent (IM i) (ssi ji)) as Hproper_sent.
+        assert (Hssiji : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (ssi ji)).
+        { clear -Hs Heq_si.
+          apply protocol_state_project_preloaded with (i := i) in Hs.
+          specialize (preloaded_equivocator_state_project_protocol_state (IM i) (s i) Hs)
+            as Hps.
+          rewrite Heq_si in Hps. simpl in Hps.
+          apply Hps.
+        }
+        unfold has_been_sent_prop, all_traces_have_message_prop in Hproper_sent.
+        specialize (Hproper_sent Hssiji im).
+        apply proj1 in Hproper_sent.
+        specialize (Hproper_sent Hbsi_im).
+        apply (has_been_sent_consistency) in Hproper_sent; [|apply (Hbs i)|assumption].
+        destruct Hproper_sent as [s0 [tr [[Htr Hs0] Hhm_im]]].
+        apply finite_protocol_trace_from_to_forget_last in Htr.
+        specialize (can_emit_from_protocol_trace (pre_loaded_with_all_messages_vlsm (IM i)) _ _ _ (conj Htr Hs0) Hhm_im)
+          as Hemit_im.
+        specialize (sender_safety sender (fun i => i) IM Hbs Hbr i im Hemit_im)
+          as _Hsender.
+        rewrite Hsender in _Hsender.
+        inversion _Hsender. subst i. clear _Hsender.
+        assert (Hns : ~has_been_sent  Free (equivocators_state_project IM eqv_descriptors' s) im)
+          by (intro Hbs_im; elim Hno; left; assumption).
+        clear -Hbsi_im Hns Heq_si.
+        assert (Hnsi : ~has_been_sent  (IM eqv) (equivocators_state_project IM eqv_descriptors' s eqv) im).
+        {
+          intro Hbsi. elim Hns. exists eqv. assumption.
+        }
+        unfold equivocators_state_project, equivocator_state_descriptor_project in Hnsi.
+        
+
+        specialize (sender_safety ).
+        unfold
+          no_equivocations, no_equivocations_except_from
+          in Hno_equiv.
+        simpl in Hno_equiv.
+
+      * specialize
+          (known_equivocators_transition_no_equiv finite_index IM Hbs Hbr i0
+            sender globally_known_equivocators
+            (existT (fun n : index => vlabel (IM n)) (projT1 l) (fst (projT2 l)))
+            _ _ _ _ Htx I
+          ) as Heq.
+        subst sx' sX.
+        apply
+          (equivocators_transition_preserves_equivocating_indices IM index_listing
+            _ _ _ _ _ Ht
+          ).
+        apply IHHs.
+        apply Heq.
+        assumption.
+    + rewrite <- Hoitem' in *.
+      specialize (IHHs _ Heqv).
+      apply
+        (equivocators_transition_preserves_equivocating_indices IM index_listing
+          _ _ _ _ _ Ht
+        ).
+      assumption.
+Admitted.
+
+
 
 
 Lemma full_node_limited_equivocation_constraint_limited

@@ -202,6 +202,70 @@ Proof.
   assumption.
 Qed.
 
+Lemma exists_equivocators_transition_item_project
+  (item : composite_transition_item equivocator_IM)
+  (s : composite_state equivocator_IM)
+  (Hs : existing_descriptor _ (snd (projT2 (l item))) (s (projT1 (l item))))
+  (Hv : composite_valid equivocator_IM (l item) (s, input item))
+  (Ht : composite_transition equivocator_IM (l item) (s, input item) = (destination item, output item))
+  : exists equivocators,
+      not_equivocating_equivocator_descriptors IM equivocators (destination item)
+      /\ exists (equivocators' : equivocator_descriptors)
+        (lx : composite_label IM :=  existT (fun i => vlabel (IM i)) (projT1 (l item)) (fst (projT2 (l item))))
+        (sx : composite_state IM := equivocators_state_project equivocators (destination item))
+      ,
+        proper_equivocator_descriptors equivocators' s
+        /\ equivocators_transition_item_project equivocators item = Some
+          (Some
+            ({| l := lx; input := input item; output := output item; destination := sx|}) , equivocators').
+Proof.
+  specialize
+    (exists_equivocator_transition_item_project
+      (IM (projT1 (l item)))
+      (composite_transition_item_projection equivocator_IM item)
+      (s (projT1 (l item)))
+      Hs
+    ) as Hproject.
+  spec Hproject.
+  { clear -Hv.
+    destruct item. simpl in *. destruct l as (i, li). simpl in *.
+    assumption.
+  }
+  spec Hproject.
+  { clear -Ht.
+    destruct item. simpl in *. destruct l as (i, li). simpl in *.
+    unfold eq_rect_r, eq_sym, eq_rect.
+    unfold equivocator_IM, Common.equivocator_IM in Ht.
+    simpl in *.
+    match goal with
+    |- ?t = _ => 
+      destruct t as (si', om') eqn:Hti
+    end.
+    inversion Ht. subst. clear Ht.
+    rewrite state_update_eq. reflexivity.
+  }
+  destruct Hproject as [eqv [Heqv [eqv' [Heqv' Hproject]]]].
+  exists (equivocator_descriptors_update (zero_descriptor IM) (projT1 (l item)) eqv).
+  split.
+  { intro i. unfold equivocator_descriptors_update. destruct (decide (i = projT1 (l item))).
+    - subst. rewrite equivocator_descriptors_update_eq. assumption.
+    - rewrite equivocator_descriptors_update_neq by assumption.
+      simpl. lia.
+  }
+  exists (equivocator_descriptors_update (zero_descriptor IM) (projT1 (l item)) eqv').
+  split.
+  { intro i. unfold equivocator_descriptors_update. destruct (decide (i = projT1 (l item))).
+    - subst. rewrite equivocator_descriptors_update_eq. assumption.
+    - rewrite equivocator_descriptors_update_neq by assumption.
+      simpl. lia.
+  }
+  unfold equivocators_transition_item_project.
+  unfold equivocator_descriptors_update.
+  rewrite equivocator_descriptors_update_eq, Hproject.
+  simpl. unfold eq_rect_r, eq_sym, eq_rect.
+  f_equal. f_equal. apply equivocator_descriptors_update_twice.
+Qed.
+
 Lemma equivocators_transition_item_project_proper_descriptor_characterization
   (eqv_descriptors : equivocator_descriptors)
   (item : composite_transition_item equivocator_IM)

@@ -1739,19 +1739,19 @@ Section Composite.
     (m : message)
     (v : validator)
     (Hsender : sender m = Some v),
-    can_emit (composite_vlsm_constrained_projection IM constraint i) m ->
+    can_emit (pre_loaded_with_all_messages_vlsm (IM i)) m ->
     A v = i.
-
+  
   Definition sender_weak_nontriviality_prop : Prop :=
     forall (v : validator),
     exists (m : message),
-    can_emit (composite_vlsm_constrained_projection IM constraint (A v)) m /\
+    can_emit (pre_loaded_with_all_messages_vlsm (IM (A v))) m /\
     sender m = Some v.
 
   Definition sender_strong_nontriviality_prop : Prop :=
     forall (v : validator),
     forall (m : message),
-    can_emit (composite_vlsm_constrained_projection IM constraint (A v)) m ->
+    can_emit (pre_loaded_with_all_messages_vlsm (IM (A v))) m ->
     sender m = Some v.
 
   Definition no_sender_for_initial_message_prop : Prop :=

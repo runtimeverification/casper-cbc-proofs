@@ -31,9 +31,7 @@ Class DependentMessages
   { dependent_messages : message -> set message
   ; initial_message_not_dependent (m : message)
       : composite_initial_message_prop IM m -> dependent_messages m = []
-  ; no_sender_messages_are_initial (m : message)
-      : can_emit (pre_loaded_with_all_messages_vlsm X) m ->
-        sender m = None -> composite_initial_message_prop IM m
+  ; sender_safety :  sender_strong_nontriviality_prop IM A sender
   ; dependent_message (m : message)
       : forall
         (v : validator)
@@ -44,6 +42,7 @@ Class DependentMessages
         In dm (dependent_messages m) <->
         @state_received_not_sent _ (IM (A v)) (Hbs (A v)) (Hbr (A v)) s dm
   }.
+
 
 Definition dependent_messages_local_full_node_condition
   {Hdm : DependentMessages}
@@ -70,9 +69,9 @@ Definition dependent_messages_local_full_node_constraint
 
 End dependent_messages.
 
-Arguments dependent_messages { _ _ _ _ _ _ _ _ _ _ _} _ .
-Arguments dependent_messages_local_full_node_constraint  { _ _ _ _ _ _ _ _ _ _ _} _ _.
-Arguments dependent_messages_local_full_node_condition  { _ _ _ _ _ _ _ _ _ _ _ _} _ _.
+Arguments dependent_messages { _ _ _ _ _ _ _ _ _ } _ .
+Arguments dependent_messages_local_full_node_constraint  { _ _ _ _ _ _ _ _ _ } _ _.
+Arguments dependent_messages_local_full_node_condition  { _ _ _ _ _ _ _ _ _ _ } _ _.
 
 
 Section dependent_messages_full_node.
@@ -107,6 +106,20 @@ Definition dependent_messages_global_full_node_condition
   :=
   forall dm, In dm (dependent_messages m) ->
     has_been_observed X s dm.
+  
+Lemma dependent_messages_global_full_node_condition_from_local
+  s i si im
+  (Hsi : s i = si)
+  (Hlocal : dependent_messages_local_full_node_condition si im)
+  : dependent_messages_global_full_node_condition s im.
+Proof.
+  intros m Hm.
+  specialize (Hlocal m Hm).
+  subst.
+  destruct Hlocal as [Hsent | Hreceived].
+  - left. exists i. assumption.
+  - right. exists i. assumption.
+Qed.
 
 End dependent_messages_full_node.
 

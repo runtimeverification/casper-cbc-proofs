@@ -340,6 +340,16 @@ Definition not_equivocating_descriptor
   | _ => False
   end.
 
+(** Existing-only descriptor. *)
+Definition existing_descriptor
+  (d : MachineDescriptor)
+  (s : vstate equivocator_vlsm)
+  :=
+  match d with
+  | Existing _ i _ => i < S (projT1 s)
+  | _ => False
+  end.
+
 Lemma not_equivocating_descriptor_proper
   (d : MachineDescriptor)
   (s : vstate equivocator_vlsm)
