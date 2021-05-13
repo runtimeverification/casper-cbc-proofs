@@ -45,6 +45,66 @@ Definition validating_projection_prop :=
         protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li siomi ->
         vvalid Xi li siomi.
 
+(** An seemingly stronger alternative formulation of the above property,
+where projection validity is guaranteed only of the state is already
+protocol in the projection (as oposed to it being protocol in the 
+[pre_loaded_with_all_messages_vlsm].)
+*)
+Definition validating_projection_prop_alt :=
+    forall (li : vlabel (IM i)) (siom : vstate (IM i) * option message),
+        let (si, om) := siom in
+        vvalid (IM i) li siom ->
+        protocol_state_prop Xi si ->
+        vvalid Xi li siom.
+
+(** Below we show that the two definitions above are actually equivalent,
+a the validating property guarentees that all reachable states are
+actually protocol states for the projection.
+*)
+Lemma validating_projection_prop_alt_iff
+    : validating_projection_prop_alt <-> validating_projection_prop.
+Proof.
+    split.
+    - intros Hvalidating l (si, om) Hvalid.
+      destruct Hvalid as [Hsi [_ Hvalid]].
+      cut (protocol_state_prop Xi si /\ vvalid Xi l (si, om)).
+      { intro H. apply H. }
+      revert l om Hvalid.
+      induction Hsi using protocol_state_prop_ind; intros.
+      + specialize (Hvalidating l (s, om) Hvalid).
+        pose (lift_to_composite_state IM i s) as s'.
+        assert (Hs' : protocol_state_prop X s' /\ s' i = s).
+        { subst s'. unfold lift_to_composite_state. rewrite state_update_eq.
+          split; [|reflexivity].
+          apply initial_is_protocol.
+          apply lift_to_composite_state_initial.
+          assumption.
+        }
+        destruct Hs' as [Hs' Heq_s].
+        assert (Hps : protocol_state_prop Xi s).
+        { rewrite <- Heq_s. apply protocol_state_projection. assumption. }
+        spec Hvalidating. { assumption. }
+        split; assumption.
+      + destruct Ht as [[_ [_ Hv]] Ht].
+        specialize (IHHsi l om Hv).
+        destruct IHHsi as [HXis HXiv].
+        specialize
+          (projection_valid_preserves_protocol_state IM
+            constraint _ _ _ _ HXiv HXis
+          ) as HXis'.
+        simpl in *. rewrite Ht in HXis'. simpl in HXis'.
+        split; [assumption|].
+        specialize (Hvalidating l0 (s', om0) Hvalid HXis').
+        assumption.
+    - intros Hvalidating l (si, om) Hvalid HXisi.
+      specialize (Hvalidating l (si, om)).
+      apply Hvalidating.
+      repeat split; [| apply any_message_is_protocol_in_preloaded | assumption].
+      revert HXisi.
+      apply VLSM_incl_protocol_state.
+      apply proj_pre_loaded_with_all_messages_incl.
+Qed.
+
 (**
 It is easy to see that the [validating_projection_prop]erty includes the
 [validating_projection_received_messages_prop]erty.
