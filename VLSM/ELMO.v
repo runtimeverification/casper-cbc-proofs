@@ -1347,10 +1347,12 @@ Proof.
     exact Hoscp.
 Qed.
 
-(*
+Print fullNode.
+(* (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0])
 Print Cobservation.
+(* We need the full node condition also. *)
 Lemma isProtocol_nested weights treshold author:
-  isProtocol (Cprestate (l::(Cobservation))) author weights treshold ->
+  isProtocol (Cprestate (l::(Cobservation Receive m n0))) author weights treshold ->
   isProtool author weights treshold.
 *)
 
@@ -1360,12 +1362,14 @@ Lemma isProtocol_implies_protocol weights treshold m:
   protocol_message_prop vlsm m.
 Proof.
   intros Hproto.
-  pose proof (Hproto' := Hproto).
+  destruct m. destruct p. simpl.
+  (*pose proof (Hproto' := Hproto).
   unfold isProtocol in Hproto.
-  destruct m. destruct p. simpl in Hproto. simpl.
+  simpl in Hproto.*)
   pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
-                                                                       
-  induction l using rev_ind.
+
+  move: n Hproto(* Hproto'*).
+  induction l using rev_ind; intros n Hproto (*Hproto'*).
   - simpl in Hproto.
     unfold protocol_message_prop.
     simpl.
@@ -1388,7 +1392,9 @@ Proof.
     clear Hgen.
     apply protocol_initial. reflexivity. reflexivity.
   - (* Step *)
+    pose proof (Hproto' := Hproto).
     destruct x.
+    unfold isProtocol in Hproto. simpl in Hproto.
     rewrite fold_left_app in Hproto. simpl in Hproto.
     unfold isProtocol_step in Hproto at 1.
     remember (fold_left (isProtocol_step n weights treshold (l ++ [Cobservation l0 p n0])) l
@@ -1425,23 +1431,25 @@ Proof.
                           (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
       assert (HFLtrue: FL.1.1.1 = true).
       { unfold FL. rewrite -Heqfl. reflexivity. }
-      Check fold_isProtocol_step_app.
+
       subst step.
       (*unfold FL in HFLtrue.*)
       pose proof (Htmp := fold_isProtocol_step_app _ _ _ _ _ _ _ _ Hob HFLtrue).
       unfold FL in HFLtrue.
       rewrite Htmp in HFLtrue.
-      specialize (IHl HFLtrue).
-      clear FL Heqfl Htmp HFLtrue.
-      clear n' pss sn.
       apply ob_sent_contains_previous_prop_app in Hob.
       destruct Hob as [Hob _].
-      simpl in IHl.
+      specialize (IHl Hob).
+
+      pose proof (IHl' := IHl n HFLtrue).
+      clear FL Heqfl Htmp HFLtrue.
+      clear n' pss sn.
+      simpl in IHl'.
       simpl in Hproto'.
-      specialize (IHl (isProtocol_last _ _ _ _ _ Hproto') Hob).
+      (*specialize (IHl (isProtocol_last _ _ _ _ _ Hproto') Hob).*)
       clear Hob.
       (****)
-      destruct IHl as [s Hs].
+      destruct IHl' as [s Hs].
       unfold protocol_message_prop.
       (* Since [Cpremessage (Cprestate l) n] is not an initial message,
          the message must be an output of the transition function, together with the state [s].
@@ -1452,7 +1460,24 @@ Proof.
       subst. clear H0.
       simpl in Hs.
       (* Now [Cprestate l] is a protocol state (see the hypothesis Hps) *)
-      (* We also need the message [Cpremessage p n1] to be protocol *)
+      (* We also need the message [Cpremessage p n1] to be protocol;
+         the we can prove that [Cprestate (l :: Cobservation Receive (Cpremessage p n1) n0)]
+         is also a protocol state.
+
+         Hproto' means that the 'current' node [n] can receive the big message.
+         I would need to have
+       *)
+
+      
+      assert (n0 = n).
+      { unfold isProtocol in Hproto'.
+        simpl in Hproto'.
+        rewrite fold_left_app in Hproto'.
+        simpl in Hproto'.
+      }
+      
+      
+      Print elmo_vlsm_machine.
       (*remember (mk_vlsm (elmo_vlsm_machine n weights treshold)) as X.*)
       simpl.
       Print protocol_prop.
