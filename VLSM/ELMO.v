@@ -230,11 +230,13 @@ Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat)
   fold_right andb true
              (map (fun (ob2 : Observation) =>
                      match (labelOf ob2) with
+                     | Send =>
+                       bool_decide (In (Cobservation Receive (messageOf ob2) component) prefix)
                      | Receive =>
-                       if
-                         (In_dec Observation_eqdec (Cobservation Receive (messageOf ob2) component) prefix)
-                       then true else false
-                     | Send => false
+                       if (decide (authorOf (messageOf ob2) = component)) then
+                         bool_decide (In (Cobservation Send (messageOf ob2) component) prefix)
+                       else
+                         bool_decide (In (Cobservation Receive (messageOf ob2) component) prefix)
                      end
                   )
                   (observationsOf (stateOf m))
@@ -1348,6 +1350,13 @@ Proof.
 Qed.
 
 Print fullNode.
+
+(*
+Lemma fullNode_length component obs m:
+  fullNode m obs component ->
+*)
+
+
 (* (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0])
 Print Cobservation.
 (* We need the full node condition also. *)
@@ -1459,6 +1468,7 @@ Proof.
       destruct l0; destruct om; try inversion H0.
       subst. clear H0.
       simpl in Hs.
+      simpl in IHl.
       (* Now [Cprestate l] is a protocol state (see the hypothesis Hps) *)
       (* We also need the message [Cpremessage p n1] to be protocol;
          the we can prove that [Cprestate (l :: Cobservation Receive (Cpremessage p n1) n0)]
