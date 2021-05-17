@@ -1965,3 +1965,13 @@ Proof.
       apply IHelems.
 Qed.
 
+Lemma findInList_correct {A : Type} {eqdec : EqDecision A}
+      (element : A) (elems : list A) :
+  In element elems ->
+  nth (findInList element elems) elems element = element.
+Proof.
+  pose proof (findInList'_correct element 0 elems).
+  rewrite Nat.sub_0_r in H.
+  exact H.
+Qed.
+
