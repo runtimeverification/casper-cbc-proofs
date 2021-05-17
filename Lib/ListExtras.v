@@ -1975,3 +1975,48 @@ Proof.
   exact H.
 Qed.
 
+Lemma findInList'_nth {A : Type} {eqdec : EqDecision A}
+      (n m : nat) (default : A) (elems : list A) :
+  n < length elems ->
+  NoDup elems ->
+  findInList' (nth n elems default) m elems = n + m.
+Proof.
+  unfold findInList.
+  intros Hlen Hnd.
+  generalize dependent n.
+  generalize dependent m.
+  induction elems; intros m n Hlen.
+  - simpl in Hlen. lia.
+  - simpl in Hlen.
+    simpl.
+    destruct n.
+    + unfold findInList. simpl.
+      destruct (decide (a = a)).
+      reflexivity. contradiction.
+    + apply NoDup_cons_iff in Hnd.
+      destruct Hnd as [Hnotin Hnd].
+      specialize (IHelems Hnd).
+      assert (Hlen' : n < length elems).
+      { lia. } 
+      destruct (decide (a = nth n elems default)).
+      * pose proof (nth_In elems default Hlen').
+        subst a.
+        contradiction.
+      * simpl.
+        Search plus S.
+        rewrite <- Nat.add_succ_r.
+        apply IHelems.
+        exact Hlen'.
+Qed.
+
+Lemma findInList_nth {A : Type} {eqdec : EqDecision A}
+      (n : nat) (default : A) (elems : list A) :
+  n < length elems ->
+  NoDup elems ->
+  findInList (nth n elems default) elems = n.
+Proof.
+  unfold findInList.
+  pose proof (H := findInList'_nth n 0 default elems).
+  rewrite Nat.add_0_r in H.
+  exact H.
+Qed.
