@@ -1909,3 +1909,59 @@ Proof.
   apply H.
 Qed.
 
+Lemma findInList'_geq_index {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (elems : list A) :
+  findInList' element index elems >= index.
+Proof.
+  generalize dependent index.
+  induction elems; intros index.
+  - simpl. lia.
+  - simpl.
+    destruct (decide (a = element)).
+    + lia.
+    + specialize (IHelems (S index)).
+      lia.
+Qed.
+
+Lemma findInList'_S_index {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (elems : list A) :
+  findInList' element (S index) elems = S (findInList' element index elems).
+Proof.
+  generalize dependent index.
+  induction elems; intros index.
+  - reflexivity.
+  - simpl.
+    destruct (decide (a = element)).
+    + reflexivity.
+    + specialize (IHelems (S index)).
+      exact IHelems.
+Qed.
+
+
+Lemma findInList'_correct {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (elems : list A) :
+  In element elems ->
+  nth ((findInList' element index elems) - index) elems element = element.
+Proof.
+  intros Hin.
+  generalize dependent index.
+  induction elems; intros index.
+  - simpl. rewrite Nat.sub_diag. reflexivity.
+  - simpl. simpl in Hin.
+    destruct (decide (a = element)).
+    + subst a. rewrite Nat.sub_diag. reflexivity.
+    + assert (Hin': In element elems).
+      { destruct Hin. contradiction. exact H. }
+      clear Hin.
+      specialize (IHelems Hin').
+      clear Hin'.
+      pose proof (Hgeq := findInList'_geq_index element (S index) elems).
+      destruct (findInList' element (S index) elems - index) eqn:Heq.
+      { lia. }
+      rewrite findInList'_S_index in Heq.
+      rewrite <- minus_Sn_m in Heq.
+      2: { lia. }
+      inversion Heq. clear Heq. subst n0.
+      apply IHelems.
+Qed.
+
