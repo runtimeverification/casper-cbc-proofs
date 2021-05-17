@@ -1939,14 +1939,14 @@ Qed.
 
 
 Lemma findInList'_correct {A : Type} {eqdec : EqDecision A}
-      (element : A) (index : nat) (elems : list A) :
+      (element : A) (index : nat) (default : A) (elems : list A) :
   In element elems ->
-  nth ((findInList' element index elems) - index) elems element = element.
+  nth ((findInList' element index elems) - index) elems default = element.
 Proof.
   intros Hin.
   generalize dependent index.
   induction elems; intros index.
-  - simpl. rewrite Nat.sub_diag. reflexivity.
+  - simpl in Hin. inversion Hin.
   - simpl. simpl in Hin.
     destruct (decide (a = element)).
     + subst a. rewrite Nat.sub_diag. reflexivity.
@@ -1966,11 +1966,11 @@ Proof.
 Qed.
 
 Lemma findInList_correct {A : Type} {eqdec : EqDecision A}
-      (element : A) (elems : list A) :
+      (element : A) (default : A) (elems : list A) :
   In element elems ->
-  nth (findInList element elems) elems element = element.
+  nth (findInList element elems) elems default = element.
 Proof.
-  pose proof (findInList'_correct element 0 elems).
+  pose proof (findInList'_correct element 0 default elems).
   rewrite Nat.sub_0_r in H.
   exact H.
 Qed.
