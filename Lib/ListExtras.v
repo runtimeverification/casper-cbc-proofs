@@ -1860,3 +1860,52 @@ Proof.
     { left. exact H. }
     right. eapply IHl. apply H.
 Qed.
+
+Fixpoint findInList' {A : Type} {eqdec : EqDecision A}
+         (element : A) (index : nat) (elems : list A) :=
+    match elems with 
+    | [] => index
+    | x::xs
+      => if decide (x = element)
+         then index
+         else findInList' element (S index) xs
+    end.
+
+
+Lemma findInList'_found {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (elems': list A) :
+  In element elems' ->
+  findInList' element index elems' < length elems' + index.
+Proof.
+  intros Hin.
+  generalize dependent index.
+  induction elems'.
+  - simpl in Hin. inversion Hin.
+  - intros index.
+    simpl.
+    destruct (decide (a = element)); simpl.
+    + lia.
+    + simpl in Hin.
+      destruct Hin as [Haeqidx|Hin].
+      * contradiction.
+      * specialize (IHelems' Hin).
+        specialize (IHelems' (S index)).
+        lia.
+Qed.
+
+Definition findInList {A : Type} {eqdec : EqDecision A} (element : A) (elems : list A) :=
+  findInList' element 0 elems.
+
+
+Lemma findInList_found {A : Type} {eqdec : EqDecision A} (element : A) (elems : list A) :
+  In element elems ->
+  findInList element elems < length elems.
+Proof.
+  intros H.
+  pose proof (P := @findInList'_found A eqdec).
+  specialize (P element 0 elems).
+  rewrite Nat.add_0_r in P.
+  apply P.
+  apply H.
+Qed.
+
