@@ -2003,7 +2003,6 @@ Proof.
         subst a.
         contradiction.
       * simpl.
-        Search plus S.
         rewrite <- Nat.add_succ_r.
         apply IHelems.
         exact Hlen'.
