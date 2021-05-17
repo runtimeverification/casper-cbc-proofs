@@ -1354,7 +1354,15 @@ Print fullNode.
 (*
 Lemma fullNode_length component obs m:
   fullNode m obs component ->
-*)
+ *)
+
+Lemma Observation_list_weight_last l ob:
+  Observation_weight ob < ListObservation_weight (l ++ [ob]).
+Proof.
+  apply Observation_in_list_weight.
+  apply in_or_app.
+  right. simpl. left. reflexivity.
+Qed.
 
 
 (* (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0])
@@ -1372,13 +1380,10 @@ Lemma isProtocol_implies_protocol weights treshold m:
 Proof.
   intros Hproto.
   destruct m. destruct p. simpl.
-  (*pose proof (Hproto' := Hproto).
-  unfold isProtocol in Hproto.
-  simpl in Hproto.*)
   pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
 
-  move: n Hproto(* Hproto'*).
-  induction l using rev_ind; intros n Hproto (*Hproto'*).
+  move: n Hproto.
+  induction l using rev_ind; intros n Hproto.
   - simpl in Hproto.
     unfold protocol_message_prop.
     simpl.
@@ -1477,15 +1482,17 @@ Proof.
          Hproto' means that the 'current' node [n] can receive the big message.
          I would need to have
        *)
+      Print protocol_prop.
 
-      
+
+      (*
       assert (n0 = n).
       { unfold isProtocol in Hproto'.
         simpl in Hproto'.
         rewrite fold_left_app in Hproto'.
         simpl in Hproto'.
       }
-      
+      *)
       
       Print elmo_vlsm_machine.
       (*remember (mk_vlsm (elmo_vlsm_machine n weights treshold)) as X.*)
@@ -1556,45 +1563,22 @@ Section composition.
     (indices_weights_eqlenght : length indices = length weights)
   .
 
-  Fixpoint index_to_component' (idx : index) (component : nat) (indices : list index) :=
-    match indices with
-    | [] => component
-    | x::xs
-      => if decide (x = idx)
-         then component
-         else index_to_component' idx (S component) xs
-    end.
 
-  Lemma index_to_component'_valid (idx : index) (component : nat) (indices': list index) :
-    In idx indices' -> index_to_component' idx component indices' < length indices' + component.
+  Definition index_to_component (idx : index) : nat :=
+    findInList idx indices.
+  
+  Definition component_to_index (component : nat) : index :=
+    nth component indices (@inhabitant _ i0).
+
+  Lemma index_to_component_to_index (idx : index) :
+    component_to_index (index_to_component idx) = idx.
   Proof.
-    intros Hin.
-    move: component.
-    induction indices'.
-    - simpl in Hin. inversion Hin.
-    - intros component.
-      simpl.
-      destruct (decide (a = idx)); simpl.
-      + lia.
-      + simpl in Hin.
-        destruct Hin as [Haeqidx|Hin].
-        * contradiction.
-        * specialize (IHindices' Hin).
-          specialize (IHindices' (S component)).
-          lia.
-  Qed.
-
-  Definition index_to_component (idx : index) :=
-    index_to_component' idx 0 indices.
-
-  Lemma index_to_component_valid (idx : index) : index_to_component idx < length indices.
-  Proof.
-    pose proof (P := index_to_component'_valid).
-    specialize (P idx 0 indices).
-    rewrite Nat.add_0_r in P.
-    apply P.
+    unfold component_to_index.
+    unfold index_to_component.
+    apply findInList_correct.
     apply finite_index.
   Qed.
+  
   
 
   Definition IM' (i : index) := elmo_vlsm_machine (index_to_component i) weights treshold.
@@ -1631,8 +1615,144 @@ Section composition.
   
   
   Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
+  Definition free_composite_elmo := @free_composite_vlsm Premessage index IndEqDec IM i0.
+
+  Lemma isProtocol_implies_protocol component obs m:
+    fullNode m obs component ->
+    isProtocol (stateOf m) (authorOf m) weights treshold  ->
+    protocol_message_prop free_composite_elmo m.
+  Proof.
+    intros Hfull Hproto.
+    destruct m. destruct p. simpl.
+    pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
+
+    move: n Hproto Hfull.
+    induction l using rev_ind; intros n Hproto Hfull.
+    - simpl in Hproto.
+      unfold protocol_message_prop.
+      simpl.
+      
+      (*set (mk_vlsm (elmo_vlsm_machine n weights treshold)) as vlsm.*)
+      pose proof (Hgen := protocol_generated free_composite_elmo).
+      simpl in Hgen.
+      Check (existT _ n Send).
+      (* We need to turn `n` into index *)
+      unfold _composite_label in Hgen.
+      specialize (Hgen (existT _ n Send)).
+      eexists.
+      simpl in Hgen.
+      assert (Hpp0: protocol_prop vlsm (Cprestate [], None)).
+      { apply protocol_initial.
+        reflexivity.
+        reflexivity.
+      }
+      specialize (Hgen _ _ Hpp0). clear Hpp0.
+
+      specialize (Hgen (Cprestate []) None).
+      simpl in Hgen.
+      apply Hgen.
+      2: auto.
+      clear Hgen.
+      apply protocol_initial. reflexivity. reflexivity.
+    - (* Step *)
+      pose proof (Hproto' := Hproto).
+      destruct x.
+      unfold isProtocol in Hproto. simpl in Hproto.
+      rewrite fold_left_app in Hproto. simpl in Hproto.
+      unfold isProtocol_step in Hproto at 1.
+      remember (fold_left (isProtocol_step n weights treshold (l ++ [Cobservation l0 p n0])) l
+                          (true, 0, map (fun=> Cprestate []) weights, []))
+        as fl.
+      destruct fl as [[[b n'] pss] sn].
+      simpl in Hproto.
+      destruct b.
+      2: { simpl in Hproto. inversion Hproto. }
+      destruct (bool_decide (n0 = n)).
+      2: { simpl in Hproto. inversion Hproto. }
+      simpl in Hproto.
+      destruct p. simpl in Hproto.
+      destruct (bool_decide (n1 = n)), l0.
+      + simpl in Hproto.
+        admit.
+      + simpl in *.
+        admit.
+      + destruct (fullNode (Cpremessage p n1) (firstn n' (l ++ [Cobservation Receive (Cpremessage p n1) n0])) n).
+        2: { simpl in Hproto. inversion Hproto. }
+        simpl in Hproto. simpl in Heqfl.
+        remember (isProtocol_step n weights treshold) as step.
+        (* We want to use Heqfl as the premise of IHl. But to do that, we must get rid
+         of the "++ [...]" part. *)
+        
+        (*
+      simpl in Hproto.
+      destruct (update (Cpremessage p n1) n weights treshold pss sn).
+      destruct p0. simpl in Hproto. Search b.
+         *)
+        (* Not useful. Clear it. *)
+        clear Hproto.
+        set (fold_left (step (l ++ [Cobservation Receive (Cpremessage p n1) n0])) l
+                       (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
+        assert (HFLtrue: FL.1.1.1 = true).
+        { unfold FL. rewrite -Heqfl. reflexivity. }
+
+        subst step.
+        (*unfold FL in HFLtrue.*)
+        pose proof (Htmp := fold_isProtocol_step_app _ _ _ _ _ _ _ _ Hob HFLtrue).
+        unfold FL in HFLtrue.
+        rewrite Htmp in HFLtrue.
+        apply ob_sent_contains_previous_prop_app in Hob.
+        destruct Hob as [Hob _].
+        specialize (IHl Hob).
+
+        pose proof (IHl' := IHl n HFLtrue).
+        clear FL Heqfl Htmp HFLtrue.
+        clear n' pss sn.
+        simpl in IHl'.
+        simpl in Hproto'.
+        (*specialize (IHl (isProtocol_last _ _ _ _ _ Hproto') Hob).*)
+        clear Hob.
+        (****)
+        destruct IHl' as [s Hs].
+        unfold protocol_message_prop.
+        (* Since [Cpremessage (Cprestate l) n] is not an initial message,
+         the message must be an output of the transition function, together with the state [s].
+         *)
+        inversion Hs; subst.
+        { simpl in Hom. inversion Hom. }
+        destruct l0; destruct om; try inversion H0.
+        subst. clear H0.
+        simpl in Hs.
+        simpl in IHl.
+        (* Now [Cprestate l] is a protocol state (see the hypothesis Hps) *)
+        (* We also need the message [Cpremessage p n1] to be protocol;
+         the we can prove that [Cprestate (l :: Cobservation Receive (Cpremessage p n1) n0)]
+         is also a protocol state.
+
+         Hproto' means that the 'current' node [n] can receive the big message.
+         I would need to have
+         *)
+        Print protocol_prop.
 
 
+        (*
+      assert (n0 = n).
+      { unfold isProtocol in Hproto'.
+        simpl in Hproto'.
+        rewrite fold_left_app in Hproto'.
+        simpl in Hproto'.
+      }
+         *)
+        
+        Print elmo_vlsm_machine.
+        (*remember (mk_vlsm (elmo_vlsm_machine n weights treshold)) as X.*)
+        simpl.
+        Print protocol_prop.
+        pose proof (Hnext := protocol_generated (mk_vlsm (elmo_vlsm_machine n weights treshold)) Receive (Cprestate l) _om Hps).
+        Print protocol_message_prop.
+        Search protocol_message_prop.
+  Abort.
+
+  
   Context
         (i : index)
         (Xi := composite_vlsm_constrained_projection IM composition_constraint i)
