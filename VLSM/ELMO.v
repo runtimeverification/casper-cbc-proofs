@@ -1578,8 +1578,27 @@ Section composition.
     apply findInList_correct.
     apply finite_index.
   Qed.
+
+  Definition address_valid (a : nat) : Prop :=
+    a < length indices.
+
+  Instance address_valid_dec (a : nat) : Decision (address_valid a).
+  Proof.
+    unfold address_valid.
+    apply lt_dec.
+  Qed.
   
-  
+  Lemma component_to_index_to_component (a : nat) :
+    address_valid a ->
+    index_to_component (component_to_index a) = a.
+  Proof.
+    intros Hvalid.
+    unfold index_to_component.
+    unfold component_to_index.
+    apply findInList_nth.
+    { exact Hvalid. }
+    { apply finite_index. }
+  Qed.
 
   Definition IM' (i : index) := elmo_vlsm_machine (index_to_component i) weights treshold.
   Definition IM (i : index) := mk_vlsm (IM' i).
@@ -1619,15 +1638,16 @@ Section composition.
 
   Lemma isProtocol_implies_protocol component obs m:
     fullNode m obs component ->
+    address_valid (authorOf m) ->
     isProtocol (stateOf m) (authorOf m) weights treshold  ->
     protocol_message_prop free_composite_elmo m.
   Proof.
-    intros Hfull Hproto.
+    intros Hfull Haddr Hproto.
     destruct m. destruct p. simpl.
     pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
 
-    move: n Hproto Hfull.
-    induction l using rev_ind; intros n Hproto Hfull.
+    move: n Haddr Hproto Hfull.
+    induction l using rev_ind; intros n Haddr Hproto Hfull.
     - simpl in Hproto.
       unfold protocol_message_prop.
       simpl.
@@ -1638,22 +1658,33 @@ Section composition.
       Check (existT _ n Send).
       (* We need to turn `n` into index *)
       unfold _composite_label in Hgen.
-      specialize (Hgen (existT _ n Send)).
+      specialize (Hgen (existT _ (component_to_index n) Send)).
       eexists.
       simpl in Hgen.
-      assert (Hpp0: protocol_prop vlsm (Cprestate [], None)).
+      assert (Hpp0: protocol_prop free_composite_elmo (fun=> Cprestate [], None)).
       { apply protocol_initial.
-        reflexivity.
+        simpl. unfold composite_initial_state_prop.
+        intros n0. reflexivity.
         reflexivity.
       }
       specialize (Hgen _ _ Hpp0). clear Hpp0.
 
-      specialize (Hgen (Cprestate []) None).
+      specialize (Hgen (fun=> Cprestate []) None).
       simpl in Hgen.
+      simpl in Haddr.
+      rewrite component_to_index_to_component in Hgen.
+      { exact Haddr. }
       apply Hgen.
-      2: auto.
+      2: { unfold constrained_composite_valid.
+           split.
+           2: { unfold free_constraint. exact I. }
+           unfold composite_valid.
+           unfold vvalid. simpl. auto.
+      }
       clear Hgen.
-      apply protocol_initial. reflexivity. reflexivity.
+      apply protocol_initial.
+      2: { reflexivity. }
+      intros x. unfold vinitial_state_prop. simpl. reflexivity.
     - (* Step *)
       pose proof (Hproto' := Hproto).
       destruct x.
