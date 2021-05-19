@@ -1349,8 +1349,7 @@ Proof.
     exact Hoscp.
 Qed.
 
-Lemma fullNode_appone (m : Premessage)
-      (l obs : list Observation) (ob : Observation) (n component : nat) :
+Lemma fullNode_appone (l obs : list Observation) (ob : Observation) (n component : nat) :
   fullNode (Cpremessage (Cprestate (l ++ [ob])) n) obs component ->
   fullNode (Cpremessage (Cprestate l) n) obs component.
 Proof.
@@ -1773,7 +1772,7 @@ Section composition.
         simpl in Hproto'.
         (*specialize (IHl (isProtocol_last _ _ _ _ _ Hproto') Hob).*)
         clear Hob.
-        (* Now I need to prove that Hfull implies the premise of IHl' *)
+        specialize (IHl' (fullNode_appone _ _ _ _ _ Hfull)).
         (****)
         destruct IHl' as [s Hs].
         unfold protocol_message_prop.
