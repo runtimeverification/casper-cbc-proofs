@@ -2019,3 +2019,11 @@ Proof.
   rewrite Nat.add_0_r in H.
   exact H.
 Qed.
+
+Lemma fold_right_andb_false l:
+  fold_right andb false l = false.
+Proof.
+  induction l.
+  - reflexivity.
+  - simpl. rewrite IHl. apply andb_false_r.
+Qed.

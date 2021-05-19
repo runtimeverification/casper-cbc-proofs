@@ -1349,7 +1349,36 @@ Proof.
     exact Hoscp.
 Qed.
 
-Print fullNode.
+Lemma fullNode_appone (m : Premessage)
+      (l obs : list Observation) (ob : Observation) (n component : nat) :
+  fullNode (Cpremessage (Cprestate (l ++ [ob])) n) obs component ->
+  fullNode (Cpremessage (Cprestate l) n) obs component.
+Proof.
+  intros H.
+  induction l using rev_ind.
+  - unfold fullNode. simpl. exact is_true_true.
+  - unfold fullNode. simpl.
+    unfold fullNode in H.
+    simpl in H.
+    rewrite map_app in H.
+    rewrite fold_right_app in H.
+    simpl in H.
+    destruct ob. simpl in H.
+    destruct l0.
+    + destruct (decide (authorOf p = component)); simpl in H.
+      {
+        destruct (bool_decide (In (Cobservation Send p component) obs)).
+        { simpl in H. exact H. }
+        simpl in H.
+        rewrite fold_right_andb_false in H. inversion H.
+      }
+      destruct (bool_decide (In (Cobservation Receive p component) obs)).
+      { simpl in H. exact H. }
+      { simpl in H. rewrite fold_right_andb_false in H. inversion H. }
+    + destruct (bool_decide (In (Cobservation Receive p component) obs)).
+      { simpl in H. exact H. }
+      { simpl in H. rewrite fold_right_andb_false in H. inversion H. }      
+Qed.
 
 (*
 Lemma fullNode_length component obs m:
@@ -1372,7 +1401,7 @@ Lemma isProtocol_nested weights treshold author:
   isProtocol (Cprestate (l::(Cobservation Receive m n0))) author weights treshold ->
   isProtool author weights treshold.
 *)
-
+(*
 Lemma isProtocol_implies_protocol weights treshold m:
   isProtocol (stateOf m) (authorOf m) weights treshold  ->
   let vlsm := mk_vlsm (elmo_vlsm_machine (authorOf m) weights treshold) in
@@ -1502,7 +1531,7 @@ Proof.
       Print protocol_message_prop.
       Search protocol_message_prop.
 Abort.    
-
+*)
   
 
 (* m1 is a prefix of m2 *)
@@ -1734,14 +1763,17 @@ Section composition.
         apply ob_sent_contains_previous_prop_app in Hob.
         destruct Hob as [Hob _].
         specialize (IHl Hob).
-
-        pose proof (IHl' := IHl n HFLtrue).
+        simpl in IHl.
+        simpl in Haddr.
+        
+        pose proof (IHl' := IHl n Haddr HFLtrue).
         clear FL Heqfl Htmp HFLtrue.
         clear n' pss sn.
         simpl in IHl'.
         simpl in Hproto'.
         (*specialize (IHl (isProtocol_last _ _ _ _ _ Hproto') Hob).*)
         clear Hob.
+        (* Now I need to prove that Hfull implies the premise of IHl' *)
         (****)
         destruct IHl' as [s Hs].
         unfold protocol_message_prop.
