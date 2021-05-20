@@ -1686,14 +1686,15 @@ Section composition.
       unfold all_received_satisfy_isprotocol_prop.
       apply Forall_nil.
     - destruct l.
+      unfold protocol_transition in Ht.
+      destruct Ht as [Hvt Ht].
+      simpl in Ht.
+      remember (vtransition (IM x) v (s x, om)) as vt.
+      destruct vt as [si' o].
       destruct (decide (x = idx)).
       2: {
         assert (Hsidx: s idx = s' idx).
-        { unfold protocol_transition in Ht.
-          destruct Ht as [Hvt Ht].
-          simpl in Ht.
-          remember (vtransition (IM x) v (s x, om)) as vt.
-          destruct vt.
+        {
           inversion Ht. subst.
           rewrite state_update_neq. apply nesym. exact n.
           reflexivity.
@@ -1701,10 +1702,42 @@ Section composition.
         rewrite Hsidx in IHHpsp.
         exact IHHpsp.
       }
+      subst x.
+      inversion Ht. subst. clear Ht.
+      rewrite state_update_eq.
+      unfold vtransition in Heqvt.
+      simpl in Heqvt.
+      destruct v,om; inversion Heqvt; clear Heqvt; subst.
+      4: { simpl.
+           unfold all_received_satisfy_isprotocol_prop.
+           apply Forall_app.
+           split; [exact IHHpsp|].
+           apply Forall_cons.
+           2: { apply Forall_nil. }
+           simpl.
+           exact is_true_true.
+      }
+      3: { exact IHHpsp. }
+      2: { exact IHHpsp. }
+      { simpl.
+        unfold all_received_satisfy_isprotocol_prop.
+        apply Forall_app.
+        split; [exact IHHpsp|].
+        apply Forall_cons.
+        2: { apply Forall_nil. }
+        simpl.
+        unfold protocol_valid in Hvt.
+        destruct Hvt as [[_ _] [_ Hvalid]].
+        unfold valid in Hvalid. simpl in Hvalid.
+        unfold constrained_composite_valid in Hvalid.
+        simpl in Hvalid. destruct Hvalid as [Hvalid _].
+        unfold vvalid in Hvalid. simpl in Hvalid.
+        apply andb_prop in Hvalid.
+        destruct Hvalid as [Hfn HisP].
+        exact HisP.
+      }
+  Qed.
 
-  Abort.
-
-  
   (* TODO change obs into state and use observationsOf this state;
           assume this state is protocol.
           Have a lemma saying every protocol state contains only protocol message (received)
