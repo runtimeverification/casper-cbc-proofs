@@ -1379,6 +1379,15 @@ Proof.
       { simpl in H. rewrite fold_right_andb_false in H. inversion H. }      
 Qed.
 
+
+Definition all_received_satisfy_isprotocol_prop {weights} {treshold} (obs : list Observation) : Prop :=
+  Forall (fun (ob : Observation) =>
+            if (isReceive ob) then
+              isProtocol (stateOf (messageOf ob)) (authorOf (messageOf ob)) weights treshold
+            else
+              true
+         ) obs.
+
 (*
 Lemma fullNode_length component obs m:
   fullNode m obs component ->
@@ -1664,6 +1673,17 @@ Section composition.
   Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
   Definition free_composite_elmo := @free_composite_vlsm Premessage index IndEqDec IM i0.
 
+  Lemma protocol_state_satisfies_all_received_satisfy_isprotocol_prop st idx:
+    protocol_state_prop free_composite_elmo st ->
+    @all_received_satisfy_isprotocol_prop weights treshold (observationsOf (st idx)).
+  Proof.
+  Abort.
+
+  
+  (* TODO change obs into state and use observationsOf this state;
+          assume this state is protocol.
+          Have a lemma saying every protocol state contains only protocol message (received)
+   *)
   Lemma isProtocol_implies_protocol component obs m:
     fullNode m obs component ->
     address_valid (authorOf m) ->
@@ -1791,6 +1811,7 @@ Section composition.
         destruct l0.
         rename x into idx.
         rename v into lbl.
+        Search isProtocol app.
         (* I want to prove the goal using [protocol_generated].
            I.e., there needs to be a state [Sx] from which a transition goes to some state [s1]
            and  generates the message
@@ -1801,7 +1822,13 @@ Section composition.
            that is the same at all components as Sx, except at the component n0, where
            [Sy n0 = (Cprestate l)]; there must be the protocol message
            [Cpremessage p n1] floating around.
-        *)
+
+           Hfull implies that [Cobservation Receive (Cpremessate p n1) n0] is stored in obs.
+           We should have some invariant saying that all messages for which we have
+           a Receive observation in obs satisfy isProtocol.
+           
+         *)
+        Search obs.
 
 
         
