@@ -1677,6 +1677,31 @@ Section composition.
     protocol_state_prop free_composite_elmo st ->
     @all_received_satisfy_isprotocol_prop weights treshold (observationsOf (st idx)).
   Proof.
+    intros Hpsp.
+    induction Hpsp using protocol_state_prop_ind.
+    - simpl in Hs. unfold composite_initial_state_prop in Hs.
+      assert (Hos: observationsOf (s idx) = []).
+      { apply Hs. }
+      rewrite Hos.
+      unfold all_received_satisfy_isprotocol_prop.
+      apply Forall_nil.
+    - destruct l.
+      destruct (decide (x = idx)).
+      2: {
+        assert (Hsidx: s idx = s' idx).
+        { unfold protocol_transition in Ht.
+          destruct Ht as [Hvt Ht].
+          simpl in Ht.
+          remember (vtransition (IM x) v (s x, om)) as vt.
+          destruct vt.
+          inversion Ht. subst.
+          rewrite state_update_neq. apply nesym. exact n.
+          reflexivity.
+        }
+        rewrite Hsidx in IHHpsp.
+        exact IHHpsp.
+      }
+
   Abort.
 
   
