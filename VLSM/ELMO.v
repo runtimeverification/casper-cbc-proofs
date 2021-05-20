@@ -1780,8 +1780,42 @@ Section composition.
          the message must be an output of the transition function, together with the state [s].
          *)
         inversion Hs; subst.
-        { simpl in Hom. inversion Hom. }
-        destruct l0; destruct om; try inversion H0.
+        { simpl in Hom. destruct Hom as [i [mi Hmi]].
+          unfold vinitial_message in mi.
+          unfold initial_message in mi.
+          pose proof (Hsv := svalP mi).
+          rewrite Hmi in Hsv.
+          simpl in Hsv.
+          inversion Hsv.
+        }
+        destruct l0.
+        rename x into idx.
+        rename v into lbl.
+        (* I want to prove the goal using [protocol_generated].
+           I.e., there needs to be a state [Sx] from which a transition goes to some state [s1]
+           and  generates the message
+           [Cpremessage (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0]))].
+           That means that the composite state Sx must satisfy
+           [Sx n0 = (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0]))].
+           But in order to get into this state, there must be a protocol state [Sy]
+           that is the same at all components as Sx, except at the component n0, where
+           [Sy n0 = (Cprestate l)]; there must be the protocol message
+           [Cpremessage p n1] floating around.
+        *)
+
+
+        
+        (* [om] is [Some _]. Or not? *)
+        destruct om.
+        2: {
+          unfold vtransition in H0.
+          simpl in H0.
+          destruct v.
+          { inversion H0. }
+          inversion H0. subst.
+          rewrite H2 in H0. simpl in H0.
+        }
+        
         subst. clear H0.
         simpl in Hs.
         simpl in IHl.
