@@ -1738,17 +1738,32 @@ Section composition.
       }
   Qed.
 
+  Lemma protocol_state_contains_receive_implies_isProtocol st idx msg n0:
+    protocol_state_prop free_composite_elmo st ->
+    List.In (Cobservation Receive msg n0) (observationsOf (st idx)) ->
+    isProtocol (stateOf msg) (authorOf msg) weights treshold.
+  Proof.
+    intros Hpsp Hin.
+    pose proof (H := protocol_state_satisfies_all_received_satisfy_isprotocol_prop st idx Hpsp).
+    unfold all_received_satisfy_isprotocol_prop in H.
+    eapply (proj1 (@Forall_forall Observation _ _)) in H.
+    2: apply Hin.
+    simpl in H. exact H.
+  Qed.
+  
+  
   (* TODO change obs into state and use observationsOf this state;
           assume this state is protocol.
           Have a lemma saying every protocol state contains only protocol message (received)
    *)
-  Lemma isProtocol_implies_protocol component obs m:
-    fullNode m obs component ->
+  Lemma isProtocol_implies_protocol component st m:
+    protocol_state_prop free_composite_elmo st ->
+    fullNode m (observationsOf (st (component_to_index component))) component ->
     address_valid (authorOf m) ->
     isProtocol (stateOf m) (authorOf m) weights treshold  ->
     protocol_message_prop free_composite_elmo m.
   Proof.
-    intros Hfull Haddr Hproto.
+    intros Hpsp Hfull Haddr Hproto.
     destruct m. destruct p. simpl.
     pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
 
@@ -1869,6 +1884,7 @@ Section composition.
         destruct l0.
         rename x into idx.
         rename v into lbl.
+        remember (observationsOf (st (component_to_index component))) as obs.
         Search isProtocol app.
         (* I want to prove the goal using [protocol_generated].
            I.e., there needs to be a state [Sx] from which a transition goes to some state [s1]
