@@ -1379,20 +1379,39 @@ Proof.
       { simpl in H. rewrite fold_right_andb_false in H. inversion H. }      
 Qed.
 
-Lemma fullNode_last (l obs : list Observation) (ob : Observation) (n component : nat) :
-  isReceive ob ->
-  fullNode (Cpremessage (Cprestate (l ++ [ob])) n) obs component ->
-  List.In ob obs.
+Lemma fullNode_dropMiddle (l1 l2 obs : list Observation) (ob : Observation) (n component : nat) :
+  fullNode (Cpremessage (Cprestate (l1 ++ (ob :: l2))) n) obs component ->
+  fullNode (Cpremessage (Cprestate (l1 ++ l2)) n) obs component.
 Proof.
-  intros Hrecv Hfn.
+  intros H.
+  move: l1 H.
+  induction l2; intros l1 H.
+  - simpl. rewrite app_nil_r. eapply fullNode_appone. apply H.
+  - apply Forall_fold_right_bool. apply Forall_fold_right_bool in H.
+    simpl in H. simpl.
+    apply Forall_app in H. destruct H as [H1 H2].
+    apply Forall_app. split; [exact H1|]. clear H1.
+    inversion H2. subst. clear H2. exact H3.
+Qed.
+
+
+Lemma fullNode_last_receive_self (l obs : list Observation) (p : Prestate) (n n0 component : nat) :
+  fullNode (Cpremessage (Cprestate (l ++ [Cobservation Receive (Cpremessage p component) n0])) n) obs component ->
+  List.In (Cobservation Send (Cpremessage p component) component) obs.
+Proof.
+  intros Hfn.
   induction l using rev_ind.
   - unfold fullNode in Hfn.
     simpl in Hfn.
-    unfold isReceive in Hrecv.
-    destruct ob. destruct l.
-    2: { inversion Hrecv. }
+    destruct (decide (component = component)).
+    2: { contradiction. }
     simpl in Hfn.
-Abort.
+    apply andb_prop in Hfn. destruct Hfn as [Hfn _].
+    apply bool_decide_eq_true_1 in Hfn.
+    exact Hfn.
+  - rewrite -app_assoc in Hfn. simpl in Hfn.
+    apply fullNode_dropMiddle in Hfn. auto.
+Qed.
 
 
 
@@ -1871,7 +1890,17 @@ Section composition.
            But do we have a Receive observation for [Cpremessage p n1] ?
            
          *)
+        assert (Hmproto: protocol_message_prop free_composite_elmo (Cpremessage p n1)).
+        {
+          destruct (decide (n1 = component)).
+          + subst.
+            
+            admit.
+          + admit.
+        }
+        
         Check protocol_state_contains_receive_implies_isProtocol.
+        Check has_send_observation_implies_is_protocol.
         Search obs.
 
 
