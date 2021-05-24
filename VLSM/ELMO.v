@@ -1548,6 +1548,83 @@ Section composition.
   Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
   Definition free_composite_elmo := @free_composite_vlsm Premessage index IndEqDec IM i0.
 
+  Lemma has_send_observation_implies_is_protocol st idx m author:
+    protocol_state_prop free_composite_elmo st ->
+    In (Cobservation Send m author) (observationsOf (st idx)) ->
+    protocol_message_prop free_composite_elmo m.
+  Proof.
+    intros Hpsp Hin.
+    induction Hpsp using protocol_state_prop_ind.
+    - simpl in Hs. unfold composite_initial_state_prop in Hs.
+      assert (Hos: observationsOf (s idx) = []).
+      { apply Hs. }
+      rewrite Hos in Hin.
+      simpl in Hin. inversion Hin.
+    - unfold protocol_transition in Ht.
+      destruct Ht as [Hvalid Ht].
+      unfold transition in Ht.
+      simpl in Ht.
+      destruct l as [i li].      
+      remember (vtransition (IM i) li (s i, om)) as VT.
+      destruct VT as [si'' om''].
+      unfold vtransition in HeqVT. simpl in HeqVT.
+
+      destruct (decide (i = idx)).
+      2: {
+        apply IHHpsp. clear IHHpsp.
+        inversion Ht. subst. clear Ht.
+        rewrite state_update_neq in Hin. apply nesym. exact n.
+        exact Hin.
+      }
+      subst i.
+
+      destruct li, om; inversion HeqVT; subst; clear HeqVT;
+        inversion Ht; subst; clear Ht;
+        rewrite state_update_eq in Hin.
+      + apply in_app_or in Hin.
+        simpl in Hin.
+        destruct Hin.
+        { apply IHHpsp. exact H. }
+        destruct H.
+        { inversion H. }
+        { inversion H. }
+      + apply IHHpsp. apply Hin.
+      + apply IHHpsp. apply Hin.
+      + simpl in Hin.
+        apply in_app_or in Hin.
+        destruct Hin.
+        { apply IHHpsp. exact H. }
+        simpl in H.
+        destruct H.
+        2: { inversion H. }
+        inversion H. subst. clear H.
+        unfold protocol_message_prop.
+        clear IHHpsp.
+        pose proof (Hgen := protocol_generated free_composite_elmo (existT _ idx Send)).
+        simpl in Hgen.
+        unfold protocol_valid in Hvalid.
+        destruct Hvalid as [Hpsp [_ Hvalid]].
+        destruct Hpsp as [m0 Hs].
+        specialize (Hgen s m0 Hs).
+        assert (Hinit: protocol_prop free_composite_elmo (fun=> Cprestate [], None)).
+        { apply protocol_initial. simpl. intros x. unfold vinitial_state_prop. simpl.
+          unfold elmo_initial_state_prop. reflexivity. simpl. exact I. }
+        specialize (Hgen _ _ Hinit). clear Hinit.
+        assert (Hvalid': constrained_composite_valid IM (free_constraint IM) (existT (fun=> Label) idx Send) (s, None)).
+        {
+          unfold constrained_composite_valid.
+          simpl.
+          unfold free_constraint.
+          split; [| exact I].
+          unfold vvalid. simpl. apply is_true_true.
+        }
+        specialize (Hgen Hvalid'). clear Hvalid'.
+        unfold vtransition in Hgen. simpl in Hgen.
+        eexists. apply Hgen.
+  Qed.
+  
+  
+      
   Lemma protocol_state_satisfies_all_received_satisfy_isprotocol_prop st idx:
     protocol_state_prop free_composite_elmo st ->
     @all_received_satisfy_isprotocol_prop weights treshold (observationsOf (st idx)).
@@ -1760,6 +1837,7 @@ Section composition.
         rename x into idx.
         rename v into lbl.
         remember (observationsOf (st (component_to_index component))) as obs.
+        Search obs.
         Search isProtocol app.
         (* I want to prove the goal using [protocol_generated].
            I.e., there needs to be a state [Sx] from which a transition goes to some state [s1]
@@ -1772,12 +1850,25 @@ Section composition.
            [Sy n0 = (Cprestate l)]; there must be the protocol message
            [Cpremessage p n1] floating around.
 
+           How do we prove that [Cpremessage p n1] is a protocol message?
+           Either [n1 <> component], and then by Hfull,
+             [In (Cobservation Receive (Cpremessage p n1) n0) obs]
+           (and we still need to prove that [n0 = component]),
+           or [n1 = component], and then by Hfull,
+            [In (Cobservation Send (Cpremessage p n1) n0) obs].
+           And we can have an invariant saying any message that has a Send observation
+           in a protocol state is a protocol message.
+
+           How do we prove that [Sy] is a protocol state?
+
            Hfull implies that [Cobservation Receive (Cpremessate p n1) n0] is stored in obs.
            Not necessarily: it may also happen that [Cobservation Send (Cpremessage p n1) n0]
            is stored in obs. But in both cases, [Cpremessage p n1] should be protocol, right?
            
            We have some invariant saying that all messages for which we have
            a Receive observation in obs satisfy isProtocol.
+
+           But do we have a Receive observation for [Cpremessage p n1] ?
            
          *)
         Check protocol_state_contains_receive_implies_isProtocol.
