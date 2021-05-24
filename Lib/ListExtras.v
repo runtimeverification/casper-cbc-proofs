@@ -2027,3 +2027,17 @@ Proof.
   - reflexivity.
   - simpl. rewrite IHl. apply andb_false_r.
 Qed.
+
+Lemma Forall_fold_right_bool {A : Type} (P : A -> bool) (l : list A):
+  Forall (fun x => P x = true) l <-> (fold_right andb true (map P l)) = true.
+Proof.
+  induction l.
+  - simpl. split; intros H. reflexivity. apply Forall_nil.
+  - simpl. split; intros H.
+    + inversion H. subst. clear H.
+      rewrite H2. apply IHl in H3. rewrite H3.
+      reflexivity.
+    + apply andb_prop in H. destruct H as [Ha Hfr].
+      apply IHl in Hfr.
+      exact (Forall_cons _ Ha Hfr).
+Qed.
