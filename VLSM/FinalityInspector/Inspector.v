@@ -532,6 +532,11 @@ Context
       (oc : option C) :=
     List.count_occ decide_eq (List.map vote (elements (latest_messages m))) oc.
     
+    Check downSet'.
+    
+    Definition set_downSet'
+      (cm : Cm) : Cm := ⋃ List.map downSet' (elements cm). 
+    
     Definition composite_sent
       (s : vstate X) : Cm := ⋃ (List.map (fun i : index => sent_set i (s i)) index_listing).
     
@@ -583,12 +588,13 @@ Context
       (equivocators_from_message m) ∪ (equivocators_from_set (carrier ∪ (downSet m)) ∩ divergent_senders).
     
     Record committee_skeleton : Type := {
-      com_state : vstate X;
       value : C;
+      relSet : Cm;
+      c0 : Cm;
       com : list Cm;
       q : nat;
       k := length com - 1;
-      get_base := last_error com;
+      Hc0 : last_error com = Some c0;
       get_top := hd_error com;
     }.
     
@@ -598,9 +604,8 @@ Context
       forall (m : message), m ∈ sm -> vote m = Some value.
       
     Definition honesty
-      (s : vstate X)
-      (sm : Cm) :=
-      forall (i : index), i ∈ (senders sm) -> i ∉ (equivocators_from_state s).
+      (sm relSet : Cm) :=
+      forall (i : index), i ∈ (senders sm) -> i ∉ (equivocators_from_set relSet).
       
     Definition convexity 
       (sm : Cm) :=
@@ -644,6 +649,76 @@ Context
       comskel : committee_skeleton | valid_com_prop (com_state comskel) (value comskel) (q comskel) (com comskel)
     }.
     
+    Lemma committee_info
+      (vcom : committee)
+      (skel := proj1_sig vcom) :
+      exists (base : Cm), (
+        get_base skel = Some base /\
+        convexity base /\
+        unanimity (value skel) base /\
+        forall (c : Cm), In c (com skel) -> c ⊆ base).
+    Proof.
+      destruct vcom as [vcom Hvcom].
+      simpl in skel.
+      
+      remember (com_state vcom) as com_state'.
+      remember (value vcom) as com_value'.
+      remember (q vcom) as com_q.
+      remember (com vcom) as com_com.
+      
+      generalize dependent vcom.
+      
+      induction Hvcom.
+      - exists sm.
+        unfold get_base.
+        rewrite <- Heqcom_com.
+        simpl.
+        split;[intuition|].
+        intuition set_solver.
+      - remember (@Build_committee_skeleton s value0 (sm2 :: l) q0) as new_skel.
+        specialize (IHHvcom new_skel).
+        subst new_skel.
+        spec IHHvcom. intuition.
+        spec IHHvcom. intuition.
+        spec IHHvcom. intuition.
+        spec IHHvcom. intuition.
+        intros.
+        destruct IHHvcom as [base IHHvcom].
+        exists base.
+        subst skel.
+        unfold get_base.
+        rewrite <- Heqcom_com.
+        split.
+        + destruct IHHvcom as [IHH _].
+          unfold get_base in IHH.
+          rewrite <- IHH.
+          simpl. f_equal.
+          destruct l.
+          * intuition.
+          * rewrite !unroll_last.
+            intuition.
+        + split;[intuition|].
+          destruct IHHvcom as [_ [_ IHHvcom]].
+          simpl in IHHvcom.
+          split;[rewrite <- Heqcom_value';intuition|].
+          intros c Hc.
+          simpl in IHHvcom.
+          simpl in Hc.
+          destruct IHHvcom as [_ IHHvcom].
+          destruct Hc as [Hc|Hc].
+          * subst c. 
+            specialize (IHHvcom sm2).
+            spec IHHvcom. intuition.
+            set_solver.
+          * destruct Hc as [Hc|Hc].
+            -- specialize (IHHvcom sm2).
+               spec IHHvcom. intuition.
+               subst c. intuition.
+            -- specialize (IHHvcom c).
+               spec IHHvcom. intuition.
+               intuition.
+    Qed.
+    
     Local Open Scope Z_scope.
     
     (* Local Coercion Z_of_nat : nat >-> Z. *)
@@ -676,6 +751,7 @@ Context
       (size Au) * (2 ^ k) >=  
       (2 * q - n) * (2 ^ k - 1).
     Proof.
+      assert (Com' := Com).
       destruct Com as [skel' Hcom]. simpl in *.
       subst skel.
       simpl in *.
@@ -689,6 +765,19 @@ Context
       generalize dependent base.
       generalize dependent top.
       generalize dependent skel'.
+      
+      specialize (committee_info Com') as Hcom_info.
+      
+      destruct Hcom_info as [base Hcom_info].
+        destruct Hcom_info as [_ Hcom_info].
+        assert (Hbase_vote : forall m, m ∈ base -> vote m = Some value). {
+          intros m Hm.
+          destruct Hcom_info as [_ [Hcom_info _]].
+          simpl in Hcom_info.
+          unfold unanimity in Hcom_info.
+          specialize (Hcom_info m).
+          
+        }
 
       induction Hcom.
       - intros.
@@ -696,6 +785,7 @@ Context
         unfold k0. unfold Inspector.k.
         rewrite <- Heqcom'. simpl. lia.
       - intros.
+        specialize (committee_info Com') as Hcom_info.
         
         unfold Pdown in Hu_P.
         destruct Hu_P as [_ Hu_P].
@@ -711,6 +801,14 @@ Context
           destruct Huk as [Huk _].
           apply HdownSetCorrect in Huk.
           intuition.
+        }
+        
+        assert (Htop_sm1 : top = sm1). {
+               unfold get_top in Htop.
+               rewrite <- Heqcom' in Htop.
+               simpl in Htop.
+               inversion Htop.
+               reflexivity.
         }
         
         remember (equivocators_from_message u) as Eu.
@@ -1228,14 +1326,121 @@ Context
               right.
               apply elem_of_intersection in Hv.
               apply elem_of_intersection.
+              admit.
           }
+          
           
           assert (HVchange_sub_Au : Vchange ⊆ Au). {
             intros v Hv.
             move Hin_vchange at bottom.
             specialize (Hin_vchange v Hv).
-            destruct Hin_vchange as [_ Hin_vchange].
+            destruct Hin_vchange as [Hin_change' Hin_vchange].
             destruct Hin_vchange as [vdif Hdif].
+            
+            assert (Hvdif_info : happens_before' vdif u /\ sender vdif = v). {
+              destruct Hdif as [Hdif1 Hdif2].
+              apply latest_message_from_compares in Hdif1 as Hcompv.
+              apply latest_message_sender in Hdif1.
+              intuition.
+            }
+            
+            assert (Hvtemp: v ∈ Vk_1). {
+              rewrite HeqVchange in Hv.
+              apply elem_of_intersection in Hv; intuition.
+            }
+            
+            move Hinvk2 at bottom.
+            specialize (Hinvk2 v Hvtemp).
+            destruct Hinvk2 as [vk1 Hvk1].
+            
+           assert (Hvk1_vote : vote vk1 = Some value). {
+            admit.
+           }
+            
+           assert (Hvdif_vk1 : happens_before' vk1 vdif). {
+            apply compare_messages1 with (u := u).
+              intuition congruence.
+              apply latest_message_in_latest_messages.
+              replace (sender vdif) with v by intuition; intuition.
+              replace (sender vdif) with v by intuition.
+              intuition.
+              intuition congruence.
+              intuition.
+           }
+            
+            move Hinvk3 at bottom.
+            specialize (Hinvk3 v Hvtemp).
+            destruct Hinvk3 as [vk Hvk].
+            
+            assert (Hvk_vote : vote vk = Some value). {
+              assert (vk ∈ base) by admit.
+              admit.
+            }
+            
+            assert (Hncomp : ~ comparable happens_before' vk vdif). {
+              intros contra.
+              unfold comparable in contra.
+              destruct contra as [contra|contra].
+              - intuition congruence.
+              - destruct contra as [contra|contra].
+                + contradict Hu_minimal.
+                  unfold Pdown.
+                  intros contra2.
+                  unfold is_minimal_wrt_P in contra2.
+                  destruct contra2 as [Hutemp contra2].
+                  destruct Hutemp as [Hutemp _].
+                  
+                  specialize (contra2 vdif).
+                  spec contra2. {
+                    split.
+                    - left.
+                      destruct Hutemp.
+                      + apply t_trans with (y := u); intuition.
+                      + subst fake_u. assumption.
+                    - split.
+                      + apply protocol_state_closed with (u := u); intuition.
+                      + split;[intuition|].
+                        exists vk.
+                        split.
+                        * apply HdownSetCorrect. assumption.
+                        * rewrite Htop_sm1. intuition.  
+                  }
+                  intuition.
+                +
+              admit.
+            }
+            
+            assert (v ∈ equivocators_from_set (base ∪ downSet u)). {
+              unfold equivocators_from_set.
+              apply elem_of_filter.
+              rewrite <- Is_true_iff_eq_true. rewrite bool_decide_eq_true.
+              split.
+              - unfold is_equivocating_from_set.
+                exists vk. exists vdif.
+                split.
+                + apply elem_of_union. 
+                  left.
+                  admit.
+                + split;[intuition|].
+                  split.
+                  * apply elem_of_union.
+                    right.
+                    destruct Hdif as [Hdif _].
+                    apply latest_message_from_compares in Hdif.
+                    apply HdownSetCorrect. 
+                    intuition.
+                  * destruct Hdif as [Hdif _].
+                    apply latest_message_sender in Hdif.
+                    split;[intuition|].
+                    apply Hncomp.
+                    
+              - specialize (index_set_listing {[ v ]}).
+                unfold subseteq. unfold set_subseteq_instance.
+                intros Htemp. specialize (Htemp v).
+                apply Htemp.
+                apply elem_of_singleton. reflexivity.
+            } 
+           
             admit.
           } 
     Admitted.
