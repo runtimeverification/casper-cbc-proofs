@@ -1707,8 +1707,6 @@ Section composition.
         eexists. apply Hgen.
   Qed.
   
-  
-      
   Lemma protocol_state_satisfies_all_received_satisfy_isprotocol_prop st idx:
     protocol_state_prop free_composite_elmo st ->
     @all_received_satisfy_isprotocol_prop weights treshold (observationsOf (st idx)).
@@ -1787,31 +1785,6 @@ Section composition.
     simpl in H. exact H.
   Qed.
   
-
-  Lemma fullNode_last_receive_not_self' st idx (l obs : list Observation) (p : Prestate)
-        (n component1 component2 : nat) :
-    protocol_state_prop free_composite_elmo st ->
-    component1 <> component2 ->
-    let ob := Cobservation Receive (Cpremessage p component2) component1 in
-    fullNode (Cpremessage (Cprestate (l ++ [ob])) n) (observationsOf (st idx)) (index_to_component idx) = true ->
-    component1 = index_to_component idx.
-  Proof.
-    intros Hpsp Hneq ob Hfn.
-    Check all_receive_observation_have_component_as_witness.
-    Check fullNode_last_receive_not_self.
-    
-    epose proof (Hin := fullNode_last_receive_not_self
-                          l (observationsOf (st idx)) p n _ _ _ Hneq).
-    simpl in Hin. unfold ob in Hfn.
-    Fail specialize (Hin Hfn).
-  Abort.
-  
-
-  
-  (* TODO change obs into state and use observationsOf this state;
-          assume this state is protocol.
-          Have a lemma saying every protocol state contains only protocol message (received)
-   *)
   Lemma isProtocol_implies_protocol component st m:
     protocol_state_prop free_composite_elmo st ->
     fullNode m (observationsOf (st (component_to_index component))) component ->
@@ -1987,6 +1960,8 @@ Section composition.
             Check fullNode_last_receive_not_self.*)
             apply nesym in n2.
             pose proof (Hin := fullNode_last_receive_not_self _ _ _ _ _ _ _ n2 Hfull).
+            Check protocol_state_satisfies_all_received_satisfy_isprotocol_prop.
+            Print all_received_satisfy_isprotocol_prop.
             (* TODO all messages of which we have a Received observation are protocol *)
             admit.
         }
