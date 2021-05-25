@@ -1396,7 +1396,7 @@ Qed.
 
 
 Lemma fullNode_last_receive_self (l obs : list Observation) (p : Prestate) (n n0 component : nat) :
-  fullNode (Cpremessage (Cprestate (l ++ [Cobservation Receive (Cpremessage p component) n0])) n) obs component ->
+  fullNode (Cpremessage (Cprestate (l ++ [Cobservation Receive (Cpremessage p component) n0])) n) obs component = true ->
   List.In (Cobservation Send (Cpremessage p component) component) obs.
 Proof.
   intros Hfn.
@@ -1413,6 +1413,25 @@ Proof.
     apply fullNode_dropMiddle in Hfn. auto.
 Qed.
 
+Lemma fullNode_last_receive_not_self (l obs : list Observation) (p : Prestate)
+      (n component1 component2 : nat) :
+  component1 <> component2 ->
+  let ob := Cobservation Receive (Cpremessage p component2) component1 in
+  fullNode (Cpremessage (Cprestate (l ++ [ob])) n) obs component1 = true ->
+  List.In ob obs.
+Proof.
+  intros Hneq ob Hfn.
+  induction l using rev_ind.
+  - unfold fullNode in Hfn. simpl in Hfn.
+    destruct (decide (component2 = component1)).
+    { subst. contradiction. }
+    simpl in Hfn.
+    apply andb_prop in Hfn. destruct Hfn as [Hfn _].
+    apply bool_decide_eq_true_1 in Hfn.
+    exact Hfn.
+  - rewrite -app_assoc in Hfn. simpl in Hfn.
+    apply fullNode_dropMiddle in Hfn. auto.
+Qed.
 
 
 Definition all_received_satisfy_isprotocol_prop {weights} {treshold} (obs : list Observation) : Prop :=
@@ -1567,6 +1586,16 @@ Section composition.
   Definition composite_elmo := @composite_vlsm Premessage index IndEqDec IM i0 composition_constraint.
   Definition free_composite_elmo := @free_composite_vlsm Premessage index IndEqDec IM i0.
 
+  Lemma all_receive_observation_have_component_as_witness st m witness idx:
+    protocol_state_prop free_composite_elmo st ->
+    In (Cobservation Receive m witness) (observationsOf (st idx)) ->
+    witness = index_to_component idx.
+  Proof.
+    intros Hpsp Hin.
+    induction Hpsp using protocol_state_prop_ind.
+  Abort.
+  
+  
   Lemma has_send_observation_implies_is_protocol st idx m author:
     protocol_state_prop free_composite_elmo st ->
     In (Cobservation Send m author) (observationsOf (st idx)) ->
@@ -1894,9 +1923,13 @@ Section composition.
         {
           destruct (decide (n1 = component)).
           + subst.
-            
+            pose proof (Hin := fullNode_last_receive_self _ _ _ _ _ _ Hfull).
+            eapply has_send_observation_implies_is_protocol.
+            2: { apply Hin. }
+            exact Hpsp.
+          +
+            Check fullNode_last_receive_not_self.
             admit.
-          + admit.
         }
         
         Check protocol_state_contains_receive_implies_isProtocol.
