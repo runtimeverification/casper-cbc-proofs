@@ -1414,11 +1414,11 @@ Proof.
 Qed.
 
 Lemma fullNode_last_receive_not_self (l obs : list Observation) (p : Prestate)
-      (n component1 component2 : nat) :
+      (n component1 component2 component3 : nat) :
   component1 <> component2 ->
-  let ob := Cobservation Receive (Cpremessage p component2) component1 in
+  let ob := Cobservation Receive (Cpremessage p component2) component3 in
   fullNode (Cpremessage (Cprestate (l ++ [ob])) n) obs component1 = true ->
-  List.In ob obs.
+  List.In (Cobservation Receive (Cpremessage p component2) component1) obs.
 Proof.
   intros Hneq ob Hfn.
   induction l using rev_ind.
@@ -1432,7 +1432,6 @@ Proof.
   - rewrite -app_assoc in Hfn. simpl in Hfn.
     apply fullNode_dropMiddle in Hfn. auto.
 Qed.
-
 
 Definition all_received_satisfy_isprotocol_prop {weights} {treshold} (obs : list Observation) : Prop :=
   Forall (fun (ob : Observation) =>
@@ -1788,6 +1787,26 @@ Section composition.
     simpl in H. exact H.
   Qed.
   
+
+  Lemma fullNode_last_receive_not_self' st idx (l obs : list Observation) (p : Prestate)
+        (n component1 component2 : nat) :
+    protocol_state_prop free_composite_elmo st ->
+    component1 <> component2 ->
+    let ob := Cobservation Receive (Cpremessage p component2) component1 in
+    fullNode (Cpremessage (Cprestate (l ++ [ob])) n) (observationsOf (st idx)) (index_to_component idx) = true ->
+    component1 = index_to_component idx.
+  Proof.
+    intros Hpsp Hneq ob Hfn.
+    Check all_receive_observation_have_component_as_witness.
+    Check fullNode_last_receive_not_self.
+    
+    epose proof (Hin := fullNode_last_receive_not_self
+                          l (observationsOf (st idx)) p n _ _ _ Hneq).
+    simpl in Hin. unfold ob in Hfn.
+    Fail specialize (Hin Hfn).
+  Abort.
+  
+
   
   (* TODO change obs into state and use observationsOf this state;
           assume this state is protocol.
@@ -1937,8 +1956,7 @@ Section composition.
 
            How do we prove that [Cpremessage p n1] is a protocol message?
            Either [n1 <> component], and then by Hfull,
-             [In (Cobservation Receive (Cpremessage p n1) n0) obs]
-           (and we still need to prove that [n0 = component]),
+             [In (Cobservation Receive (Cpremessage p n1) component) obs],
            or [n1 = component], and then by Hfull,
             [In (Cobservation Send (Cpremessage p n1) n0) obs].
            And we can have an invariant saying any message that has a Send observation
@@ -1964,8 +1982,12 @@ Section composition.
             eapply has_send_observation_implies_is_protocol.
             2: { apply Hin. }
             exact Hpsp.
-          +
-            Check fullNode_last_receive_not_self.
+          + 
+            (*Check all_receive_observation_have_component_as_witness.
+            Check fullNode_last_receive_not_self.*)
+            apply nesym in n2.
+            pose proof (Hin := fullNode_last_receive_not_self _ _ _ _ _ _ _ n2 Hfull).
+            (* TODO all messages of which we have a Received observation are protocol *)
             admit.
         }
         
