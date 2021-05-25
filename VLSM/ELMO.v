@@ -1593,7 +1593,44 @@ Section composition.
   Proof.
     intros Hpsp Hin.
     induction Hpsp using protocol_state_prop_ind.
-  Abort.
+    - simpl in Hs. unfold composite_initial_state_prop in Hs.
+      assert (Hos: observationsOf (s idx) = []).
+      { apply Hs. }
+      rewrite Hos in Hin. simpl in Hin. inversion Hin.
+    - unfold protocol_transition in Ht.
+      destruct Ht as [Hvalid Ht].
+      unfold transition in Ht.
+      simpl in Ht.
+      destruct l as [i li].      
+      remember (vtransition (IM i) li (s i, om)) as VT.
+      destruct VT as [si'' om''].
+      unfold vtransition in HeqVT. simpl in HeqVT.
+
+      destruct (decide (i = idx)).
+      2: {
+        apply IHHpsp. clear IHHpsp.
+        inversion Ht. subst. clear Ht.
+        rewrite state_update_neq in Hin. apply nesym. exact n.
+        exact Hin.
+      }
+      subst i.
+      
+      destruct li, om; inversion HeqVT; subst; clear HeqVT;
+        inversion Ht; subst; clear Ht;
+        rewrite state_update_eq in Hin.
+      + apply in_app_or in Hin.
+        destruct Hin as [Hin|Hin]; [auto|].
+        simpl in Hin.
+        destruct Hin as [Hin|Hin]; inversion Hin; subst.
+        reflexivity.
+      + auto.
+      + auto.
+      + simpl in Hin.
+        apply in_app_or in Hin.
+        destruct Hin as [Hin|Hin]; [auto|].
+        simpl in Hin.
+        destruct Hin as [Hin|Hin]; inversion Hin.
+  Qed.
   
   
   Lemma has_send_observation_implies_is_protocol st idx m author:
