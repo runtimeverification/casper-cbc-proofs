@@ -1914,6 +1914,7 @@ Section composition.
         rename x into idx.
         rename v into lbl.
         remember (observationsOf (st (component_to_index component))) as obs.
+
         Search obs.
         Search isProtocol app.
         (* I want to prove the goal using [protocol_generated].
@@ -1960,9 +1961,13 @@ Section composition.
             Check fullNode_last_receive_not_self.*)
             apply nesym in n2.
             pose proof (Hin := fullNode_last_receive_not_self _ _ _ _ _ _ _ n2 Hfull).
-            Check protocol_state_satisfies_all_received_satisfy_isprotocol_prop.
-            Print all_received_satisfy_isprotocol_prop.
-            (* TODO all messages of which we have a Received observation are protocol *)
+            pose proof (Harsip := protocol_state_satisfies_all_received_satisfy_isprotocol_prop _ (component_to_index component) Hpsp).
+            unfold all_received_satisfy_isprotocol_prop in Harsip.
+            rewrite -> Forall_forall in Harsip.
+            rewrite Heqobs in Hin.
+            specialize (Harsip _ Hin).
+            simpl in Harsip. clear Hin.
+            (* Now apply induction hypothesis. But we need to generalize. *)
             admit.
         }
         
