@@ -590,14 +590,14 @@ Section capabilities.
     eapply has_been_sent_capability_from_stepwise.
     2: apply elmo_has_been_sent_oracle_stepwise_props.
     apply elmo_has_been_sent_oracle_dec.
-  Qed.
+  Defined.
 
   Lemma elmo_has_been_received_capability : has_been_received_capability vlsm.
   Proof.
     eapply has_been_received_capability_from_stepwise.
     2: apply elmo_has_been_received_oracle_stepwise_props.
     apply elmo_has_been_received_oracle_dec.
-  Qed.
+  Defined.
   
 End capabilities.
 
@@ -1630,7 +1630,61 @@ Section composition.
         simpl in Hin.
         destruct Hin as [Hin|Hin]; inversion Hin.
   Qed.
-  
+
+  Lemma free_composite_elmo_has_been_received_capability:
+    has_been_received_capability free_composite_elmo.
+  Proof.
+    unfold free_composite_elmo. unfold free_composite_vlsm.
+    eapply composite_has_been_received_capability.
+    { apply finite_index. }
+    intros i.
+    apply elmo_has_been_received_capability.
+  Defined.
+
+  Lemma has_receive_observation_implies_is_protocol st idx m:
+    protocol_state_prop free_composite_elmo st ->
+    In (Cobservation Receive m (index_to_component idx)) (observationsOf (st idx)) ->
+    protocol_message_prop free_composite_elmo m.
+  Proof.
+    intros Hpsp Hin.
+    pose proof (Hpsp' := pre_loaded_with_all_messages_protocol_state_prop _ _ Hpsp).
+    pose proof (Hhbr := @proper_received _ free_composite_elmo free_composite_elmo_has_been_received_capability _ Hpsp').
+    specialize (Hhbr m).
+    unfold has_been_received_prop in Hhbr.
+    unfold all_traces_have_message_prop in Hhbr.
+    apply proj1 in Hhbr.
+    unfold has_been_received in Hhbr.
+    unfold free_composite_elmo_has_been_received_capability in Hhbr.
+    simpl in Hhbr.
+    unfold composite_has_been_received in Hhbr.
+    assert (Htmp: exists i : index, @has_been_received _ (IM i) (elmo_has_been_received_capability (index_to_component i) weights treshold) (st i) m).
+    {
+      exists idx.
+      unfold has_been_received. unfold elmo_has_been_received_capability. simpl.
+      unfold elmo_has_been_received_oracle.
+      apply (filter_in _ (isWitnessedBy (index_to_component idx))) in Hin.
+      2: { unfold isWitnessedBy. simpl.
+           destruct (bool_decide (index_to_component idx = index_to_component idx)) eqn:Heq.
+           reflexivity.
+           apply bool_decide_eq_false_1 in Heq. contradiction.
+      }
+      apply (filter_in _ isReceive) in Hin.
+      2: { reflexivity. }
+      
+      apply (@in_map _ _ messageOf _ _) in Hin.
+      exact Hin.
+    }
+    specialize (Hhbr Htmp). clear Htmp.
+    pose proof (Htmp := protocol_state_has_trace _ _ Hpsp).
+    destruct Htmp as [si [tr [Htrace Hlast]]].
+    specialize (Hhbr si tr).
+    
+    pose proof (Hp := (VLSM_incl_finite_protocol_trace _ _ (vlsm_incl_pre_loaded_with_all_messages_vlsm free_composite_elmo))). simpl in Hp.
+    specialize (Hp _ _ Htrace).
+    specialize (Hhbr Hp Hlast). clear Hp Hlast.
+    eapply protocol_trace_input_is_protocol.
+    apply Htrace. unfold trace_has_message in Hhbr. exact Hhbr.
+  Qed.
   
   Lemma has_send_observation_implies_is_protocol st idx m author:
     protocol_state_prop free_composite_elmo st ->
@@ -1916,7 +1970,8 @@ Section composition.
         remember (observationsOf (st (component_to_index component))) as obs.
 
         Search obs.
-        Search isProtocol app.
+        Search isProtocol.
+        Search fullNode.
         (* I want to prove the goal using [protocol_generated].
            I.e., there needs to be a state [Sx] from which a transition goes to some state [s1]
            and  generates the message
@@ -1968,6 +2023,10 @@ Section composition.
             specialize (Harsip _ Hin).
             simpl in Harsip. clear Hin.
             (* Now apply induction hypothesis. But we need to generalize. *)
+            (* 1. [n1] must be a valid address.
+               2. I must do the induction on the weight of the state 
+               3. I need [fullNode (Cpremessage p n1) obs component = true]
+             *)
             admit.
         }
         
