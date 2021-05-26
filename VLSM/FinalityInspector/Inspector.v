@@ -627,15 +627,16 @@ Context
       m ∈ sm1 ->
       size (senders (set_filter (fun v => bool_decide (happens_before' v m)) _ (relevant_messages sm1 sm2))) >= q.
     
-    Inductive valid_com_prop : vstate X -> C -> nat -> list Cm -> Prop :=
+    Inductive valid_com_prop : Cm -> Cm -> C -> nat -> list Cm -> Prop :=
     | valid_com_base 
-      (s : vstate X)
+      (relSet : Cm)
+      (c0 : Cm)
       (value : C)
       (q : nat)
-      (sm : Cm)
-      (H : unanimity value sm /\ honesty s sm /\ convexity sm) : valid_com_prop s value q [sm]
+      (H : unanimity value c0 /\ honesty c0 relSet /\ convexity c0) : valid_com_prop relSet c0 value q [c0]
     | valid_com_ind 
-        (s : vstate X)
+        (relSet : Cm)
+        (c0 : Cm)
         (value : C)
         (q : nat)
         (sm1 sm2 : Cm) 
@@ -643,80 +644,82 @@ Context
         (Hincl : sm1 ⊆ sm2)
         (Hdensity : density sm1 sm2 q)
         (Hconv : convexity sm1)
-        (Hgood : valid_com_prop s value q (sm2 :: l)) : valid_com_prop s value q (sm1 :: (sm2 :: l)).
+        (Hgood : valid_com_prop relSet c0 value q (sm2 :: l)) : valid_com_prop relSet c0 value q (sm1 :: (sm2 :: l)).
     
     Definition committee : Type := {
-      comskel : committee_skeleton | valid_com_prop (com_state comskel) (value comskel) (q comskel) (com comskel)
+      comskel : committee_skeleton | valid_com_prop (relSet comskel) (c0 comskel) (value comskel) (q comskel) (com comskel)
     }.
     
     Lemma committee_info
       (vcom : committee)
       (skel := proj1_sig vcom) :
-      exists (base : Cm), (
-        get_base skel = Some base /\
-        convexity base /\
-        unanimity (value skel) base /\
-        forall (c : Cm), In c (com skel) -> c ⊆ base).
+        convexity (c0 skel) /\
+        unanimity (value skel) (c0 skel) /\
+        honesty (c0 skel) (relSet skel) /\        
+        (forall (c : Cm), In c (com skel) -> c ⊆ (c0 skel)).
     Proof.
       destruct vcom as [vcom Hvcom].
       simpl in skel.
       
-      remember (com_state vcom) as com_state'.
+      remember (relSet vcom) as com_relSet.
+      remember (c0 vcom) as com_c0.
       remember (value vcom) as com_value'.
       remember (q vcom) as com_q.
       remember (com vcom) as com_com.
-      
+      remember (Hc0 vcom) as com_Hc0.
       generalize dependent vcom.
       
       induction Hvcom.
-      - exists sm.
-        unfold get_base.
+      - intros.
+        subst skel.
+        rewrite <- Heqcom_c0. 
+        rewrite <- Heqcom_value'.
+        rewrite <- Heqcom_relSet.
         rewrite <- Heqcom_com.
-        simpl.
+        split;[intuition|split;[intuition|]].
         split;[intuition|].
-        intuition set_solver.
-      - remember (@Build_committee_skeleton s value0 (sm2 :: l) q0) as new_skel.
+        intros c Hc.
+        destruct Hc; set_solver.
+      - intros.
+        assert (Hbase : last_error (sm2 :: l) = Some c1). {
+          move com_Hc0 at bottom.
+          clear Heqcom_Hc0.
+          rewrite <- Heqcom_com in com_Hc0.
+          rewrite <- Heqcom_c0 in com_Hc0.
+          simpl in *.
+          destruct l.
+          + intuition.
+          + rewrite <- com_Hc0.
+            f_equal.
+            rewrite !unroll_last.
+            intuition.
+        }
+        remember (@Build_committee_skeleton value0 relSet0 c1 (sm2 :: l) q0 Hbase)  as new_skel.
+        simpl in new_skel. 
+
         specialize (IHHvcom new_skel).
         subst new_skel.
         spec IHHvcom. intuition.
         spec IHHvcom. intuition.
         spec IHHvcom. intuition.
         spec IHHvcom. intuition.
-        intros.
+        spec IHHvcom. intuition.
+        simpl in IHHvcom.
+        specialize (IHHvcom Hbase eq_refl).
         destruct IHHvcom as [base IHHvcom].
-        exists base.
         subst skel.
-        unfold get_base.
         rewrite <- Heqcom_com.
-        split.
-        + destruct IHHvcom as [IHH _].
-          unfold get_base in IHH.
-          rewrite <- IHH.
-          simpl. f_equal.
-          destruct l.
-          * intuition.
-          * rewrite !unroll_last.
-            intuition.
-        + split;[intuition|].
-          destruct IHHvcom as [_ [_ IHHvcom]].
-          simpl in IHHvcom.
-          split;[rewrite <- Heqcom_value';intuition|].
-          intros c Hc.
-          simpl in IHHvcom.
-          simpl in Hc.
-          destruct IHHvcom as [_ IHHvcom].
-          destruct Hc as [Hc|Hc].
-          * subst c. 
-            specialize (IHHvcom sm2).
-            spec IHHvcom. intuition.
-            set_solver.
-          * destruct Hc as [Hc|Hc].
-            -- specialize (IHHvcom sm2).
-               spec IHHvcom. intuition.
-               subst c. intuition.
-            -- specialize (IHHvcom c).
-               spec IHHvcom. intuition.
-               intuition.
+        rewrite <- Heqcom_c0.
+        rewrite <- Heqcom_relSet.
+        rewrite <- Heqcom_value'.
+        split;[intuition|].
+        split;[intuition|].
+        split;[intuition|].
+        intros c Hc.
+        destruct IHHvcom as [_ [_ IHH]].
+        simpl in Hc.
+        assert (Hsm2 : sm2 ⊆ c1) by (specialize (IHH sm2); intuition). 
+        destruct Hc as [Hc|Hc]; set_solver.
     Qed.
     
     Local Open Scope Z_scope.
@@ -726,16 +729,16 @@ Context
     Theorem main
       (s : vstate X)
       (Hpr : protocol_state_prop X s)
-      (sigma := composite_observed s)
       (Com : committee)
       (skel := proj1_sig Com)
-      (q := (q skel))
-      (k := (k skel))
-      (value := (value skel))
-      (base top : Cm)
-      (Hbase : get_base skel = Some base)
+      (relSet := relSet skel)
+      (q := q skel)
+      (k := k skel)
+      (value := value skel)
+      (c0 := c0 skel)
+      (top : Cm)
       (Htop : get_top skel = Some top)
-      (Hstate : com_state skel = s)
+      (Hs : set_downSet' c0 ⊆ composite_observed s)
       (fake_u : message)
       (Pdown := fun m' =>
         (happens_before' m' fake_u \/ m' = fake_u) /\ 
@@ -747,37 +750,24 @@ Context
       (u : message)
       (Hu_P : Pdown u)
       (Hu_minimal : is_minimal_wrt_P u Pdown)
-      (Au := A u (Some value) sigma) :
+      (Au := A u (Some value) c0) :
       (size Au) * (2 ^ k) >=  
       (2 * q - n) * (2 ^ k - 1).
     Proof.
-      assert (Com' := Com).
       destruct Com as [skel' Hcom]. simpl in *.
       subst skel.
       simpl in *.
-      remember (com_state skel') as com_state'.
       remember (Inspector.value skel') as value'.
       remember (Inspector.q skel') as q'.
       remember (com skel') as com'.
+      remember (Inspector.relSet skel') as relSet'.
+      remember (Inspector.c0 skel') as c0'.
+      remember (Hc0 skel') as Hc0'.
     
       generalize dependent fake_u.
       generalize dependent u.
-      generalize dependent base.
-      generalize dependent top.
+      generalize dependent top. 
       generalize dependent skel'.
-      
-      specialize (committee_info Com') as Hcom_info.
-      
-      destruct Hcom_info as [base Hcom_info].
-        destruct Hcom_info as [_ Hcom_info].
-        assert (Hbase_vote : forall m, m ∈ base -> vote m = Some value). {
-          intros m Hm.
-          destruct Hcom_info as [_ [Hcom_info _]].
-          simpl in Hcom_info.
-          unfold unanimity in Hcom_info.
-          specialize (Hcom_info m).
-          
-        }
 
       induction Hcom.
       - intros.
@@ -785,7 +775,6 @@ Context
         unfold k0. unfold Inspector.k.
         rewrite <- Heqcom'. simpl. lia.
       - intros.
-        specialize (committee_info Com') as Hcom_info.
         
         unfold Pdown in Hu_P.
         destruct Hu_P as [_ Hu_P].
@@ -793,6 +782,22 @@ Context
         
         destruct Hu_P as [Hu_P Huc].
         destruct Huc as [uk Huk].
+        
+        assert (Hc0_convex : convexity c0). {
+          admit.
+        }
+        
+        assert (Hc0_vote : forall m, m ∈ c1 -> vote m = Some value). {
+          admit.
+        }
+        
+        assert (Hsm1_in_c0 : sm1 ⊆ c1). {
+          admit.
+        }
+        
+        assert (Hsm2_in_c0 : sm2 ⊆ c1). {
+          admit.
+        }
         
         assert (Huk_u : forall m', happens_before' m' uk -> happens_before' m' u). {
           intros.
@@ -1160,31 +1165,35 @@ Context
           }
           
           move IHHcom at bottom.
-          specialize (IHHcom Hstate).
-    
-          remember (@Build_committee_skeleton s value (sm2 :: l) q) as new_skel.
+          simpl in IHHcom.
+          spec IHHcom. intuition.
+          
+          assert (Htemp : Some (List.last l sm2) = Some c1). {
+            f_equal.
+            move Hc0' at bottom.
+            rewrite Heqc0'.
+            clear HeqHc0'.
+            rewrite <- Heqcom' in Hc0'.
+            simpl in Hc0'.
+            inversion Hc0'.
+            destruct l.
+            - intuition.
+            - inversion Hc0'.
+              rewrite !unroll_last.
+              intuition.
+          }
+          
+          remember (@Build_committee_skeleton value relSet0 c1 (sm2 :: l) q Htemp) as new_skel.
+          simpl in new_skel.
+        
           specialize (IHHcom new_skel).
           rewrite Heqnew_skel in IHHcom. simpl in IHHcom.
           spec IHHcom. intuition congruence.
           spec IHHcom. intuition congruence.
           spec IHHcom. intuition congruence.
-          specialize (IHHcom eq_refl).
+          specialize (IHHcom eq_refl eq_refl Htemp eq_refl).
           specialize (IHHcom sm2). unfold get_top in IHHcom. simpl in IHHcom.
           specialize (IHHcom eq_refl).
-          specialize (IHHcom base).
-          
-          spec IHHcom. {
-            move Hbase at bottom.
-            unfold get_base in Hbase.
-            rewrite <- Heqcom' in Hbase.
-            unfold get_base. simpl.
-            simpl in Hbase.
-            destruct l.
-            * intuition.
-            * rewrite unroll_last.
-              rewrite unroll_last in Hbase.
-              intuition.
-          }
           
           destruct Hu' as [u'' Hu''].
           
@@ -1245,7 +1254,7 @@ Context
           
           unfold k in IHHcom. simpl in IHHcom.
           
-          remember (A u' (Some value) sigma) as Au'.
+          remember (A u' (Some value) c1) as Au'.
           
           assert (Hineq2main : (size (Au' ∪ Veq) + size Vchange) * 2 ^ k0 >= (2 * q0 - n) * (2 ^ k0 - 1)). {
             specialize (union_size_ge_average Au' Veq) as Havg.
@@ -1329,7 +1338,6 @@ Context
               admit.
           }
           
-          
           assert (HVchange_sub_Au : Vchange ⊆ Au). {
             intros v Hv.
             move Hin_vchange at bottom.
@@ -1344,6 +1352,13 @@ Context
               intuition.
             }
             
+            assert (Hvdif_in_latest: vdif ∈ latest_messages u). {
+              apply latest_message_in_latest_messages.
+              replace (sender vdif) with v by intuition; intuition.
+              replace (sender vdif) with v by intuition.
+              intuition.
+            }
+            
             assert (Hvtemp: v ∈ Vk_1). {
               rewrite HeqVchange in Hv.
               apply elem_of_intersection in Hv; intuition.
@@ -1354,18 +1369,14 @@ Context
             destruct Hinvk2 as [vk1 Hvk1].
             
            assert (Hvk1_vote : vote vk1 = Some value). {
-            admit.
+             apply Hc0_vote.
+             apply Hsm2_in_c0.
+             intuition.
            }
             
            assert (Hvdif_vk1 : happens_before' vk1 vdif). {
             apply compare_messages1 with (u := u).
-              intuition congruence.
-              apply latest_message_in_latest_messages.
-              replace (sender vdif) with v by intuition; intuition.
-              replace (sender vdif) with v by intuition.
-              intuition.
-              intuition congruence.
-              intuition.
+            all : intuition congruence.
            }
             
             move Hinvk3 at bottom.
@@ -1373,8 +1384,11 @@ Context
             destruct Hinvk3 as [vk Hvk].
             
             assert (Hvk_vote : vote vk = Some value). {
-              assert (vk ∈ base) by admit.
-              admit.
+              assert (Hvk_c1 : vk ∈ c1). {
+                 destruct Hvk as [_ Hvk].
+                 apply Hsm1_in_c0; assumption.
+              }
+              apply (Hc0_vote vk Hvk_c1).
             }
             
             assert (Hncomp : ~ comparable happens_before' vk vdif). {
@@ -1396,21 +1410,28 @@ Context
                     - left.
                       destruct Hutemp.
                       + apply t_trans with (y := u); intuition.
-                      + subst fake_u. assumption.
+                      + subst fake_u. intuition.
                     - split.
                       + apply protocol_state_closed with (u := u); intuition.
                       + split;[intuition|].
                         exists vk.
                         split.
                         * apply HdownSetCorrect. assumption.
-                        * rewrite Htop_sm1. intuition.  
+                        * rewrite Htop_sm1. intuition.
                   }
                   intuition.
-                +
-              admit.
+                + contradict Hc0_convex.
+                  intros contra_convex.
+                  unfold convexity in contra_convex.
+                  specialize (contra_convex vk1 vdif vk).
+                  spec contra_convex. intuition.
+                  spec contra_convex. intuition congruence.
+                  spec contra_convex. intuition.
+                  specialize (Hc0_vote vdif contra_convex).
+                  intuition congruence.
             }
             
-            assert (v ∈ equivocators_from_set (base ∪ downSet u)). {
+            assert (Hv_equiv: v ∈ equivocators_from_set (c1 ∪ downSet u)). {
               unfold equivocators_from_set.
               apply elem_of_filter.
               rewrite <- Is_true_iff_eq_true. rewrite bool_decide_eq_true.
@@ -1420,7 +1441,7 @@ Context
                 split.
                 + apply elem_of_union. 
                   left.
-                  admit.
+                  apply Hsm1_in_c0; intuition.
                 + split;[intuition|].
                   split.
                   * apply elem_of_union.
@@ -1436,12 +1457,26 @@ Context
                     
               - specialize (index_set_listing {[ v ]}).
                 unfold subseteq. unfold set_subseteq_instance.
-                intros Htemp. specialize (Htemp v).
-                apply Htemp.
+                intros Htemp'. specialize (Htemp' v).
+                apply Htemp'.
                 apply elem_of_singleton. reflexivity.
-            } 
-           
-            admit.
+            }
+            
+            unfold Au. unfold A.
+            apply elem_of_union.
+            right.
+            apply elem_of_intersection.
+            split.
+            - intuition.
+            - unfold divergent_last_messages.
+              apply elem_of_map.
+              exists vdif.
+              split;[intuition|].
+              apply elem_of_filter.
+              rewrite <- Is_true_iff_eq_true.
+              rewrite negb_true_iff.
+              rewrite bool_decide_eq_false.
+              intuition.
           } 
     Admitted.
       
