@@ -336,8 +336,9 @@ Definition isProtocol
     let initialEq := @nil nat in
     let result := (fold_left (isProtocol_step component weights treshold (observationsOf prestate)) (observationsOf prestate) (true, 0, initialState, initialEq )) in
     fst (fst (fst result)).
-Print fullNode.
+
 Definition elmo_valid
+           (addresses : list nat)
            (component : nat)
            (weights : list pos_R)
            (treshold : R)
@@ -350,6 +351,7 @@ Definition elmo_valid
   | Send, Some _ => false
   | Receive, None => false
   | Receive, Some m =>
+    bool_decide (List.In (authorOf m) addresses) &&
     fullNode m (observationsOf state) component &&
     isProtocol (stateOf m) (authorOf m) weights treshold
   end.
@@ -378,20 +380,22 @@ Definition elmo_transition
          (s, None)
     end.
 
-Definition elmo_vlsm_machine (component : nat) (weights : list pos_R) (treshold : R)
+Definition elmo_vlsm_machine (addresses : list nat)
+           (component : nat) (weights : list pos_R) (treshold : R)
   : @VLSM_class Premessage elmo_type elmo_sig
   :=
-    {| valid := elmo_valid component weights treshold
+    {| valid := elmo_valid addresses component weights treshold
        ; transition := elmo_transition component weights treshold
     |}.
 
 
 Section capabilities.
   Context
+    (addresses : list nat)
     (component : nat)
     (weights : list pos_R)
     (treshold : R)
-    (vlsm := mk_vlsm (elmo_vlsm_machine component weights treshold))
+    (vlsm := mk_vlsm (elmo_vlsm_machine addresses component weights treshold))
   .
 
   Check (field_selector input).
@@ -794,13 +798,14 @@ Qed.
 
 (* And prove that the transition function preserves this property. *)
 Lemma ob_sent_contains_previous_prop_step
+      (addresses : list nat)
       (component : nat)
       (weights : list pos_R)
       (treshold : R)
       (label : Label)
       (bsom : Prestate * option Premessage) :
   ob_sent_contains_previous_prop (observationsOf (fst bsom)) ->
-  elmo_valid component weights treshold label bsom ->
+  elmo_valid addresses component weights treshold label bsom ->
   ob_sent_contains_previous_prop (observationsOf (fst (elmo_transition component weights treshold label bsom))).
 Proof.
   destruct bsom as [bs om].
@@ -1512,6 +1517,7 @@ Section composition.
     (indices_weights_eqlenght : length indices = length weights)
   .
 
+  Definition addresses : list nat := seq 0 (length indices).
 
   Definition index_to_component (idx : index) : nat :=
     findInList idx indices.
@@ -1549,7 +1555,7 @@ Section composition.
     { apply finite_index. }
   Qed.
 
-  Definition IM' (i : index) := elmo_vlsm_machine (index_to_component i) weights treshold.
+  Definition IM' (i : index) := elmo_vlsm_machine addresses (index_to_component i) weights treshold.
   Definition IM (i : index) := mk_vlsm (IM' i).
 
   (* `component` is equivocating and we have an evidence in some state
@@ -1657,7 +1663,7 @@ Section composition.
     unfold free_composite_elmo_has_been_received_capability in Hhbr.
     simpl in Hhbr.
     unfold composite_has_been_received in Hhbr.
-    assert (Htmp: exists i : index, @has_been_received _ (IM i) (elmo_has_been_received_capability (index_to_component i) weights treshold) (st i) m).
+    assert (Htmp: exists i : index, @has_been_received _ (IM i) (elmo_has_been_received_capability addresses (index_to_component i) weights treshold) (st i) m).
     {
       exists idx.
       unfold has_been_received. unfold elmo_has_been_received_capability. simpl.
