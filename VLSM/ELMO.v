@@ -2022,6 +2022,18 @@ Section composition.
             rewrite Heqobs in Hin.
             specialize (Harsip _ Hin).
             simpl in Harsip. clear Hin.
+            
+            eapply (has_receive_observation_implies_is_protocol _ _ _ Hpsp).
+            eapply fullNode_last_receive_not_self.
+            2: { rewrite Heqobs in Hfull.
+                 rewrite -[component]component_to_index_to_component in Hfull.
+                 admit. (* TODO it must be a valid address *)
+                 rewrite index_to_component_to_index in Hfull.
+                 apply Hfull.
+            }
+ 
+            
+            erewrite -> component_to_index_to_component.
             (* Now apply induction hypothesis. But we need to generalize. *)
             (* 1. [n1] must be a valid address.
                2. I must do the induction on the weight of the state 
