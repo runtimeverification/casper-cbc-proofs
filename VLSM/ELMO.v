@@ -1844,6 +1844,31 @@ Section composition.
     2: apply Hin.
     simpl in H. exact H.
   Qed.
+
+  Lemma protocol_message_was_sent_from_protocol_state s1 st author:
+    protocol_prop free_composite_elmo (s1, Some (Cpremessage st author)) ->
+    exists s0,
+      protocol_state_prop free_composite_elmo s0
+      /\ (s0 (component_to_index author)) = st.
+  Proof.
+    intros H.
+    inversion H; subst; clear H.
+    { simpl in Hom. unfold composite_initial_message_prop in Hom.
+      destruct Hom as [n [mi Hmi]].
+      unfold vinitial_message in mi. unfold initial_message in mi.
+      simpl in mi.
+      pose proof (proj2_sig mi) as H0. simpl in H0. inversion H0.
+    }
+    destruct l as [i li].
+    remember (vtransition (IM i) li (s i, om)) as VT.
+    destruct VT as [st' om']. inversion H1. subst. clear H1.
+    unfold vtransition in HeqVT. simpl in HeqVT.
+    destruct li,om; inversion HeqVT; subst; clear HeqVT.
+    rewrite index_to_component_to_index.
+
+    unfold protocol_state_prop.
+    eexists. split. eexists. apply Hps. reflexivity.
+  Qed.
   
   Lemma isProtocol_implies_protocol component st m:
     address_valid component ->
