@@ -2069,11 +2069,23 @@ Section composition.
             exact n2.
             exact Hcomval.
         }
+        (* We have a protocol state Sy such that [Sy (component_to_index n) = Cprestate l]. *)
+        pose proof (Htmp := protocol_message_was_sent_from_protocol_state _ _ _ Hs).
+        destruct Htmp as [Sy [Hsyproto Hsyn]].
+
+        (* When the component [n] receives [Cpremessage p n1] in [Sy], the result is some state [Sx]
+           satisfying [Sx (component_to_index n)
+                       = (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0]))].
+         *)
+        destruct Hsyproto as [omSy Hsyproto].
+        destruct Hmproto as [_sm Hmproto].
+        pose proof (Hgen := protocol_generated free_composite_elmo (existT _ (component_to_index n) Receive) _ _ Hsyproto _ _ Hmproto).
+        (* TODO how do we know the message is valid in the state? *)
         
+        (*
         Check protocol_state_contains_receive_implies_isProtocol.
         Check has_send_observation_implies_is_protocol.
-        Search obs.
-
+        Search obs.*)
 
         
         (* [om] is [Some _]. Or not? *)
