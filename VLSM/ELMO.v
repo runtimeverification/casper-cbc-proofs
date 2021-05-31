@@ -1846,13 +1846,14 @@ Section composition.
   Qed.
   
   Lemma isProtocol_implies_protocol component st m:
+    address_valid component ->
     protocol_state_prop free_composite_elmo st ->
     fullNode m (observationsOf (st (component_to_index component))) component ->
     address_valid (authorOf m) ->
     isProtocol (stateOf m) (authorOf m) weights treshold  ->
     protocol_message_prop free_composite_elmo m.
   Proof.
-    intros Hpsp Hfull Haddr Hproto.
+    intros Hcomval Hpsp Hfull Haddr Hproto.
     destruct m. destruct p. simpl.
     pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
 
@@ -2033,19 +2034,15 @@ Section composition.
             eapply fullNode_last_receive_not_self.
             2: { rewrite Heqobs in Hfull.
                  rewrite -[component]component_to_index_to_component in Hfull.
-                 admit. (* TODO it must be a valid address *)
+                 exact Hcomval.
                  rewrite index_to_component_to_index in Hfull.
                  apply Hfull.
             }
  
             
             erewrite -> component_to_index_to_component.
-            (* Now apply induction hypothesis. But we need to generalize. *)
-            (* 1. [n1] must be a valid address.
-               2. I must do the induction on the weight of the state 
-               3. I need [fullNode (Cpremessage p n1) obs component = true]
-             *)
-            admit.
+            exact n2.
+            exact Hcomval.
         }
         
         Check protocol_state_contains_receive_implies_isProtocol.
