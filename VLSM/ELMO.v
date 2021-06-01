@@ -2081,6 +2081,25 @@ Section composition.
         destruct Hmproto as [_sm Hmproto].
         pose proof (Hgen := protocol_generated free_composite_elmo (existT _ (component_to_index n) Receive) _ _ Hsyproto _ _ Hmproto).
         (* TODO how do we know the message is valid in the state? *)
+        unfold valid in Hgen. simpl in Hgen.
+        unfold constrained_composite_valid in Hgen. unfold free_constraint in Hgen. simpl in Hgen.
+        unfold vvalid in Hgen. simpl in Hgen.
+        rewrite Hsyn in Hgen. simpl in Hgen.
+        rewrite component_to_index_to_component in Hgen.
+        { exact Haddr. }
+        assert (fullNode (Cpremessage p n1) l n).
+        {
+          (* From Hfull it follows that [Cpremessage p n1] is in [obs].
+             Since [obs] is from a protocol state, we can have an invariant that implies
+             that all messages from [obs] have its dependencies in [obs];
+             specifically, the dependencies of [Cpremessage p n1] are in obs.
+             If only [obs] was included in [l]!. If [Cprestate l] was reachable from [obs]... .
+           *)
+          Search l. Search obs.
+        }
+        
+        Search fullNode.
+                                                         
         
         (*
         Check protocol_state_contains_receive_implies_isProtocol.
