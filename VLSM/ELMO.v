@@ -1869,6 +1869,43 @@ Section composition.
     unfold protocol_state_prop.
     eexists. split. eexists. apply Hps. reflexivity.
   Qed.
+
+  Lemma isProtocol_last_fullNode l p n1 n0 component:
+    n1 <> component ->
+    isProtocol (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0]))
+               component weights treshold ->
+    fullNode (Cpremessage p n1) l component.
+  Proof.
+    intros Hneq Hproto.
+    unfold isProtocol in Hproto. simpl in Hproto.
+    
+    rewrite fold_left_app in Hproto. simpl in Hproto.
+    remember (fold_left
+                (isProtocol_step component weights treshold                 
+                                 (l ++ [Cobservation Receive (Cpremessage p n1) n0])) l   
+                (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
+    unfold isProtocol_step in Hproto at 1.
+    destruct FL as [[[b i] curState] curEq].
+    destruct b; simpl in Hproto.
+    2: { inversion Hproto. }
+    destruct (bool_decide (n0 = component)); simpl in Hproto.
+    2: { inversion Hproto. }
+    destruct (bool_decide (n1 = component)) eqn:Heq; simpl in Hproto.
+    { apply bool_decide_eq_true in Heq. contradiction. }
+    
+    pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights treshold).
+    specialize (Htmp (l ++ [Cobservation Receive (Cpremessage p n1) n0])).
+    specialize (Htmp l (true, 0, map (fun=> Cprestate []) weights, [])).
+    simpl in Htmp.
+    rewrite -HeqFL in Htmp. specialize (Htmp (eq_refl _)). subst i.
+    rewrite firstn_app in Hproto. rewrite Nat.sub_diag in Hproto. simpl in Hproto.
+    rewrite app_nil_r in Hproto. rewrite firstn_all in Hproto.
+
+    remember (fullNode (Cpremessage p n1) l component) as FN.
+    destruct FN; simpl in Hproto.
+    2: { inversion Hproto. }
+    exact is_true_true.
+  Qed.             
   
   Lemma isProtocol_implies_protocol component st m:
     address_valid component ->
@@ -2089,12 +2126,10 @@ Section composition.
         { exact Haddr. }
         assert (fullNode (Cpremessage p n1) l n).
         {
-          (* From Hfull it follows that [Cpremessage p n1] is in [obs].
-             Since [obs] is from a protocol state, we can have an invariant that implies
-             that all messages from [obs] have its dependencies in [obs];
-             specifically, the dependencies of [Cpremessage p n1] are in obs.
-             If only [obs] was included in [l]!. If [Cprestate l] was reachable from [obs]... .
+          (* So we have Hproto' which calls fullNode for all messages...
+             so fullNode should follow from that.
            *)
+          Search p.
           Search l. Search obs.
         }
         
