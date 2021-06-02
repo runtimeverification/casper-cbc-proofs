@@ -2077,6 +2077,8 @@ Section composition.
           destruct (decide (n1 = component)).
           + subst.
             pose proof (Hin := fullNode_last_receive_self _ _ _ _ _ _ Hfull).
+            Check has_send_observation_implies_is_protocol.
+            (* Maybe the state from which the protocol message is sent can reach st? *)
             eapply has_send_observation_implies_is_protocol.
             2: { apply Hin. }
             exact Hpsp.
@@ -2091,7 +2093,8 @@ Section composition.
             rewrite Heqobs in Hin.
             specialize (Harsip _ Hin).
             simpl in Harsip. clear Hin.
-            
+
+           (* Maybe the state from which [Cpremessage p n2] is sent can reach st? *)
             eapply (has_receive_observation_implies_is_protocol _ _ _ Hpsp).
             eapply fullNode_last_receive_not_self.
             2: { rewrite Heqobs in Hfull.
@@ -2109,6 +2112,7 @@ Section composition.
         (* We have a protocol state Sy such that [Sy (component_to_index n) = Cprestate l]. *)
         pose proof (Htmp := protocol_message_was_sent_from_protocol_state _ _ _ Hs).
         destruct Htmp as [Sy [Hsyproto Hsyn]].
+        (* Maybe s0 is reachable from Sy ? *)
 
         (* When the component [n] receives [Cpremessage p n1] in [Sy], the result is some state [Sx]
            satisfying [Sx (component_to_index n)
@@ -2116,6 +2120,7 @@ Section composition.
          *)
         destruct Hsyproto as [omSy Hsyproto].
         destruct Hmproto as [_sm Hmproto].
+        (* Maybe _sm can reach st? *)
         pose proof (Hgen := protocol_generated free_composite_elmo (existT _ (component_to_index n) Receive) _ _ Hsyproto _ _ Hmproto).
         (* TODO how do we know the message is valid in the state? *)
         unfold valid in Hgen. simpl in Hgen.
@@ -2126,11 +2131,20 @@ Section composition.
         { exact Haddr. }
         assert (fullNode (Cpremessage p n1) l n).
         {
-          (* So we have Hproto' which calls fullNode for all messages...
-             so fullNode should follow from that.
-           *)
-          Search p.
-          Search l. Search obs.
+          destruct (decide (n1 = n)).
+          2: { eapply isProtocol_last_fullNode. exact n2. apply Hproto'. }
+          subst n1. Search obs. Search _sm.
+          (* Because of Hfull, if [Cpremessage (Cprestate l) _] is sent from some state sl,
+             then from sl it is reachable the state with obs; that is, [st].
+             And since [Sy] contains [Cprestate l], it can send the message;
+             therefore, [Sy] can reach [st]. *)
+          (* According to Hmproto, [Cpremessage p n] must have been sent in the state [_sm]
+             by some component. But by the code that is sending the message, the component that sent
+             it must have address [n].
+             We also need to somehow prove that [_sm] is a (not necessarily direct) predecessor
+             of a state containing [l] - possibly [Sy]. Then [l] extends [_sm (component_to_index n)],
+             and we can check the fullNode condition in _sm instead - where it holds trivially.
+          *)
         }
         
         Search fullNode.
