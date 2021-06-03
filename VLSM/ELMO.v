@@ -1941,6 +1941,72 @@ Section composition.
     exact Hproto.
   Qed.
 
+  Lemma sent_is_protocol st m component:
+    address_valid component ->
+    protocol_state_prop free_composite_elmo st ->
+    In (Cobservation Send m component) (observationsOf (st (component_to_index component))) ->
+    protocol_message_prop free_composite_elmo m.
+  Proof.
+    intros Haddr Hpsp Hin.
+    induction Hpsp using protocol_state_prop_ind.
+    - simpl in Hs. unfold composite_initial_state_prop in Hs.
+      assert (Hos: observationsOf (s (component_to_index component)) = []).
+      { apply Hs. }
+      rewrite Hos in Hin. simpl in Hin. inversion Hin.
+    - unfold protocol_transition in Ht.
+      destruct Ht as [Hvalid Ht].
+      unfold transition in Ht. simpl in Ht.
+      destruct l as [i li].
+      remember (vtransition (IM i) li (s i, om)) as VT.
+      destruct VT as [si'' om'']. inversion Ht. subst. clear Ht.
+      
+      destruct (decide (component_to_index component = i)).
+      2: { rewrite state_update_neq in Hin.
+           { exact n. }
+           apply IHHpsp. apply Hin.
+      }
+      subst i.
+      rewrite state_update_eq in Hin.
+      unfold protocol_valid in Hvalid. destruct Hvalid as [Hpsp [Hopmp Hvalid]].
+      unfold vtransition in HeqVT. simpl in HeqVT.
+      destruct li,om; inversion HeqVT; subst; clear HeqVT.
+      + simpl in Hin. apply in_app_or in Hin.
+        simpl in Hin. destruct Hin as [Hin|[Hin|Hin]].
+        3: { inversion Hin. }
+        2: { rewrite component_to_index_to_component in Hin. exact Haddr. inversion Hin. }
+        auto.
+      + auto.
+      + auto.
+      + simpl in Hin.
+        rewrite component_to_index_to_component in Hin.
+        { exact Haddr. }
+        apply in_app_or in Hin.
+        simpl in Hin.
+        destruct Hin as [Hin|[Hin|Hin]].
+        3: { inversion Hin. }
+        2: { inversion Hin. subst. clear Hin.
+             clear IHHpsp.
+             Check protocol_generated.
+             pose proof (Hgen := protocol_generated free_composite_elmo (existT _ (component_to_index component) Send)).
+             destruct Hpsp as [_om Hpsp].
+             specialize (Hgen _ _om Hpsp).
+             assert (Hpi: protocol_prop free_composite_elmo (fun=> Cprestate [], None)).
+             { apply protocol_initial. simpl. intros x. reflexivity. reflexivity. }
+             specialize (Hgen _ _ Hpi Hvalid).
+             clear Hpi.
+             unfold transition in Hgen. simpl in Hgen.
+             rewrite component_to_index_to_component in Hgen.
+             { exact Haddr. }
+             eexists. apply Hgen.
+        }
+        auto.
+  Qed.
+  
+  
+      
+    
+  
+  
   
   Lemma isProtocol_implies_protocol component st m:
     address_valid component ->
@@ -2174,6 +2240,8 @@ Section composition.
              And an invariant should hold that for all 'send' observations, fullNode holds
              (with the prefix). And (3), the prefix is a prefix of [l].
            *)
+          Check isProtocol_last_sendInPrefix.
+          pose proof (Hinp := isProtocol_last_sendInPrefix _ _ _ _ Hproto').
           Search fullNode.
           Check fullNode_appone.
           pose proof (Hfull' := fullNode_appone _ _ _ _ _ Hfull).
