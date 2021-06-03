@@ -1905,7 +1905,42 @@ Section composition.
     destruct FN; simpl in Hproto.
     2: { inversion Hproto. }
     exact is_true_true.
-  Qed.             
+  Qed.
+
+
+  Lemma isProtocol_last_sendInPrefix l p n0 component:
+    isProtocol (Cprestate (l ++ [Cobservation Receive (Cpremessage p component) n0]))
+               component weights treshold ->
+    List.In (Cobservation Send (Cpremessage p component) component) l.
+  Proof.
+    intros Hproto.
+    unfold isProtocol in Hproto. simpl in Hproto.
+    
+    rewrite fold_left_app in Hproto. simpl in Hproto.
+    remember (fold_left
+                (isProtocol_step component weights treshold                 
+                                 (l ++ [Cobservation Receive (Cpremessage p component) n0])) l   
+                (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
+    unfold isProtocol_step in Hproto at 1.
+    destruct FL as [[[b i] curState] curEq].
+    destruct b; simpl in Hproto.
+    2: { inversion Hproto. }
+    destruct (bool_decide (n0 = component)); simpl in Hproto.
+    2: { inversion Hproto. }
+    destruct (bool_decide (component = component)) eqn:Heq; simpl in Hproto.
+    2: { apply bool_decide_eq_false in Heq. contradiction. }
+    apply bool_decide_eq_true in Hproto.
+
+    pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights treshold).
+    specialize (Htmp (l ++ [Cobservation Receive (Cpremessage p component) n0])).
+    specialize (Htmp l (true, 0, map (fun=> Cprestate []) weights, [])).
+    simpl in Htmp.
+    rewrite -HeqFL in Htmp. specialize (Htmp (eq_refl _)). subst i.
+    rewrite firstn_app in Hproto. rewrite Nat.sub_diag in Hproto. simpl in Hproto.
+    rewrite app_nil_r in Hproto. rewrite firstn_all in Hproto.
+    exact Hproto.
+  Qed.
+
   
   Lemma isProtocol_implies_protocol component st m:
     address_valid component ->
@@ -2129,15 +2164,29 @@ Section composition.
         rewrite Hsyn in Hgen. simpl in Hgen.
         rewrite component_to_index_to_component in Hgen.
         { exact Haddr. }
+        
         assert (fullNode (Cpremessage p n1) l n).
         {
           destruct (decide (n1 = n)).
           2: { eapply isProtocol_last_fullNode. exact n2. apply Hproto'. }
-          subst n1. Search obs. Search _sm.
-          (* Because of Hfull, if [Cpremessage (Cprestate l) _] is sent from some state sl,
+          subst n1.
+          (* Now: thanks to Hproto, we have [In (Cobservation Send (Cpremessage p n) n) l].
+             And an invariant should hold that for all 'send' observations, fullNode holds
+             (with the prefix). And (3), the prefix is a prefix of [l].
+           *)
+          Search fullNode.
+          Check fullNode_appone.
+          pose proof (Hfull' := fullNode_appone _ _ _ _ _ Hfull).
+          Search obs. Search _sm.
+          (* 
+             This is probably wrong:
+             Because of Hfull, if [Cpremessage (Cprestate l) _] is sent from some state sl,
              then from sl it is reachable the state with obs; that is, [st].
              And since [Sy] contains [Cprestate l], it can send the message;
              therefore, [Sy] can reach [st]. *)
+          (* Another idea: [Sy] comes from [Hs], which comes from the induction hypothesis.
+             Maybe we could try to prove a stronger statement, which would also say
+             that Sy reaches st. *)
           (* According to Hmproto, [Cpremessage p n] must have been sent in the state [_sm]
              by some component. But by the code that is sending the message, the component that sent
              it must have address [n].
