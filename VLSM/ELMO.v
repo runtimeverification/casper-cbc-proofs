@@ -2001,8 +2001,83 @@ Section composition.
         }
         auto.
   Qed.
+
+  
+  Lemma fullNode_appObservation m component l ob:
+    fullNode m l component = true ->
+    fullNode m (l ++ [ob]) component = true.
+  Proof.
+    Search fullNode.
+  Abort.
   
   
+  Lemma sent_is_fullNode st m component:
+    address_valid component ->
+    protocol_state_prop free_composite_elmo st ->
+    In (Cobservation Send m component) (observationsOf (st (component_to_index component))) ->
+    fullNode m (observationsOf (st (component_to_index component))) component = true.
+  Proof.
+    intros Haddr Hpsp Hin.
+    induction Hpsp using protocol_state_prop_ind.
+    - simpl in Hs. unfold composite_initial_state_prop in Hs.
+      assert (Hos: observationsOf (s (component_to_index component)) = []).
+      { apply Hs. }
+      rewrite Hos in Hin. simpl in Hin. inversion Hin.
+    - unfold protocol_transition in Ht.
+      destruct Ht as [Hvalid Ht].
+      unfold transition in Ht. simpl in Ht.
+      destruct l as [i li].
+      remember (vtransition (IM i) li (s i, om)) as VT.
+      destruct VT as [si'' om'']. inversion Ht. subst. clear Ht.
+      
+      destruct (decide (component_to_index component = i)).
+      2: { rewrite state_update_neq in Hin.
+           { exact n. }
+           rewrite state_update_neq.
+           { exact n. }
+           apply IHHpsp. apply Hin.
+      }
+      subst i.
+      rewrite state_update_eq in Hin.
+      unfold protocol_valid in Hvalid. destruct Hvalid as [Hpsp [Hopmp Hvalid]].
+      unfold vtransition in HeqVT. simpl in HeqVT.
+      destruct li,om; inversion HeqVT; subst; clear HeqVT.
+      + simpl in Hin. apply in_app_or in Hin.
+        simpl in Hin. destruct Hin as [Hin|[Hin|Hin]].
+        3: { inversion Hin. }
+        2: { rewrite component_to_index_to_component in Hin. exact Haddr. inversion Hin. }
+        rewrite component_to_index_to_component.
+        { exact Haddr. }
+        rewrite state_update_eq.
+        specialize (IHHpsp Hin). clear Hin. simpl.
+        auto.
+      + auto.
+      + auto.
+      + simpl in Hin.
+        rewrite component_to_index_to_component in Hin.
+        { exact Haddr. }
+        apply in_app_or in Hin.
+        simpl in Hin.
+        destruct Hin as [Hin|[Hin|Hin]].
+        3: { inversion Hin. }
+        2: { inversion Hin. subst. clear Hin.
+             clear IHHpsp.
+             Check protocol_generated.
+             pose proof (Hgen := protocol_generated free_composite_elmo (existT _ (component_to_index component) Send)).
+             destruct Hpsp as [_om Hpsp].
+             specialize (Hgen _ _om Hpsp).
+             assert (Hpi: protocol_prop free_composite_elmo (fun=> Cprestate [], None)).
+             { apply protocol_initial. simpl. intros x. reflexivity. reflexivity. }
+             specialize (Hgen _ _ Hpi Hvalid).
+             clear Hpi.
+             unfold transition in Hgen. simpl in Hgen.
+             rewrite component_to_index_to_component in Hgen.
+             { exact Haddr. }
+             eexists. apply Hgen.
+        }
+        auto.
+  Qed.
+
       
     
   
@@ -2242,26 +2317,16 @@ Section composition.
            *)
           Check isProtocol_last_sendInPrefix.
           pose proof (Hinp := isProtocol_last_sendInPrefix _ _ _ _ Hproto').
+          Check sent_is_protocol.
+          epose proof (Hpmp := sent_is_protocol _ _ _ Haddr).
+          
+          epose proof (Hpmp := sent_is_protocol _ _ _ Haddr Hpsp).
+          specialize (Hpmp Hinp).
           Search fullNode.
           Check fullNode_appone.
           pose proof (Hfull' := fullNode_appone _ _ _ _ _ Hfull).
           Search obs. Search _sm.
-          (* 
-             This is probably wrong:
-             Because of Hfull, if [Cpremessage (Cprestate l) _] is sent from some state sl,
-             then from sl it is reachable the state with obs; that is, [st].
-             And since [Sy] contains [Cprestate l], it can send the message;
-             therefore, [Sy] can reach [st]. *)
-          (* Another idea: [Sy] comes from [Hs], which comes from the induction hypothesis.
-             Maybe we could try to prove a stronger statement, which would also say
-             that Sy reaches st. *)
-          (* According to Hmproto, [Cpremessage p n] must have been sent in the state [_sm]
-             by some component. But by the code that is sending the message, the component that sent
-             it must have address [n].
-             We also need to somehow prove that [_sm] is a (not necessarily direct) predecessor
-             of a state containing [l] - possibly [Sy]. Then [l] extends [_sm (component_to_index n)],
-             and we can check the fullNode condition in _sm instead - where it holds trivially.
-          *)
+
         }
         
         Search fullNode.
