@@ -222,6 +222,14 @@ Context
     let (s', oom) := vtransition (IM i) (projT2 l) ((s i), iom) in
     has_justification_option i (s i) iom /\ has_justification_option i (s i) oom.
     
+  
+  Definition equivocating_pair
+    (m1 m2 : message)
+    (i : index) := 
+    sender m1 = i /\
+    sender m2 = i /\
+    ~comparable happens_before' m1 m2.  
+  
   Definition is_equivocating_from_set
     (sm : Cm)
     (i : index) :=
@@ -333,6 +341,53 @@ Context
   Definition equivocators_from_message
     (m : message) : Ci := 
     set_filter (fun (i : index) => (bool_decide (is_equivocating_from_message m i))) _ index_set.
+    
+  Remark equivocators_from_equiv
+    (m : message)
+    (i : index) :
+    ~is_equivocating_from_message m i <-> ~ i ∈ equivocators_from_message m.
+  Proof.
+    split; intros H'.
+    - intros contra.
+      apply elem_of_filter in contra.
+      rewrite <- Is_true_iff_eq_true in contra.
+      rewrite bool_decide_eq_true in contra.
+      intuition.
+    - intros contra.
+      contradict H'.
+      apply elem_of_filter.
+      rewrite <- Is_true_iff_eq_true.
+      rewrite bool_decide_eq_true.
+      split;[intuition|].
+      apply index_set_one.
+  Qed.
+  
+  Lemma lift_equivocating_pair
+    (u v u' : message)
+    (i : index)
+    (Hequiv : equivocating_pair u v i)
+    (Hu_u' : happens_before' u u')
+    (Hsender_u' : sender u' = i)
+    (Hi : ~is_equivocating_from_message u' i) : 
+    equivocating_pair u' v i.
+  Proof.
+    unfold equivocating_pair in *.
+    split;[intuition|].
+    split;[intuition|].
+    destruct Hequiv as [Hsender_u [Hsender_v Hcomp]].
+    intros contra.
+    destruct contra as [contra|contra].
+    - contradict Hcomp.
+      right. left. subst u'. intuition.
+    - destruct contra as [contra|contra].
+      + contradict Hcomp.
+        right. left. 
+        apply t_trans with (y := u'); intuition.
+      + contradict Hi.
+        exists u, v.
+        rewrite <- !HdownSetCorrect.
+        intuition. 
+  Qed.
   
   Definition honest_validators_from_message
     (m : message) : Ci := 
@@ -488,6 +543,32 @@ Context
     rewrite Homi in Hlatest.
     rewrite Heqom in Hlatest.
     intuition.
+  Qed.
+  
+  Lemma latest_message_some
+    (m m': message)
+    (i : index)
+    (Hi_nequiv : ~is_equivocating_from_message m i)
+    (Hm' : m' ∈ downSet m /\ sender m' = i) :
+    i ∈ senders (latest_messages m).
+  Proof.
+    apply elem_of_map.
+    specialize (latest_message_from_exists m i) as Hex.
+    spec Hex. {
+      exists m'.
+      apply elem_of_filter.
+      rewrite <- Is_true_iff_eq_true.
+      rewrite bool_decide_eq_true.
+      intuition.
+    }
+    destruct Hex as [mi' Hmi'].
+    exists mi'.
+    apply latest_message_sender in Hmi' as Hmi''.
+    split;[intuition|].
+    subst i.
+    apply latest_message_in_latest_messages.
+    destruct Hm' as [_ Hm'].
+    all : intuition.
   Qed.
   
   Lemma non_equiv_compare 
@@ -1566,6 +1647,18 @@ Context
               intuition.
           } 
           
+          
+         assert (Hnequiv_u_u' : forall v,  ~v ∈ equivocators_from_message u -> ~ v ∈ equivocators_from_message u'). {
+          destruct Hu_u' as [Hu_u'|Hu_u'].
+          - intros v Hv.
+            intros contra.
+            rewrite <- equivocators_from_equiv in  Hv.
+            specialize (is_equivocating_from_message_hb u' u v Hu_u') as Hb.
+            spec Hb. clear -contra. set_solver.
+            intuition.
+          - subst u'. intuition.
+         }
+          
          assert (HAu'_Au : forall v, v ∈ Au' -> (v ∈ Au \/ v ∈ extra_voters)). {
             intros v Hv_Au'.
             rewrite HeqAu' in Hv_Au'. unfold A in Hv_Au'.
@@ -1603,11 +1696,51 @@ Context
                 * left. unfold Au. unfold A. 
                   apply elem_of_union. left.
                   intuition.
-                * assert (Hv_latest : v ∈ senders (latest_messages u)). {
-                    admit.
+                * assert (Hnequiv_u' : ~ v ∈ equivocators_from_message u') by (apply Hnequiv_u_u'; intuition). 
+                
+                  assert (Hv_latest : v ∈ senders (latest_messages u)). {
+                    destruct Hv as [_ Hv].
+                    apply elem_of_map in Hv.
+                    destruct Hv as [m_temp Hm_temp].
+                    apply latest_message_some with (m' := m_temp).
+                    apply equivocators_from_equiv.
+                    intuition.
+                    split;[|intuition congruence].
+                    destruct Hm_temp as [_ Hm_temp].
+                    apply elem_of_filter in Hm_temp.
+                    destruct Hm_temp as [_ Hm_temp].
+                    apply latest_message_sender_info in Hm_temp.
+                    destruct Hm_temp as [_ Hm_temp].
+                    apply latest_message_from_compares in Hm_temp.
+                    apply HdownSetCorrect.
+                    destruct Hu_u' as [Hu_u'|Hu_u'].
+                    + apply t_trans with (y := u'); intuition.
+                    + subst u'. intuition.
                   }
+                  
                   assert (Hv_con : v ∈ senders (concurrent_last_messages u (Some value))). {
-                    admit.
+                    apply elem_of_map in Hv_latest.
+                    destruct Hv_latest as [v_latest_u [Hv_latest_sender Hv_latest]].
+                    apply elem_of_map.
+                    exists v_latest_u.
+                    split;[intuition|].
+                    apply elem_of_filter.
+                    rewrite <- Is_true_iff_eq_true. 
+                    rewrite bool_decide_eq_true.
+                    split;[|intuition].
+                    destruct (@decide (vote v_latest_u = Some value)).
+                    apply decide_eq.
+                    - intuition.
+                    - contradict n0.
+                      apply elem_of_map.
+                      exists v_latest_u.
+                      split;[intuition|].
+                      apply elem_of_filter.
+                      split;[|intuition].
+                      rewrite <- Is_true_iff_eq_true.
+                      rewrite negb_true_iff.
+                      rewrite bool_decide_eq_false.
+                      intuition.
                   }
                   
                   assert (Hv_nVk : v ∉ Vk_1). {
@@ -1615,7 +1748,7 @@ Context
                     apply elem_of_dec_slow.
                     - specialize (Hinvk2 v e) as Hv_Vk.
                       destruct Hv_Vk as [v' [Hsender_v' Hv']].
-                      destruct Hv as [Hv _].
+                      destruct Hv as [Hv Hv_latest'].
                       specialize (is_equivocating_from_set_union c1 (downSet u') v) as Heach.
                       spec Heach. admit.
                       spec Heach. admit.
@@ -1627,6 +1760,52 @@ Context
                       }
                       
                       destruct Heach as [witness_c1 [witness_u' Hcomp]].
+                      assert (Htemp2 : happens_before' witness_u' u') by (apply HdownSetCorrect;intuition).
+                      apply elem_of_map in Hv_latest'.
+                      destruct Hv_latest' as [latest_v_u' Hlatest_v_u'].
+                      destruct Hlatest_v_u' as [Hlatest_v_u'_sender Hlatest_v_u'].
+                      
+                      assert (Hlatest_v_u'_u' : happens_before' latest_v_u' u'). {
+                        apply latest_message_from_compares with (i := v).
+                        apply elem_of_filter in Hlatest_v_u'.
+                        destruct Hlatest_v_u' as [_ Hlatest_v_u'].
+                        apply latest_message_sender_info in Hlatest_v_u'.
+                        intuition congruence.
+                      }
+                      
+                      assert (Hlatest_v_u'_vote : vote latest_v_u' <> Some value). {
+                        apply elem_of_filter in Hlatest_v_u'.
+                        rewrite <- Is_true_iff_eq_true in Hlatest_v_u'.
+                        rewrite negb_true_iff in Hlatest_v_u'.
+                        rewrite bool_decide_eq_false in Hlatest_v_u'.
+                        intuition.
+                      }
+                      
+                      assert (Hlatest_witness : equivocating_pair latest_v_u' witness_c1 v). {
+                        destruct (decide (latest_v_u' = witness_u')).
+                        - subst witness_u'. clear -Hcomp. firstorder.
+                        - specialize (lift_equivocating_pair witness_u' witness_c1 latest_v_u' v) as Hlift.
+                          spec Hlift. {
+                            clear -Hcomp. firstorder.
+                          }
+                      
+                        spec Hlift. {
+                          apply compare_messages1 with (u := u').
+                          intuition congruence.
+                          apply elem_of_filter in Hlatest_v_u'. all : intuition.
+                        }
+                      
+                        spec Hlift. intuition.
+                        
+                        spec Hlift. {
+                          intros contra.
+                          apply is_equivocating_from_message_hb with (m2 := u') in contra.
+                          rewrite <- equivocators_from_equiv in Hnequiv_u'.
+                          intuition.
+                          intuition.
+                        }
+                        intuition.
+                     }  
                       
                       assert (Hv_equiv_u : v ∈ equivocators_from_message u). {
                         apply elem_of_filter.
@@ -1641,22 +1820,63 @@ Context
                           - split;intuition congruence.
                         }
                         
-                        assert (Hncomp_v'_wu' : ~comparable happens_before' v' witness_u'). {
-                          admit.
-                        }
-                        
-                        exists v', witness_u'.
-                        split.
-                        - destruct Hv' as [_ Hv']. apply HdownSetCorrect;intuition.
-                        - split;[intuition congruence|].
+                        destruct Hcomp_v'_wc1 as [Hcomp'|Hcomp'].
+                        - exists v', latest_v_u'.
+                          subst v'.
                           split.
-                          + apply HdownSetCorrect.
-                            assert (Htemp2 : happens_before' witness_u' u') by (apply HdownSetCorrect;intuition).
-                            destruct Hu_u' as [Hu_u'|Hu_u'].
-                            * apply t_trans with (y := u'); intuition.
-                            * subst u. intuition.
+                          + destruct Hv' as [_ Hv']. apply HdownSetCorrect;intuition.
                           + split;[intuition congruence|].
-                            intuition.
+                            split.
+                            * apply HdownSetCorrect.
+                              destruct Hu_u' as [Hu_u'|Hu_u'].
+                              -- apply t_trans with (y := u'); intuition.
+                              -- subst u. intuition.
+                            * split;[intuition congruence|].
+                              clear -Hlatest_witness. firstorder.
+                        - destruct Hcomp' as [Hcomp'|Hcomp'].
+                          + assert (Hcompv' : ~ comparable happens_before' v' latest_v_u'). {
+                              intros contra.
+                              destruct contra as [contra|contra].
+                              - subst latest_v_u'.
+                                intuition.
+                              - destruct contra as [contra|contra].
+                                + move Hmin_u' at bottom.
+                                  specialize (Hmin_u' latest_v_u').
+                                  spec Hmin_u'. {
+                                    split.
+                                    - left. 
+                                      destruct Hu_u' as [Hu_u'|Hu_u'].
+                                      + apply t_trans with (y := u'); intuition.
+                                      + subst u'. intuition.
+                                    - split.
+                                      + apply protocol_state_closed with (u := u'); intuition.
+                                      + split;[intuition|].
+                                        exists v'.
+                                        rewrite <- !HdownSetCorrect.
+                                        intuition.
+                                  }
+                                  intuition.
+                                + 
+                            }
+                            exists v', latest_v_u'.
+                            rewrite <- !HdownSetCorrect.
+                            split;[intuition|].
+                            split;[intuition|].
+                            split.
+                            * destruct Hu_u' as [Hu_u'|Hu_u'].
+                              ++ apply t_trans with (y := u'); intuition.
+                              ++ subst u'. intuition. 
+                          + exists witness_c1, latest_v_u'.
+                            rewrite <- !HdownSetCorrect.
+                            split.
+                            * apply t_trans with (y := v'); intuition.
+                            * split;[intuition|].
+                              split.
+                              -- destruct Hu_u' as [Hu_u'|Hu_u'].
+                                  ++ apply t_trans with (y := u'); intuition.
+                                  ++ subst u'. intuition.
+                              -- split;[intuition|].
+                                 clear -Hlatest_witness. firstorder.
                       }
                       intuition.
                     - intuition.
