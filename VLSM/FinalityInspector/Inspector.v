@@ -1688,9 +1688,24 @@ Context
                 apply elem_of_union. right.
                 apply elem_of_intersection.
                 split;[|intuition].
-                unfold equivocators_from_set.
-                specialize (filter_subset (λ i1 : index, bool_decide (is_equivocating_from_set (c0 ∪ downSet u) i1))) as Hfsub.
-                admit.
+                destruct Hv as [Hv _].
+                specialize (equivocators_from_set_subset (c1 ∪ downSet u') (c0 ∪ downSet u)) as Hsub.
+                spec Hsub. {
+                  subst c0.
+                  apply elem_of_subseteq. intros m Hm.
+                  apply elem_of_union in Hm.
+                  apply elem_of_union.
+                  destruct Hm as [Hm|Hm].
+                  - left. intuition.
+                  - right. 
+                    rewrite <- HdownSetCorrect.
+                    rewrite <- HdownSetCorrect in Hm.
+                    destruct Hu_u' as [Hu_u'|Hu_u'].
+                    + apply t_trans with (y := u'); intuition.
+                    + subst u'. intuition.
+                }
+                specialize (Hsub v).
+                apply Hsub; intuition.
               + destruct (@decide (v ∈ equivocators_from_message u)).
                 apply elem_of_dec_slow.
                 * left. unfold Au. unfold A. 
@@ -1750,8 +1765,18 @@ Context
                       destruct Hv_Vk as [v' [Hsender_v' Hv']].
                       destruct Hv as [Hv Hv_latest'].
                       specialize (is_equivocating_from_set_union c1 (downSet u') v) as Heach.
-                      spec Heach. admit.
-                      spec Heach. admit.
+                      spec Heach. {
+                        move Hc0_honest at bottom.
+                        unfold honesty in Hc0_honest.
+                        specialize (Hc0_honest v).
+                        spec Hc0_honest. 
+                        admit.
+                        admit.
+                      }
+                      spec Heach. {
+                        rewrite <- equivocators_from_equiv in Hnequiv_u'.
+                        intuition.
+                      }
                       spec Heach. {
                         apply elem_of_filter in Hv. 
                         rewrite <- Is_true_iff_eq_true in Hv.
@@ -1856,7 +1881,11 @@ Context
                                         intuition.
                                   }
                                   intuition.
-                                + 
+                                + assert (happens_before' latest_v_u' witness_c1) by (apply t_trans with (y := v'); intuition).
+                                  unfold equivocating_pair in Hlatest_witness.
+                                  destruct Hlatest_witness as [_ [_ Hlatest_witness]].
+                                  contradict Hlatest_witness.
+                                  right. left. intuition.
                             }
                             exists v', latest_v_u'.
                             rewrite <- !HdownSetCorrect.
@@ -1865,7 +1894,8 @@ Context
                             split.
                             * destruct Hu_u' as [Hu_u'|Hu_u'].
                               ++ apply t_trans with (y := u'); intuition.
-                              ++ subst u'. intuition. 
+                              ++ subst u'. intuition.
+                            * intuition.
                           + exists witness_c1, latest_v_u'.
                             rewrite <- !HdownSetCorrect.
                             split.
@@ -1885,6 +1915,94 @@ Context
                   rewrite Heqextra_voters.
                   apply elem_of_difference.
                   split;intuition.
+         }
+         
+         assert (HAu'_Vchange_disjoint : Au' ## Vchange). {
+            destruct (elements (Au' ∩ Vchange)) as [|v rem] eqn : eq_elem.
+            - apply elements_empty' in eq_elem.
+              apply disjoint_intersection; intuition.
+            - exfalso.
+              assert (Hv: v ∈ (Au' ∩ Vchange)). {
+               apply elem_of_elements.
+               rewrite eq_elem.
+               apply elem_of_list_In. left. intuition.
+              }
+              
+              apply elem_of_intersection in Hv.
+              destruct Hv as [Hv_Au' Hv_Vchange].
+              move Hin_vchange at bottom.
+              specialize (Hin_vchange v Hv_Vchange).
+              destruct Hin_vchange as [Hnequiv_vu Hvchange_v].
+              rewrite HeqAu' in Hv_Au'.
+              unfold A in Hv_Au'.
+              apply elem_of_union in Hv_Au'.
+              destruct Hv_Au' as [Hv_Au'|Hv_Au'].
+              + rewrite equivocators_from_equiv in Hnequiv_vu.
+                specialize (Hnequiv_u_u' v Hnequiv_vu).
+                intuition.
+              + apply elem_of_intersection in Hv_Au'.
+                destruct Hv_Au' as [Hequiv_c1_u' Hv_divergent].
+                specialize (Hinvk2 v) as Hv_wit.
+                spec Hv_wit. {
+                  rewrite HeqVchange in Hv_Vchange.
+                  apply elem_of_intersection in Hv_Vchange.
+                  intuition.
+                }
+                destruct Hv_wit as [v' [Hv'_sender [Hv'_sm2 Hv'_u]]].
+                
+                apply elem_of_map in Hv_divergent.
+                destruct Hv_divergent as [latest_v_u' [Hlatest_v_u'_sender Hv_divergent]].
+                
+                apply elem_of_filter in Hv_divergent.
+                rewrite <- Is_true_iff_eq_true in Hv_divergent.
+                rewrite negb_true_iff in Hv_divergent.
+                rewrite bool_decide_eq_false in Hv_divergent.
+                destruct Hv_divergent as [Hlatest_v_u'_vote Hlatest_v_u'_latest].
+                apply latest_message_sender_info in Hlatest_v_u'_latest.
+                
+                assert (Hlatest_v_u'_u' : happens_before' latest_v_u' u'). {
+                  apply latest_message_from_compares with (i := v).
+                  subst v. intuition.
+                }
+                
+                assert (Hv'_comp : comparable happens_before' latest_v_u' v'). {
+                  destruct (decide (comparable happens_before' latest_v_u' v')).
+                  - intuition.
+                  - contradict Hnequiv_vu.
+                    exists latest_v_u', v'.
+                    rewrite <- !HdownSetCorrect.
+                    split.
+                    + destruct Hu_u'.
+                      * apply t_trans with (y := u'); intuition.
+                      * subst u'. intuition.
+                    + split;[intuition|].
+                      split; intuition.
+                }
+                
+                destruct Hv'_comp as [Hv'_comp|Hv'_comp].
+                * assert (vote v' = Some value). {
+                    apply Hc0_vote.
+                    apply Hsm2_in_c0; intuition.
+                  }
+                  intuition congruence.
+                * destruct Hv'_comp as [Hv'_comp|Hv'_comp].
+                  -- 
+                  -- move Hmin_u' at bottom.
+                     specialize (Hmin_u' latest_v_u').
+                     spec Hmin_u'. {
+                        split.
+                        - left. 
+                          destruct Hu_u' as [Hu_u'|Hu_u'].
+                          + apply t_trans with (y := u'); intuition.
+                          + subst u'. intuition.
+                          - split.
+                            + apply protocol_state_closed with (u := u'); intuition.
+                            + split;[intuition|].
+                              exists v'.
+                              rewrite <- !HdownSetCorrect.
+                              intuition.
+                     }
+                    intuition.
          }
     Admitted.
       
