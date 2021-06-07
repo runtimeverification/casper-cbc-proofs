@@ -1184,6 +1184,50 @@ is equal to the former's last state, it is possible to _concatenate_ them into a
           split;[constructor|];assumption.
     Qed.
 
+    Lemma finite_protocol_trace_from_rev_ind
+      (P : state -> list transition_item -> Prop)
+      (Hempty: forall s,
+        protocol_state_prop s -> P s nil)
+      (Hextend : forall s tr,
+        finite_protocol_trace_from s tr ->
+        P s tr ->
+        forall sf iom oom l
+        (Hx: protocol_transition l (finite_trace_last s tr,iom) (sf,oom)),
+        let x:= {|l:=l; input:=iom; destination:=sf; output:=oom|} in
+        P s (tr++[x])):
+      forall s tr,
+        finite_protocol_trace_from s tr ->
+        P s tr.
+    Proof.
+      induction tr using rev_ind; intro Htr.
+      - inversion Htr. apply Hempty. congruence.
+      - apply finite_protocol_trace_from_app_iff in Htr.
+        destruct Htr as [Htr Hx].
+        destruct x; apply (Hextend _ _ Htr (IHtr Htr)).
+        inversion Hx; congruence.
+    Qed.
+
+    Lemma finite_protocol_trace_rev_ind
+      (P : state -> list transition_item -> Prop)
+      (Hempty: forall si,
+        initial_state_prop si -> P si nil)
+      (Hextend : forall si tr,
+        finite_protocol_trace si tr ->
+        P si tr ->
+        forall sf iom oom l
+        (Hx: protocol_transition l (finite_trace_last si tr,iom) (sf,oom)),
+        let x:= {|l:=l; input:=iom; destination:=sf; output:=oom|} in
+        P si (tr++[x])):
+      forall si tr,
+        finite_protocol_trace si tr ->
+        P si tr.
+    Proof.
+      intros si tr [Htr Hinit].
+      induction Htr using finite_protocol_trace_from_rev_ind.
+      - apply Hempty;auto.
+      - apply Hextend;[split|..];auto.
+    Qed.
+
 (** Several other lemmas in this vein are necessary for proving results regarding
 traces.
 *)
@@ -1430,6 +1474,34 @@ that include the final state, and give appropriate induction principles.
       - simpl. apply finite_ptrace_from_to_singleton;assumption.
       - rewrite <- app_comm_cons.
         apply finite_ptrace_from_to_extend; auto.
+    Qed.
+
+    Lemma finite_protocol_trace_from_to_rev_ind
+      (P : state -> state -> list transition_item -> Prop)
+      (Hempty: forall si,
+        protocol_state_prop si -> P si si nil)
+      (Hextend : forall si s tr,
+        P si s tr ->
+        forall sf iom oom l,
+        protocol_transition l (s,iom) (sf,oom) ->
+        P si sf (tr++[{|l:=l; input:=iom; destination:=sf; output:=oom|}])):
+      forall si sf tr,
+        finite_protocol_trace_from_to si sf tr ->
+        P si sf tr.
+    Proof.
+      intros si sf tr Htr.
+      revert sf Htr.
+      induction tr using rev_ind;
+      intros sf Htr.
+      - inversion Htr;subst. apply Hempty;assumption.
+      - apply finite_protocol_trace_from_to_app_split in Htr.
+        destruct Htr as [Htr Hstep].
+        inversion Hstep;subst.
+        inversion H3;subst.
+        revert H4.
+        apply Hextend.
+        apply IHtr.
+        assumption.
     Qed.
 
 (** *** Infinite [protcol_trace]s *)
@@ -1753,34 +1825,27 @@ It inherits some previously introduced definitions, culminating with the
         vlsm_run_prop r /\
         start r = is /\ transitions r = tr.
     Proof.
-      induction tr using rev_ind.
-      - exists {| start := is; transitions := []; final := (is, None) |}; simpl; repeat split; try reflexivity.
-        apply empty_run_initial_state. apply (proj2 Htr).
-      - destruct Htr as [Htr Hinit]. apply finite_protocol_trace_from_app_iff in Htr.
-        destruct Htr as [Hprefix Hlst].
-        specialize (IHtr (conj Hprefix Hinit)).
-        destruct IHtr as [r0 [Hr0 [Hstart Htr_r0]]].
-        exists {| start := is; transitions := tr ++ [x]; final := (destination x, output x) |}.
-        simpl. repeat split; try reflexivity.
-        specialize (extend_run r0 Hr0); simpl; intro Hextend.
-        apply finite_ptrace_first_valid_transition in Hlst.
-        destruct x as [lst_l lst_in lst_dest lst_out].
-        simpl in *.
-        specialize (vlsm_run_last_state (exist _ r0 Hr0)); intro Hlast_state.
-        simpl in Hlast_state. rewrite Htr_r0 in Hlast_state.
-        rewrite Hstart in Hlast_state. rewrite Hlast_state in Hlst.
-        specialize (protocol_transition_in Hlst); intro Hmsg.
+      induction Htr using finite_protocol_trace_rev_ind.
+      - exists {| start := si; transitions := []; final := (si, None) |}; simpl; repeat split; try reflexivity.
+        apply empty_run_initial_state. assumption.
+      - destruct Hx as [[_ [Hmsg Hvalid]] Htrans].
+        destruct IHHtr as [r0 [Hr0 [Hstart Htr_r0]]].
+        eexists {| final := (sf,oom)|};simpl;repeat split;[|reflexivity..].
+        specialize (extend_run r0 Hr0); simpl; intros Hextend.
+        replace (fst (final r0)) with (finite_trace_last si tr) in Hextend by
+          (rewrite <- Hstart, <- Htr_r0;
+          apply (vlsm_run_last_state (exist _ r0 Hr0))).
+        rewrite Hstart, Htr_r0 in Hextend.
+        clear Hstart Htr_r0.
         destruct Hmsg as [_s Hmsg].
-        apply protocol_is_run in Hmsg.
-        destruct Hmsg as [[r_msg Hr_msg] Hmsg].
-        specialize (Hextend r_msg Hr_msg lst_l).
-        specialize (protocol_transition_is_valid Hlst); intro Hvalid.
-        simpl in Hmsg. rewrite <- Hmsg in Hextend. simpl  in Hextend.
-        specialize (Hextend Hvalid). rewrite Hstart in Hextend.
-        specialize (protocol_transition_transition Hlst); intro Htransition.
-        rewrite Htransition in Hextend. simpl in Hextend.
-        rewrite Htr_r0 in Hextend.
-        apply Hextend.
+        apply protocol_is_run in Hmsg as [[r_msg Hr_msg] Hmsg].
+        apply (f_equal snd) in Hmsg; simpl in Hmsg.
+        specialize (Hextend r_msg Hr_msg).
+        rewrite <- Hmsg in Hextend.
+        clear _s r_msg Hr_msg Hmsg.
+        specialize (Hextend l1 Hvalid).
+        rewrite Htrans in Hextend.
+        assumption.
     Qed.
 
     Lemma trace_is_protocol_prop
@@ -2365,6 +2430,9 @@ End VLSM.
  *)
 Arguments protocol_state_prop_ind : clear implicits.
 Arguments finite_protocol_trace_from_to_ind : clear implicits.
+
+Arguments finite_protocol_trace_rev_ind : clear implicits.
+Arguments finite_protocol_trace_from_rev_ind : clear implicits.
 
 Arguments extend_right_finite_trace_from [message] (X) [s1] [ts] (Ht12) [l3] [iom3] [s3] [oom3] (Hv23).
 Arguments extend_right_finite_trace_from_to [message] (X) [s1] [s2] [ts] (Ht12) [l3] [iom3] [s3] [oom3] (Hv23).

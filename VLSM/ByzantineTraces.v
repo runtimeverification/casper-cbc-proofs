@@ -397,15 +397,12 @@ that <<PreLoadedX>> is included in <<FreeX>>.
         intros.
         split; [|apply H].
         destruct H as [Htr Hs].
-        induction tr using rev_ind.
-        - constructor. apply initial_is_protocol. assumption.
-        - apply finite_protocol_trace_from_app_iff in Htr.
-          destruct Htr as [Htr Hx].
-          specialize (IHtr Htr).
-          apply (finite_protocol_trace_from_app_iff FreeX).
-          split; [assumption|].
-          apply (first_transition_valid FreeX).
-          apply first_transition_valid in Hx.
+        induction Htr using finite_protocol_trace_from_rev_ind.
+        - apply (finite_ptrace_empty FreeX).
+          apply initial_is_protocol; assumption.
+        - specialize (IHHtr Hs) as IHtr; clear IHHtr.
+          apply (extend_right_finite_trace_from FreeX).
+          assumption.
           destruct Hx as [Hvx Htx].
           split; [|assumption].
           apply finite_ptrace_last_pstate in IHtr.
@@ -416,10 +413,10 @@ that <<PreLoadedX>> is included in <<FreeX>>.
           split; [assumption|].
           repeat split; [|apply Hvx].
           destruct Hvx as [Hlst [_ [Hv _]]].
-          destruct x. destruct l as (i, li). simpl in *.
+          destruct l as (i, li). simpl in *.
           specialize (protocol_state_project_preloaded_to_preloaded _ IM constraint lst i Hlst)
             as Hlsti.
-          assert (Hpv : protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (lst i, input)).
+          assert (Hpv : protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li (lst i, iom)).
           { split; [assumption|]. split; [|assumption].
             eexists _. apply (pre_loaded_with_all_messages_message_protocol_prop (IM i)).
           }
