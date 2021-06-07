@@ -2007,9 +2007,24 @@ Section composition.
     fullNode m l component = true ->
     fullNode m (l ++ [ob]) component = true.
   Proof.
-    Search fullNode.
-  Abort.
-  
+    intros H.
+
+    unfold fullNode in H. apply Forall_fold_right_bool in H.
+    unfold fullNode. apply Forall_fold_right_bool.
+    induction H.
+    - apply Forall_nil.
+    - apply Forall_cons.
+      2: { auto. }
+      clear H0 IHForall.
+      destruct (labelOf x).
+      + destruct (decide (authorOf (messageOf x) = component)); simpl in H; simpl.
+        * apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
+          apply in_or_app. left. exact H.
+        * apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
+          apply in_or_app. left. exact H.
+      + apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
+        apply in_or_app. left. exact H.
+  Qed.
   
   Lemma sent_is_fullNode st m component:
     address_valid component ->
@@ -2050,6 +2065,7 @@ Section composition.
         { exact Haddr. }
         rewrite state_update_eq.
         specialize (IHHpsp Hin). clear Hin. simpl.
+        (* HERE *)
         auto.
       + auto.
       + auto.
