@@ -4,6 +4,7 @@ shortname: casper-cbc-proofs
 opam_name: coq-casper-cbc
 organization: runtimeverification
 community: false
+dune: true
 coqdoc: true
 
 synopsis: >-
@@ -16,9 +17,11 @@ authors:
 - name: Mihai Calancea
 - name: Denisa Diaconescu
 - name: Elaine Li
+- name: Brandon Moore
 - name: Lucas Peña
 - name: Grigore Roșu
 - name: Traian Șerbănuță
+- name: Jan Tušil
 - name: Vlad Zamfir
 
 opam-file-maintainer: palmskog@gmail.com
@@ -31,8 +34,8 @@ license:
   file: LICENSE.md
 
 supported_coq_versions:
-  text: 8.12 or later
-  opam: '{>= "8.12" & < "8.13~"}'
+  text: 8.12.2
+  opam: '{>= "8.12.2" & < "8.13~"}'
 
 namespace: CasperCBC
 

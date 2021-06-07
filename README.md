@@ -13,7 +13,7 @@ Protocol verification of Casper Correct-By-Construction in Coq.
 ## Meta
 
 - License: [University of Illinois/NCSA Open Source License](LICENSE.md)
-- Compatible Coq versions: 8.12 or later
+- Compatible Coq versions: 8.12.2
 - Coq namespace: `CasperCBC`
 
 ## Building instructions
