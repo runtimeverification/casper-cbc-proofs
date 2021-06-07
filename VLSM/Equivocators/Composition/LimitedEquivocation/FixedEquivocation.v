@@ -396,7 +396,7 @@ Definition proper_fixed_equivocator_descriptors
 [not_equivocating_equivocator_descriptors] satisfy the
 [proper_fixed_equivocator_descriptors] property.
 *)
-Lemma not_equivocating_equivocatos_descriptors_proper_fixed
+Lemma not_equivocating_equivocator_descriptors_proper_fixed
   (s : composite_state (equivocator_IM IM))
   (Hs : protocol_state_prop XE s)
   (eqv_descriptors : equivocator_descriptors IM)
@@ -666,7 +666,7 @@ Proof.
       destruct (equivocators_trace_project_output_reflecting_inv IM _ _ (proj1 Htr'pre) _ Hall)
         as [final_descriptors_m [initial_descriptors_m [trXm [_Hfinal_descriptors_m [Hproject_trXm Hex]]]]].
       assert (Hfinal_descriptors_m : proper_fixed_equivocator_descriptors final_descriptors_m (finite_trace_last is tr')).
-      { apply not_equivocating_equivocatos_descriptors_proper_fixed; [|assumption].
+      { apply not_equivocating_equivocator_descriptors_proper_fixed; [|assumption].
         apply finite_ptrace_last_pstate. assumption.
       }
       specialize (H (length tr')).
