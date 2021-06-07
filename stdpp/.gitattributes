@@ -1,0 +1,5 @@
+# Enable syntax highlighting.
+*.v gitlab-language=coq
+
+# Convert to native line endings on checkout.
+*.ref text
