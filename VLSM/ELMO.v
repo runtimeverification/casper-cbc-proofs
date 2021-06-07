@@ -2029,10 +2029,12 @@ Section composition.
   Lemma sent_is_fullNode st m component:
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
-    In (Cobservation Send m component) (observationsOf (st (component_to_index component))) ->
-    fullNode m (observationsOf (st (component_to_index component))) component = true.
+    let st' := st (component_to_index component) in
+    In (Cobservation Send m component) (observationsOf st') ->
+    let ob := (Cobservation Send (Cpremessage st' component) component) in
+    fullNode m (observationsOf st' ++ [ob]) component = true.
   Proof.
-    intros Haddr Hpsp Hin.
+    intros Haddr Hpsp st' Hin ob.
     induction Hpsp using protocol_state_prop_ind.
     - simpl in Hs. unfold composite_initial_state_prop in Hs.
       assert (Hos: observationsOf (s (component_to_index component)) = []).
@@ -2046,13 +2048,21 @@ Section composition.
       destruct VT as [si'' om'']. inversion Ht. subst. clear Ht.
       
       destruct (decide (component_to_index component = i)).
-      2: { rewrite state_update_neq in Hin.
+      2: { unfold st' in Hin.
+           rewrite state_update_neq in Hin.
            { exact n. }
+           unfold st'.
            rewrite state_update_neq.
            { exact n. }
-           apply IHHpsp. apply Hin.
+           simpl in IHHpsp.
+           unfold ob. unfold st'.
+           rewrite state_update_neq.
+           { exact n. }
+           apply IHHpsp.
+           apply Hin.
       }
       subst i.
+      unfold st' in Hin.
       rewrite state_update_eq in Hin.
       unfold protocol_valid in Hvalid. destruct Hvalid as [Hpsp [Hopmp Hvalid]].
       unfold vtransition in HeqVT. simpl in HeqVT.
@@ -2061,37 +2071,47 @@ Section composition.
         simpl in Hin. destruct Hin as [Hin|[Hin|Hin]].
         3: { inversion Hin. }
         2: { rewrite component_to_index_to_component in Hin. exact Haddr. inversion Hin. }
+        unfold st'.
         rewrite component_to_index_to_component.
         { exact Haddr. }
         rewrite state_update_eq.
-        specialize (IHHpsp Hin). clear Hin. simpl.
-        (* HERE *)
-        auto.
-      + auto.
-      + auto.
-      + simpl in Hin.
+        specialize (IHHpsp Hin). clear Hin. simpl. simpl in IHHpsp.
+        unfold st' in *. clear st'.
+        unfold ob in *. clear ob.
+        rewrite component_to_index_to_component.
+        { exact Haddr. }
+        rewrite state_update_eq.
+        apply fullNode_appObservation exact IHHpsp.
+      + rewrite state_update_eq. auto.
+      + rewrite state_update_eq. auto.
+      + rewrite state_update_eq.
+        simpl in Hin.
         rewrite component_to_index_to_component in Hin.
+        { exact Haddr. }
+        rewrite component_to_index_to_component.
         { exact Haddr. }
         apply in_app_or in Hin.
         simpl in Hin.
-        destruct Hin as [Hin|[Hin|Hin]].
+        destruct Hin as [Hin|[Hin|Hin]]; simpl.
         3: { inversion Hin. }
         2: { inversion Hin. subst. clear Hin.
-             clear IHHpsp.
-             Check protocol_generated.
-             pose proof (Hgen := protocol_generated free_composite_elmo (existT _ (component_to_index component) Send)).
-             destruct Hpsp as [_om Hpsp].
-             specialize (Hgen _ _om Hpsp).
-             assert (Hpi: protocol_prop free_composite_elmo (fun=> Cprestate [], None)).
-             { apply protocol_initial. simpl. intros x. reflexivity. reflexivity. }
-             specialize (Hgen _ _ Hpi Hvalid).
-             clear Hpi.
-             unfold transition in Hgen. simpl in Hgen.
-             rewrite component_to_index_to_component in Hgen.
-             { exact Haddr. }
-             eexists. apply Hgen.
+             
+             apply fullNode_appObservation.
+             apply IHHpsp.
+             unfold fullNode.
+             simpl.
+             apply Forall_fold_right_bool.
+             remember (observationsOf (s (component_to_index component))) as obs.
+             induction obs.
+             - apply Forall_nil.
+             - apply Forall_cons.
+               destruct (labelOf a) eqn:Hlbleq.
+               + destruct (is_left (decide (authorOf (messageOf a) = component))) eqn:Hauthoreq.
+                 * admit.
+                 * destruct a. simpl in *.
+                   
         }
-        auto.
+        apply fullNode_appObservation. auto.
   Qed.
 
       
