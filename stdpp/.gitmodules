@@ -1,3 +1,0 @@
-[submodule "ci"]
-	path = ci
-	url = https://gitlab.mpi-sws.org/FP/iris-ci.git

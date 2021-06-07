@@ -2,6 +2,6 @@
  (name CasperCBC)
  (package coq-casper-cbc)
  (synopsis "Protocol verification of Casper Correct-By-Construction")
-(flags -w -undeclared-scope))
+ (flags -w -undeclared-scope))
 
 (include_subdirs qualified)
