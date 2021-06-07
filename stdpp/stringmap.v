@@ -2,8 +2,8 @@
 range over Coq's data type of strings [string]. The implementation uses radix-2
 search trees (uncompressed Patricia trees) as implemented in the file [pmap]
 and guarantees logarithmic-time operations. *)
-From stdpp Require Export fin_maps pretty.
-From stdpp Require Import gmap.
+From CasperCBC.stdpp Require Export fin_maps pretty.
+From CasperCBC.stdpp Require Import gmap.
 Set Default Proof Using "Type".
 
 Notation stringmap := (gmap string).

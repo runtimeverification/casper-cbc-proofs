@@ -1,5 +1,5 @@
-From stdpp Require Export list.
-From stdpp Require Import relations pretty.
+From CasperCBC.stdpp Require Export list.
+From CasperCBC.stdpp Require Import relations pretty.
 
 (** * Generic constructions *)
 (** If [A] is infinite, and there is an injection from [A] to [B], then [B] is

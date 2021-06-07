@@ -9,8 +9,8 @@ membership, as well as extensional equality (i.e. [X = Y ↔ ∀ x, x ∈ X ↔ 
 
 Since [positive]s are bitstrings, we encode [coPset]s as trees that correspond
 to the decision function that map bitstrings to bools. *)
-From stdpp Require Export sets.
-From stdpp Require Import pmap gmap mapset.
+From CasperCBC.stdpp Require Export sets.
+From CasperCBC.stdpp Require Import pmap gmap mapset.
 Set Default Proof Using "Type".
 Local Open Scope positive_scope.
 

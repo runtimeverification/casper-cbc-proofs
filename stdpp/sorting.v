@@ -1,7 +1,7 @@
 (** Merge sort. Adapted from the implementation of Hugo Herbelin in the Coq
 standard library, but without using the module system. *)
 From Coq Require Export Sorted.
-From stdpp Require Export orders list.
+From CasperCBC.stdpp Require Export orders list.
 Set Default Proof Using "Type".
 
 Section merge_sort.

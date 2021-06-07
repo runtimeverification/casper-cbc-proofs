@@ -1,5 +1,5 @@
-From stdpp Require Export countable.
-From stdpp Require Import gmap.
+From CasperCBC.stdpp Require Export countable.
+From CasperCBC.stdpp Require Import gmap.
 Set Default Proof Using "Type".
 
 Record gmultiset A `{Countable A} := GMultiSet { gmultiset_car : gmap A nat }.

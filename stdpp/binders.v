@@ -5,8 +5,8 @@ a coercion.
 
 This library is used in various Iris developments, like heap-lang, LambdaRust,
 Iron, Fairis. *)
-From stdpp Require Export strings.
-From stdpp Require Import sets countable finite fin_maps.
+From CasperCBC.stdpp Require Export strings.
+From CasperCBC.stdpp Require Import sets countable finite fin_maps.
 
 Inductive binder := BAnon | BNamed :> string → binder.
 Bind Scope binder_scope with binder.

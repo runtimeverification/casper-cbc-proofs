@@ -4,8 +4,8 @@ of elements of any countable type [A].
 Note that [coGset positive] cannot represent all elements of [coPset]
 (e.g., [coPset_suffixes], [coPset_l], and [coPset_r] construct
 infinite sets that cannot be represented). *)
-From stdpp Require Export sets countable.
-From stdpp Require Import decidable finite gmap coPset.
+From CasperCBC.stdpp Require Export sets countable.
+From CasperCBC.stdpp Require Import decidable finite gmap coPset.
 (* Set Default Proof Using "Type". *)
 
 Inductive coGset `{Countable A} :=

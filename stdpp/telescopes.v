@@ -1,4 +1,4 @@
-From stdpp Require Import base tactics.
+From CasperCBC.stdpp Require Import base tactics.
 Set Default Proof Using "Type".
 
 Local Set Universe Polymorphism.

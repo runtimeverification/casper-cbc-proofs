@@ -1,8 +1,8 @@
 (** This file implements finite set using hash maps. Hash sets are represented
 using radix-2 search trees. Each hash bucket is thus indexed using an binary
 integer of type [Z], and contains an unordered list without duplicates. *)
-From stdpp Require Export fin_maps listset.
-From stdpp Require Import zmap.
+From CasperCBC.stdpp Require Export fin_maps listset.
+From CasperCBC.stdpp Require Import zmap.
 Set Default Proof Using "Type".
 
 Record hashset {A} (hash : A → Z) := Hashset {

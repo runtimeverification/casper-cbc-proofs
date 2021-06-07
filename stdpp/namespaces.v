@@ -1,4 +1,4 @@
-From stdpp Require Export countable coPset.
+From CasperCBC.stdpp Require Export countable coPset.
 Set Default Proof Using "Type".
 
 Definition namespace := list positive.

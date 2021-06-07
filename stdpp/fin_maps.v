@@ -3,7 +3,7 @@ finite maps and collects some theory on it. Most importantly, it proves useful
 induction principles for finite maps and implements the tactic
 [simplify_map_eq] to simplify goals involving finite maps. *)
 From Coq Require Import Permutation.
-From stdpp Require Export relations orders vector fin_sets.
+From CasperCBC.stdpp Require Export relations orders vector fin_sets.
 (* FIXME: This file needs a 'Proof Using' hint, but the default we use
    everywhere makes for lots of extra ssumptions. *)
 

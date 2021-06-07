@@ -2,7 +2,7 @@
 (bounded naturals). It uses the definitions from the standard library, but
 renames or changes their notations, so that it becomes more consistent with the
 naming conventions in this development. *)
-From stdpp Require Export base tactics.
+From CasperCBC.stdpp Require Export base tactics.
 Set Default Proof Using "Type".
 
 (** * The fin type *)

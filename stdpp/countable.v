@@ -1,5 +1,5 @@
 From Coq.QArith Require Import QArith_base Qcanon.
-From stdpp Require Export list numbers list_numbers.
+From CasperCBC.stdpp Require Export list numbers list_numbers.
 Set Default Proof Using "Type".
 Local Open Scope positive.
 

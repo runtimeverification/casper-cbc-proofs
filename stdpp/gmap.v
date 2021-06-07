@@ -9,8 +9,8 @@ To compute concrete results, you need to both:
   [gmap]/[gset], does not contain proofs, say via [map_to_list] or [!!]; and
 - use [vm_compute] to run the computation, because it ignores opacity.
 *)
-From stdpp Require Export countable infinite fin_maps fin_map_dom.
-From stdpp Require Import pmap mapset propset.
+From CasperCBC.stdpp Require Export countable infinite fin_maps fin_map_dom.
+From CasperCBC.stdpp Require Import pmap mapset propset.
 (* Set Default Proof Using "Type". *)
 
 (** * The data structure *)

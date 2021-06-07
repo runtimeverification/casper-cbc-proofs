@@ -1,4 +1,4 @@
-From stdpp Require Export base tactics.
+From CasperCBC.stdpp Require Export base tactics.
 Set Default Proof Using "Type".
 
 Section definitions.

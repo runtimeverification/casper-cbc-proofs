@@ -1,7 +1,7 @@
 (** This file collects general purpose definitions and theorems on lists that
 are not in the Coq standard library. *)
 From Coq Require Export Permutation.
-From stdpp Require Export numbers base option.
+From CasperCBC.stdpp Require Export numbers base option.
 Set Default Proof Using "Type*".
 
 Arguments length {_} _ : assert.

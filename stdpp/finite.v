@@ -1,4 +1,4 @@
-From stdpp Require Export countable vector.
+From CasperCBC.stdpp Require Export countable vector.
 Set Default Proof Using "Type".
 
 Class Finite A `{EqDecision A} := {

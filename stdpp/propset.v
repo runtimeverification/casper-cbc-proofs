@@ -1,5 +1,5 @@
 (** This file implements sets as functions into Prop. *)
-From stdpp Require Export sets.
+From CasperCBC.stdpp Require Export sets.
 Set Default Proof Using "Type".
 
 Record propset (A : Type) : Type := PropSet { propset_car : A → Prop }.

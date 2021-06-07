@@ -6,8 +6,8 @@ However, we extend Leroy's implementation by packing the trees into a Sigma
 type such that canonicity of representation is ensured. This is necesarry for
 Leibniz equality to become extensional. *)
 From Coq Require Import PArith.
-From stdpp Require Import mapset countable.
-From stdpp Require Export fin_maps.
+From CasperCBC.stdpp Require Import mapset countable.
+From CasperCBC.stdpp Require Export fin_maps.
 Set Default Proof Using "Type".
 
 Local Open Scope positive_scope.

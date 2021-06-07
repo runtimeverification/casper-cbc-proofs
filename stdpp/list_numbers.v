@@ -1,6 +1,6 @@
 (** This file collects general purpose definitions and theorems on
 lists of numbers that are not in the Coq standard library. *)
-From stdpp Require Export list.
+From CasperCBC.stdpp Require Export list.
 Set Default Proof Using "Type*".
 
 (** * Definitions *)

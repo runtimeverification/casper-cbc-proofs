@@ -1,7 +1,7 @@
 (** This file provides an axiomatization of the domain function of finite
 maps. We provide such an axiomatization, instead of implementing the domain
 function in a generic way, to allow more efficient implementations. *)
-From stdpp Require Export sets fin_maps.
+From CasperCBC.stdpp Require Export sets fin_maps.
 Set Default Proof Using "Type*".
 
 Class FinMapDom K M D `{∀ A, Dom (M A) D, FMap M,

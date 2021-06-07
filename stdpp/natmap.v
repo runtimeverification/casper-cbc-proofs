@@ -1,7 +1,7 @@
 (** This files implements a type [natmap A] of finite maps whose keys range
 over Coq's data type of unary natural numbers [nat]. The implementation equips
 a list with a proof of canonicity. *)
-From stdpp Require Import fin_maps mapset.
+From CasperCBC.stdpp Require Import fin_maps mapset.
 Set Default Proof Using "Type".
 
 Notation natmap_raw A := (list (option A)).

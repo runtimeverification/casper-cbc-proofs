@@ -1,6 +1,6 @@
 (** This file implements finite set as unordered lists without duplicates
 removed. This implementation forms a monad. *)
-From stdpp Require Export sets list.
+From CasperCBC.stdpp Require Export sets list.
 Set Default Proof Using "Type".
 
 Record listset A := Listset { listset_car: list A }.

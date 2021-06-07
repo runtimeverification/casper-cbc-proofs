@@ -2,7 +2,7 @@
 the development. *)
 From Coq Require Import Omega.
 From Coq Require Export Lia.
-From stdpp Require Export decidable.
+From CasperCBC.stdpp Require Export decidable.
 Set Default Proof Using "Type".
 
 Lemma f_equal_dep {A B} (f g : ∀ x : A, B x) x : f = g → f x = g x.

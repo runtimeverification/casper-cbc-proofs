@@ -1,7 +1,7 @@
 From Coq Require Import Ascii.
 From Coq Require Export String.
-From stdpp Require Export list.
-From stdpp Require Import countable.
+From CasperCBC.stdpp Require Export list.
+From CasperCBC.stdpp Require Import countable.
 Set Default Proof Using "Type".
 
 (* To avoid randomly ending up with String.length because this module is

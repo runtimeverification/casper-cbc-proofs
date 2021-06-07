@@ -3,7 +3,7 @@ natural numbers, and the type [Z] for integers. It also declares some useful
 notations. *)
 From Coq Require Export EqdepFacts PArith NArith ZArith NPeano.
 From Coq Require Import QArith Qcanon.
-From stdpp Require Export base decidable option.
+From CasperCBC.stdpp Require Export base decidable option.
 Set Default Proof Using "Type".
 Local Open Scope nat_scope.
 

@@ -1,4 +1,4 @@
-From stdpp Require Export tactics.
+From CasperCBC.stdpp Require Export tactics.
 Set Default Proof Using "Type".
 
 CoInductive stream (A : Type) : Type := scons : A → stream A → stream A.

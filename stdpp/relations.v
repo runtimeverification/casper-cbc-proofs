@@ -2,7 +2,7 @@
 These are particularly useful as we define the operational semantics as a
 small step semantics. *)
 From Coq Require Import Wf_nat.
-From stdpp Require Export tactics base.
+From CasperCBC.stdpp Require Export tactics base.
 Set Default Proof Using "Type".
 
 (** * Definitions *)

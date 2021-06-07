@@ -1,4 +1,4 @@
-From stdpp Require Import numbers.
+From CasperCBC.stdpp Require Import numbers.
 
 (** The class [NatCancel m n m' n'] is a simple canceler for natural numbers
 implemented using type classes.

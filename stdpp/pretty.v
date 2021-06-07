@@ -1,5 +1,5 @@
-From stdpp Require Export strings.
-From stdpp Require Import relations numbers.
+From CasperCBC.stdpp Require Export strings.
+From CasperCBC.stdpp Require Import relations numbers.
 From Coq Require Import Ascii.
 Set Default Proof Using "Type".
 

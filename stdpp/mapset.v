@@ -1,7 +1,7 @@
 (** This files gives an implementation of finite sets using finite maps with
 elements of the unit type. Since maps enjoy extensional equality, the
 constructed finite sets do so as well. *)
-From stdpp Require Export countable fin_map_dom.
+From CasperCBC.stdpp Require Export countable fin_map_dom.
 (* FIXME: This file needs a 'Proof Using' hint. *)
 
 Record mapset (M : Type → Type) : Type :=

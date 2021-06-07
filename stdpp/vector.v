@@ -2,8 +2,8 @@
 (lists of fixed length). It uses the definitions from the standard library, but
 renames or changes their notations, so that it becomes more consistent with the
 naming conventions in this development. *)
-From stdpp Require Import countable.
-From stdpp Require Export fin list.
+From CasperCBC.stdpp Require Import countable.
+From CasperCBC.stdpp Require Export fin list.
 Set Default Proof Using "Type".
 Open Scope vector_scope.
 

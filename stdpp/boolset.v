@@ -1,5 +1,5 @@
 (** This file implements boolsets as functions into Prop. *)
-From stdpp Require Export prelude.
+From CasperCBC.stdpp Require Export prelude.
 Set Default Proof Using "Type".
 
 Record boolset (A : Type) : Type := BoolSet { boolset_car : A → bool }.

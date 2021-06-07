@@ -1,8 +1,8 @@
 (** This file collects definitions and theorems on finite sets. Most
 importantly, it implements a fold and size function and some useful induction
 principles on finite sets . *)
-From stdpp Require Import relations.
-From stdpp Require Export numbers sets.
+From CasperCBC.stdpp Require Import relations.
+From CasperCBC.stdpp Require Export numbers sets.
 Set Default Proof Using "Type*".
 
 (** Operations *)

@@ -1,7 +1,7 @@
 (** This file implements finite as unordered lists without duplicates.
 Although this implementation is slow, it is very useful as decidable equality
 is the only constraint on the carrier set. *)
-From stdpp Require Export sets list.
+From CasperCBC.stdpp Require Export sets list.
 Set Default Proof Using "Type".
 
 Record listset_nodup A := ListsetNoDup {

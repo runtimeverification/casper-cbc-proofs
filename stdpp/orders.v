@@ -1,6 +1,6 @@
 (** Properties about arbitrary pre-, partial, and total orders. We do not use
 the relation [⊆] because we often have multiple orders on the same structure *)
-From stdpp Require Export tactics.
+From CasperCBC.stdpp Require Export tactics.
 Set Default Proof Using "Type".
 
 Section orders.

@@ -1,7 +1,7 @@
 (** This file collects definitions and theorems on sets. Most
 importantly, it implements some tactics to automatically solve goals involving
 sets. *)
-From stdpp Require Export orders list list_numbers.
+From CasperCBC.stdpp Require Export orders list list_numbers.
 (* FIXME: This file needs a 'Proof Using' hint, but the default we use
    everywhere makes for lots of extra ssumptions. *)
 

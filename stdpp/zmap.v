@@ -1,7 +1,7 @@
 (** This files extends the implementation of finite over [positive] to finite
 maps whose keys range over Coq's data type of binary naturals [Z]. *)
-From stdpp Require Import pmap mapset.
-From stdpp Require Export prelude fin_maps.
+From CasperCBC.stdpp Require Import pmap mapset.
+From CasperCBC.stdpp Require Export prelude fin_maps.
 Set Default Proof Using "Type".
 Local Open Scope Z_scope.
 
