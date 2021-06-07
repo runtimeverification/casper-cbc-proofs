@@ -2025,16 +2025,17 @@ Section composition.
       + apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
         apply in_or_app. left. exact H.
   Qed.
-  
+  Check vtransition.
   Lemma sent_is_fullNode st m component:
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
     let st' := st (component_to_index component) in
     In (Cobservation Send m component) (observationsOf st') ->
-    let ob := (Cobservation Send (Cpremessage st' component) component) in
-    fullNode m (observationsOf st' ++ [ob]) component = true.
+    (*let ob := (Cobservation Send (Cpremessage st' component) component) in*)
+    (*fullNode m (vtransition free_composite_elmo) component*)
+    fullNode m (observationsOf st'(* ++ [ob]*)) component = true.
   Proof.
-    intros Haddr Hpsp st' Hin ob.
+    intros Haddr Hpsp st' Hin (*ob*).
     induction Hpsp using protocol_state_prop_ind.
     - simpl in Hs. unfold composite_initial_state_prop in Hs.
       assert (Hos: observationsOf (s (component_to_index component)) = []).
@@ -2055,9 +2056,9 @@ Section composition.
            rewrite state_update_neq.
            { exact n. }
            simpl in IHHpsp.
-           unfold ob. unfold st'.
+           (*unfold ob. unfold st'
            rewrite state_update_neq.
-           { exact n. }
+           { exact n. }*)
            apply IHHpsp.
            apply Hin.
       }
@@ -2077,14 +2078,14 @@ Section composition.
         rewrite state_update_eq.
         specialize (IHHpsp Hin). clear Hin. simpl. simpl in IHHpsp.
         unfold st' in *. clear st'.
-        unfold ob in *. clear ob.
+        (*unfold ob in *. clear ob.
         rewrite component_to_index_to_component.
         { exact Haddr. }
-        rewrite state_update_eq.
-        apply fullNode_appObservation exact IHHpsp.
-      + rewrite state_update_eq. auto.
-      + rewrite state_update_eq. auto.
-      + rewrite state_update_eq.
+        rewrite state_update_eq.*)
+        apply fullNode_appObservation. exact IHHpsp.
+      + unfold st'. rewrite state_update_eq. auto.
+      + unfold st'. rewrite state_update_eq. auto.
+      + unfold st'. rewrite state_update_eq.
         simpl in Hin.
         rewrite component_to_index_to_component in Hin.
         { exact Haddr. }
@@ -2094,7 +2095,10 @@ Section composition.
         simpl in Hin.
         destruct Hin as [Hin|[Hin|Hin]]; simpl.
         3: { inversion Hin. }
-        2: { inversion Hin. subst. clear Hin.
+        2: { inversion Hin. subst. clear Hin. simpl in IHHpsp.
+             simpl.
+             remember (component_to_index component) as idx.
+             clear st'.
              
              apply fullNode_appObservation.
              apply IHHpsp.
