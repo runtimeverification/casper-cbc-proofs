@@ -1066,6 +1066,10 @@ Context
           exists mi'. intuition congruence.
         }
         
+        assert (Hinvk4 : forall i, i ∈ Vk_1 -> ~ is_equivocating_from_set c1 i). {
+          admit.
+        }
+        
         assert (HVk1_sz : size Vk_1 >= q). {
           rewrite HeqVk_1.
           move Hdensity at bottom.
@@ -1766,12 +1770,7 @@ Context
                       destruct Hv as [Hv Hv_latest'].
                       specialize (is_equivocating_from_set_union c1 (downSet u') v) as Heach.
                       spec Heach. {
-                        move Hc0_honest at bottom.
-                        unfold honesty in Hc0_honest.
-                        specialize (Hc0_honest v).
-                        spec Hc0_honest. 
-                        admit.
-                        admit.
+                        apply Hinvk4; intuition.
                       }
                       spec Heach. {
                         rewrite <- equivocators_from_equiv in Hnequiv_u'.
@@ -1986,7 +1985,77 @@ Context
                   }
                   intuition congruence.
                 * destruct Hv'_comp as [Hv'_comp|Hv'_comp].
-                  -- 
+                  -- apply elem_of_filter in Hequiv_c1_u'.
+                     rewrite <- Is_true_iff_eq_true in Hequiv_c1_u'.
+                     rewrite bool_decide_eq_true in Hequiv_c1_u'.
+                     destruct Hequiv_c1_u' as [Hequiv _].
+                     apply is_equivocating_from_set_union in Hequiv.
+                     destruct Hequiv as [witness_c1 [witness_u' Hcomp]].
+                     destruct Hcomp as [Hwitness_c1 [Hwitness_u' [Hc1_sender [Hu'_sender Hcomp]]]].
+                     
+                     assert (Hwitness_small : witness_u' = latest_v_u' \/ happens_before' witness_u' latest_v_u'). {
+                        destruct (decide (witness_u' = latest_v_u')).
+                        - left. intuition.
+                        - right. apply compare_messages1 with (u := u').
+                          intuition congruence.
+                          apply latest_message_in_latest_messages.
+                          intuition congruence.
+                          intuition congruence.
+                          intuition.
+                          rewrite <- HdownSetCorrect in Hwitness_u'. intuition.
+                     }
+                     
+                     assert (Hwitness_in_downset_c1 : witness_u' ∈ relSet). {
+                        rewrite HrelSet.
+                        apply elem_of_union_list.
+                        exists (downSet' v').
+                        split.
+                        - apply elem_of_list_In.
+                          apply in_map_iff.
+                          exists v'.
+                          split;[intuition|].
+                          apply elem_of_list_In.
+                          apply elem_of_elements.
+                          apply Hsm2_in_c0; intuition.
+                        - unfold downSet'.
+                          apply elem_of_union. left.
+                          rewrite <- HdownSetCorrect.
+                          destruct Hwitness_small.
+                          + subst witness_u'.
+                            intuition.
+                          + apply t_trans with (y := latest_v_u'); intuition.
+                     }
+                     
+                     assert (Hwitness_c1_in_downsetc1 : witness_c1 ∈ relSet). {
+                      rewrite HrelSet.
+                      apply set_downSet'_self.
+                      intuition.
+                     }
+                     
+                     contradict Hc0_honest.
+                     unfold honesty.
+                     intros contra.
+                     specialize (contra v).
+                     spec contra. apply elem_of_map. exists v'. split;[intuition|].
+                     apply Hsm2_in_c0; intuition.
+                     
+                     contradict contra.
+                     apply elem_of_filter.
+                     rewrite <- Is_true_iff_eq_true. rewrite bool_decide_eq_true.
+                     split;[|apply index_set_one].
+                     
+                     exists witness_c1, witness_u'.
+                     split;[intuition|].
+                     split;[intuition|].
+                     split;[intuition|].
+                     split;[intuition|].
+                     intuition.
+                     
+                     apply Hinvk4.
+                     rewrite HeqVchange in Hv_Vchange. apply elem_of_intersection in Hv_Vchange. intuition.
+                     destruct Hlatest_v_u'_latest as [Hneed _].
+                     unfold is_equivocating_from_message in Hneed.
+                     intuition congruence.
                   -- move Hmin_u' at bottom.
                      specialize (Hmin_u' latest_v_u').
                      spec Hmin_u'. {
@@ -2004,6 +2073,18 @@ Context
                      }
                     intuition.
          }
+         
+         assert (HAu_size : size Au >= size (Au' ∪ Veq) + size Vchange - size extra_voters). {
+         
+         }
+         
+         assert (HAu_size': size Au * 2 ^ k0  >= (size (Au' ∪ Veq) + size Vchange - size extra_voters) * 2 ^ k0). {
+          assert (size Au > 0 /\ 2 ^ k0 > 0). {
+            admit.
+          }
+          nia.
+         }
+         nia.
     Admitted.
       
 End Inspector.
