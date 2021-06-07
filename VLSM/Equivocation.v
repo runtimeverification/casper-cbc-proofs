@@ -1737,19 +1737,19 @@ Section Composite.
     (m : message)
     (v : validator)
     (Hsender : sender m = Some v),
-    can_emit (composite_vlsm_constrained_projection IM constraint i) m ->
+    can_emit (pre_loaded_with_all_messages_vlsm (IM i)) m ->
     A v = i.
 
   Definition sender_weak_nontriviality_prop : Prop :=
     forall (v : validator),
     exists (m : message),
-    can_emit (composite_vlsm_constrained_projection IM constraint (A v)) m /\
+    can_emit (pre_loaded_with_all_messages_vlsm (IM (A v))) m /\
     sender m = Some v.
 
   Definition sender_strong_nontriviality_prop : Prop :=
     forall (v : validator),
     forall (m : message),
-    can_emit (composite_vlsm_constrained_projection IM constraint (A v)) m ->
+    can_emit (pre_loaded_with_all_messages_vlsm (IM (A v))) m ->
     sender m = Some v.
 
   Definition no_sender_for_initial_message_prop : Prop :=
@@ -1912,7 +1912,7 @@ Section Composite.
     assert (Hcomp : has_been_received X s m) by (exists i; assumption).
     assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
       (apply pre_loaded_with_all_messages_protocol_state_prop; assumption).
-    
+
     apply protocol_state_has_trace in Hs as [is [tr Hpr]].
     assert (Hpr_pre : finite_protocol_trace_init_to (pre_loaded_with_all_messages_vlsm X) is s tr). {
       revert Hpr.
@@ -2065,7 +2065,7 @@ Qed.
       destruct iom as [m|];[|apply option_protocol_message_None].
       (* If m was sent during tr, it is protocol because it was
          produced in a valid (by IHHtr) trace.
-         If m was not sent during tr, 
+         If m was not sent during tr,
        *)
       assert (Decision (trace_has_message (field_selector output) m tr)) as [Hsent|Hnot_sent].
       apply (@Exists_dec _). intros. apply decide_eq.

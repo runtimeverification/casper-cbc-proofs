@@ -347,7 +347,7 @@ Lemma preloaded_finite_trace_sub_projection_last_state
   (transitions : list (composite_transition_item IM))
   (Htr : finite_protocol_trace_from Pre start transitions)
   (lstx := finite_trace_last start transitions)
-  (lstj := finite_trace_last 
+  (lstj := finite_trace_last
             (composite_state_sub_projection start)
             (finite_trace_sub_projection transitions)
             )
