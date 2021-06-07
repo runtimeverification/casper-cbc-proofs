@@ -99,7 +99,7 @@ Proof.
     destruct (decide (projT1 (s i) = 0)); [assumption|].
     elim Hi. apply Hfixed.
     apply filter_In. split; [apply finite_index|].
-    apply bool_decide_eq_true. assumption. 
+    apply bool_decide_eq_true. assumption.
 Qed.
 
 Lemma protocol_has_fixed_equivocation
@@ -396,7 +396,7 @@ Definition proper_fixed_equivocator_descriptors
 [not_equivocating_equivocator_descriptors] satisfy the
 [proper_fixed_equivocator_descriptors] property.
 *)
-Lemma not_equivocating_equivocatos_descriptors_proper_fixed
+Lemma not_equivocating_equivocator_descriptors_proper_fixed
   (s : composite_state (equivocator_IM IM))
   (Hs : protocol_state_prop XE s)
   (eqv_descriptors : equivocator_descriptors IM)
@@ -612,7 +612,7 @@ Proof.
       (equivocators_trace_project_preserves_proper_fixed_equivocator_descriptors _ _ (proj1 Htr'pre) _ _ _ Htr_project Hproper')
       as Hproper_initial.
     destruct oitem as [item|].
-    +  simpl in Hitemx. destruct Hitemx as [Hl [Hinput [Houtput Hdestination]]].
+    +  simpl in Hitemx. destruct Hitemx as [Hl [Hinput [Houtput [Hdestination _]]]].
       specialize (Hx _ eq_refl).
       destruct Hx as [Hvx Htx].
       exists (trX' ++ [item]), initial_descriptors. subst foldx.
@@ -638,7 +638,7 @@ Proof.
       apply (extend_right_finite_trace_from X'); [constructor; assumption|].
       simpl in Hl. subst.
       simpl in Hc.
-      destruct Hc as [[Hno_equiv _] Hfixed].
+      destruct Hc as [[Hno_equiv _] _].
       simpl in Htx,Hvx,Hstate_project.
       rewrite Hstate_project in Hvx, Htx.
       destruct input as [input|]
@@ -666,7 +666,7 @@ Proof.
       destruct (equivocators_trace_project_output_reflecting_inv IM _ _ (proj1 Htr'pre) _ Hall)
         as [final_descriptors_m [initial_descriptors_m [trXm [_Hfinal_descriptors_m [Hproject_trXm Hex]]]]].
       assert (Hfinal_descriptors_m : proper_fixed_equivocator_descriptors final_descriptors_m (finite_trace_last is tr')).
-      { apply not_equivocating_equivocatos_descriptors_proper_fixed; [|assumption].
+      { apply not_equivocating_equivocator_descriptors_proper_fixed; [|assumption].
         apply finite_ptrace_last_pstate. assumption.
       }
       specialize (H (length tr')).

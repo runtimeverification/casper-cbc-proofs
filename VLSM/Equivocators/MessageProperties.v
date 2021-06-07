@@ -208,7 +208,7 @@ Proof.
     clear -Hdinitial.
     destruct dfirst as [sn | j fj].
     + destruct Hdinitial as [_ Hinit]. assumption.
-    + destruct Hdinitial as [Hdinitial _]. assumption.      
+    + destruct Hdinitial as [Hdinitial _]. assumption.
 Qed.
 
 (**
