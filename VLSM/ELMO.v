@@ -229,15 +229,10 @@ Definition elmo_sig : VLSM_sign elmo_type :=
 Definition fullNode (m : Premessage) (prefix: list Observation) (component: nat) : bool :=
   fold_right andb true
              (map (fun (ob2 : Observation) =>
-                     match (labelOf ob2) with
-                     | Send =>
+                     if (decide (authorOf (messageOf ob2) = component)) then
+                       bool_decide (In (Cobservation Send (messageOf ob2) component) prefix)
+                     else
                        bool_decide (In (Cobservation Receive (messageOf ob2) component) prefix)
-                     | Receive =>
-                       if (decide (authorOf (messageOf ob2) = component)) then
-                         bool_decide (In (Cobservation Send (messageOf ob2) component) prefix)
-                       else
-                         bool_decide (In (Cobservation Receive (messageOf ob2) component) prefix)
-                     end
                   )
                   (observationsOf (stateOf m))
              ).
@@ -1368,20 +1363,16 @@ Proof.
     rewrite fold_right_app in H.
     simpl in H.
     destruct ob. simpl in H.
-    destruct l0.
-    + destruct (decide (authorOf p = component)); simpl in H.
-      {
-        destruct (bool_decide (In (Cobservation Send p component) obs)).
-        { simpl in H. exact H. }
-        simpl in H.
-        rewrite fold_right_andb_false in H. inversion H.
-      }
-      destruct (bool_decide (In (Cobservation Receive p component) obs)).
+    destruct (decide (authorOf p = component)); simpl in H.
+    {
+      destruct (bool_decide (In (Cobservation Send p component) obs)).
       { simpl in H. exact H. }
-      { simpl in H. rewrite fold_right_andb_false in H. inversion H. }
-    + destruct (bool_decide (In (Cobservation Receive p component) obs)).
-      { simpl in H. exact H. }
-      { simpl in H. rewrite fold_right_andb_false in H. inversion H. }      
+      simpl in H.
+      rewrite fold_right_andb_false in H. inversion H.
+    }
+    destruct (bool_decide (In (Cobservation Receive p component) obs)).
+    { simpl in H. exact H. }
+    { simpl in H. rewrite fold_right_andb_false in H. inversion H. }
 Qed.
 
 Lemma fullNode_dropMiddle (l1 l2 obs : list Observation) (ob : Observation) (n component : nat) :
@@ -2016,16 +2007,13 @@ Section composition.
     - apply Forall_cons.
       2: { auto. }
       clear H0 IHForall.
-      destruct (labelOf x).
-      + destruct (decide (authorOf (messageOf x) = component)); simpl in H; simpl.
-        * apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
-          apply in_or_app. left. exact H.
-        * apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
-          apply in_or_app. left. exact H.
-      + apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
+      destruct (decide (authorOf (messageOf x) = component)); simpl in H; simpl.
+      * apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
+        apply in_or_app. left. exact H.
+      * apply bool_decide_eq_true_1 in H. apply bool_decide_eq_true_2.
         apply in_or_app. left. exact H.
   Qed.
-  Check vtransition.
+
   Lemma sent_is_fullNode st m component:
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
