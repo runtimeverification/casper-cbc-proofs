@@ -2014,6 +2014,58 @@ Section composition.
         apply in_or_app. left. exact H.
   Qed.
 
+  (* All observations in a state have the same witness - which is the address of the node. *)
+  Lemma observationsHaveSameWitness st component ob:
+    address_valid component ->
+    protocol_state_prop free_composite_elmo st ->
+    In ob (observationsOf (st (component_to_index component))) ->
+    witnessOf ob = component.
+  Proof.
+    intros Haddr Hpsp Hin.
+    induction Hpsp using protocol_state_prop_ind.
+    - simpl in Hs. unfold composite_initial_state_prop in Hs.
+      assert (Hos: observationsOf (s (component_to_index component)) = []).
+      { apply Hs. }
+      rewrite Hos in Hin. simpl in Hin. inversion Hin.
+    - unfold protocol_transition in Ht.
+      destruct Ht as [Hvalid Ht].
+      unfold transition in Ht. simpl in Ht.
+      destruct l as [i li].
+      remember (vtransition (IM i) li (s i, om)) as VT.
+      destruct VT as [si'' om'']. inversion Ht. subst om'' s'. clear Ht.
+      
+      destruct (decide (component_to_index component = i)).
+      2: { rewrite state_update_neq in Hin.
+           { exact n. }
+           auto.
+      }
+      subst i.
+      rewrite state_update_eq in Hin.
+
+      unfold vtransition in HeqVT.
+      simpl in HeqVT.
+      destruct li,om; inversion HeqVT; clear HeqVT; subst; auto.
+      + simpl in Hin. apply in_app_or in Hin.
+        destruct Hin as [Hin|Hin];[auto|].
+        simpl in Hin.
+        destruct Hin as [Hin|Hin];[|inversion Hin].
+        subst ob. simpl.
+        rewrite component_to_index_to_component.
+        { exact Haddr. }
+        reflexivity.
+      + simpl in Hin.
+        apply in_app_or in Hin.
+        destruct Hin as [Hin|Hin];[auto|].
+        simpl in Hin.
+        destruct Hin as [Hin|Hin];[|inversion Hin].
+        subst ob. simpl.
+        rewrite component_to_index_to_component.
+        { exact Haddr. }
+        reflexivity.
+  Qed.
+  
+    
+  
   Lemma sent_is_fullNode st m component component':
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
