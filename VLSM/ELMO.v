@@ -2014,16 +2014,15 @@ Section composition.
         apply in_or_app. left. exact H.
   Qed.
 
-  Lemma sent_is_fullNode st m component:
+  Lemma sent_is_fullNode st m component component':
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
+    authorOf m = component ->
     let st' := st (component_to_index component) in
-    In (Cobservation Send m component) (observationsOf st') ->
-    (*let ob := (Cobservation Send (Cpremessage st' component) component) in*)
-    (*fullNode m (vtransition free_composite_elmo) component*)
-    fullNode m (observationsOf st'(* ++ [ob]*)) component = true.
+    In (Cobservation Send m component') (observationsOf st') ->
+    fullNode m (observationsOf st') component = true.
   Proof.
-    intros Haddr Hpsp st' Hin (*ob*).
+    intros Haddr Hpsp Hauthor st' Hin.
     induction Hpsp using protocol_state_prop_ind.
     - simpl in Hs. unfold composite_initial_state_prop in Hs.
       assert (Hos: observationsOf (s (component_to_index component)) = []).
@@ -2034,7 +2033,7 @@ Section composition.
       unfold transition in Ht. simpl in Ht.
       destruct l as [i li].
       remember (vtransition (IM i) li (s i, om)) as VT.
-      destruct VT as [si'' om'']. inversion Ht. subst. clear Ht.
+      destruct VT as [si'' om'']. inversion Ht. subst om'' s'. clear Ht.
       
       destruct (decide (component_to_index component = i)).
       2: { unfold st' in Hin.
@@ -2083,37 +2082,30 @@ Section composition.
         simpl in Hin.
         destruct Hin as [Hin|[Hin|Hin]]; simpl.
         3: { inversion Hin. }
-        2: { inversion Hin. subst. clear Hin. simpl in IHHpsp.
+        2: { simpl. inversion Hin. clear Hin.
              simpl.
-             remember (component_to_index component) as idx.
-             clear st'.
-             
+             destruct m. simpl. simpl in H0.
+             inversion H0. clear H0. subst p.
+             simpl in IHHpsp.
              apply fullNode_appObservation.
-             (*apply IHHpsp.*)
              unfold fullNode.
              simpl.
              apply Forall_fold_right_bool.
-             rewrite Heqidx.
-             remember (observationsOf (s (component_to_index component))) as obs.
-             assert (Hobs: forall ob, In ob obs -> In ob (observationsOf (s (component_to_index component)))).
-             { subst. auto. }
-             clear Heqobs.
-             (*clear Heqobs.*)
-             induction obs.
-             - apply Forall_nil.
-             - apply Forall_cons.
-               
-               2: { assert (Hobs': forall ob, In ob obs -> In ob (observationsOf (s (component_to_index component)))).
-                    { intros ob Hin. apply Hobs. simpl. right. exact Hin. }
-                    specialize (IHobs Hobs'). clear Hobs'.     
-               }
-               
-                 unfold fullNode in IHHpsp. 
-               destruct (labelOf a) eqn:Hlbleq.
-               + destruct (is_left (decide (authorOf (messageOf a) = component))) eqn:Hauthoreq.
-                 * admit.
-                 * destruct a. simpl in *.
-                   
+             remember (observationsOf (s (component_to_index n))) as obs.
+             apply Forall_forall.
+             intros x Hx. destruct x. simpl. destruct p. simpl.
+             (* I need to prove separately some things:
+                1. All observations in a state have the same witness - which is the address of the node.
+                2. If there is a [Cobservation Receive m component], then there is also
+                   [Cobservation Send m component].
+                3. All observations with sender other than the component are Receive observations.
+                Then the following cases might happen:
+                * n1 = n -> Either l=Send, and we can use Hx. Or l=Receive, and by (2), there is some Send in obs.
+                * n1 <> n -> the message was sent by some other node, and by (3) we have l=Receive, and we can use Hx.
+              *)
+             destruct (decide (n1 = n)); simpl; apply bool_decide_eq_true_2.
+             - subst n1. simpl in IHHpsp. admit.
+             - 
         }
         apply fullNode_appObservation. auto.
   Qed.
