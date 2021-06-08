@@ -2075,12 +2075,61 @@ Context
          }
          
          assert (HAu_size : size Au >= size (Au' ∪ Veq) + size Vchange - size extra_voters). {
-         
+           assert (Hunion : Z.of_nat (size (Au' ∪ Veq ∪ Vchange)) = size (Au' ∪ Veq) + size Vchange). {
+             specialize (size_union (Au' ∪ Veq) Vchange) as Hsize_union.
+             spec Hsize_union. {
+               apply disjoint_union_l.
+               intuition.
+             }
+             nia.
+           }
+           
+           rewrite <- Hunion.
+           
+           assert (Hdif : ((Au' ∪ Veq ∪ Vchange) ∖ extra_voters) ⊆ Au). {
+             apply elem_of_subseteq. intros v Hv.
+             apply elem_of_difference in Hv.
+             destruct Hv as [Hv Hv_extra].
+             apply elem_of_union in Hv.
+             rewrite elem_of_union in Hv at 1.
+             destruct Hv as [Hv|Hv].
+             - destruct Hv as [Hv|Hv].
+               + specialize (HAu'_Au v Hv).
+                 destruct HAu'_Au as [HAu'_Au|HAu'_Au]; intuition.
+               + unfold Au. unfold A.
+                 apply elem_of_union.
+                 left.
+                 unfold equivocators_from_message.
+                 rewrite HeqVeq in Hv.
+                 apply filter_subset with (Y := index_set) in Hv.
+                 intuition.
+                 apply index_set_listing.
+             - apply elem_of_subseteq with (X0 := Vchange); intuition.
+           }
+           
+           assert (size ((Au' ∪ Veq ∪ Vchange) ∖ extra_voters) <= size Au). { 
+              specialize (subseteq_size ((Au' ∪ Veq ∪ Vchange) ∖ extra_voters) Au Hdif).
+              nia.
+           }
+           
+           assert (Hdif_size : size ((Au' ∪ Veq ∪ Vchange) ∖ extra_voters) >= size (Au' ∪ Veq ∪ Vchange) - size extra_voters). {
+              specialize (StdppFinSetExtras.difference_size_ge_disjoint_case (Au' ∪ Veq ∪ Vchange) extra_voters).
+              nia.
+           }
+          nia.
          }
          
          assert (HAu_size': size Au * 2 ^ k0  >= (size (Au' ∪ Veq) + size Vchange - size extra_voters) * 2 ^ k0). {
-          assert (size Au > 0 /\ 2 ^ k0 > 0). {
-            admit.
+          assert (size Au >= 0 /\ 2 ^ k0 >= 0). {
+            split.
+            - destruct (elements Au) eqn : eq_Au.
+              + apply elements_empty' in eq_Au. lia.
+              + lia.
+            - unfold Z.pow.
+              destruct (Z.of_nat k0) eqn : eq_k0.
+              + lia.
+              + specialize (Zpower_pos_pos 2 p). lia.
+              + lia.
           }
           nia.
          }
