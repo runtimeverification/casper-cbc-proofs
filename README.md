@@ -31,6 +31,7 @@ make   # or make -j <number-of-cores-on-your-machine>
   specified in https://github.com/ethereum/cbc-casper
 - `VLSM`: Formalization of Vlad Zamfir's new, composable, model
   used for stating and solving consensus problems.
+- `stdpp`: Local version of the [stdpp library](https://gitlab.mpi-sws.org/iris/stdpp).
 
 See also the latest [online documentation][coqdoc-link] of the Coq files.
 

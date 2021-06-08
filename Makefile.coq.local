@@ -1,5 +1,5 @@
-GLOBFILES = $(VFILES:.v=.glob)
-VOFILES = $(VFILES:.v=.vo)
+DOCVFILES = $(filter-out $(wildcard **stdpp/*),$(VFILES))
+DOCGLOBFILES = $(DOCVFILES:.v=.glob)
 
 CSSFILES = resources/coqdoc.css resources/coqdocjs.css
 JSFILES = resources/config.js resources/coqdocjs.js
@@ -17,21 +17,21 @@ COQ2HTMLDIR = docs/coq2html
 ALECTRYON = ~/alectryon/alectryon.py
 ALECTRYONDIR = docs/alectryon
 ALECTRYONHTMLFLAGS = --frontend coqdoc --webpage-style windowed
-ALECTRYONHTMLFILES = $(VFILES:.v=.alectryon.html)
+ALECTRYONHTMLFILES = $(DOCVFILES:.v=.alectryon.html)
 
-DPDFILES = $(VFILES:.v=.dpd)
-DOTFILES = $(VFILES:.v=.dot)
-SVGFILES = $(VFILES:.v=.svg)
+DPDFILES = $(DOCVFILES:.v=.dpd)
+DOTFILES = $(DOCVFILES:.v=.dot)
+SVGFILES = $(DOCVFILES:.v=.svg)
 
-coqdoc: $(GLOBFILES) $(VFILES) $(CSSFILES) $(JSFILES) $(HTMLFILES) $(DEPFILES)
+coqdoc: $(DOCGLOBFILES) $(DOCVFILES) $(CSSFILES) $(JSFILES) $(HTMLFILES) $(DEPFILES)
 	$(SHOW)'COQDOC -d $(COQDOCDIR)'
 	$(HIDE)mkdir -p $(COQDOCDIR)
-	$(HIDE)$(COQDOC) $(COQDOCHTMLFLAGS) $(COQDOCLIBS) -d $(COQDOCDIR) $(VFILES)
+	$(HIDE)$(COQDOC) $(COQDOCHTMLFLAGS) $(COQDOCLIBS) -d $(COQDOCDIR) $(DOCVFILES)
 	$(SHOW)'COPY resources'
 	$(HIDE)cp $(CSSFILES) $(JSFILES) $(DEPFILES) $(COQDOCDIR)
 .PHONY: coqdoc
 
-coq2html: $(GLOBFILES) $(VFILES)
+coq2html: $(DOCGLOBFILES) $(DOCVFILES)
 	$(SHOW)'COQ2HTML -d $(COQ2HTMLDIR)'
 	$(HIDE)mkdir -p $(COQ2HTMLDIR)
 	$(HIDE)cd Lib && $(COQ2HTML) -base CasperCBC.Lib -d ../$(COQ2HTMLDIR) *.v *.glob
@@ -50,7 +50,7 @@ alectryon: $(ALECTRYONHTMLFILES)
 $(ALECTRYONDIR)/toc.html:
 	$(HIDE)mkdir -p $(@D)
 	$(HIDE)cat resources/alectryon_toc_header.html > $@
-	$(HIDE)for vfile in $(addprefix CasperCBC.,$(subst /,.,$(basename $(VFILES)))) ; do \
+	$(HIDE)for vfile in $(addprefix CasperCBC.,$(subst /,.,$(basename $(DOCVFILES)))) ; do \
 	    echo "    <li><a href='$$vfile.html'>$$vfile</a></li>" >> $@; \
 	done
 	$(HIDE)cat resources/alectryon_toc_footer.html >> $@
@@ -63,9 +63,9 @@ $(ALECTRYONDIR)/deps.png: deps.dot
 	$(HIDE)mkdir -p $(@D)
 	dot -T png deps.dot > $(ALECTRYONDIR)/deps.png
 
-deps.dot: $(VFILES)
+deps.dot: $(DOCVFILES)
 	$(SHOW)'GENERATE deps.dot'
-	$(HIDE)./scripts/dotdeps.sh $(VFILES) > $@
+	$(HIDE)./scripts/dotdeps.sh $(DOCVFILES) > $@
 
 deps.map: deps.dot
 	dot -T cmap deps.dot | sed -e 's,>$$,/>,' > deps.map
