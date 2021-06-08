@@ -38,7 +38,6 @@ pipeline {
             eval $(opam env)
             make -j 6
             make coqdoc
-            make coq2html
             make -j 6 alectryon
             make -j 6 rvdpd
             export COQ_SHA=$(git rev-parse HEAD)
@@ -50,7 +49,6 @@ pipeline {
             mkdir docs/${COQ_SHA}
             cd docs
             cp -r ../../docs/coqdoc ${COQ_SHA}
-            cp -r ../../docs/coq2html ${COQ_SHA}
             cp -r ../../docs/alectryon ${COQ_SHA}
             ln -sfn ${COQ_SHA} latest
             cd ..

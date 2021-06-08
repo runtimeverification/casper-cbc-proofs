@@ -18,6 +18,7 @@ authors:
 - name: Denisa Diaconescu
 - name: Elaine Li
 - name: Brandon Moore
+- name: Karl Palmskog
 - name: Lucas Peña
 - name: Grigore Roșu
 - name: Traian Șerbănuță
@@ -64,6 +65,7 @@ documentation: |-
     specified in https://github.com/ethereum/cbc-casper
   - `VLSM`: Formalization of Vlad Zamfir's new, composable, model
     used for stating and solving consensus problems.
+  - `stdpp`: Local version of the [stdpp library](https://gitlab.mpi-sws.org/iris/stdpp).
 
   See also the latest [online documentation][coqdoc-link] of the Coq files.
 

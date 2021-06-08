@@ -30,6 +30,7 @@ The latest version of Casper CBC Proofs can be [downloaded from GitHub](https://
 
 - [latest coqdoc presentations of the source files](docs/latest/coqdoc/toc.html)
 - [latest Alectryon proof movies of the source files](docs/latest/alectryon/toc.html)
+- [stdpp library](https://gitlab.mpi-sws.org/iris/stdpp)
 
 ## Help
 
@@ -41,6 +42,7 @@ Report [issues on GitHub](https://github.com/runtimeverification/casper-cbc-proo
 - Denisa Diaconescu
 - Elaine Li
 - Brandon Moore
+- Karl Palmskog
 - Lucas Peña
 - Grigore Roșu
 - Traian Șerbănuță
