@@ -2101,14 +2101,26 @@ Section composition.
              clear st'.
              
              apply fullNode_appObservation.
-             apply IHHpsp.
+             (*apply IHHpsp.*)
              unfold fullNode.
              simpl.
              apply Forall_fold_right_bool.
+             rewrite Heqidx.
              remember (observationsOf (s (component_to_index component))) as obs.
+             assert (Hobs: forall ob, In ob obs -> In ob (observationsOf (s (component_to_index component)))).
+             { subst. auto. }
+             clear Heqobs.
+             (*clear Heqobs.*)
              induction obs.
              - apply Forall_nil.
              - apply Forall_cons.
+               
+               2: { assert (Hobs': forall ob, In ob obs -> In ob (observationsOf (s (component_to_index component)))).
+                    { intros ob Hin. apply Hobs. simpl. right. exact Hin. }
+                    specialize (IHobs Hobs'). clear Hobs'.     
+               }
+               
+                 unfold fullNode in IHHpsp. 
                destruct (labelOf a) eqn:Hlbleq.
                + destruct (is_left (decide (authorOf (messageOf a) = component))) eqn:Hauthoreq.
                  * admit.
