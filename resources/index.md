@@ -24,22 +24,25 @@ This is an open source project, licensed under the University of Illinois/NCSA O
 
 ## Get the code
 
-The current release of Casper CBC Proofs can be [downloaded from GitHub](https://github.com/runtimeverification/casper-cbc-proofs/releases).
+The latest version of Casper CBC Proofs can be [downloaded from GitHub](https://github.com/runtimeverification/casper-cbc-proofs).
 
 ## Documentation
 
-The latest coqdoc presentations of the source files can be [browsed online](docs/latest/coqdoc/toc.html).
+- [latest coqdoc presentations of the source files](docs/latest/coqdoc/toc.html)
+- [latest Alectryon proof movies of the source files](docs/latest/alectryon/toc.html)
 
-## Help and contact
+## Help
 
-- Report issues on [GitHub](https://github.com/runtimeverification/casper-cbc-proofs/issues)
+Report [issues on GitHub](https://github.com/runtimeverification/casper-cbc-proofs/issues).
 
-## Authors and contributors
+## Authors
 
 - Mihai Calancea
 - Denisa Diaconescu
 - Elaine Li
+- Brandon Moore
 - Lucas Peña
 - Grigore Roșu
 - Traian Șerbănuță
+- Jan Tušil
 - Vlad Zamfir
