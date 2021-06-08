@@ -20,6 +20,7 @@ Context
   {Cm Ci : Type}
   {message : Type}
   {index : Type}
+  (vote : message -> option C)
   `{HfinSetMessage : FinSet message Cm}
   `{HfinSetIndex : FinSet index Ci}
   {mdec : Classes.EqDecision message}
@@ -640,17 +641,43 @@ Context
       rewrite bool_decide_eq_true.
       intuition.
   Qed. 
+  
+      Program Definition divergent_last_messages 
+      (m : message)
+      (v : option C) :=
+    set_filter (fun m' => negb (@bool_decide (vote m' = v) _)) _ (latest_messages m).
+    Next Obligation.
+      intros.
+      apply decide_eq.
+    Defined.
+    Next Obligation.
+      intros.
+      solve_decision.
+    Defined.
+    
+    Program Definition concurrent_last_messages 
+      (m : message)
+      (v : option C) :=
+    set_filter (fun m' => @bool_decide (vote m' = v) _) _ (latest_messages m).
+    Next Obligation.
+      intros.
+      apply decide_eq.
+    Defined.
+    Next Obligation.
+      intros.
+      solve_decision.
+    Qed.
+    
  
 Section Inspector.
 
 Context
     (X := composite_vlsm IM fullnode_constraint)
-    (vote : message -> option C)
     (Hvote : forall (m : message) (oc : option C),
              vote m = oc ->
              (forall (oc' : option C),
-             List.count_occ decide_eq (List.map vote (elements (latest_messages m))) oc >= 
-             List.count_occ decide_eq (List.map vote (elements (latest_messages m))) oc')). 
+             size (concurrent_last_messages m oc) >= 
+             size (concurrent_last_messages m oc'))). 
    
     Definition count_votes_for
       (m : message)
@@ -711,30 +738,6 @@ Context
     Definition equivocators_from_state
       (s : vstate X) :=
       set_filter (fun i => negb (bool_decide (is_equivocating_from_state s i))) _ index_set.
-    
-    Program Definition divergent_last_messages 
-      (m : message)
-      (v : option C) :=
-    set_filter (fun m' => negb (@bool_decide (vote m' = v) _)) _ (latest_messages m).
-    Next Obligation.
-      intros.
-      apply decide_eq.
-    Defined.
-    Next Obligation.
-      intros.
-    Admitted.
-    
-    Program Definition concurrent_last_messages 
-      (m : message)
-      (v : option C) :=
-    set_filter (fun m' => @bool_decide (vote m' = v) _) _ (latest_messages m).
-    Next Obligation.
-      intros.
-      apply decide_eq.
-    Defined.
-    Next Obligation.
-      intros.
-    Admitted.
     
     Definition A
       (m : message)
@@ -1067,7 +1070,25 @@ Context
         }
         
         assert (Hinvk4 : forall i, i ∈ Vk_1 -> ~ is_equivocating_from_set c1 i). {
-          admit.
+          intros v Hv.
+          specialize (Hc0_honest v).
+          spec Hc0_honest. {
+            specialize (Hinvk3 v Hv).
+            destruct Hinvk3 as [v' Hinvk3].
+            apply elem_of_map. exists v'.
+            split;[intuition|].
+            apply Hsm1_in_c0; intuition.
+          }
+          intros contra.
+          contradict Hc0_honest.
+          apply elem_of_filter.
+          rewrite <- Is_true_iff_eq_true.
+          rewrite bool_decide_eq_true.
+          split;[|apply index_set_one].
+          apply is_equivocating_from_set_subseteq with (sm1 := c1).
+          rewrite HrelSet.
+          apply set_downSet'_self.
+          intuition.
         }
         
         assert (HVk1_sz : size Vk_1 >= q). {
@@ -1209,10 +1230,10 @@ Context
             rewrite Hsendermi.
             intuition.
         }
-        remember (Vk_1 ∖ (Veq ∪ Vchange)) as value_voters.
+        remember (Vk_1 ∖ (Veq ∪ Vchange)) as value_voters_vk.
         
-        assert (Hvoters_size1 : (size value_voters + size Veq + size Vchange = size Vk_1)). {
-          rewrite Heqvalue_voters.
+        assert (Hvoters_size1 : (size value_voters_vk + size Veq + size Vchange = size Vk_1)). {
+          rewrite Heqvalue_voters_vk.
           assert (Hsizeu : Z.of_nat (size (Veq ∪ Vchange)) = size Veq + size Vchange). {
             specialize (size_union Veq Vchange Heq_change_disjoint) as Hnat.
             lia.
@@ -1239,6 +1260,63 @@ Context
           lia.
         }
         
+        remember (senders (concurrent_last_messages u (Some value))) as value_voters.
+        
+        assert (Hvalue_vk_incl : value_voters_vk ⊆ value_voters). {
+          apply elem_of_subseteq. intros v Hv.
+          rewrite Heqvalue_voters_vk in Hv.
+          rewrite Heqvalue_voters.
+          apply elem_of_difference in Hv.
+          destruct Hv as [Hv Hvn].
+          specialize (Hmi v).
+          spec Hmi. {
+            split;[intuition congruence|].
+            split.
+            - intros contra. contradict Hvn. apply elem_of_union. left. intuition.
+            - intros contra. contradict Hvn. apply elem_of_union. right. intuition.
+          }
+          destruct Hmi as [mi Hmi].
+          apply elem_of_map.
+          exists mi. 
+          assert (Htemp : v = sender mi) . {
+            destruct Hmi as [Hmi _].
+            apply latest_message_sender in Hmi.
+            intuition.
+          }
+          split;[intuition|].
+          apply elem_of_filter.
+          rewrite <- Is_true_iff_eq_true.
+          rewrite bool_decide_eq_true.
+          split;[intuition|].
+          apply latest_message_in_latest_messages.
+          subst v. intuition.
+          intros contra.
+          contradict Hvn.
+          apply elem_of_union. left.
+          rewrite HeqVeq.
+          apply elem_of_filter.
+          rewrite <- Is_true_iff_eq_true.
+          rewrite bool_decide_eq_true.
+          subst v. intuition.
+        }
+        
+        assert (Hvoters_disjoint : extra_voters ## value_voters_vk). {
+          apply elem_of_disjoint. intros v Hv Hv2.
+          rewrite Heqextra_voters in Hv.
+          rewrite Heqvalue_voters_vk in Hv2.
+          apply elem_of_difference in Hv.
+          apply elem_of_difference in Hv2.
+          intuition.
+        }
+        
+        assert (Hsz_voters : Z.of_nat (size (extra_voters ∪ value_voters_vk)) >= (q - size Veq - size Vchange) + size extra_voters). {
+          specialize (size_union extra_voters value_voters_vk Hvoters_disjoint) as Hun.
+          rewrite Hun.
+          assert (Z.of_nat (size value_voters_vk) = size Vk_1 - size Veq - size Vchange) by nia.
+          assert (Z.of_nat (size value_voters_vk) >= q - size Veq - size Vchange) by nia.
+          nia. 
+        }
+        
         assert (Hineq1 : 2 * (q - (size Veq) - (size Vchange) + (size extra_voters)) <= n - size Eu). {
           move Hvote at bottom.
           assert (Hvote' := Hvote).
@@ -1247,26 +1325,59 @@ Context
             intros contra.
             destruct Hu_P as [_ Hu_P].
             contradict Hu_P.
-           
-            remember (count_votes_for u (Some value)) as votes_for_value.
-            assert (Hvotes_for : votes_for_value >= (q - size Veq - size Vchange) + (size extra_voters)). {
-                assert (Hvotes_for' : votes_for_value >= size value_voters + size extra_voters). {
-                   rewrite Heqvotes_for_value.
-                   admit.
+            
+            assert (Hvotes_for : size value_voters >= (q - size Veq - size Vchange) + (size extra_voters)). {
+                assert (Htemp : extra_voters ∪ value_voters_vk ⊆ value_voters). {
+                  apply elem_of_subseteq. intros v Hv.
+                  apply elem_of_union in Hv.
+                  destruct Hv as [Hv | Hv].
+                  - rewrite Heqextra_voters in Hv.
+                    apply elem_of_difference in Hv.
+                    intuition.
+                  - apply elem_of_subseteq with (X0 := value_voters_vk); intuition.
                 }
-                lia.
+                assert (Htemp2 : size value_voters >= size (extra_voters ∪ value_voters_vk)). {
+                  specialize (subseteq_size (extra_voters ∪ value_voters_vk) value_voters Htemp) as Htemp3.
+                  nia.
+                }
+                nia.
             }
             
             specialize (Hvote' u (vote u) eq_refl (Some value)).
-            rewrite Heqvotes_for_value in Hvotes_for.
-                assert (count_votes_for u (Some value) + count_votes_for u (vote u) <= n - size Eu). {
-                  admit.
-                }
-                unfold count_votes_for in *.
-                clear- Hvotes_for H13 contra Hvote'.
+            
+            destruct (@decide (vote u = Some value)).
+            apply decide_eq.
+            - intuition.
+            - assert (Htemp : (concurrent_last_messages u (vote u)) ∪ (concurrent_last_messages u (Some value)) ⊆ latest_messages u). {
+                apply elem_of_subseteq. intros m Hm.
+                apply elem_of_union in Hm.
+                destruct Hm as [Hm | Hm]; apply elem_of_filter in Hm; intuition.
+              }
+              
+              assert (Htemp4 : size ((concurrent_last_messages u (vote u)) ∪ (concurrent_last_messages u (Some value))) <= size (latest_messages u)). {
+                specialize (subseteq_size (concurrent_last_messages u (vote u) ∪ concurrent_last_messages u (Some value)) (latest_messages u) Htemp).
+                nia.
+              }
+              
+              assert (size (latest_messages u) <= n). {
                 admit.
-            }
-            intuition.
+              }
+              
+              assert (Htemp2: Z.of_nat (size (concurrent_last_messages u (vote u) ∪ (concurrent_last_messages u (Some value)))) =
+                      size (concurrent_last_messages u (vote u)) + size (concurrent_last_messages u (Some value))). {
+                specialize (size_union (concurrent_last_messages u (vote u)) (concurrent_last_messages u (Some value))) as Htemp3.
+                spec Htemp3. {
+                  apply elem_of_disjoint. intros m Hm Hm2.
+                  apply elem_of_filter in Hm.
+                  apply elem_of_filter in Hm2.
+                  rewrite <- Is_true_iff_eq_true in *. rewrite bool_decide_eq_true in *.
+                  intuition congruence.
+                }
+                lia.
+              }
+              
+              assert (Htemp5: size (concurrent_last_messages u (vote u)) + size (concurrent_last_messages u (Some value)) <= n) by nia.
+              
         }
         
         assert (HVeq_incl_Eu : Veq ⊆ Eu). {
@@ -1358,7 +1469,10 @@ Context
                 apply latest_message_in_latest_messages.
                 intuition congruence.
                 intuition congruence.
-                admit.
+                specialize (Hc0_vote mi).
+                spec Hc0_vote. 
+                apply Hsm2_in_c0; intuition. 
+                intuition congruence.
                 intuition.
               }
               apply HdownSetCorrect.
@@ -2096,14 +2210,7 @@ Context
              - destruct Hv as [Hv|Hv].
                + specialize (HAu'_Au v Hv).
                  destruct HAu'_Au as [HAu'_Au|HAu'_Au]; intuition.
-               + unfold Au. unfold A.
-                 apply elem_of_union.
-                 left.
-                 unfold equivocators_from_message.
-                 rewrite HeqVeq in Hv.
-                 apply filter_subset with (Y := index_set) in Hv.
-                 intuition.
-                 apply index_set_listing.
+               + apply elem_of_subseteq with (X0 := Veq); set_solver.  
              - apply elem_of_subseteq with (X0 := Vchange); intuition.
            }
            
