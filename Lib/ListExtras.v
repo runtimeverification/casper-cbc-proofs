@@ -1193,6 +1193,17 @@ Proof.
   apply map_option_length; intuition.
 Qed.
 
+Lemma cat_option_length_le
+  {A : Type}
+  (l : list (option A))
+  : length (cat_option l) <= length l.
+Proof.
+  induction l.
+  - intuition.
+  - simpl. 
+    destruct (id a); simpl; lia.
+Qed.
+
 Lemma cat_option_app
   {A : Type}
   (l1 l2 : list (option A)) :

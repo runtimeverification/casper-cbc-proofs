@@ -35,7 +35,6 @@ Context
   (downSet' := fun (m : message) => (downSet m) ∪ {[ m ]})
   (HdownSetCorrect : forall (m1 m2 : message), happens_before' m1 m2 <-> m1 ∈ (downSet m2))
   {index_listing : list index}
-  (n := length index_listing)
   {Hfinite : Listing index_listing}
   {idec : Classes.EqDecision index}
   {i0 : Classes.Inhabited index}
@@ -286,6 +285,8 @@ Context
   
   Definition index_set : Ci := (list_to_set index_listing).
   
+  Definition n := size index_set.
+  
   Remark index_set_listing
     (ci : Ci) :
     ci ⊆ index_set.
@@ -466,10 +467,69 @@ Context
     (m : message) : Cm :=
   list_to_set (ListExtras.cat_option (List.map (latest_message_from m) (elements (honest_validators_from_message m)))).
   
+  Lemma honest_validators_size
+    (m : message) :
+    (Z.of_nat (size (honest_validators_from_message m)) = n - size (equivocators_from_message m))%Z.
+  Proof.
+    assert (Htemp : (honest_validators_from_message m) ≡ index_set ∖ (equivocators_from_message m)). {
+      apply set_equiv. intros i.
+      split; intros Hi.
+      - apply elem_of_difference.
+        apply elem_of_filter in Hi.
+        split;[intuition|].
+        rewrite <- Is_true_iff_eq_true in Hi. rewrite negb_true_iff in Hi.
+        rewrite bool_decide_eq_false in Hi.
+        destruct Hi as [Hi _].
+        intros contra.
+        contradict Hi.
+        apply elem_of_filter in contra. 
+        rewrite <- Is_true_iff_eq_true in contra. rewrite bool_decide_eq_true in contra. intuition.
+     - apply elem_of_difference in Hi.
+       apply elem_of_filter.
+       rewrite <- Is_true_iff_eq_true. rewrite negb_true_iff. rewrite bool_decide_eq_false.
+       split;[|intuition].
+       intros contra.
+       destruct Hi as [_ Hi].
+       contradict Hi.
+       apply elem_of_filter.
+       rewrite <- Is_true_iff_eq_true. rewrite bool_decide_eq_true.
+       split;[intuition|].
+       apply index_set_one.
+      }
+      rewrite Htemp.
+      specialize (difference_size_subset index_set (equivocators_from_message m)) as Hdifsub.
+      spec Hdifsub. apply index_set_listing.
+      intuition.
+  Qed.
+  
+  Lemma latest_messages_size
+    (m : message) : 
+    (size (latest_messages m) <= n - size (equivocators_from_message m))%Z.
+  Proof.
+    specialize (honest_validators_size m) as Hhonest_size.
+    unfold latest_messages.
+    remember (map (latest_message_from m) (elements (honest_validators_from_message m))) as mmap.
+    remember (cat_option mmap) as ccat.
+    specialize (list_to_set_size ccat) as Hlength_cat.
+    assert (Htemp : (length ccat <= n - size (equivocators_from_message m))%Z). {
+      specialize (cat_option_length_le mmap) as Hcat_length.
+      rewrite Heqccat.
+      assert (Htemp': (Z.of_nat (length mmap) = n - size (equivocators_from_message m))%Z). {
+        rewrite Heqmmap.
+        rewrite map_length.
+        specialize (honest_validators_size m).
+        intuition.
+      }
+      rewrite <- Htemp'.
+      lia.
+    }
+    lia. 
+  Qed.
+  
   Lemma latest_message_in_latest_messages
     (m m' : message)
     (Hlatest : latest_message_from m (sender m') = Some m') 
-    (Hne : ~ is_equivocating_from_message m (sender m')) :
+    (Hne : ~ is_equivocating_from_message m (sender m')):
     m' ∈ (latest_messages m).
   Proof.
     unfold latest_messages.
@@ -1321,7 +1381,7 @@ Context
           move Hvote at bottom.
           assert (Hvote' := Hvote).
           
-          assert (~ 2 * (q - (size Veq) - (size Vchange) + (size extra_voters)) > n - size Eu). {
+          assert (Hn: ~ 2 * (q - (size Veq) - (size Vchange) + (size extra_voters)) > n - size Eu). {
             intros contra.
             destruct Hu_P as [_ Hu_P].
             contradict Hu_P.
@@ -1359,8 +1419,8 @@ Context
                 nia.
               }
               
-              assert (size (latest_messages u) <= n). {
-                admit.
+              assert (Htemp5 : Z.of_nat (size (latest_messages u)) <= n - size Eu). {
+                specialize (latest_messages_size u). rewrite HeqEu. lia.
               }
               
               assert (Htemp2: Z.of_nat (size (concurrent_last_messages u (vote u) ∪ (concurrent_last_messages u (Some value)))) =
@@ -1376,8 +1436,15 @@ Context
                 lia.
               }
               
-              assert (Htemp5: size (concurrent_last_messages u (vote u)) + size (concurrent_last_messages u (Some value)) <= n) by nia.
-              
+              assert (Htemp6: size (concurrent_last_messages u (vote u)) + size (concurrent_last_messages u (Some value)) <= n - size Eu) by nia.
+              rewrite Heqvalue_voters in Hvotes_for. 
+              assert (Htemp7 : size (senders (concurrent_last_messages u (Some value))) <= size (concurrent_last_messages u (Some value))). {
+                 specialize (set_map_size_upper_bound (C := Cm) (D := Ci) sender (concurrent_last_messages u (Some value))).
+                 unfold senders.
+                 lia.
+              }
+              lia.
+          } lia.
         }
         
         assert (HVeq_incl_Eu : Veq ⊆ Eu). {
@@ -1576,7 +1643,7 @@ Context
             
             assert (Hineq_temp1 : 2 * (size (Au' ∪ Veq) + size Vchange - size extra_voters) >= size Au' + size Veq + 2 * size Vchange - 2 * size extra_voters) by lia.
             
-            move Hineq1 at bottom.
+            move Hineq_temp1 at bottom. (* Hineq1 *)
             unfold k0. unfold k. simpl.
             rewrite <- Heqcom'. simpl.
             unfold value in HeqAu'.
@@ -2027,6 +2094,7 @@ Context
                   right.
                   rewrite Heqextra_voters.
                   apply elem_of_difference.
+                  rewrite Heqvalue_voters.
                   split;intuition.
          }
          
