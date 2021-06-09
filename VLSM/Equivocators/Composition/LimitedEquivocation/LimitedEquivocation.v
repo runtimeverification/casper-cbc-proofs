@@ -14,7 +14,7 @@ From CasperCBC
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
     VLSM.Equivocators.Composition.Projections
-    VLSM.DependentMessages
+    VLSM.MessageDependencies
     .
 
 (** * VLSM Limited Equivocation *)
@@ -75,7 +75,7 @@ Context {message : Type}
   (equivocating : set index)
   (sender : message -> option index)
   (Hbr : forall i, has_been_received_capability (IM i))
-  {Hdm : DependentMessages sender (fun i => i) IM Hbs Hbr}
+  {Hdm : MessageDependencies sender (fun i => i) IM Hbs Hbr}
   {Hmeasurable : Measurable index}
   {reachable_threshold : ReachableThreshold index}
   .
@@ -92,7 +92,7 @@ Definition full_node_equivocators_constraint
   match om with
   | None => True
   | Some m =>
-    dependent_messages_local_full_node_condition
+    message_dependencies_local_full_node_condition
       (equivocator_state_descriptor_project (IM i) (s i) desc) m
   end.
 
@@ -128,7 +128,7 @@ Context
   (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
   (sender : message -> option index)
   (globally_known_equivocators : composite_state IM -> set index)
-  {Hdm : DependentMessages sender (fun i => i) IM Hbs Hbr}
+  {Hdm : MessageDependencies sender (fun i => i) IM Hbs Hbr}
   {reachable_threshold : ReachableThreshold index}
   .
 
@@ -181,7 +181,7 @@ Class known_equivocators_capability :=
       l s im s' oom v,
       composite_transition IM l (s, Some im) = (s', oom) ->
       ~ no_additional_equivocations_constraint X l (s, Some im) ->
-      dependent_messages_global_full_node_condition finite_index s im ->
+      message_dependencies_global_full_node_condition finite_index s im ->
       sender im = Some v ->
       set_eq
         (globally_known_equivocators s')
@@ -238,7 +238,7 @@ Definition full_node_limited_equivocation_constraint
   (l : composite_label IM)
   (som : composite_state IM * option message)
   :=
-  dependent_messages_local_full_node_constraint l som /\
+  message_dependencies_local_full_node_constraint l som /\
   let s' := fst (composite_transition IM l som) in
   (globally_known_equivocators_weight s' <= proj1_sig threshold)%R.
 
@@ -289,7 +289,7 @@ Context
   {ValMeasurable : Measurable index}
   (sender : message -> option index)
   (globally_known_equivocators : composite_state IM -> set index)
-  {Hdm : DependentMessages sender (fun i => i) IM Hbs Hbr}
+  {Hdm : MessageDependencies sender (fun i => i) IM Hbs Hbr}
   {Hknown_equivocators : known_equivocators_capability finite_index IM Hbs Hbr i0 sender globally_known_equivocators}
   {reachable_threshold : ReachableThreshold index}
   (XE : VLSM message := full_node_equivocators_limited_equivocation_vlsm IM Hbs finite_index sender Hbr)
@@ -793,7 +793,7 @@ Lemma full_node_limited_equivocation_constraint_hbo
     (Hdescriptorsi: descriptors i = di)
     ,
     let sX' := equivocators_state_project IM descriptors s in
-  dependent_messages_local_full_node_constraint (existT _ i li) (sX', Some input).
+  message_dependencies_local_full_node_constraint (existT _ i li) (sX', Some input).
 Proof.
   destruct l as (i, (li, di)). destruct Hv as [_ [_ [_ [Hfull _]]]].
   simpl in *.
@@ -940,7 +940,7 @@ Proof.
           simpl in *.
           revert Hfull.
           apply
-            (dependent_messages_global_full_node_condition_from_local sender (fun i => i) IM Hbs Hbr finite_index).
+            (message_dependencies_global_full_node_condition_from_local sender (fun i => i) IM Hbs Hbr finite_index).
           subst eqv_descriptors'.
           unfold equivocators_state_project.
           rewrite equivocator_descriptors_update_eq.

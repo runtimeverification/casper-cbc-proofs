@@ -55,7 +55,7 @@ Definition equivocator_IM
   :=
   equivocator_vlsm (IM i).
 
-Lemma equivocator_Hbs
+Definition equivocator_Hbs
   (i : index)
   :  has_been_sent_capability (equivocator_IM i).
 Proof.

@@ -9,7 +9,7 @@ Require Import
   VLSM.Common VLSM.Composition VLSM.Equivocation
   .
 
-Section dependent_messages.
+Section message_dependencies.
 
 Context
   {message : Type}
@@ -27,48 +27,48 @@ Context
   .
 
 (** An abstract framework for the full-node condition.
-Assumes that each message has an associated set of [dependent_messages],
+Assumes that each message has an associated set of [message_dependencies],
 which is empty for initial messages.
 Furthermore, it constraints senders to satisfy the
 [sender_strong_nontriviality] property.
 
-[dependent_messages] for a message @m@m are axiomatized to be exactly those
+[message_dependencies] for a message @m@m are axiomatized to be exactly those
 messages which were received by the state emitting the message @m@, and are
 thus responsible for @m@ being created.
 *)
-Class DependentMessages
+Class MessageDependencies
   :=
-  { dependent_messages : message -> set message
+  { message_dependencies : message -> set message
   ; initial_message_not_dependent (m : message)
-      : composite_initial_message_prop IM m -> dependent_messages m = []
+      : composite_initial_message_prop IM m -> message_dependencies m = []
   ; sender_safety :  sender_strong_nontriviality_prop IM A sender
-  ; dependent_message (m : message)
+  ; message_dependencies_characterization (m : message)
       : forall
         (v : validator)
         (Hmv : sender m = Some v)
         (s : vstate (IM (A v)))
         (Hsm : protocol_generated_prop (pre_loaded_with_all_messages_vlsm (IM (A v))) s m)
         (dm : message),
-        In dm (dependent_messages m) <->
-        @state_received_not_sent _ (IM (A v)) (Hbs (A v)) (Hbr (A v)) s dm
+        In dm (message_dependencies m) <->
+        has_been_observed (has_been_observed_capability := Hbo (A v)) (IM (A v)) s dm
   }.
 
-(** Under [DependentMessages] assumptions, the (local) full node condition
+(** Under [MessageDependencies] assumptions, the (local) full node condition
 requires that the component of the state receiving the message has previously
-observed all of @m@'s [dependent_messages].
+observed all of @m@'s [message_dependencies].
 *)
-Definition dependent_messages_local_full_node_condition
-  {Hdm : DependentMessages}
+Definition message_dependencies_local_full_node_condition
+  {Hdm : MessageDependencies}
   (i : index)
   (s : vstate (IM i))
   (m : message)
   : Prop
-  := forall dm, In dm (dependent_messages m) ->
+  := forall dm, In dm (message_dependencies m) ->
     @has_been_observed _ (IM i) (Hbo i) s dm.
 
 (** The constraint associated to the above condition. *)
-Definition dependent_messages_local_full_node_constraint
-  {Hdm : DependentMessages}
+Definition message_dependencies_local_full_node_constraint
+  {Hdm : MessageDependencies}
   (l : composite_label IM)
   (som : composite_state IM * option message)
   : Prop
@@ -78,17 +78,17 @@ Definition dependent_messages_local_full_node_constraint
   | None => True
   | Some m =>
     let (i, li) := l in
-    dependent_messages_local_full_node_condition i (s i) m
+    message_dependencies_local_full_node_condition i (s i) m
   end.
 
-End dependent_messages.
+End message_dependencies.
 
-Arguments dependent_messages { _ _ _ _ _ _ _ _ _ } _ .
-Arguments dependent_messages_local_full_node_constraint  { _ _ _ _ _ _ _ _ _ } _ _.
-Arguments dependent_messages_local_full_node_condition  { _ _ _ _ _ _ _ _ _ _ } _ _.
+Arguments message_dependencies { _ _ _ _ _ _ _ _ _ } _ .
+Arguments message_dependencies_local_full_node_constraint  { _ _ _ _ _ _ _ _ _ } _ _.
+Arguments message_dependencies_local_full_node_condition  { _ _ _ _ _ _ _ _ _ _ } _ _.
 
 
-Section dependent_messages_full_node.
+Section message_dependencies_full_node.
 
 Context
   {message : Type}
@@ -103,7 +103,7 @@ Context
   {i0 : Inhabited index}
   {IndEqDec : EqDecision index}
   (X := free_composite_vlsm IM)
-  {Hdm : DependentMessages sender A IM Hbs Hbr}
+  {Hdm : MessageDependencies sender A IM Hbs Hbr}
   {index_listing : list index}
   (finite_index : Listing index_listing)
   (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
@@ -114,24 +114,24 @@ Context
 Existing Instance X_has_been_observed_capability.
 
 (** A slightly more relaxed version of the full-node condition requires that
-the composite state as a whole has observed all the [dependent_messages] of
+the composite state as a whole has observed all the [message_dependencies] of
 the message to be received.
 *)
-Definition dependent_messages_global_full_node_condition
+Definition message_dependencies_global_full_node_condition
   (s : composite_state IM)
   (m : message)
   : Prop
   :=
-  forall dm, In dm (dependent_messages m) ->
+  forall dm, In dm (message_dependencies m) ->
     has_been_observed X s dm.
 
-(** Proof that the [dependent_messages_global_full_node_condition] is weaker
-than the [dependent_messages_local_full_node_condition]. *)
-Lemma dependent_messages_global_full_node_condition_from_local
+(** Proof that the [message_dependencies_global_full_node_condition] is weaker
+than the [message_dependencies_local_full_node_condition]. *)
+Lemma message_dependencies_global_full_node_condition_from_local
   s i si im
   (Hsi : s i = si)
-  (Hlocal : dependent_messages_local_full_node_condition si im)
-  : dependent_messages_global_full_node_condition s im.
+  (Hlocal : message_dependencies_local_full_node_condition si im)
+  : message_dependencies_global_full_node_condition s im.
 Proof.
   intros m Hm.
   specialize (Hlocal m Hm).
@@ -141,6 +141,6 @@ Proof.
   - right. exists i. assumption.
 Qed.
 
-End dependent_messages_full_node.
+End message_dependencies_full_node.
 
-Arguments dependent_messages_global_full_node_condition  { _ _ _ _ _ _ _ _ _ _ _ _} _ _.
+Arguments message_dependencies_global_full_node_condition  { _ _ _ _ _ _ _ _ _ _ _ _} _ _.
