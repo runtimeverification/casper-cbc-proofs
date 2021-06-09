@@ -315,9 +315,12 @@ Context
     (Hincl : sm1 ⊆ sm2) :
     equivocators_from_set sm1 ⊆ equivocators_from_set sm2.
   Proof.
-    unfold equivocators_from_set.
-    admit.
-  Admitted.
+    apply elem_of_subseteq. intros i Hi.
+    apply elem_of_filter.
+    apply elem_of_filter in Hi.
+    specialize (is_equivocating_from_set_subseteq).
+    set_solver.
+  Qed.
   
   Definition is_equivocating_from_message
      (m : message) :=
@@ -870,31 +873,25 @@ Context
     }.
     
     Lemma committee_info
-      (vcom : committee)
-      (skel := proj1_sig vcom) :
+      (skel : committee_skeleton)
+      (Hvalid : valid_com_prop (relSet skel) (c0 skel) (value skel) (q skel) (com skel)) :
         convexity (c0 skel) /\
         unanimity (value skel) (c0 skel) /\
         honesty (c0 skel) (relSet skel) /\        
         (forall (c : Cm), In c (com skel) -> c ⊆ (c0 skel)).
     Proof.
-      destruct vcom as [vcom Hvcom].
       simpl in skel.
       
-      remember (relSet vcom) as com_relSet.
-      remember (c0 vcom) as com_c0.
-      remember (value vcom) as com_value'.
-      remember (q vcom) as com_q.
-      remember (com vcom) as com_com.
-      remember (Hc0 vcom) as com_Hc0.
-      generalize dependent vcom.
+      remember (relSet skel) as com_relSet.
+      remember (c0 skel) as com_c0.
+      remember (value skel) as com_value'.
+      remember (q skel) as com_q.
+      remember (com skel) as com_com.
+      remember (Hc0 skel) as com_Hc0.
+      generalize dependent skel.
       
-      induction Hvcom.
+      induction Hvalid.
       - intros.
-        subst skel.
-        rewrite <- Heqcom_c0. 
-        rewrite <- Heqcom_value'.
-        rewrite <- Heqcom_relSet.
-        rewrite <- Heqcom_com.
         split;[intuition|split;[intuition|]].
         split;[intuition|].
         intros c Hc.
@@ -916,21 +913,16 @@ Context
         remember (@Build_committee_skeleton value0 relSet0 c1 (sm2 :: l) q0 Hbase)  as new_skel.
         simpl in new_skel. 
 
-        specialize (IHHvcom new_skel).
+        specialize (IHHvalid new_skel).
         subst new_skel.
-        spec IHHvcom. intuition.
-        spec IHHvcom. intuition.
-        spec IHHvcom. intuition.
-        spec IHHvcom. intuition.
-        spec IHHvcom. intuition.
-        simpl in IHHvcom.
-        specialize (IHHvcom Hbase eq_refl).
-        destruct IHHvcom as [base IHHvcom].
-        subst skel.
-        rewrite <- Heqcom_com.
-        rewrite <- Heqcom_c0.
-        rewrite <- Heqcom_relSet.
-        rewrite <- Heqcom_value'.
+        spec IHHvalid. intuition.
+        spec IHHvalid. intuition.
+        spec IHHvalid. intuition.
+        spec IHHvalid. intuition.
+        spec IHHvalid. intuition.
+        simpl in IHHvalid.
+        specialize (IHHvalid Hbase eq_refl).
+        destruct IHHvalid as [base IHHvcom].
         split;[intuition|].
         split;[intuition|].
         split;[intuition|].
@@ -1003,24 +995,39 @@ Context
         destruct Hu_P as [Hu_P Huc].
         destruct Huc as [uk Huk].
         
-        assert (Hc0_honest : honesty c0 relSet). {
-          admit.
+        assert (Hlast_temp : last_error (com skel') = Some c1). {
+          rewrite Heqc0'. intuition.
         }
         
-        assert (Hc0_convex : convexity c0). {
-          admit.
+        remember (@Build_committee_skeleton value relSet c1 (com skel') q Hlast_temp) as current. simpl in current.
+        
+        specialize (committee_info current) as Hinfo.
+        spec Hinfo. {
+          simpl. subst current. simpl in *.
+          rewrite <- Heqcom'.
+          apply valid_com_ind; intuition.
         }
+        
+        subst current. simpl in *.
+        
+        assert (Hc0_honest : honesty c0 relSet) by intuition.
+        assert (Hc0_convex : convexity c0) by intuition.
         
         assert (Hc0_vote : forall m, m ∈ c1 -> vote m = Some value). {
-          admit.
+          destruct Hinfo as [_ [Hinfo _]].
+          intuition.
         }
         
         assert (Hsm1_in_c0 : sm1 ⊆ c1). {
-          admit.
+          destruct Hinfo as [_ [_ [_ Hinfo]]].
+          apply Hinfo. rewrite <- Heqcom'.
+          simpl. intuition.
         }
         
         assert (Hsm2_in_c0 : sm2 ⊆ c1). {
-          admit.
+          destruct Hinfo as [_ [_ [_ Hinfo]]].
+          apply Hinfo. rewrite <- Heqcom'.
+          simpl. intuition.
         }
         
         assert (Hcomp_in_c1 : forall m1 m2, 
@@ -2309,7 +2316,7 @@ Context
           nia.
          }
          nia.
-    Admitted.
+    Qed.
       
 End Inspector.
 End FullNodeLike.
