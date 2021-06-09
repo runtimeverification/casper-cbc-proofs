@@ -3,6 +3,10 @@ Import ListNotations.
 
 From CasperCBC Require Import Preamble ListExtras VLSM.Common VLSM.Equivocators.Common.
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
+Local Ltac unfold_vtransition H := (unfold vtransition in H; simpl in H).
 (** * VLSM Projecting Equivocator Traces *)
 
 Section equivocator_vlsm_projections.
@@ -86,7 +90,7 @@ Proof.
   destruct (le_lt_dec (S ndest) 0); [lia|].
   destruct dl as [ndl | idl fdl]
   ; [destruct (nat_eq_dec 1 (S ndest))| destruct fdl; [destruct (nat_eq_dec 1 (S ndest))| destruct (nat_eq_dec idl 0)]]
-  ; simpl in Ht; cbn - [le_lt_dec] in Ht
+  ; simpl in Ht; unfold_vtransition Ht
   ; destruct Hv as [Hidl _].
   - inversion Ht. subst. destruct s; inversion H0. lia.
   - exists None. reflexivity.
@@ -305,7 +309,7 @@ Proof.
     + destruct feqvi; [destruct (nat_eq_dec (S n) (S ni))|destruct (nat_eq_dec ieqvi n)].
       * inversion e. subst ni. clear e.
         eexists _. eexists _. split; [reflexivity|]. split; [repeat split|].
-        -- cbn - [le_lt_dec].
+        -- simpl.
           destruct (le_lt_dec (S n) n); [lia|]. f_equal. apply of_nat_ext.
         -- intros.
           destruct Hv as [Heqv Hv].
@@ -313,13 +317,13 @@ Proof.
           intros.
           simpl in Hsx.
           simpl.
-          cbn - [le_lt_dec] in Ht.
+          unfold_vtransition Ht.
           destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
           replace (of_nat_lt l0) with (of_nat_lt Heqv) in Ht by apply of_nat_ext.
           clear l0.
           assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
           { subst.
-            destruct s as (nsi, si). cbn - [le_lt_dec].
+            destruct s as (nsi, si). simpl.
             simpl in Heqv.
             destruct (le_lt_dec (S nsi) ieqvi); [lia|]. 
             f_equal. apply of_nat_ext.
@@ -345,7 +349,7 @@ Proof.
           apply Hv.
         }
         destruct Hv as [Heqv Hv].
-        cbn - [le_lt_dec] in Ht.
+        unfold_vtransition Ht.
         destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
         destruct (vtransition X li (projT2 s (of_nat_lt l0), input))
           as (si', om').
@@ -355,18 +359,18 @@ Proof.
       * subst ieqvi.
         eexists _. eexists _. split; [reflexivity|].
         split; [repeat split|].
-        -- cbn - [le_lt_dec]. 
+        -- simpl.
           destruct (le_lt_dec (S ni) n); [lia|]. f_equal. apply of_nat_ext.
         -- intros.  destruct Hv as [Heqv Hv].
           split; [assumption|].
           intros. simpl.
-          cbn - [le_lt_dec] in Ht.
+          unfold_vtransition Ht.
           destruct (le_lt_dec (S (projT1 s)) n); [lia|].
           replace (of_nat_lt l0) with (of_nat_lt Heqv) in Ht by apply of_nat_ext.
           clear l0.
           assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
           { subst.
-            destruct s as (nsi, si). cbn - [le_lt_dec].
+            destruct s as (nsi, si). simpl.
             simpl in Heqv.
             destruct (le_lt_dec (S nsi) n); [lia|].
             f_equal. apply of_nat_ext.
@@ -390,7 +394,7 @@ Proof.
           assumption.
         }
         destruct Hv as [Heqv Hv].
-        cbn - [le_lt_dec] in Ht.
+        unfold_vtransition Ht.
         destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
         destruct (vtransition X li (projT2 s (of_nat_lt l0), input))
           as (si', om').
@@ -574,7 +578,7 @@ Lemma equivocator_protocol_transition_item_project_inv2
 Proof.
   destruct l as (lx, descriptor).
   destruct s as (ns, bs).
-  cbn - [le_lt_dec] in Ht.
+  unfold_vtransition Ht.
   unfold equivocator_vlsm_transition_item_project in Hitem.
   destruct di as [sn| i fi]; [congruence|].
   exists i. exists fi. exists eq_refl. unfold item in Hitem.
@@ -640,7 +644,7 @@ Lemma equivocator_protocol_transition_item_project_inv3
     end.
 Proof.
   destruct l as (lx, d).
-  cbn -[le_lt_dec] in Ht.
+  unfold_vtransition Ht.
   unfold equivocator_vlsm_transition_item_project in Hitem.
   destruct di as [si | i fi]; [inversion Hitem; reflexivity|].
   unfold item in Hitem.
@@ -666,7 +670,7 @@ Proof.
   - destruct Hv as [Hj Hv].
     destruct (le_lt_dec (S (projT1 s')) id); [lia|].
     replace (of_nat_lt l0) with (of_nat_lt Hj) in Ht by apply of_nat_ext. clear l0.
-    destruct s' as (n', bs'). cbn - [nat_eq_dec] in *.
+    destruct s' as (n', bs'). simpl in *.
     destruct (vtransition X lx (bs' (of_nat_lt Hj), iom))
       as (si', om') eqn:Htx.
     destruct fd as [|].
@@ -708,20 +712,20 @@ Lemma equivocator_protocol_transition_item_project_inv4
 Proof.
   unfold equivocator_vlsm_transition_item_project.
   destruct l as (lx, descriptor).
-  cbn - [le_lt_dec] in Ht.
+  unfold_vtransition Ht.
   destruct s as (ns, bs).
   destruct s' as (n', bs').
   destruct descriptor as [sn | j is_equiv].
   - simpl in Ht.
     inversion Ht. subst. clear Ht. simpl_existT.
-    cbn - [le_lt_dec nat_eq_dec].
+    simpl.
     simpl in Hi'.
     assert (Hi'' : i' < S (S n')) by lia.
     exists Hi''.
     destruct (le_lt_dec (S (S n')) i'); [lia |]. clear l.
     rewrite eq_dec_if_false; [|lia].
     exists false. exists None. reflexivity.
-  - destruct Hv as [Hj Hv]. cbn - [le_lt_dec] in Ht.
+  - destruct Hv as [Hj Hv]. simpl in Ht.
     simpl in Hj.
     destruct (le_lt_dec (S n') j); [lia|].
     replace (of_nat_lt l) with (of_nat_lt Hj) in Ht by apply of_nat_ext. clear l.
@@ -764,12 +768,12 @@ Proof.
   unfold equivocator_vlsm_transition_item_project.
   destruct s as (ns, bs).
   destruct s' as (ns', bs').
-  cbn - [le_lt_dec] in Ht.
+  unfold_vtransition Ht.
   destruct l as (lx, d).
   simpl in Hnew. subst d.
   inversion Ht. subst. clear Ht.
   simpl_existT.
-  exists (S ns'). cbn - [le_lt_dec nat_eq_dec]. split; [lia|].
+  exists (S ns'). simpl. split; [lia|].
   destruct (le_lt_dec (S (S ns')) (S ns')); [lia|].
   rewrite eq_dec_if_true; reflexivity.
 Qed.
@@ -795,9 +799,9 @@ Proof.
   destruct s as (ns, bs).
   destruct s' as (ns', bs').
   destruct l as (lx, d).
-  cbn - [le_lt_dec] in Ht.
+  unfold_vtransition Ht.
   simpl in Hsndl. subst d.
-  cbn - [le_lt_dec nat_eq_dec].
+  simpl.
   destruct Hv as [Hi Hv]. simpl in Hi.
   destruct (le_lt_dec (S ns') i); [lia|].
   replace (of_nat_lt l) with (of_nat_lt Hi) in Ht by apply of_nat_ext. clear l.

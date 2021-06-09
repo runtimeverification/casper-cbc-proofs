@@ -16,6 +16,10 @@ From CasperCBC
     VLSM.Plans
     .
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
+Local Ltac unfold_vtransition H := (unfold vtransition in H; simpl in H).
 (** * VLSM Equivocator Full Replay Traces *)
 
 Section all_equivocating.
@@ -450,7 +454,8 @@ Proof.
       simpl in Hplan_replay_x.
       inversion Hplan_replay_x. subst. clear Hplan_replay_x. simpl in *.
       rewrite last_error_is_last. simpl.
-      cbn - [le_lt_dec nat_eq_dec] in *.
+      unfold_vtransition Ht_s_epref_i.
+      unfold_vtransition Ht_s_replay_epref_i.
       destruct (IHepref i) as [Hsizei [_ Hstatei]].
       specialize (IHepref eqv). destruct IHepref as [Hsize [_ Hstate]].
       destruct (s_replay_epref i) as (ns_replay_epref_i, bs_replay_epref_i)

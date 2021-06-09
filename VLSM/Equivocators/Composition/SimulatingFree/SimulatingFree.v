@@ -17,6 +17,10 @@ From CasperCBC
     VLSM.Plans
     .
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
+Local Ltac unfold_vtransition H := (unfold vtransition in H; simpl in H).
 (** * VLSM Equivocators Simulating Free Composite *)
 
 Section all_equivocating.
@@ -237,7 +241,7 @@ Proof.
     rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
     rewrite state_update_eq.
     destruct str_final_eqv' as (nstr_final_eqv', bstr_final_eqv').
-    cbn - [le_lt_dec] in Ht_tr_final_eqv.
+    unfold_vtransition Ht_tr_final_eqv.
     destruct
       (le_lt_dec (S (projT1 (tr_final eqv))) (j_di + S (projT1 (full_replay_state eqv)))).
     * inversion Ht_tr_final_eqv. subst. clear Ht_tr_final_eqv.
@@ -449,12 +453,7 @@ Proof.
     simpl in Heqv_state_descriptors_i.
     assert (Heqv_t := Hesom').
     unfold vtransition in Hesom'. simpl in Hesom'.
-    unfold vtransition in Hesom'.
-    match type of Hesom' with
-    | (let (_, _) := ?t in _) = _ => remember t as tesom'
-    end.
-    cbn - [le_lt_dec] in Heqtesom'.
-    subst tesom'.
+    unfold_vtransition Hesom'.
     destruct
       (replayed_trace_from_state_correspondence
         IM Hbs index_listing finite_index seed
