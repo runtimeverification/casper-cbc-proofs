@@ -2113,7 +2113,28 @@ Section composition.
         contradiction.
   Qed.
 
+  Lemma floating_around_implies_sent st s component tr:
+    address_valid component ->
+    finite_protocol_trace free_composite_elmo (fun=> Cprestate []) tr ->
+    last_error (List.map destination tr) = Some st ->
+    trace_has_message (field_selector output) (Cpremessage s component) tr ->
+    In (Cobservation Send (Cpremessage s component) component)
+       (observationsOf (st (component_to_index component))).
+  Proof.
+  Abort.
+  
+    
 
+  (* If there is a [Cobservation Receive m component], then there is also
+                   [Cobservation Send m component]. *)
+  Lemma received_from_self_implies_sent st s component component':
+    address_valid component ->
+    let obs := observationsOf (st (component_to_index component)) in
+    In (Cobservation Receive (Cpremessage s component) component') obs ->
+    In (Cobservation Send (Cpremessage s component) component) obs.
+  Proof.
+  Abort.
+  
   
   Lemma sent_is_fullNode st m component component':
     address_valid component ->
