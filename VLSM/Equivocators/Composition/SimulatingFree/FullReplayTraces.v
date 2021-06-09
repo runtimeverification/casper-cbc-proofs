@@ -16,6 +16,9 @@ From CasperCBC
     VLSM.Plans
     .
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
 (** * VLSM Equivocator Full Replay Traces *)
 
 Section all_equivocating.
@@ -42,12 +45,6 @@ Context {message : Type}
   (SeededFree := pre_loaded_vlsm (free_composite_vlsm equivocator_IM) seed)
   (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
   .
-
-Local Ltac unfold_transition Ht :=
-  ( unfold transition, equivocator_IM, Common.equivocator_IM, equivocator_vlsm,
-        mk_vlsm, machine, projT2, equivocator_vlsm_machine, equivocator_transition,
-        snd in Ht
-   ).
 
   (**
   Transforms a [composite_transition_item] of the [equivocator_IM] into
@@ -456,9 +453,8 @@ Proof.
       simpl in Hplan_replay_x.
       inversion Hplan_replay_x. subst. clear Hplan_replay_x. simpl in *.
       rewrite last_error_is_last. simpl.
-      unfold vtransition in Ht_s_epref_i, Ht_s_replay_epref_i.
-      unfold_transition Ht_s_epref_i.
-      unfold_transition Ht_s_replay_epref_i.
+      unfold_vtransition Ht_s_epref_i.
+      unfold_vtransition Ht_s_replay_epref_i.
       destruct (IHepref i) as [Hsizei [_ Hstatei]].
       specialize (IHepref eqv). destruct IHepref as [Hsize [_ Hstate]].
       destruct (s_replay_epref i) as (ns_replay_epref_i, bs_replay_epref_i)
