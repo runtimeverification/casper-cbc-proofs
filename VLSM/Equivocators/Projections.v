@@ -6,7 +6,6 @@ From CasperCBC Require Import Preamble ListExtras VLSM.Common VLSM.Equivocators.
 Local Arguments le_lt_dec : simpl never.
 Local Arguments nat_eq_dec : simpl never.
 
-Local Ltac unfold_vtransition H := (unfold vtransition in H; simpl in H).
 (** * VLSM Projecting Equivocator Traces *)
 
 Section equivocator_vlsm_projections.

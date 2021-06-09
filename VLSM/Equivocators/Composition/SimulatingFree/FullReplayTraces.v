@@ -19,7 +19,6 @@ From CasperCBC
 Local Arguments le_lt_dec : simpl never.
 Local Arguments nat_eq_dec : simpl never.
 
-Local Ltac unfold_vtransition H := (unfold vtransition in H; simpl in H).
 (** * VLSM Equivocator Full Replay Traces *)
 
 Section all_equivocating.
