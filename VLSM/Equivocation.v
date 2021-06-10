@@ -1512,8 +1512,7 @@ Section Composite.
           {IndEqDec : EqDecision index}
           (IM : index -> VLSM message)
           {i0 : Inhabited index}
-          (constraint : composite_label IM -> composite_state IM  * option message -> Prop)
-          (X := composite_vlsm IM constraint)
+          (Free := free_composite_vlsm IM)
           {index_listing : list index}
           (finite_index : Listing index_listing)
           (has_been_sent_capabilities : forall i : index, (has_been_sent_capability (IM i)))
@@ -1527,18 +1526,20 @@ Section Composite.
       (stepwise_props: forall i, oracle_stepwise_props (message_selectors i) (oracles i))
       .
 
-      Definition composite_message_selector : message -> vtransition_item X -> Prop.
+      Definition composite_message_selector : message -> composite_transition_item IM -> Prop.
       Proof.
         intros msg [[i li] input s output].
         apply (message_selectors i msg).
         exact {|l:=li;input:=input;destination:=s i;output:=output|}.
       Defined.
 
-      Definition composite_oracle : vstate X -> message -> Prop :=
+      Definition composite_oracle : composite_state IM -> message -> Prop :=
         fun s msg => exists i, oracles i (s i) msg.
 
-      Lemma composite_stepwise_props :
-        oracle_stepwise_props composite_message_selector composite_oracle.
+      Lemma composite_stepwise_props
+        (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+        (X := composite_vlsm IM constraint)
+        : oracle_stepwise_props (vlsm := X) composite_message_selector composite_oracle.
       Proof.
         split.
         - (* initial states not claim *)
@@ -1584,7 +1585,7 @@ Section Composite.
   (** A message 'has_been_sent' for a composite state if it 'has_been_sent' for any of
   its components.*)
   Definition composite_has_been_sent
-    (s : vstate X)
+    (s : composite_state IM)
     (m : message)
     : Prop
     := exists (i : index), has_been_sent (IM i) (s i) m.
@@ -1598,8 +1599,10 @@ Section Composite.
     - apply Exists_dec.
   Qed.
 
-  Lemma composite_has_been_sent_stepwise_props :
-    has_been_sent_stepwise_props composite_has_been_sent.
+  Lemma composite_has_been_sent_stepwise_props
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    : has_been_sent_stepwise_props (vlsm := X) composite_has_been_sent.
   Proof.
     unfold has_been_sent_stepwise_props.
     pose proof (composite_stepwise_props
@@ -1614,10 +1617,16 @@ Section Composite.
     exact Hstep.
   Qed.
 
-  Global Instance composite_has_been_sent_capability : has_been_sent_capability X :=
-    has_been_sent_capability_from_stepwise
+  Definition composite_has_been_sent_capability
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    : has_been_sent_capability X :=
+    has_been_sent_capability_from_stepwise (vlsm := X)
       composite_has_been_sent_dec
-      composite_has_been_sent_stepwise_props.
+      (composite_has_been_sent_stepwise_props constraint).
+
+  Global Instance free_composite_has_been_sent_capability : has_been_sent_capability Free :=
+    composite_has_been_sent_capability (free_constraint IM).
 
   Section composite_has_been_received.
 
@@ -1628,7 +1637,7 @@ Section Composite.
   (** A message 'has_been_received' for a composite state if it 'has_been_received' for any of
   its components.*)
   Definition composite_has_been_received
-    (s : vstate X)
+    (s : composite_state IM)
     (m : message)
     : Prop
     := exists (i : index), has_been_received (IM i) (s i) m.
@@ -1642,8 +1651,10 @@ Section Composite.
     - apply Exists_dec.
   Qed.
 
-  Lemma composite_has_been_received_stepwise_props :
-    has_been_received_stepwise_props composite_has_been_received.
+  Lemma composite_has_been_received_stepwise_props
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    : has_been_received_stepwise_props (vlsm := X) composite_has_been_received.
   Proof.
     unfold has_been_received_stepwise_props.
     pose proof (composite_stepwise_props
@@ -1658,10 +1669,16 @@ Section Composite.
     exact Hstep.
   Qed.
 
-  Global Instance composite_has_been_received_capability : has_been_received_capability X :=
-    has_been_received_capability_from_stepwise
+  Definition composite_has_been_received_capability
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    : has_been_received_capability X :=
+    has_been_received_capability_from_stepwise (vlsm := X)
       composite_has_been_received_dec
-      composite_has_been_received_stepwise_props.
+      (composite_has_been_received_stepwise_props constraint).
+
+  Global Instance free_composite_has_been_received_capability : has_been_received_capability Free :=
+    composite_has_been_received_capability (free_constraint IM).
 
   End composite_has_been_received.
 
@@ -1669,7 +1686,7 @@ Section Composite.
   (** A message 'has_been_observed' for a composite state if it 'has_been_observed' for any of
   its components.*)
   Definition composite_has_been_observed
-    (s : vstate X)
+    (s : composite_state IM)
     (m : message)
     : Prop
     := exists (i : index), has_been_observed (IM i) (s i) m.
@@ -1683,8 +1700,10 @@ Section Composite.
     - apply Exists_dec.
   Qed.
 
-  Lemma composite_has_been_observed_stepwise_props :
-    oracle_stepwise_props item_sends_or_receives composite_has_been_observed.
+  Lemma composite_has_been_observed_stepwise_props
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    : oracle_stepwise_props (vlsm := X) item_sends_or_receives composite_has_been_observed.
   Proof.
     pose proof (composite_stepwise_props
                   (fun i => has_been_observed_stepwise_props))
@@ -1694,10 +1713,18 @@ Section Composite.
     exact Hstep.
   Qed.
 
-  Global Instance composite_has_been_observed_capability : has_been_observed_capability X :=
-    { has_been_observed_dec := composite_has_been_observed_dec;
-      has_been_observed_stepwise_props := composite_has_been_observed_stepwise_props
-    }.
+  Definition composite_has_been_observed_capability
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    : has_been_observed_capability X.
+  Proof.
+    exists composite_has_been_observed.
+    - apply composite_has_been_observed_dec.
+    - apply (composite_has_been_observed_stepwise_props constraint).
+  Defined.
+
+  Global Instance free_composite_has_been_observed_capability : has_been_observed_capability Free :=
+    composite_has_been_observed_capability (free_constraint IM).
 
   Context
         {validator : Type}
@@ -1722,10 +1749,10 @@ Section Composite.
     (v : validator)
     (Hid : A v = i)
     (Hsender : sender m = Some v),
-    can_emit (composite_vlsm_constrained_projection IM constraint i) m /\
+    can_emit (pre_loaded_with_all_messages_vlsm (IM i)) m /\
     forall (j : index)
            (Hdif : i <> j),
-           ~can_emit (composite_vlsm_constrained_projection IM constraint j) m.
+           ~can_emit (pre_loaded_with_all_messages_vlsm (IM j)) m.
 
    (** An alternative, possibly friendlier, formulation. Note that it is
        slightly weaker, in that it does not require that the sender
@@ -1754,7 +1781,7 @@ Section Composite.
 
   Definition no_sender_for_initial_message_prop : Prop :=
     forall (m : message),
-    vinitial_message_prop X m ->
+    composite_initial_message_prop IM m ->
     sender m = None.
 
   Context
@@ -1780,7 +1807,7 @@ Section Composite.
   (** We can now decide whether a validator is equivocating in a certain state. **)
 
   Definition is_equivocating_statewise
-    (s : vstate X)
+    (s : composite_state IM)
     (v : validator)
     : Prop
     :=
@@ -1797,7 +1824,9 @@ Section Composite.
   **)
 
   Definition is_equivocating_tracewise
-    (s : vstate X)
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    (s : composite_state IM)
     (v : validator)
     (j := A v)
     : Prop
@@ -1817,7 +1846,9 @@ Section Composite.
 
   (** A possibly friendlier version using a previously defined primitive. **)
   Definition is_equivocating_tracewise_alt
-    (s : vstate X)
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    (s : composite_state IM)
     (v : validator)
     (j := A v)
     : Prop
@@ -1844,7 +1875,7 @@ Section Composite.
 
   Definition equivocation_dec_statewise
      (Hdec : RelDecision is_equivocating_statewise)
-      : basic_equivocation (vstate X) (validator)
+      : basic_equivocation (composite_state IM) (validator)
     :=
     {|
       state_validators := fun _ => validator_listing;
@@ -1854,80 +1885,83 @@ Section Composite.
     |}.
 
   Definition equivocation_dec_tracewise
-     (Hdec : RelDecision is_equivocating_tracewise)
-      : basic_equivocation (vstate X) (validator)
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+     (Hdec : RelDecision (is_equivocating_tracewise constraint))
+      : basic_equivocation (composite_state IM) (validator)
     :=
     {|
       state_validators := fun _ => validator_listing;
       state_validators_nodup := fun _ => proj1 finite_validator;
-      is_equivocating := is_equivocating_tracewise;
+      is_equivocating := is_equivocating_tracewise constraint;
       is_equivocating_dec := Hdec
     |}.
 
   Definition equivocation_fault_constraint
-    (Dec : basic_equivocation (vstate X) validator)
-    (l : vlabel X)
-    (som : vstate X * option message)
+    (Dec : basic_equivocation (composite_state IM) validator)
+    (l : composite_label IM)
+    (som : composite_state IM * option message)
     : Prop
     :=
-    let (s', om') := (vtransition X l som) in
+    let (s', om') := (composite_transition IM l som) in
     not_heavy s'.
 
     (* begin hide *)
   Lemma sent_component_protocol_composed
-    (s : vstate X)
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    (s : composite_state IM)
     (Hs : protocol_state_prop X s)
     (i : index)
     (m : message)
-    (Hsent : (@has_been_sent _ _ (has_been_sent_capabilities i)
-           (s i) m)) :
+    (Hsent : has_been_sent (IM i) (s i) m) :
     protocol_message_prop X m.
   Proof.
-    assert (Hcomp : has_been_sent X s m) by (exists i; intuition).
-    assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
-      (apply pre_loaded_with_all_messages_protocol_state_prop; intuition).
+    assert (Hcomp : has_been_sent Free s m) by (exists i; intuition).
 
     apply protocol_state_has_trace in Hs as H'.
     destruct H' as [is [tr Hpr]].
-    assert (Hpr_pre : finite_protocol_trace_init_to (pre_loaded_with_all_messages_vlsm X) is s tr). {
-      revert Hpr.
-      apply VLSM_incl_finite_protocol_trace_init_to.
-      apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
+    assert (Htr : finite_protocol_trace_init_to (pre_loaded_with_all_messages_vlsm Free) is s tr).
+    { revert Hpr. apply VLSM_incl_finite_protocol_trace_init_to.
+      apply VLSM_incl_trans with (MY := machine Free).
+      - apply constraint_free_incl with (constraint0 := constraint).
+      - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
     }
     apply protocol_trace_output_is_protocol with (is0:=is) (tr0:=tr).
     - apply ptrace_forget_last in Hpr; apply Hpr.
-    - apply (proper_sent _ _ H) in Hcomp.
-      apply (Hcomp is tr Hpr_pre).
+    - apply proper_sent in Hcomp; [apply (Hcomp is tr Htr)|].
+      apply finite_protocol_trace_init_to_last in Htr as Heqs.
+      subst s. apply finite_ptrace_last_pstate.
+      apply proj1, finite_protocol_trace_from_to_forget_last in Htr.
+      assumption.
   Qed.
 
   Lemma received_component_protocol_composed
-    (s : vstate X)
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    (s : composite_state IM)
     (Hs : protocol_state_prop X s)
     (i : index)
     (m : message)
-    (Hreceived : (@has_been_received _ _ (has_been_received_capabilities i)
-           (s i) m)) :
-    protocol_message_prop X m.
+    (Hreceived : has_been_received (IM i) (s i) m)
+    : protocol_message_prop X m.
   Proof.
-    assert (Hcomp : has_been_received X s m) by (exists i; assumption).
-    assert (protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s) by
-      (apply pre_loaded_with_all_messages_protocol_state_prop; assumption).
+    assert (Hcomp : has_been_received Free s m) by (exists i; assumption).
 
-    apply protocol_state_has_trace in Hs as [is [tr Hpr]].
-    assert (Hpr_pre : finite_protocol_trace_init_to (pre_loaded_with_all_messages_vlsm X) is s tr). {
-      revert Hpr.
-      apply VLSM_incl_finite_protocol_trace_init_to.
-      apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
+    apply protocol_state_has_trace in Hs as H'.
+    destruct H' as [is [tr Hpr]].
+    assert (Htr : finite_protocol_trace_init_to (pre_loaded_with_all_messages_vlsm Free) is s tr).
+    { revert Hpr. apply VLSM_incl_finite_protocol_trace_init_to.
+      apply VLSM_incl_trans with (MY := machine Free).
+      - apply constraint_free_incl with (constraint0 := constraint).
+      - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
     }
-
-    specialize (@proper_received _ X _ s H m) as Hprop.
-    unfold has_been_received_prop in Hprop.
-    unfold all_traces_have_message_prop in Hprop.
-    apply Hprop in Hcomp.
-    specialize (Hcomp is tr Hpr_pre).
-    destruct Hpr as [Hpr _].
-    apply ptrace_forget_last in Hpr.
-    apply protocol_trace_input_is_protocol with (is0 := is) (tr0 := tr);assumption.
+    apply protocol_trace_input_is_protocol with (is0:=is) (tr0:=tr).
+    - apply ptrace_forget_last in Hpr; apply Hpr.
+    - apply proper_received in Hcomp; [apply (Hcomp is tr Htr)|].
+      apply finite_protocol_trace_init_to_last in Htr as Heqs.
+      subst s. apply finite_ptrace_last_pstate.
+      apply proj1, finite_protocol_trace_from_to_forget_last in Htr.
+      assumption.
   Qed.
      (* end hide *)
 End Composite.
@@ -2142,8 +2176,8 @@ Section full_node_constraint.
           (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
           {index_listing : list index}
           (finite_index : Listing index_listing)
-          (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index has_been_sent_capabilities)
-          (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index has_been_received_capabilities)
+          (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index has_been_sent_capabilities)
+          (X_has_been_received_capability : has_been_received_capability X := free_composite_has_been_received_capability IM finite_index has_been_received_capabilities)
           (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
           (admissible_index : composite_state IM -> index -> Prop)
           (** admissible equivocator index: this index can equivocate from given state *)
@@ -2280,7 +2314,7 @@ the newly added initial messages are safe to be received at all times.
     (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
     {index_listing : list index}
     (finite_index : Listing index_listing)
-    (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index has_been_sent_capabilities)
+    (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index has_been_sent_capabilities)
     .
 
   Existing Instance X_has_been_sent_capability.

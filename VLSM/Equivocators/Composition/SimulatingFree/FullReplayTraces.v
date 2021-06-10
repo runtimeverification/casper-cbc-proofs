@@ -940,7 +940,7 @@ Proof.
   apply ptrace_add_default_last in Hepref_pre as Hepref_pre'.
   specialize (Heqv is epref (conj Hepref_pre' His)).
   apply has_been_sent_consistency; [|assumption|].
-  { apply (composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index (equivocator_Hbs IM Hbs)).
+  { apply (free_composite_has_been_sent_capability equivocator_IM finite_index (equivocator_Hbs IM Hbs)).
   }
   apply finite_protocol_trace_from_complete_left in Hreplay_epref_pre as Hpre_replay.
   destruct Hpre_replay as [is_replay [trs_replay [Htrs_replay Hfull_replay_state_lst]]].

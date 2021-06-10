@@ -106,8 +106,8 @@ Context
   {Hdm : MessageDependencies sender A IM Hbs Hbr}
   {index_listing : list index}
   (finite_index : Listing index_listing)
-  (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
-  (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
+  (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index Hbs)
+  (X_has_been_received_capability : has_been_received_capability X := free_composite_has_been_received_capability IM finite_index Hbr)
   (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
   .
 

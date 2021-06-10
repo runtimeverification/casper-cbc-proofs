@@ -38,7 +38,7 @@ Context {message : Type}
   (proper_equivocator_descriptors := proper_equivocator_descriptors IM)
   (equivocators_free_vlsm := free_composite_vlsm equivocator_IM)
   (pre_loaded_equivocators := pre_loaded_with_all_messages_vlsm equivocators_free_vlsm)
-  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index (equivocator_Hbs IM Hbs))
+  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := free_composite_has_been_sent_capability equivocator_IM finite_index (equivocator_Hbs IM Hbs))
   .
 
 Existing Instance equivocators_free_Hbs.

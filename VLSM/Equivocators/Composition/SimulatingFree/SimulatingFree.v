@@ -582,7 +582,7 @@ Proof.
           }
           assert
             (Hbs_free : has_been_sent_capability (free_composite_vlsm equivocator_IM)).
-          { exact (composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index (equivocator_Hbs IM Hbs)).
+          { exact (free_composite_has_been_sent_capability equivocator_IM finite_index (equivocator_Hbs IM Hbs)).
           }
           apply ptrace_add_last with (f:=es) in Happ_pre.
           2:{

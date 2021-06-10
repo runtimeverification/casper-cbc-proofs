@@ -210,7 +210,7 @@ Section StrongSynchrony.
 
   Context
     (Free := free_composite_vlsm IM)
-    (composite_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hsents)
+    (composite_has_been_sent_capability : has_been_sent_capability Free := free_composite_has_been_sent_capability IM finite_index Hsents)
     .
 
   Existing Instance composite_has_been_sent_capability.

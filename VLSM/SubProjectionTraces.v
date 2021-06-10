@@ -191,7 +191,7 @@ Context
   (finite_index : Listing index_listing)
   (Free := free_composite_vlsm IM)
   (Sub_Free := free_composite_vlsm sub_IM)
-  (X_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM (free_constraint IM) finite_index has_been_sent_capabilities)
+  (X_has_been_sent_capability : has_been_sent_capability Free := free_composite_has_been_sent_capability IM finite_index has_been_sent_capabilities)
   (X := composite_vlsm IM constraint)
   (Pre := pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM))
   .
@@ -253,7 +253,7 @@ Qed.
 Local Instance Sub_Free_has_been_sent_capability
   : has_been_sent_capability Sub_Free
   :=
-  composite_has_been_sent_capability sub_IM (free_constraint sub_IM) finite_sub_index sub_has_been_sent_capabilities.
+  free_composite_has_been_sent_capability sub_IM finite_sub_index sub_has_been_sent_capabilities.
 
 Lemma finite_trace_sub_projection_empty
   (s : composite_state IM)
