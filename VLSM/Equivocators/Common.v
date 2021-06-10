@@ -9,6 +9,8 @@ From CasperCBC
     Preamble
     VLSM.Common
     .
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
 
 (** * VLSM Equivocation
 
@@ -374,12 +376,6 @@ Proof.
   assumption.
 Qed.
 
-Local Ltac unfold_transition H :=
-  ( unfold transition in H; unfold equivocator_vlsm in H
-  ; unfold Common.equivocator_vlsm in H
-  ; unfold mk_vlsm in H; unfold machine in H
-  ; unfold projT2 in H; unfold equivocator_vlsm_machine in H
-  ; unfold equivocator_transition in H).
 (* TODO: derive some some simpler lemmas about the equivocator operations,
 or a simpler way of defining the equivocator_transition
 - it's not nice to need to pick apart these cases from inside
@@ -399,7 +395,7 @@ Lemma equivocator_transition_no_equivocation_zero_descriptor
   : snd l = Existing _ 0 false.
 Proof.
   unfold is_singleton_state in Hs'.
-  unfold vtransition in Ht. unfold_transition Ht.
+  unfold_vtransition Ht.
   destruct l as (l, [sn | ei ef]); unfold snd in Ht
   ; [inversion Ht; subst; destruct s; simpl; inversion Hs'|].
   destruct Hv as [Hei _].
@@ -423,7 +419,7 @@ Lemma equivocator_transition_reflects_singleton_state
   : is_singleton_state X s' -> is_singleton_state X s.
 Proof.
   unfold is_singleton_state.
-  unfold vtransition in Ht. unfold_transition Ht.
+  unfold_vtransition Ht.
   destruct l as (l, [sn | ei ef]); unfold snd in Ht
   ; [inversion Ht; subst; destruct s; simpl; congruence|].
   destruct (le_lt_dec (S (projT1 s)) ei)
@@ -476,8 +472,8 @@ Proof.
     destruct descriptor as [sn| i is_equiv].
     + destruct Hv as [Hsn Hv]. subst om0.
       simpl in x. inversion x. subst. apply IHHbs2.
-    + unfold_transition x.
-      unfold snd in x. destruct Hv as [Hi Hv].
+    + simpl in x.
+      destruct Hv as [Hi Hv].
       destruct (le_lt_dec (S (projT1 s)) i); [lia|].
       replace (of_nat_lt l0) with (of_nat_lt Hi) in * by apply of_nat_ext.
       clear l0.
@@ -504,8 +500,8 @@ Proof.
     destruct IHHbs1 as [_ IHHbs1].
     specialize (IHHbs2 X _s om0 eq_refl JMeq_refl).
     specialize (protocol_generated X) as Hgen.
-    unfold_transition x.
-    destruct l as (l, descriptor). unfold snd in x.
+    destruct l as (l, descriptor).
+    simpl in x.
     destruct descriptor as [sn | i is_equiv].
     + destruct Hv as [Hsn Hv]. subst om0.
       inversion x. subst om.
@@ -585,13 +581,12 @@ Proof.
     dependent destruction i; [|inversion i].
     assumption.
   - destruct Ht as [[Hps [_ Hv]] Ht].
-    simpl in Ht. unfold vtransition in Ht. unfold_transition Ht.
+    simpl in Ht.
     destruct l as (l, description).
-    unfold snd in Ht.
+    unfold_vtransition Ht.
     destruct description as [sn| j is_equiv].
     + destruct Hv as [Hsn Hv]. subst om.
       inversion Ht. subst.
-      unfold equivocator_state_extend.
       destruct s as (ns, bs).
       simpl in *. destruct (to_nat i) as (ni, Hni).
       destruct (nat_eq_dec ni (S ns)); [|apply IHHbs].
@@ -694,19 +689,17 @@ Lemma existing_true_label_equivocator_state_project_not_last
   = equivocator_state_descriptor_project X s (Existing _ ni fi').
 Proof.
   destruct l as (li, ex_true). simpl in Hex_true. subst ex_true.
-  unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+  unfold_vtransition Ht.
   destruct ( le_lt_dec (S (projT1 s)) ieqvi ); [lia|].
   destruct
-    (vtransition X (fst (li, Existing X ieqvi true))
+    (vtransition X li
     (projT2 s (of_nat_lt l), oin))
     as (si'', om'').
   inversion Ht. subst. clear Ht.
-  unfold equivocator_state_descriptor_project.
-  unfold equivocator_state_project.
-  unfold equivocator_state_extend.
-  unfold equivocator_state_extend in Hni.
+  simpl.
   destruct s as (nsi', bsi').
-  unfold projT1 in Hni.
+  simpl in Hni.
+  simpl.
   destruct (le_lt_dec (S (S nsi')) ni); [lia|].
   rewrite to_nat_of_nat.
   destruct (nat_eq_dec ni (S nsi')); [lia|].
@@ -729,19 +722,16 @@ Lemma existing_false_label_equivocator_state_project_not_same
   = equivocator_state_descriptor_project X s (Existing _ ni fi').
 Proof.
   destruct l as (li, ex_false). simpl in Hex_false. subst ex_false.
-  unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+  unfold_vtransition Ht.
   destruct ( le_lt_dec (S (projT1 s)) ieqvi ); [lia|].
   destruct
-    (vtransition X (fst (li, Existing X ieqvi false))
+    (vtransition X li
     (projT2 s (of_nat_lt l), oin))
     as (si'', om'').
   inversion Ht. subst. clear Ht.
-  unfold equivocator_state_descriptor_project.
-  unfold equivocator_state_project.
   destruct s as (nsi', bsi').
-  simpl in Hieqvi, l.
-  unfold equivocator_state_update in *.
-  unfold projT1 in *.
+  simpl.
+  simpl in Hieqvi, l, Hni.
   destruct (le_lt_dec (S nsi') ni); [lia|].
   rewrite eq_dec_if_false; [reflexivity|].
   intro contra. elim Hnieqvi.

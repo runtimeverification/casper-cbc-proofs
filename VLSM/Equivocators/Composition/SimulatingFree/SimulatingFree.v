@@ -17,6 +17,9 @@ From CasperCBC
     VLSM.Plans
     .
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
 (** * VLSM Equivocators Simulating Free Composite *)
 
 Section all_equivocating.
@@ -44,11 +47,6 @@ Context {message : Type}
   (SeededX := pre_loaded_vlsm X seed)
   (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
   .
-
-Local Ltac unfold_transition  Ht :=
-  ( unfold transition, equivocator_IM, Common.equivocator_IM, equivocator_vlsm
-  , mk_vlsm, machine, projT2, equivocator_vlsm_machine, equivocator_transition
-  in Ht).
 
 Local Ltac unfold_equivocators_transition_item_project :=
 (
@@ -242,8 +240,7 @@ Proof.
     rewrite Heq_eqv. unfold equivocator_vlsm_transition_item_project.
     rewrite state_update_eq.
     destruct str_final_eqv' as (nstr_final_eqv', bstr_final_eqv').
-    unfold vtransition in Ht_tr_final_eqv.
-    unfold_transition Ht_tr_final_eqv. unfold snd in Ht_tr_final_eqv.
+    unfold_vtransition Ht_tr_final_eqv.
     destruct
       (le_lt_dec (S (projT1 (tr_final eqv))) (j_di + S (projT1 (full_replay_state eqv)))).
     * inversion Ht_tr_final_eqv. subst. clear Ht_tr_final_eqv.
@@ -455,12 +452,7 @@ Proof.
     simpl in Heqv_state_descriptors_i.
     assert (Heqv_t := Hesom').
     unfold vtransition in Hesom'. simpl in Hesom'.
-    unfold vtransition in Hesom'.
-    match type of Hesom' with
-    | (let (_, _) := ?t in _) = _ => remember t as tesom'
-    end.
-    unfold_transition Heqtesom'. unfold snd in Heqtesom'.
-    subst tesom'.
+    unfold_vtransition Hesom'.
     destruct
       (replayed_trace_from_state_correspondence
         IM Hbs index_listing finite_index seed
@@ -495,7 +487,6 @@ Proof.
     ; [lia|].
     replace (of_nat_lt l) with (of_nat_lt Heqv_merged_descriptors_i) in Hesom' by apply of_nat_ext. clear l.
     rewrite Hstate_state_i in Hesom'.
-    unfold fst in Hesom' at 1.
     specialize (equal_f_dep Hstate_final_project (eqv)) as Hstate_final_project_eqv.
     unfold equivocators_state_project in Hstate_final_project_eqv.
     unfold Common.equivocators_state_project in Hstate_final_project_eqv.
@@ -503,8 +494,9 @@ Proof.
     unfold equivocator_state_project in Hstate_final_project_eqv.
     rewrite Heqv_state_descriptors_eqv in Hstate_final_project_eqv.
     match type of Heqv_state_descriptors_i with
-    | context [projT1 ?s] => destruct s as (n_eqv_state_run_eqv, s_eqv_state_run_eqv) eqn:Heqeqv_state_run_eqv
+    | context [projT1 ?s] => remember s as eqv_state_run_eqv
     end.
+    destruct eqv_state_run_eqv as (n_eqv_state_run_eqv, s_eqv_state_run_eqv).
     simpl in Heqv_state_descriptors_i.
     destruct (le_lt_dec (S n_eqv_state_run_eqv) eqv_state_descriptors_i); [lia|].
     replace (of_nat_lt l) with (of_nat_lt Heqv_state_descriptors_i) in Hstate_final_project_eqv by apply of_nat_ext. clear l.
