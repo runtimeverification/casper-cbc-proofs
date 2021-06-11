@@ -8,6 +8,9 @@ From CasperCBC
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     .
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
 (** * VLSM Message Properties *)
 
 Section equivocator_vlsm_message_properties.
@@ -254,6 +257,209 @@ Proof.
   congruence.
 Qed.
 
+Section oracle_lifting.
+
+Context
+  selector
+  (Hselector_None : forall l s m, ~ selector m {| l:= l; input := None; destination := s; output := None |})
+  (Hselector_io : forall l1 l2 s1 s2 im om m, selector m  {| l:= l1; input := im; destination := s1; output := om |} <-> selector m  {| l:= l2; input := im; destination := s2; output := om |})
+  oracle
+  (Hdec : RelDecision oracle)
+  (Hstepwise : oracle_stepwise_props (vlsm := X) selector oracle).
+
+Definition equivocator_selector : message -> vtransition_item equivocator_vlsm -> Prop.
+Proof.
+  intros m item.
+  destruct item.
+  destruct l.
+  destruct destination.
+  exact (selector m {| l := v; destination := (v0 F1); input := input; output := output |}).
+Defined.
+
+(** We define [equivocator_oracle] for the [equivocator_vlsm] as being the oracle for any
+of the internal machines.
+*)
+Definition equivocator_oracle
+  (s : vstate equivocator_vlsm)
+  (m : message)
+  : Prop
+  :=
+  let (n, bs) := s in
+  exists i: Fin.t (S n), oracle (bs i) m.
+
+Lemma equivocator_oracle_dec
+  : RelDecision equivocator_oracle.
+Proof.
+  intros [n bs] m.
+  apply (Decision_iff
+           (P:=Exists (fun i => oracle (bs i) m) (fin_t_listing (S n)))).
+  - unfold equivocator_oracle. rewrite Exists_exists.
+    split.
+    * intros [x [_ H]];exists x;exact H.
+    * intros [i H];exists i;split;[solve[apply fin_t_full]|exact H].
+  - apply Exists_dec.
+Qed.
+
+Lemma equivocator_oracle_stepwise_props
+  : oracle_stepwise_props (vlsm := equivocator_vlsm) equivocator_selector equivocator_oracle.
+Proof.
+  destruct Hstepwise.
+  split; intros.
+  - destruct s as (n, bs). destruct H as [Hn His]. simpl in *. subst.
+    intros [j Hmbrj]. dependent destruction j; [|inversion j].
+    elim (oracle_no_inits  _ His m). assumption.
+  - unfold equivocator_oracle.
+    destruct s as (ns,bs). destruct s' as (ns', bs'). destruct l as (l, desc).
+    destruct H as [[Hs [_ Hv]] Ht].
+    
+    simpl in Hv. unfold vvalid in Hv. simpl in Hv.
+    simpl in Ht. unfold_vtransition Ht.
+    destruct desc as [sdesc | idesc fdesc].
+    + inversion Ht. subst. simpl_existT. subst. clear Ht.
+      simpl. destruct Hv as [Hisdesc Him]. subst im.
+      split.
+      * intros [ins Hir]. right.
+        destruct (to_nat ins) as (i, Hi).
+        destruct (nat_eq_dec i (S ns))
+        ; [elim (oracle_no_inits _ Hisdesc msg); assumption|].
+        assert (Hi' : i < S ns) by lia.
+        exists (of_nat_lt Hi').
+        replace (of_nat_lt Hi') with (of_nat_lt (Common.equivocator_state_extend_obligation_1 ns i Hi n)) by apply of_nat_ext.
+        assumption.
+      * intros [H | [ins Hir]]; [elim (Hselector_None l (bs F1) msg); assumption |].
+        destruct (to_nat ins) as (i, Hi) eqn:Hins.
+        assert (Hi' : i < S (S ns)) by lia.
+        exists (of_nat_lt Hi').
+        rewrite to_nat_of_nat.
+        destruct (nat_eq_dec i (S ns)); [lia|].
+        replace (of_nat_lt (Common.equivocator_state_extend_obligation_1 ns i Hi' n)) with ins; [assumption|].
+        rewrite <- (of_nat_to_nat_inv ins). rewrite Hins.
+        apply of_nat_ext.
+    + destruct Hv as [Hidesc Hv].
+      destruct (le_lt_dec  (S ns) idesc); [lia|].
+      replace (of_nat_lt l0) with (of_nat_lt Hidesc) in Ht by apply of_nat_ext. clear l0.
+      destruct (vtransition X l (bs (of_nat_lt Hidesc), im)) eqn:Htx.
+      specialize
+        (oracle_step_update l (bs (of_nat_lt Hidesc)) im s o).
+      spec oracle_step_update.
+      { repeat split
+        ; [..| eexists _; apply (pre_loaded_with_all_messages_message_protocol_prop X)|assumption|assumption].
+        apply (preloaded_equivocator_state_project_protocol_state X _ Hs).
+      }
+      spec oracle_step_update msg.
+      simpl in *.
+      destruct fdesc; inversion Ht; subst; clear Ht; simpl_existT; subst; split.
+      * intros [i Hbri]. destruct (to_nat i) as (j, Hj) eqn:Heqi.
+        destruct (nat_eq_dec j (S ns)); [|right; eexists _; apply Hbri].
+        subst.
+        apply oracle_step_update in Hbri.
+        unfold to_nat. destruct (nat_eq_dec 0 (S ns)); [lia|].
+        destruct Hbri as [H | Hbri]; [| right; eexists _; apply Hbri].
+        left. revert H. apply Hselector_io.
+      * apply proj2 in oracle_step_update.
+        intros [Heq_im | [ins Hbri]].
+        -- rewrite Hselector_io with (l2 := l) (s2 := s) in Heq_im.
+          specialize (oracle_step_update (or_introl Heq_im)).
+          assert (Hi' : S ns < S (S ns)) by lia.
+          exists (of_nat_lt Hi').
+          rewrite to_nat_of_nat.
+          destruct (nat_eq_dec (S ns) (S ns)); [|lia].
+          assumption.
+        -- pose proof (of_nat_to_nat_inv ins) as Hins. rewrite <- Hins in *.
+          destruct (eq_dec (of_nat_lt (proj2_sig (to_nat ins))) ((of_nat_lt Hidesc))).
+          ++ rewrite e in *.
+            specialize (oracle_step_update (or_intror Hbri)).
+            assert (Hi' : S ns < S (S ns)) by lia.
+            exists (of_nat_lt Hi').
+            rewrite to_nat_of_nat.
+            destruct (nat_eq_dec (S ns) (S ns)); [|lia].
+            assumption.
+          ++ destruct (to_nat ins) eqn:Heq_to_nat_ins.
+            simpl in *. subst ins. clear Heq_to_nat_ins.
+            assert (l0' : x < S (S ns)) by lia.
+            exists (of_nat_lt l0').
+            rewrite to_nat_of_nat.
+            destruct (nat_eq_dec x (S ns)); [lia|].
+            replace (of_nat_lt (Common.equivocator_state_extend_obligation_1 ns x l0' n0))
+              with (of_nat_lt l0)
+              by apply of_nat_ext.
+            assumption.
+      * intros [i Hbri].
+        destruct (eq_dec (of_nat_lt Hidesc) i)
+        ; [| right; eexists _; apply Hbri].
+        apply oracle_step_update in Hbri.
+        destruct Hbri as [H | Hbri]; [|right; eexists _; apply Hbri].
+        left. revert H. apply Hselector_io.
+      * apply proj2 in oracle_step_update.
+        intros [Heq_im | [ins Hbri]].
+        -- rewrite Hselector_io with (l2 := l) (s2 := s) in Heq_im.
+          specialize (oracle_step_update (or_introl Heq_im)).
+          exists (of_nat_lt Hidesc).
+          rewrite eq_dec_if_true by reflexivity.
+          assumption.
+        -- pose proof (of_nat_to_nat_inv ins) as Hins. rewrite <- Hins in *.
+          destruct (eq_dec ((of_nat_lt Hidesc))  (of_nat_lt (proj2_sig (to_nat ins)))).
+          ++ rewrite <- e in *.
+            specialize (oracle_step_update (or_intror Hbri)).
+            exists (of_nat_lt Hidesc).
+            rewrite eq_dec_if_true by reflexivity.
+            assumption.
+          ++ destruct (to_nat ins) eqn:Heq_to_nat_ins.
+            simpl in *. subst ins. clear Heq_to_nat_ins.
+            exists (of_nat_lt l0).
+            rewrite eq_dec_if_false by assumption.
+            assumption.
+Qed.
+
+End oracle_lifting.
+
+Section has_been_received_lifting.
+
+(** ** Lifting the [has_been_received_capability]
+*)
+
+
+Context
+  {Hbr : has_been_received_capability X}
+  .
+
+(** We define [has_been_received] for the [equivocator_vlsm] as being received by any
+of the internal machines.
+*)
+Definition equivocator_has_been_received  := equivocator_oracle (has_been_received X).
+
+Global Instance equivocator_has_been_received_dec
+  : RelDecision equivocator_has_been_received
+  := equivocator_oracle_dec (has_been_received X) _.
+
+Lemma equivocator_has_been_received_stepwise_props
+  : has_been_received_stepwise_props (vlsm := equivocator_vlsm) equivocator_has_been_received.
+Proof.
+  assert (Hreceived_stepwise : oracle_stepwise_props (field_selector input) (has_been_received X)).
+  { destruct Hbr.  apply stepwise_props_from_trace; assumption. }
+  specialize (equivocator_oracle_stepwise_props (field_selector input)) as Hlift.
+  spec Hlift. { intros. simpl. intro. congruence. }
+  spec Hlift. { intros. simpl. split; exact id. }
+  specialize (Hlift _ Hreceived_stepwise).
+  match type of Hlift with
+  | oracle_stepwise_props ?s _ => replace s with (field_selector (T := type equivocator_vlsm) input) in Hlift
+  end
+  ; [assumption|].
+  apply functional_extensionality_dep_good. intro msg.
+  apply functional_extensionality_dep_good. intro item; destruct item.
+  destruct l. destruct destination. simpl. reflexivity.
+Qed.
+
+(** Finally we define the [has_been_received_capability] for the [equivocator_vlsm].
+*)
+Definition equivocator_has_been_received_capability
+  : has_been_received_capability equivocator_vlsm
+  := has_been_received_capability_from_stepwise (vlsm := equivocator_vlsm)
+    equivocator_has_been_received_dec
+    equivocator_has_been_received_stepwise_props.
+
+End has_been_received_lifting.
+
 Section has_been_sent_lifting.
 
 (** ** Lifting the [has_been_sent_capability]
@@ -264,194 +470,41 @@ Context
   {Hbs : has_been_sent_capability X}
   .
 
+
 (** We define [has_been_sent] for the [equivocator_vlsm] as being sent by any
 of the internal machines.
 *)
-Definition equivocator_has_been_sent
-  (s : vstate equivocator_vlsm)
-  (m : message)
-  : Prop
-  :=
-  let (n, bs) := s in
-  exists i: Fin.t (S n), has_been_sent X (bs i) m.
+Definition equivocator_has_been_sent  := equivocator_oracle (has_been_sent X).
 
 Global Instance equivocator_has_been_sent_dec
-  : RelDecision equivocator_has_been_sent.
+  : RelDecision equivocator_has_been_sent
+  := equivocator_oracle_dec (has_been_sent X) _.
+
+Lemma equivocator_has_been_sent_stepwise_props
+  : has_been_sent_stepwise_props (vlsm := equivocator_vlsm) equivocator_has_been_sent.
 Proof.
-  intros [n bs] m.
-  apply (Decision_iff
-           (P:=Exists (fun i => has_been_sent X (bs i) m) (fin_t_listing (S n)))).
-  - unfold equivocator_has_been_sent. rewrite Exists_exists.
-    split.
-    * intros [x [_ H]];exists x;exact H.
-    * intros [i H];exists i;split;[solve[apply fin_t_full]|exact H].
-  - apply Exists_dec.
+  assert (Hsent_stepwise : oracle_stepwise_props (field_selector output) (has_been_sent X)).
+  { destruct Hbs.  apply stepwise_props_from_trace; assumption. }
+  specialize (equivocator_oracle_stepwise_props (field_selector output)) as Hlift.
+  spec Hlift. { intros. simpl. intro. congruence. }
+  spec Hlift. { intros. simpl. split; exact id. }
+  specialize (Hlift _ Hsent_stepwise).
+  match type of Hlift with
+  | oracle_stepwise_props ?s _ => replace s with (field_selector (T := type equivocator_vlsm) output) in Hlift
+  end
+  ; [assumption|].
+  apply functional_extensionality_dep_good. intro msg.
+  apply functional_extensionality_dep_good. intro item; destruct item.
+  destruct l. destruct destination. simpl. reflexivity.
 Qed.
 
-(**
-The [equivocator_vlsm] has the [selected_messages_consistency_prop]
-for [output] messages, meaning that if a message is sent in a trace leading
-to state s, then it must be seen in all traces.
-*)
-Lemma equivocator_has_been_sent_consistency
-  (s : vstate equivocator_vlsm)
-  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
-  (m : message)
-  : selected_messages_consistency_prop equivocator_vlsm (field_selector output) s m.
-Proof.
-  split.
-  - intros [bis [btr [Hbtr' Hsome]]].
-    pose proof (ptrace_forget_last Hbtr') as Hbtr.
-    pose proof (ptrace_get_last Hbtr') as Hlast.
-
-    destruct (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Hbtr) _ Hsome)
-      as [j [i [_ [_ [trX [Hproject Hsomex]]]]]].
-    destruct j as [sj | j fj];
-      [solve[rewrite equivocator_vlsm_trace_project_on_new_machine in Hproject
-      ; inversion Hproject; subst; inversion Hsomex]|].
-    assert (Hntr : btr <> []) by (intro contra; subst; inversion Hsome).
-    specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ _ Hntr (proj1 Hbtr') _ _ _ _ Hproject)
-      as HpreX.
-    simpl in *.
-    destruct HpreX as [Hj Hi].
-    assert (Hsj : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 s (of_nat_lt Hj))).
-    { simpl.  simpl in *.
-      specialize
-        (finite_ptrace_last_pstate (pre_loaded_with_all_messages_vlsm equivocator_vlsm) _ _  (proj1 Hbtr))
-        as Hpbs.
-      simpl in *.
-      rewrite Hlast in Hpbs.
-      apply (preloaded_equivocator_state_project_protocol_state _ _ Hpbs).
-    }
-    assert (Hall : selected_message_exists_in_all_preloaded_traces X (field_selector output) (projT2 s (of_nat_lt Hj)) m).
-    { apply has_been_sent_consistency; [assumption|assumption|].
-      destruct i as [sn | i fi].
-      - exists sn, trX.
-        split;assumption.
-      - destruct Hi as [Hi [HtrX HinitX]].
-        exists (projT2 bis (of_nat_lt Hi)). exists trX.
-        split;[|assumption].
-        split;[assumption|].
-        apply HinitX. apply Hbtr.
-    }
-    clear -Hall MachineDescriptor equivocator_vlsm.
-    intros bis btr Hbtr.
-    destruct
-      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ _ (proj1 Hbtr) _ Hj false)
-      as [trX [di [Hproject Hdi]]].
-    apply
-      (equivocator_vlsm_trace_project_output_reflecting  _ _ _ _ Hproject m).
-    destruct di as [sn | i fi].
-    + apply (Hall _ _ Hdi).
-    + destruct Hdi as [Hi [HtrX HinitX]].
-      specialize (HinitX (proj2 Hbtr)).
-      apply (Hall _ _ (conj HtrX HinitX)).
-  - intro Hall.
-    destruct Hs as [om Hs].
-    apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
-    destruct Hs as [Hinit | [is [tr [Htr  _]]]]
-    ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit (field_selector output) m)
-      ; assumption|].
-    exists is. exists tr. exists Htr.
-    apply (Hall _ _ Htr).
-Qed.
-
-(**
-[equivocator_has_been_sent] has [proper_sent] property.
-*)
-Lemma equivocator_proper_sent
-  (s : vstate equivocator_vlsm)
-  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
-  (m : message)
-  : has_been_sent_prop equivocator_vlsm equivocator_has_been_sent s m.
-Proof.
-  split.
-  - intro Hbbs. intro start; intros.
-    destruct s as (n, bs).
-    destruct Hbbs as [j Hjbs].
-    apply (proper_sent X) in Hjbs
-    ; [|apply (preloaded_equivocator_state_project_protocol_state _ _ Hs j)].
-    specialize (preloaded_equivocator_vlsm_project_protocol_trace _ start _ tr (proj1 Htr)) as Hpre.
-    assert (Hj := of_nat_to_nat_inv j).
-    simpl in *.
-    destruct (to_nat j) as [nj Hnj]. simpl in Hj.
-    specialize (Hpre nj Hnj false).
-    destruct Hpre as [trX [di [Hproject Hdi]]].
-    destruct di as [sn | i fi].
-    + rewrite Hj in Hdi.
-      spec Hjbs sn trX Hdi.
-      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ nj false) (NewMachine _ sn)
-      ; assumption.
-    + destruct Hdi as [Hi [HtrX HinitX]].
-      specialize (HinitX (proj2 Htr)).
-      rewrite Hj in HtrX.
-      spec Hjbs (projT2 start (of_nat_lt Hi)) trX (conj HtrX HinitX).
-      apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ nj false) (Existing _ i fi)
-      ; assumption.
-  - intro Hbbs. assert (Hbbs' := Hbbs).
-    destruct Hs as [om Hs].
-    apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
-    destruct Hs as [Hinit | [is [tr [Htr _]]]]
-    ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit (field_selector output) m)
-      ; assumption|].
-    spec Hbbs is tr Htr.
-    destruct
-      (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (ptrace_forget_last (proj1 Htr)) _ Hbbs)
-      as [j [i [_ [_ [trX [HtrX Hjbs]]]]]].
-    assert (Hntr : tr <> []) by (intro contra; subst; inversion Hbbs).
-    destruct j as [sj | j fj]
-    ; [rewrite equivocator_vlsm_trace_project_on_new_machine in HtrX
-      ; inversion HtrX; subst; inversion Hjbs
-      |].
-    specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ _ Hntr (proj1 Htr) _ _ _ _ HtrX)
-      as HpreX.
-    simpl in *.
-    destruct HpreX as [Hj Hi].
-    unfold equivocator_has_been_sent.
-    destruct s as (ns, bs).
-    exists (of_nat_lt Hj).
-    assert (Hbsj : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (bs (of_nat_lt Hj))).
-    { apply ptrace_last_pstate in Htr as Hpbs.
-      apply (preloaded_equivocator_state_project_protocol_state _ _ Hpbs).
-    }
-    apply (proper_sent X); [assumption|].
-    apply has_been_sent_consistency; [assumption|assumption|].
-    destruct i as [sn | i fi].
-    + exists sn. exists trX. exists Hi. assumption.
-    + destruct Hi as [Hi [Htrx HinitX]]. specialize (HinitX (proj2 Htr)).
-      exists (projT2 is (of_nat_lt Hi)).
-      exists trX. exists (conj Htrx HinitX).
-      assumption.
-Qed.
-
-(**
-[equivocator_has_been_sent] has [proper_not_sent] property.
-*)
-Lemma equivocator_proper_not_sent
-  (s : vstate equivocator_vlsm)
-  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm equivocator_vlsm) s)
-  (m : message)
-  (equivocator_has_not_been_sent := fun s m => ~ equivocator_has_been_sent s m)
-  : has_not_been_sent_prop equivocator_vlsm equivocator_has_not_been_sent s m.
-Proof.
-  apply has_been_sent_consistency_proper_not_sent.
-  - typeclasses eauto.
-  - apply equivocator_proper_sent. assumption.
-  - apply equivocator_has_been_sent_consistency. assumption.
-Qed.
-
-(** Finally we define the [has_been_sent_capability] for the [equivocator_vlsm].
+(** Finally we define the [has_been_received_capability] for the [equivocator_vlsm].
 *)
 Definition equivocator_has_been_sent_capability
   : has_been_sent_capability equivocator_vlsm
-  :=
-  {|
-    has_been_sent := equivocator_has_been_sent;
-    proper_sent := equivocator_proper_sent;
-    proper_not_sent := equivocator_proper_not_sent
-  |}.
+  := has_been_sent_capability_from_stepwise (vlsm := equivocator_vlsm)
+    equivocator_has_been_sent_dec
+    equivocator_has_been_sent_stepwise_props.
 
 End has_been_sent_lifting.
 
@@ -563,14 +616,18 @@ Qed.
 Note that we can reuse the consistency property proved above since
 [computable_sent_messages] for <<X>> implies [has_been_sent_capability].
 *)
-Definition equivocator_computable_sent_messages
+Program Definition equivocator_computable_sent_messages
   : computable_sent_messages equivocator_vlsm
   :=
   {|
     sent_messages_fn := equivocator_sent_messages_fn;
     sent_messages_full := equivocator_sent_messages_full;
-    sent_messages_consistency := @equivocator_has_been_sent_consistency Hbeen_sent_X
   |}.
+Next Obligation.
+  apply has_been_sent_consistency; [| assumption].
+  apply (equivocator_has_been_sent_capability (Hbs := Hbeen_sent_X)).
+Defined.
+
 
 End computable_sent_messages_lifting.
 

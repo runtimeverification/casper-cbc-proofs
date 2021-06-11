@@ -1,7 +1,7 @@
 From Coq Require Import List ListSet Streams ProofIrrelevance Arith.Plus Arith.Minus FinFun Rdefinitions.
 Import ListNotations.
 
-From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.Measurable VLSM.Decisions VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable VLSM.Decisions VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
 Require Import Coq.Program.Tactics.
 
@@ -1784,6 +1784,17 @@ Section Composite.
     composite_initial_message_prop IM m ->
     sender m = None.
 
+  Lemma no_additional_equivocations_constraint_dec
+    (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
+    : RelDecision (no_additional_equivocations_constraint Free).
+  Proof.
+    intros l (s, om).
+    destruct om; [|left; exact I].
+    apply no_additional_equivocations_dec.
+    apply (composite_decidable_initial_message IM finite_index).
+    assumption.
+  Qed.
+
   Context
         (has_been_received_capabilities : forall i : index, (has_been_received_capability (IM i)))
         .
@@ -1814,6 +1825,115 @@ Section Composite.
     exists (j : index),
     j <> (A v) /\
     equivocating_wrt v j (s (A v)) (s j).
+  
+  Lemma initial_state_is_not_equivocating
+    (s : composite_state IM)
+    (Hs : composite_initial_state_prop IM s)
+    (v : validator)
+    : ~ is_equivocating_statewise s v.
+  Proof.
+    intros [j [Hj [m [Hsender [Hnbs Hrcv]]]]].
+    specialize (Hs j).
+    assert (Hs_pre : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM j)) (s j)).
+    { apply initial_is_protocol. assumption. }
+    apply proper_received in Hrcv; [|assumption]. 
+    specialize (Hrcv (s j) []).
+    spec Hrcv. { split; [|assumption]. constructor. assumption. }
+    inversion Hrcv.
+  Qed.
+
+  Class known_equivocators_capability
+    (globally_known_equivocators : composite_state IM -> set validator)
+    :=
+    { known_equivocators_nodup :
+      forall s, NoDup (globally_known_equivocators s)
+    ; known_equivocators_transition_no_sender :
+        forall
+          l s iom s' oom,
+          composite_transition IM l (s, iom) = (s', oom) ->
+          option_initial_message_prop (sign := composite_sig IM) iom ->
+          set_eq (globally_known_equivocators s') (globally_known_equivocators s)
+    ; known_equivocators_exhibit_message_equivocation :
+      forall s v,
+        In v (globally_known_equivocators s) -> is_equivocating_statewise s v
+    }.
+
+  Section known_equivocators_properties.
+
+  Context 
+    (globally_known_equivocators : composite_state IM -> set validator)
+    (Hke : known_equivocators_capability globally_known_equivocators)
+    .
+
+  Lemma known_equivocators_initial_state
+    (s : composite_state IM)
+    (His : composite_initial_state_prop IM s)
+    : globally_known_equivocators s = [].
+  Proof.
+    specialize (known_equivocators_exhibit_message_equivocation s) as Heqv.
+    destruct (globally_known_equivocators s); [reflexivity|].
+    specialize (Heqv v).
+    spec Heqv. { left. reflexivity. }
+    apply initial_state_is_not_equivocating with (v := v) in His.
+    contradiction.
+  Qed.
+
+  Context
+    {ValMeasurable : Measurable validator}
+    {EqDecision : EqDecision validator}.
+
+  Definition globally_known_equivocators_weight
+    (s : composite_state IM)
+    : R
+    :=
+    sum_weights (globally_known_equivocators s).
+
+  Lemma initial_state_equivocators_weight
+    (s : composite_state IM)
+    (Hs : composite_initial_state_prop IM s)
+    : globally_known_equivocators_weight s = 0%R.
+  Proof.
+    apply known_equivocators_initial_state in Hs.
+    unfold globally_known_equivocators_weight.
+    rewrite Hs. reflexivity.
+  Qed.
+
+  Lemma composite_transition_None_equivocators_weight
+    l s s' oom
+    : composite_transition IM l (s, None) = (s', oom) ->
+      globally_known_equivocators_weight s' = globally_known_equivocators_weight s.
+  Proof.
+    intro Ht.
+    specialize (known_equivocators_transition_no_sender _ _ _ _ _ Ht) as Heqv.
+    spec Heqv. { exact I. }
+    apply
+      (set_eq_nodup_sum_weight_eq
+        (globally_known_equivocators s')
+        (globally_known_equivocators s)
+      )
+    ; [..|assumption]
+    ; apply known_equivocators_nodup.
+  Qed.
+
+  Lemma composite_transition_initial_message_equivocators_weight
+    l s im s' oom
+    : composite_transition IM l (s, Some im) = (s', oom) ->
+      composite_initial_message_prop IM im ->
+      globally_known_equivocators_weight s' = globally_known_equivocators_weight s.
+  Proof.
+    intros Ht Him.
+    specialize (known_equivocators_transition_no_sender _ _ _ _ _ Ht Him) as Heqv.
+    apply
+      (set_eq_nodup_sum_weight_eq
+        (globally_known_equivocators s')
+        (globally_known_equivocators s)
+      )
+    ; [..|assumption]
+    ; apply known_equivocators_nodup.
+  Qed.
+
+  End known_equivocators_properties.
+
 
   (** An alternative definition for detecting equivocation in a certain state,
       which checks if for every [protocol_trace] there exists equivocation
@@ -1964,6 +2084,81 @@ Section Composite.
       assumption.
   Qed.
      (* end hide *)
+
+(**
+*** Composite No-Equivocation Invariants
+
+A VLSM composition whose constraint substumes the [no_equivocations] constraint
+and also supports [has_been_recevied] (or [has_been_observed]) obeys an
+invariant that any message that tests as [has_been_received]
+(resp. [has_been_observed]) in a state also tests as [has_been_sent]
+in the same state.
+ *)
+Section CompositeNoEquivocationInvariants.
+  Context
+    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
+    (X := composite_vlsm IM constraint)
+    (Hsubsumed: constraint_subsumption IM constraint (no_equivocations Free))
+  .
+
+  Definition composite_observed_were_sent_or_initial (s: state) : Prop :=
+    forall msg, composite_has_been_observed s msg -> composite_has_been_sent s msg \/ composite_initial_message_prop IM msg.
+
+  Lemma composite_observed_were_sent_initial s:
+    composite_initial_state_prop IM s ->
+    composite_observed_were_sent_or_initial s.
+  Proof.
+    intros Hinitial msg Hsend.
+    elim (oracle_no_inits (vlsm := Free) has_been_observed_stepwise_props s Hinitial msg).
+    assumption.
+  Qed.
+
+  Lemma composite_observed_were_sent_preserved l s im s' om:
+    protocol_transition X l (s,im) (s',om) ->
+    composite_observed_were_sent_or_initial s ->
+    composite_observed_were_sent_or_initial s'.
+  Proof.
+    intros Hptrans Hprev msg Hobs.
+    specialize (Hprev msg).
+    assert (Hpre_trans : protocol_transition (pre_loaded_with_all_messages_vlsm Free) l (s, im) (s', om)).
+    { revert Hptrans.
+      apply VLSM_incl_protocol_transition.
+      apply VLSM_incl_trans with (composite_vlsm_machine IM (free_constraint IM)).
+      - apply constraint_free_incl.
+      - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
+    }
+    specialize (oracle_step_update has_been_observed_stepwise_props _ _ _ _ _ Hpre_trans msg) as Hstep.
+    apply Hstep in Hobs.
+    simpl in Hobs.
+    specialize (oracle_step_update (has_been_sent_stepwise_from_trace free_composite_has_been_sent_capability) _ _ _ _ _ Hpre_trans msg) as Hrew.
+    rewrite Hrew.
+    destruct Hptrans as [[_ [_ [_ Hctr]]] _].
+    apply Hsubsumed in Hctr.
+    destruct Hobs as [[|]|].
+    - (* by [no_equivocations], the incoming message [im] was previously sent *)
+      rewrite H in Hctr.
+      destruct Hctr; [|right; assumption].
+      left. right. assumption.
+    - left. left. assumption.
+    - specialize (Hprev H).
+      destruct Hprev as [Hprev|Hprev]; [|right; assumption].
+      left. right. assumption.
+  Qed.
+
+  Lemma composite_observed_were_sent_invariant s:
+    protocol_state_prop X s ->
+    composite_observed_were_sent_or_initial s.
+  Proof.
+    intro Hproto.
+    induction Hproto using protocol_state_prop_ind.
+    - intros msg Hsend.
+      elim (oracle_no_inits (vlsm := Free) has_been_observed_stepwise_props s Hs msg).
+      assumption.
+    - apply (composite_observed_were_sent_preserved _ _ _ _ _ Ht). assumption.
+  Qed.
+
+End CompositeNoEquivocationInvariants.
+
 End Composite.
 
 Section cannot_resend_message.

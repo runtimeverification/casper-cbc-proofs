@@ -42,6 +42,7 @@ Class MessageDependencies
   ; initial_message_not_dependent (m : message)
       : composite_initial_message_prop IM m -> message_dependencies m = []
   ; sender_safety :  sender_strong_nontriviality_prop IM A sender
+  ; no_sender_for_initial_message : no_sender_for_initial_message_prop IM sender
   ; message_dependencies_characterization (m : message)
       : forall
         (v : validator)
@@ -110,6 +111,20 @@ Context
   (X_has_been_received_capability : has_been_received_capability X := free_composite_has_been_received_capability IM finite_index Hbr)
   (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
   .
+
+Lemma has_been_sent_sender_strong_nontriviality
+  v s m
+  (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM (A v))) s)
+  (Hsent : has_been_sent (IM (A v)) s m)
+  : sender m = Some v.
+Proof.
+  apply proper_sent in Hsent; [|assumption].
+  apply protocol_state_has_trace in Hs.
+  destruct Hs as [is [tr Htr]]. specialize (Hsent is tr Htr).
+  apply finite_protocol_trace_init_to_forget_last in Htr.
+  specialize (can_emit_from_protocol_trace _ is m tr Htr Hsent) as Hemit.
+  apply (sender_safety sender A IM Hbs Hbr _ _ Hemit).
+Qed.
 
 Existing Instance X_has_been_observed_capability.
 

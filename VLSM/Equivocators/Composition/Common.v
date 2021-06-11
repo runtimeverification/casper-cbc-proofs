@@ -45,6 +45,8 @@ Context {message : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
+  (Hbr : forall i : index, has_been_received_capability (IM i))
+  (Hbo := fun i => has_been_observed_capability_from_sent_received (IM i))
   {i0 : Inhabited index}
   (X := free_composite_vlsm IM)
   .
@@ -55,6 +57,14 @@ Definition equivocator_IM
   :=
   equivocator_vlsm (IM i).
 
+Definition equivocator_Hbr
+  (i : index)
+  :  has_been_received_capability (equivocator_IM i).
+Proof.
+  unfold equivocator_IM.
+  apply equivocator_has_been_received_capability. apply Hbr.
+Defined.
+
 Definition equivocator_Hbs
   (i : index)
   :  has_been_sent_capability (equivocator_IM i).
@@ -62,6 +72,13 @@ Proof.
   unfold equivocator_IM.
   apply equivocator_has_been_sent_capability. apply Hbs.
 Defined.
+
+Definition equivocator_Hbo
+  (i : index)
+  :  has_been_observed_capability (equivocator_IM i)
+  := has_been_observed_capability_from_sent_received
+    (Hbs := equivocator_Hbs i) (Hbr := equivocator_Hbr i) (equivocator_IM i). 
+
 
 Existing Instance is_equivocating_state_dec.
 
