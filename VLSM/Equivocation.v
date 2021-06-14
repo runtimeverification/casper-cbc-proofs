@@ -2440,10 +2440,27 @@ Section has_been_received_in_state.
     exists (s0 : state) (lbl : label) (tr : list transition_item),
       protocol_state_prop X s0 /\
       vvalid X lbl (s0, Some m) /\
-      finite_protocol_trace_from X (fst (vtransition X lbl (s0, Some m))) tr (*/\
-      finite_trace_last s1 tr = s1*)
+      finite_protocol_trace_from X (fst (vtransition X lbl (s0, Some m))) tr /\
+      finite_trace_last s1 tr = s1
   .
   Proof.
+    intros Hpsp Hhbr.
+    Search protocol_state_prop "trace".
+    Check protocol_state_has_trace.
+    pose proof (Hetr := protocol_state_has_trace _ _ Hpsp).
+    destruct Hetr as [ist [tr Hetr]].
+    apply proper_received in Hhbr.
+    2: { apply pre_loaded_with_all_messages_protocol_state_prop.
+         apply Hpsp.
+    }
+
+    unfold selected_message_exists_in_all_preloaded_traces in Hhbr.
+    unfold specialized_selected_message_exists_in_all_traces in Hhbr.
+    specialize (Hhbr ist tr).
+    unfold finite_protocol_trace_init_to in Hhbr.
+    (* now I want [specialize Hhbr Hetr] but I need to convert the protocol trace
+       to preloaded *)
+    Search finite_protocol_trace_from_to pre_loaded_with_all_messages_vlsm.
   Abort.
   
     
