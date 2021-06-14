@@ -2424,3 +2424,30 @@ Section has_been_sent_irrelevance.
   Qed.
 
 End has_been_sent_irrelevance.
+
+Section has_been_received_in_state.
+
+  Context
+    {message : Type}
+    (X : VLSM message)
+    (Hbr : has_been_received_capability X)
+  .
+
+  
+  Lemma has_been_received_in_state s1 m:
+    protocol_state_prop X s1 ->
+    has_been_received X s1 m ->
+    exists (s0 : state) (lbl : label) (tr : list transition_item),
+      protocol_state_prop X s0 /\
+      vvalid X lbl (s0, Some m) /\
+      finite_protocol_trace_from X (fst (vtransition X lbl (s0, Some m))) tr (*/\
+      finite_trace_last s1 tr = s1*)
+  .
+  Proof.
+  Abort.
+  
+    
+    
+    
+  
+End has_been_received_in_state.

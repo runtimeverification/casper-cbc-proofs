@@ -2113,6 +2113,8 @@ Section composition.
         contradiction.
   Qed.
 
+  Check has_been_received.
+  Locate has_been_received.
   Print finite_protocol_trace.
   Search trace_has_message.
   Lemma floating_around_implies_sent st s component tr:
