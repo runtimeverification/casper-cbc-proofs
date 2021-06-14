@@ -456,7 +456,6 @@ Context
     exists mi', latest_message_from m i = Some mi'.
   Proof.
     apply get_maximal_element_some with (P := fun x => True).
-    apply something_pretentious.
     apply Forall_forall. intuition.
     destruct Hsome as [mi Hmi].
     
@@ -683,19 +682,6 @@ Context
       intuition.
       apply something_pretentious.
       rewrite Forall_forall. intros. intuition.
-      intros a b Hab.
-      destruct Hab as [Hina Hinb].
-      rewrite <- elem_of_list_In in Hina, Hinb.
-      rewrite elem_of_elements in Hina, Hinb.
-      apply elem_of_filter in Hina.
-      apply elem_of_filter in Hinb.
-      rewrite <- Is_true_iff_eq_true in Hina, Hinb.
-      rewrite bool_decide_eq_true in Hina, Hinb.
-      apply non_equiv_compare with (u := u).
-      intuition congruence.
-      rewrite <- HdownSetCorrect in Hina, Hinb.
-      intuition.
-      intuition congruence.
       apply elem_of_list_In.
       apply elem_of_elements.
       apply elem_of_filter.

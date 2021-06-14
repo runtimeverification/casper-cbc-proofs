@@ -688,7 +688,6 @@ Proof.
 Qed.
 
 Lemma get_maximal_element_correct 
-  (Htotal : forall a b, In a l /\ In b l -> comparable preceeds a b)
   (a max : A)
   (Hina : In a l)
   (Hmax : get_maximal_element = Some max) :
@@ -700,8 +699,6 @@ Proof.
   specialize (Htop max a contra).
   
   assert (Hinmax: In max l) by (apply maximal_element_in; intuition).
-  specialize (Htotal max a).
-  spec Htotal. intuition.
   assert (Hinatop : In a (top_sort l)) by (apply Hseteq; intuition). 
   apply in_split in Hinatop.
   destruct Hinatop as [prefA [sufA HeqA]].
