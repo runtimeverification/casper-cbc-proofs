@@ -2445,6 +2445,27 @@ Proof.
       exact H3.
 Qed.
 
+Lemma preloaded_weaken_finite_protocol_trace_from_to
+      {message : Type} (X : VLSM message) (from to : state) (tr : list transition_item) :
+  finite_protocol_trace_from_to X from to tr ->
+  finite_protocol_trace_from_to (pre_loaded_with_all_messages_vlsm X) from to tr.
+Proof.
+  generalize dependent from.
+  induction tr; intros from Hfptf.
+  - inversion Hfptf. subst.
+    apply (@finite_ptrace_from_to_empty _ (pre_loaded_with_all_messages_vlsm X)).
+    destruct H as [om H]. exists om.
+    apply preloaded_weaken_protocol_prop.
+    exact H.
+  - simpl.
+    inversion Hfptf. subst. clear Hfptf.
+    apply (@finite_ptrace_from_to_extend _ (pre_loaded_with_all_messages_vlsm X)).
+    + auto.
+    + apply (@preloaded_weaken_protocol_transition _ X).
+      exact H4.
+Qed.
+
+
 Section has_been_received_in_state.
 
   Context
@@ -2478,6 +2499,11 @@ Section has_been_received_in_state.
     unfold specialized_selected_message_exists_in_all_traces in Hhbr.
     specialize (Hhbr ist tr).
     unfold finite_protocol_trace_init_to in Hhbr.
+    unfold finite_protocol_trace_init_to in Hetr.
+    destruct Hetr as [Hfptf Hisp].
+    Locate finite_protocol_trace_from_to.
+    unfold finite_protocol_trace_from_to in Hfptf.
+    apply preloaded_weaken_finite_protocol_trace_from in Hfptf.
     (* now I want [specialize Hhbr Hetr] but I need to convert the protocol trace
        to preloaded *)
     Search protocol_transition pre_loaded_with_all_messages_vlsm.
