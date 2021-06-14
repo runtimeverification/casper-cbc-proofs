@@ -2425,6 +2425,26 @@ Section has_been_sent_irrelevance.
 
 End has_been_sent_irrelevance.
 
+Lemma preloaded_weaken_finite_protocol_trace_from
+      {message : Type} (X : VLSM message) (from : state) (tr : list transition_item) :
+  finite_protocol_trace_from X from tr ->
+  finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm X) from tr.
+Proof.
+  generalize dependent from.
+  induction tr; intros from Hfptf.
+  - apply (@finite_ptrace_empty _ (pre_loaded_with_all_messages_vlsm X)).
+    inversion Hfptf. subst.
+    destruct H as [om H]. exists om.
+    apply preloaded_weaken_protocol_prop.
+    exact H.
+  - simpl.
+    inversion Hfptf. subst. clear Hfptf.
+    apply (@finite_ptrace_extend _ (pre_loaded_with_all_messages_vlsm X)).
+    + auto.
+    + apply (@preloaded_weaken_protocol_transition _ X).
+      exact H3.
+Qed.
+
 Section has_been_received_in_state.
 
   Context
@@ -2460,6 +2480,7 @@ Section has_been_received_in_state.
     unfold finite_protocol_trace_init_to in Hhbr.
     (* now I want [specialize Hhbr Hetr] but I need to convert the protocol trace
        to preloaded *)
+    Search protocol_transition pre_loaded_with_all_messages_vlsm.
     Search finite_protocol_trace_from_to pre_loaded_with_all_messages_vlsm.
   Abort.
   
