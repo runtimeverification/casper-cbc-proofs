@@ -788,10 +788,6 @@ Context
       (Hinu : u ∈ (composite_observed s)) :
       v ∈ (composite_observed s).
     Proof.
-      destruct Hpr as [om Hpr].
-      induction Hpr.
-      - 
-      - intuition.
     Admitted.
     
     Definition is_equivocating_from_state
