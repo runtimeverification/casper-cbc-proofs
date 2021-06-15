@@ -1677,10 +1677,16 @@ Section composition.
     specialize (Hhbr si tr).
     
     pose proof (Hp := (VLSM_incl_finite_protocol_trace _ _ (vlsm_incl_pre_loaded_with_all_messages_vlsm free_composite_elmo))). simpl in Hp.
-    specialize (Hp _ _ Htrace).
-    specialize (Hhbr Hp Hlast). clear Hp Hlast.
+    unfold finite_protocol_trace in Hp.
+    pose proof (Htrace' := finite_protocol_trace_from_to_forget_last _ _ _ _ Htrace).
+    specialize (Hp _ _ (conj Htrace' Hlast)).
+    destruct Hp as [Hfrom Hsi].
+    unfold finite_protocol_trace_init_to in Hhbr.
+    Search finite_protocol_trace_from_to pre_loaded_with_all_messages_vlsm.
+    specialize (Hhbr (conj (preloaded_weaken_finite_protocol_trace_from_to _ _ _ _ Htrace) Hlast)).
+    clear Hlast.
     eapply protocol_trace_input_is_protocol.
-    apply Htrace. unfold trace_has_message in Hhbr. exact Hhbr.
+    apply Htrace'. unfold trace_has_message in Hhbr. exact Hhbr.
   Qed.
   
   Lemma has_send_observation_implies_is_protocol st idx m author:
@@ -2113,6 +2119,9 @@ Section composition.
         contradiction.
   Qed.
 
+
+  Lemma trace_from_to_
+  
   Check has_been_received.
   Locate has_been_received.
   Print finite_protocol_trace.
