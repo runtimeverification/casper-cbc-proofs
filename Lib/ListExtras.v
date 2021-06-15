@@ -547,6 +547,11 @@ Fixpoint list_prefix
     | S n, a :: l => a :: list_prefix l n
     end.
 
+Lemma list_prefix_0 {A : Type} (l : list A) : list_prefix l 0 = [].
+Proof.
+  induction l; auto.
+Qed.
+
 Lemma list_prefix_split
   {A : Type}
   (l left right: list A)
