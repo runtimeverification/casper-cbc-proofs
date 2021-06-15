@@ -2477,17 +2477,9 @@ Section has_been_received_in_state.
   Lemma has_been_received_in_state s1 m:
     protocol_state_prop X s1 ->
     has_been_received X s1 m ->
-    exists (s0 : state) (lbl : label) (tr : list transition_item) (s0' : state) (oom : option message),
-      finite_protocol_trace_from_to
-        X
-        s0
-        s1
-        ( (Build_transition_item
-             lbl
-             (Some m)
-             s0'
-             oom
-          ) :: tr).
+    exists (s0 : state) (item : transition_item) (tr : list transition_item),
+      input item = Some m /\
+      finite_protocol_trace_from_to X s0 s1 (item :: tr).
   Proof.
     intros Hpsp Hhbr.
     pose proof (Hetr := protocol_state_has_trace _ _ Hpsp).
@@ -2517,14 +2509,10 @@ Section has_been_received_in_state.
     destruct Hfptf as [Htr1 Htr2].
     destruct tritem eqn:Heqtritem.
     simpl in Hintritem. subst input.
-    
-    eexists. eexists. eexists. eexists. eexists.
-    apply Htr2.
-  Qed.
-  
-  
-    
-    
-    
+    eexists. eexists. eexists.
+    split.
+    2: { apply  Htr2. }
+    reflexivity.
+  Qed.    
   
 End has_been_received_in_state.
