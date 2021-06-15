@@ -2501,9 +2501,35 @@ Section has_been_received_in_state.
     unfold finite_protocol_trace_init_to in Hhbr.
     unfold finite_protocol_trace_init_to in Hetr.
     destruct Hetr as [Hfptf Hisp].
-    Locate finite_protocol_trace_from_to.
-    unfold finite_protocol_trace_from_to in Hfptf.
-    apply preloaded_weaken_finite_protocol_trace_from in Hfptf.
+    apply preloaded_weaken_finite_protocol_trace_from_to in Hfptf.
+    specialize (Hhbr (conj Hfptf Hisp)).
+    (* From Hfptf I need only that [tr] ends with [s1]. *)
+    Search trace_has_message.
+    unfold trace_has_message in Hhbr. unfold field_selector in Hhbr.
+    Print transition_item.
+    Search List.Exists nat.
+    Check in_split.
+    Check finite_trace_last.
+    (*
+    apply Exists_nth in Hhbr.
+    destruct Hhbr as [idx [dummy [Hidx Hnth]]].
+    destruct idx.
+    - (* if idx = 0, use [ist] *)
+      remember (nth 0 tr dummy) as trit.
+      destruct trit.
+      admit.
+    - (* otherwise, use the state in the list on the position idx-1 *)
+*)    
+(*
+    apply Exists_exists in Hhbr.
+    destruct Hhbr as [tritem Htritem].
+    destruct tritem as [lbl om].
+    simpl in Htritem. destruct Htritem as [Hin Htmp].
+    subst om.
+    Search List.Exists ex.
+    *)
+    Print List.Exists.
+    (*clear Hfptf Hisp. *)
     (* now I want [specialize Hhbr Hetr] but I need to convert the protocol trace
        to preloaded *)
     Search protocol_transition pre_loaded_with_all_messages_vlsm.
