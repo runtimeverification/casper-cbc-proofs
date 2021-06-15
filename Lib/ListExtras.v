@@ -552,6 +552,19 @@ Proof.
   induction l; auto.
 Qed.
 
+Lemma list_prefix_all {A : Type} (l : list A) (n : nat) :
+  n >= length l ->
+  list_prefix l n = l.
+Proof.
+  generalize dependent n.
+  induction l; intros n Hlen.
+  - simpl. destruct n; reflexivity.
+  - simpl. destruct n.
+    + simpl in Hlen. inversion Hlen.
+    + simpl in Hlen. rewrite IHl by lia. reflexivity.
+Qed.
+
+
 Lemma list_prefix_split
   {A : Type}
   (l left right: list A)
