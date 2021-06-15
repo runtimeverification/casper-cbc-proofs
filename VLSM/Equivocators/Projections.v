@@ -3,6 +3,9 @@ Import ListNotations.
 
 From CasperCBC Require Import Preamble ListExtras VLSM.Common VLSM.Equivocators.Common.
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
 (** * VLSM Projecting Equivocator Traces *)
 
 Section equivocator_vlsm_projections.
@@ -25,13 +28,6 @@ Context
   (equivocator_vlsm := equivocator_vlsm X)
   (MachineDescriptor := MachineDescriptor X)
   .
-
-Local Ltac unfold_transition H :=
-  ( unfold transition in H; unfold equivocator_vlsm in H
-  ; unfold Common.equivocator_vlsm in H
-  ; unfold mk_vlsm in H; unfold machine in H
-  ; unfold projT2 in H; unfold equivocator_vlsm_machine in H
-  ; unfold equivocator_transition in H).
 
 (** Given a [transition_item] <<item>> for the [equivocator_vlsm] and a
 [MachineDescriptor] referring to a position in the [destination] of <<item>>,
@@ -93,7 +89,7 @@ Proof.
   destruct (le_lt_dec (S ndest) 0); [lia|].
   destruct dl as [ndl | idl fdl]
   ; [destruct (nat_eq_dec 1 (S ndest))| destruct fdl; [destruct (nat_eq_dec 1 (S ndest))| destruct (nat_eq_dec idl 0)]]
-  ; simpl in Ht; unfold vtransition in Ht; unfold_transition Ht; unfold snd in Ht
+  ; simpl in Ht; unfold_vtransition Ht
   ; destruct Hv as [Hidl _].
   - inversion Ht. subst. destruct s; inversion H0. lia.
   - exists None. reflexivity.
@@ -306,35 +302,29 @@ Proof.
           simpl. lia.
         }
         simpl.
-        unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
         inversion Ht. subst. clear Ht.
-        destruct s as (neqv, seqv). simpl in *. inversion H0.
-        subst ni. lia.
+        destruct s as (neqv, seqv). inversion H0.
+        subst ni. simpl. lia.
     + destruct feqvi; [destruct (nat_eq_dec (S n) (S ni))|destruct (nat_eq_dec ieqvi n)].
       * inversion e. subst ni. clear e.
         eexists _. eexists _. split; [reflexivity|]. split; [repeat split|].
-        -- unfold equivocator_state_descriptor_project.
-          unfold equivocator_state_project.
-          destruct (le_lt_dec (S n) n); [lia|]. simpl. f_equal. apply of_nat_ext.
+        -- simpl.
+          destruct (le_lt_dec (S n) n); [lia|]. f_equal. apply of_nat_ext.
         -- intros.
           destruct Hv as [Heqv Hv].
           split; [assumption|].
           intros.
-          unfold equivocator_state_descriptor_project in Hsx.
-          unfold equivocator_state_project in Hsx.
+          simpl in Hsx.
           simpl.
-          unfold fst in Hv.
-          unfold vvalid in Hv.
-          unfold vtransition in Ht.
-          unfold_transition Ht. unfold snd in Ht.
+          unfold_vtransition Ht.
           destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
-          replace (of_nat_lt l0) with (of_nat_lt Heqv) in * by apply of_nat_ext.
+          replace (of_nat_lt l0) with (of_nat_lt Heqv) in Ht by apply of_nat_ext.
           clear l0.
           assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
           { subst.
-            destruct s as (nsi, si). unfold projT2.
+            destruct s as (nsi, si). simpl.
             simpl in Heqv.
-            destruct (le_lt_dec (S nsi) ieqvi); [lia|].
+            destruct (le_lt_dec (S nsi) ieqvi); [lia|]. 
             f_equal. apply of_nat_ext.
           }
           rewrite Hsxi. split; [assumption|].
@@ -358,40 +348,33 @@ Proof.
           apply Hv.
         }
         destruct Hv as [Heqv Hv].
-        unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+        unfold_vtransition Ht.
         destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
-        destruct (vtransition X (fst (li, Existing X ieqvi true))
-        (projT2 s (of_nat_lt l0), input))
+        destruct (vtransition X li (projT2 s (of_nat_lt l0), input))
           as (si', om').
         inversion Ht. subst.
-        destruct s as (neqv, seqv). simpl in *.
-        inversion H0. subst ni. lia.
+        destruct s as (neqv, seqv).
+        inversion H0. subst ni. simpl. lia.
       * subst ieqvi.
         eexists _. eexists _. split; [reflexivity|].
         split; [repeat split|].
-        -- unfold equivocator_state_descriptor_project.
-          unfold equivocator_state_project.
-          destruct (le_lt_dec (S ni) n); [lia|]. simpl. f_equal. apply of_nat_ext.
+        -- simpl.
+          destruct (le_lt_dec (S ni) n); [lia|]. f_equal. apply of_nat_ext.
         -- intros.  destruct Hv as [Heqv Hv].
           split; [assumption|].
           intros. simpl.
-          unfold equivocator_state_descriptor_project in Hsx.
-          unfold equivocator_state_project in Hsx.
-          unfold fst in Hv.
-          unfold vvalid in Hv.
-          unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+          unfold_vtransition Ht.
           destruct (le_lt_dec (S (projT1 s)) n); [lia|].
-          replace (of_nat_lt l0) with (of_nat_lt Heqv) in * by apply of_nat_ext.
+          replace (of_nat_lt l0) with (of_nat_lt Heqv) in Ht by apply of_nat_ext.
           clear l0.
           assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
           { subst.
-            destruct s as (nsi, si). unfold projT2.
+            destruct s as (nsi, si). simpl.
             simpl in Heqv.
             destruct (le_lt_dec (S nsi) n); [lia|].
             f_equal. apply of_nat_ext.
           }
           rewrite Hsxi. split; [assumption|].
-          unfold fst in Ht.
           destruct (vtransition X li (projT2 s (of_nat_lt Heqv), input))
             as (si'', om') eqn:Ht'.
           inversion Ht. clear Ht. subst ni.
@@ -410,9 +393,8 @@ Proof.
           assumption.
         }
         destruct Hv as [Heqv Hv].
-        unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+        unfold_vtransition Ht.
         destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
-        unfold fst in Ht.
         destruct (vtransition X li (projT2 s (of_nat_lt l0), input))
           as (si', om').
         inversion Ht. subst. simpl. lia.
@@ -593,22 +575,19 @@ Lemma equivocator_protocol_transition_item_project_inv2
     vvalid X (fst l) (s'x, iom) /\
     vtransition X (fst l) (s'x, iom) = (sx, oom).
 Proof.
-  unfold vvalid in Hv. unfold vtransition in Ht.
-  unfold_transition Ht.
-  simpl in Hv.
+  destruct l as (lx, descriptor).
+  destruct s as (ns, bs).
+  unfold_vtransition Ht.
   unfold equivocator_vlsm_transition_item_project in Hitem.
   destruct di as [sn| i fi]; [congruence|].
   exists i. exists fi. exists eq_refl. unfold item in Hitem.
-  destruct l as (lx, descriptor).
-  destruct s as (ns, bs).
   destruct (le_lt_dec (S ns) i); [congruence|].
-  exists l. unfold snd in Ht. unfold snd in Hv.
+  exists l.
   destruct descriptor as [sn| j is_equiv].
   - destruct (nat_eq_dec (S i) (S ns)); congruence.
   - destruct Hv as [Hj Hv].
     destruct (le_lt_dec (S (projT1 s')) j); [lia|].
-    replace (of_nat_lt l0) with (of_nat_lt Hj) in * by apply of_nat_ext. clear l0.
-    simpl in Ht.
+    replace (of_nat_lt l0) with (of_nat_lt Hj) in Ht by apply of_nat_ext. clear l0.
     destruct (vtransition X lx (projT2 s' (of_nat_lt Hj), iom))
       as (si', om') eqn:Htx.
     destruct s' as (n', bs').
@@ -663,12 +642,11 @@ Lemma equivocator_protocol_transition_item_project_inv3
       end
     end.
 Proof.
-  unfold vvalid in Hv. unfold vtransition in Ht.
   destruct l as (lx, d).
-  simpl in Hv. unfold_transition Ht. unfold snd in Ht.
+  unfold_vtransition Ht.
   unfold equivocator_vlsm_transition_item_project in Hitem.
   destruct di as [si | i fi]; [inversion Hitem; reflexivity|].
-  simpl in Hv. unfold item in Hitem.
+  unfold item in Hitem.
   destruct s as (ns, bs).
   destruct (le_lt_dec (S ns) i); [congruence|].
   destruct d as [sd | id fd].
@@ -690,18 +668,14 @@ Proof.
       f_equal. apply of_nat_ext.
   - destruct Hv as [Hj Hv].
     destruct (le_lt_dec (S (projT1 s')) id); [lia|].
-    replace (of_nat_lt l0) with (of_nat_lt Hj) in * by apply of_nat_ext. clear l0.
-    destruct s' as (n', bs'). simpl in Hv. unfold projT2 in Ht. simpl in Hj.
-    simpl in Ht.
-    destruct
-      (@vtransition message X lx
-      (@pair (@vstate message X) (option message)
-         (bs' (@of_nat_lt id (S n') Hj)) iom))
+    replace (of_nat_lt l0) with (of_nat_lt Hj) in Ht by apply of_nat_ext. clear l0.
+    destruct s' as (n', bs'). simpl in *.
+    destruct (vtransition X lx (bs' (of_nat_lt Hj), iom))
       as (si', om') eqn:Htx.
     destruct fd as [|].
     + destruct (nat_eq_dec (S i) (S ns)); [congruence|].
       inversion Hitem. subst di'. clear Hitem.
-      simpl. exists l. inversion Ht. subst.
+      exists l. inversion Ht. subst.
       assert (Hi' : i < S n') by lia.
       exists Hi'.
       simpl_existT. subst.
@@ -710,7 +684,7 @@ Proof.
       f_equal.
       apply of_nat_ext.
     + destruct (nat_eq_dec id i); [congruence|].
-      inversion Hitem. subst di'. clear Hitem. simpl.
+      inversion Hitem. subst di'. clear Hitem.
       exists l. inversion Ht. subst. exists l.
       simpl_existT. subst.
       rewrite eq_dec_if_false; [reflexivity|].
@@ -735,27 +709,25 @@ Lemma equivocator_protocol_transition_item_project_inv4
     (item := {| l := l; input := iom; destination := s; output := oom |}),
     equivocator_vlsm_transition_item_project item (Existing _ i' fi') = Some (oitem, Existing _ i' fi'').
 Proof.
-  unfold vvalid in Hv. unfold vtransition in Ht.
-  simpl in Hv. unfold_transition Ht. unfold equivocator_vlsm_transition_item_project.
-  destruct l as (lx, descriptor). simpl in Hv. unfold snd in Ht.
+  unfold equivocator_vlsm_transition_item_project.
+  destruct l as (lx, descriptor).
+  unfold_vtransition Ht.
   destruct s as (ns, bs).
   destruct s' as (n', bs').
   destruct descriptor as [sn | j is_equiv].
   - simpl in Ht.
     inversion Ht. subst. clear Ht. simpl_existT.
-    unfold projT1.
+    simpl.
     simpl in Hi'.
     assert (Hi'' : i' < S (S n')) by lia.
     exists Hi''.
-    destruct (le_lt_dec (S (S n')) i'). { lia. }
-    replace (of_nat_lt l) with (of_nat_lt Hi'') in * by apply of_nat_ext. clear l.
-    rewrite eq_dec_if_false.
-    + exists false. exists None. reflexivity.
-    + lia.
-  - destruct Hv as [Hj Hv]. unfold projT1 in Ht. simpl in Hj.
+    destruct (le_lt_dec (S (S n')) i'); [lia |]. clear l.
+    rewrite eq_dec_if_false; [|lia].
+    exists false. exists None. reflexivity.
+  - destruct Hv as [Hj Hv]. simpl in Ht.
+    simpl in Hj.
     destruct (le_lt_dec (S n') j); [lia|].
-    replace (of_nat_lt l) with (of_nat_lt Hj) in * by apply of_nat_ext. clear l.
-    simpl in Ht.
+    replace (of_nat_lt l) with (of_nat_lt Hj) in Ht by apply of_nat_ext. clear l.
     destruct (vtransition X lx (bs' (of_nat_lt Hj), iom))
       as (si', om') eqn:Htx.
     simpl in Hi'.
@@ -795,14 +767,12 @@ Proof.
   unfold equivocator_vlsm_transition_item_project.
   destruct s as (ns, bs).
   destruct s' as (ns', bs').
-  unfold vtransition in Ht. unfold_transition Ht.
-  unfold vvalid in Hv. simpl in Hv.
-  destruct l as (lx, d). unfold snd in Ht. simpl in Hv.
+  unfold_vtransition Ht.
+  destruct l as (lx, d).
   simpl in Hnew. subst d.
-  inversion Ht. subst; clear Ht.
+  inversion Ht. subst. clear Ht.
   simpl_existT.
-  exists (S ns').  split; [simpl; lia|].
-  unfold snd. unfold item.
+  exists (S ns'). simpl. split; [lia|].
   destruct (le_lt_dec (S (S ns')) (S ns')); [lia|].
   rewrite eq_dec_if_true; reflexivity.
 Qed.
@@ -827,15 +797,13 @@ Proof.
   unfold equivocator_vlsm_transition_item_project.
   destruct s as (ns, bs).
   destruct s' as (ns', bs').
-  unfold vtransition in Ht. unfold_transition Ht.
-  unfold vvalid in Hv. simpl in Hv.
-  destruct l as (lx, d). unfold snd in Ht. simpl in Hv.
+  destruct l as (lx, d).
+  unfold_vtransition Ht.
   simpl in Hsndl. subst d.
-  unfold snd. unfold item. destruct Hv as [Hi Hv].
-  unfold projT1 in Ht.
+  simpl.
+  destruct Hv as [Hi Hv]. simpl in Hi.
   destruct (le_lt_dec (S ns') i); [lia|].
-  replace (of_nat_lt l) with (of_nat_lt Hi) in * by apply of_nat_ext. clear l.
-  simpl in Ht.
+  replace (of_nat_lt l) with (of_nat_lt Hi) in Ht by apply of_nat_ext. clear l.
   destruct (vtransition X lx (bs' (of_nat_lt Hi), iom)) as (sn', om').
   destruct is_equiv as [|]; inversion Ht; subst; clear Ht; apply inj_pairT2 in H1; subst.
   + exists (S ns'). split; [simpl; lia|].

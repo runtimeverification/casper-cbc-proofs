@@ -14,7 +14,7 @@ Protocol verification of Casper Correct-By-Construction in Coq."""
 build: ["dune" "build" "-p" name "-j" jobs]
 depends: [
   "dune" {>= "2.5"}
-  "coq" {>= "8.12" & < "8.13~"}
+  "coq" {>= "8.12.2" & < "8.13~"}
 ]
 
 tags: [
@@ -28,8 +28,10 @@ authors: [
   "Mihai Calancea"
   "Denisa Diaconescu"
   "Elaine Li"
+  "Brandon Moore"
   "Lucas Peña"
   "Grigore Roșu"
   "Traian Șerbănuță"
+  "Jan Tušil"
   "Vlad Zamfir"
 ]

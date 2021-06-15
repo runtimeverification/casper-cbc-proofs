@@ -422,6 +422,8 @@ or [VLSM_type]. Functions [sign] and [type] below achieve this precise purpose.
 
 End vlsm_projections.
 
+Ltac unfold_vtransition H := (unfold vtransition in H; simpl in H).
+
 Lemma mk_vlsm_machine
   {message : Type}
   (X : VLSM message)
