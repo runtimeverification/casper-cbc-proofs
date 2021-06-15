@@ -39,10 +39,11 @@ thus responsible for @m@ being created.
 Class MessageDependencies
   :=
   { message_dependencies : message -> set message
+  ; sender_safety :  sender_strong_nontriviality_prop IM A sender
   ; initial_message_not_dependent (m : message)
       : composite_initial_message_prop IM m -> message_dependencies m = []
-  ; sender_safety :  sender_strong_nontriviality_prop IM A sender
   ; no_sender_for_initial_message : no_sender_for_initial_message_prop IM sender
+(*
   ; message_dependencies_characterization (m : message)
       : forall
         (v : validator)
@@ -52,6 +53,7 @@ Class MessageDependencies
         (dm : message),
         In dm (message_dependencies m) <->
         has_been_observed (has_been_observed_capability := Hbo (A v)) (IM (A v)) s dm
+*)        
   }.
 
 (** Under [MessageDependencies] assumptions, the (local) full node condition
@@ -84,9 +86,9 @@ Definition message_dependencies_local_full_node_constraint
 
 End message_dependencies.
 
-Arguments message_dependencies { _ _ _ _ _ _ _ _ _ } _ .
+Arguments message_dependencies { _ _ _ _ _ _ _ } _ .
 Arguments message_dependencies_local_full_node_constraint  { _ _ _ _ _ _ _ _ _ } _ _.
-Arguments message_dependencies_local_full_node_condition  { _ _ _ _ _ _ _ _ _ _ } _ _.
+Arguments message_dependencies_local_full_node_condition  { _ _ _ _ _ _ _ _ _ _} _ _.
 
 
 Section message_dependencies_full_node.
@@ -104,7 +106,7 @@ Context
   {i0 : Inhabited index}
   {IndEqDec : EqDecision index}
   (X := free_composite_vlsm IM)
-  {Hdm : MessageDependencies sender A IM Hbs Hbr}
+  {Hdm : MessageDependencies sender A IM }
   {index_listing : list index}
   (finite_index : Listing index_listing)
   (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index Hbs)
@@ -123,7 +125,7 @@ Proof.
   destruct Hs as [is [tr Htr]]. specialize (Hsent is tr Htr).
   apply finite_protocol_trace_init_to_forget_last in Htr.
   specialize (can_emit_from_protocol_trace _ is m tr Htr Hsent) as Hemit.
-  apply (sender_safety sender A IM Hbs Hbr _ _ Hemit).
+  apply (sender_safety sender A IM _ _ Hemit).
 Qed.
 
 Existing Instance X_has_been_observed_capability.

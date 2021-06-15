@@ -8,7 +8,7 @@ Import ListNotations.
 
 From CasperCBC
   Require Import
-    Preamble ListExtras FinExtras FinFunExtras
+    Preamble ListExtras ListSetExtras FinExtras FinFunExtras Measurable
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
@@ -97,6 +97,63 @@ Lemma equivocating_indices_nodup
 Proof.
   apply NoDup_filter. assumption.
 Qed.
+
+Section equivocating_indices_basic_equivocation.
+
+Context
+  (index_listing : list index)
+  (finite_index : Listing index_listing)
+  (Hmeasurable_index : Measurable index)
+  (Hreachable_threshold : ReachableThreshold index)
+  .
+
+Program Instance equivocating_indices_basic_equivocation : basic_equivocation (composite_state equivocator_IM) index
+  := {
+    is_equivocating := fun s v => In v (equivocating_indices index_listing s) ;
+    state_validators := fun s => index_listing
+  }.
+Next Obligation.
+  intro. intros.
+  apply in_dec. assumption.
+Qed.
+Next Obligation.
+  apply finite_index.
+Qed.
+
+
+Lemma equivocating_indices_equivocating_validators
+  : forall s, set_eq (equivocating_validators s) (equivocating_indices index_listing s).
+Proof.
+  intro s.
+  unfold equivocating_validators, is_equivocating, set_eq, incl.
+  simpl.
+  setoid_rewrite filter_In at 1 4. setoid_rewrite bool_decide_eq_true.
+  split; intros; [apply proj2 in H; assumption|].
+  split; [apply finite_index| assumption].
+Qed.
+
+
+Lemma eq_equivocating_indices_equivocation_fault
+: forall s1 s2,
+  set_eq (equivocating_indices index_listing s1) (equivocating_indices index_listing s2) ->
+  equivocation_fault s1 = equivocation_fault s2.
+Proof.
+  intros.
+  apply
+    (set_eq_nodup_sum_weight_eq
+      (equivocating_validators s1)
+      (equivocating_validators s2)
+    ).
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - apply (set_eq_tran (equivocating_validators s1) (equivocating_indices index_listing s1) (equivocating_validators s2))
+    ; [apply equivocating_indices_equivocating_validators|].
+    apply (set_eq_tran (equivocating_indices index_listing s1) (equivocating_indices index_listing s2) (equivocating_validators s2))
+    ; [assumption|].
+    apply set_eq_comm. apply equivocating_indices_equivocating_validators.
+Qed.
+
+End equivocating_indices_basic_equivocation.
 
 (**
 The statement below is obvious a transition cannot make an already equivocating
