@@ -10,7 +10,7 @@ From CasperCBC
     CBC.Protocol CBC.Common CBC.Definitions
     VLSM.Common VLSM.Composition VLSM.Decisions VLSM.Equivocation VLSM.ProjectionTraces.
 
-From stdpp Require Import base fin_sets.
+From stdpp Require Import base fin_sets tactics.
 
 Section FullNodeLike.
 
@@ -96,13 +96,14 @@ Context
       }
       unfold set_filter in Hm'.
       rewrite <- HeqdP in Hm'.
-      simpl in Hm'. set_solver.
+      simpl in Hm'. 
+      apply elem_of_empty in Hm'. intuition. 
     - remember (@min_predecessors _ happens_before' happens_before'_dec (m0 :: dP) dP m0) as m_min.
       assert (Hmin_inf : In m_min (m0 :: dP)). {
         specialize (@min_predecessors_in _ happens_before' happens_before'_dec (m0 :: dP) dP m0) as Hin'.
         destruct Hin' as [Hin'|Hin'].
-        + rewrite Heqm_min. rewrite Hin'. set_solver.
-        + rewrite Heqm_min. set_solver.
+        + rewrite Heqm_min. rewrite Hin'. simpl. intuition.
+        + rewrite Heqm_min. simpl. intuition.
       }
       
       assert (Hmin : m_min ∈ d /\ P m_min). {
@@ -113,7 +114,8 @@ Context
           assert (Hmin : m_min ∈ set_filter (λ m1 : message, bool_decide (P m1)) _ d). {
             unfold set_filter.
             rewrite <- HeqdP.
-            intuition set_solver.
+            apply elem_of_list_to_set.
+            apply elem_of_list_In. simpl. intuition.
           }
           apply elem_of_filter in Hmin.
           set_solver.
@@ -155,12 +157,12 @@ Context
           spec Hzero. {
             rewrite eq_dP.
             rewrite HeqdP.
-            rewrite elem_of_list_In.
+            (* rewrite elem_of_list_In. *)
             simpl. right.
             unfold set_filter in Hm'.
             apply elem_of_list_to_set in Hm'.
             apply elem_of_list_In.
-            set_solver.
+            intuition.
           }
           rewrite bool_decide_eq_false in Hzero.
           rewrite Heqm_min in contra.
@@ -355,14 +357,12 @@ Context
     split; intros H'.
     - intros contra.
       apply elem_of_filter in contra.
-      rewrite <- Is_true_iff_eq_true in contra.
-      rewrite bool_decide_eq_true in contra.
+      rewrite bool_decide_spec in contra.
       intuition.
     - intros contra.
       contradict H'.
       apply elem_of_filter.
-      rewrite <- Is_true_iff_eq_true.
-      rewrite bool_decide_eq_true.
+      rewrite bool_decide_spec.
       split;[intuition|].
       apply index_set_one.
   Qed.
@@ -461,7 +461,7 @@ Context
     
     destruct (elements (messages_from m i)) eqn : eq.
     - apply elements_empty' in eq.
-      set_solver.
+      rewrite eq in Hmi. apply elem_of_empty in Hmi; intuition. 
     - intuition congruence.
   Qed. 
   
@@ -484,8 +484,8 @@ Context
         destruct Hi as [Hi _].
         intros contra.
         contradict Hi.
-        apply elem_of_filter in contra. 
-        rewrite <- Is_true_iff_eq_true in contra. rewrite bool_decide_eq_true in contra. intuition.
+        apply elem_of_filter in contra.
+        rewrite bool_decide_spec in contra. intuition. 
      - apply elem_of_difference in Hi.
        apply elem_of_filter.
        rewrite <- Is_true_iff_eq_true. rewrite negb_true_iff. rewrite bool_decide_eq_false.
@@ -494,7 +494,7 @@ Context
        destruct Hi as [_ Hi].
        contradict Hi.
        apply elem_of_filter.
-       rewrite <- Is_true_iff_eq_true. rewrite bool_decide_eq_true.
+       rewrite bool_decide_spec.
        split;[intuition|].
        apply index_set_one.
       }
@@ -568,8 +568,7 @@ Context
      - apply elem_of_list_In in Hlatest.
        apply elem_of_elements in Hlatest.
        apply elem_of_filter in Hlatest.
-       rewrite <- Is_true_iff_eq_true in Hlatest.
-       rewrite bool_decide_eq_true in Hlatest.
+       rewrite bool_decide_spec in Hlatest.
        intuition.
      - apply something_pretentious.
      - rewrite Forall_forall; intuition.
@@ -620,8 +619,7 @@ Context
     spec Hex. {
       exists m'.
       apply elem_of_filter.
-      rewrite <- Is_true_iff_eq_true.
-      rewrite bool_decide_eq_true.
+      rewrite bool_decide_spec.
       intuition.
     }
     destruct Hex as [mi' Hmi'].
@@ -686,8 +684,7 @@ Context
       apply elem_of_elements.
       apply elem_of_filter.
       rewrite <- HdownSetCorrect.
-      rewrite <- Is_true_iff_eq_true.
-      rewrite bool_decide_eq_true.
+      rewrite bool_decide_spec.
       intuition.
   Qed. 
   
@@ -754,7 +751,8 @@ Context
         split;[intuition|].
         apply elem_of_list_In; set_solver.
       - apply elem_of_union.
-        right. set_solver.
+        right. apply elem_of_singleton. 
+        reflexivity.
     Qed.
     
     Definition composite_sent
@@ -915,8 +913,8 @@ Context
         intros c Hc.
         destruct IHHvcom as [_ [_ IHH]].
         simpl in Hc.
-        assert (Hsm2 : sm2 ⊆ c1) by (specialize (IHH sm2); intuition). 
-        destruct Hc as [Hc|Hc]; set_solver.
+        assert (Hsm2 : sm2 ⊆ c1) by (specialize (IHH sm2); intuition).
+        destruct Hc as [Hc|Hc]; (clear -Hsm2 Hc IHH Hincl; set_solver). 
     Qed.
     
     Local Open Scope Z_scope.
@@ -1034,21 +1032,15 @@ Context
             contradict contra_honest.
             apply elem_of_filter.
             split;[|apply index_set_one].
-            rewrite <- Is_true_iff_eq_true.
-            rewrite bool_decide_eq_true.
+            rewrite bool_decide_spec.
             exists m1, m2.
-            split.
-            + rewrite HrelSet.
-              apply elem_of_subseteq with (X0 := c0).
+            (repeat split); (try solve[intuition]||rewrite HrelSet).
+            + apply elem_of_subseteq with (X0 := c0).
               apply set_downSet'_self.
               intuition.
-            + split;[intuition|].
-              split.
-              * rewrite HrelSet.
-                apply elem_of_subseteq with (X0 := c0).
-                apply set_downSet'_self.
-                intuition.
-              * intuition. 
+            + apply elem_of_subseteq with (X0 := c0).
+              apply set_downSet'_self.
+              intuition.
         }
         
         assert (Huk_u : forall m', happens_before' m' uk -> happens_before' m' u). {
@@ -1059,6 +1051,8 @@ Context
           apply HdownSetCorrect in Huk.
           intuition.
         }
+        
+        clear Hinfo.
         
         assert (Htop_sm1 : top = sm1). {
                unfold get_top in Htop.
@@ -1079,8 +1073,7 @@ Context
           destruct Hi as [mi [Hsender Hinmi]].
           exists mi.
           apply elem_of_filter.
-          rewrite <- Is_true_iff_eq_true.
-          rewrite bool_decide_eq_true.
+          rewrite bool_decide_spec.
           split;[intuition congruence|].
           apply elem_of_filter in Hinmi.
           destruct Hinmi as [Hinmi _].
@@ -1096,8 +1089,7 @@ Context
           apply elem_of_map in Hi.
           destruct Hi as [mi [Hsender Hinmi]].
           apply elem_of_filter in Hinmi.
-          rewrite <- Is_true_iff_eq_true in Hinmi.
-          rewrite bool_decide_eq_true in Hinmi.
+          rewrite bool_decide_spec in Hinmi.
           unfold relevant_messages in Hinmi.
           destruct Hinmi as [Hinmi Hinmi'].
           apply elem_of_filter in Hinmi'.
@@ -1135,8 +1127,7 @@ Context
           intros contra.
           contradict Hc0_honest.
           apply elem_of_filter.
-          rewrite <- Is_true_iff_eq_true.
-          rewrite bool_decide_eq_true.
+          rewrite bool_decide_spec.
           split;[|apply index_set_one].
           apply is_equivocating_from_set_subseteq with (sm1 := c1).
           rewrite HrelSet.
@@ -1174,8 +1165,7 @@ Context
             rewrite Heqfm2.
             apply filter_subprop.
             intros m.
-            rewrite <- !Is_true_iff_eq_true.
-            rewrite !bool_decide_eq_true.
+            rewrite !bool_decide_spec.
             intuition.
           }
 
@@ -1200,15 +1190,15 @@ Context
         assert (Hin_veq1 : forall i, i ∈ Veq -> is_equivocating_from_message u i). {
           intros i Hi. rewrite HeqVeq in Hi.
           apply elem_of_filter in Hi.
-          rewrite <- Is_true_iff_eq_true in Hi.
-          rewrite bool_decide_eq_true in Hi. intuition.
+          rewrite bool_decide_spec in Hi.
+          intuition.
         }
         
         assert (Hin_veq2 : forall i, i ∈ Vk_1 /\ i ∉ Veq -> ~ is_equivocating_from_message u i). {
           intros i Hi. rewrite HeqVeq in Hi.
           intros contra.
           destruct Hi as [Hini Hi].
-          contradict Hi; apply elem_of_filter; rewrite <- Is_true_iff_eq_true; rewrite bool_decide_eq_true; intuition.
+          contradict Hi; apply elem_of_filter; rewrite bool_decide_spec; intuition.
         }
         
         assert (Hin_veq3 : forall i, i ∈ Vk_1 /\ i ∉ Veq -> exists mi, latest_message_from u i = Some mi). {
@@ -1306,8 +1296,8 @@ Context
              specialize (subseteq_union_1 Veq Vk_1) as Htemp2.
              spec Htemp2.
              rewrite HeqVeq.
-             intuition set_solver.
-             intuition.
+             clear. set_solver.
+             set_solver.
           }
           rewrite <- Hveq2 in Hinv.
           lia.
@@ -1338,8 +1328,7 @@ Context
           }
           split;[intuition|].
           apply elem_of_filter.
-          rewrite <- Is_true_iff_eq_true.
-          rewrite bool_decide_eq_true.
+          rewrite bool_decide_spec.
           split;[intuition|].
           apply latest_message_in_latest_messages.
           subst v. intuition.
@@ -1348,8 +1337,7 @@ Context
           apply elem_of_union. left.
           rewrite HeqVeq.
           apply elem_of_filter.
-          rewrite <- Is_true_iff_eq_true.
-          rewrite bool_decide_eq_true.
+          rewrite bool_decide_spec.
           subst v. intuition.
         }
         
@@ -1365,9 +1353,9 @@ Context
         assert (Hsz_voters : Z.of_nat (size (extra_voters ∪ value_voters_vk)) >= (q - size Veq - size Vchange) + size extra_voters). {
           specialize (size_union extra_voters value_voters_vk Hvoters_disjoint) as Hun.
           rewrite Hun.
-          assert (Z.of_nat (size value_voters_vk) = size Vk_1 - size Veq - size Vchange) by nia.
-          assert (Z.of_nat (size value_voters_vk) >= q - size Veq - size Vchange) by nia.
-          nia. 
+          assert (Z.of_nat (size value_voters_vk) = size Vk_1 - size Veq - size Vchange) by lia.
+          assert (Z.of_nat (size value_voters_vk) >= q - size Veq - size Vchange) by lia.
+          lia. 
         }
         
         assert (Hineq1 : 2 * (q - (size Veq) - (size Vchange) + (size extra_voters)) <= n - size Eu). {
@@ -1391,9 +1379,9 @@ Context
                 }
                 assert (Htemp2 : size value_voters >= size (extra_voters ∪ value_voters_vk)). {
                   specialize (subseteq_size (extra_voters ∪ value_voters_vk) value_voters Htemp) as Htemp3.
-                  nia.
+                  lia.
                 }
-                nia.
+                lia.
             }
             
             specialize (Hvote' u (vote u) eq_refl (Some value)).
@@ -1409,7 +1397,7 @@ Context
               
               assert (Htemp4 : size ((concurrent_last_messages u (vote u)) ∪ (concurrent_last_messages u (Some value))) <= size (latest_messages u)). {
                 specialize (subseteq_size (concurrent_last_messages u (vote u) ∪ concurrent_last_messages u (Some value)) (latest_messages u) Htemp).
-                nia.
+                lia.
               }
               
               assert (Htemp5 : Z.of_nat (size (latest_messages u)) <= n - size Eu). {
@@ -1423,13 +1411,13 @@ Context
                   apply elem_of_disjoint. intros m Hm Hm2.
                   apply elem_of_filter in Hm.
                   apply elem_of_filter in Hm2.
-                  rewrite <- Is_true_iff_eq_true in *. rewrite bool_decide_eq_true in *.
+                  rewrite bool_decide_spec in *.
                   intuition congruence.
                 }
                 lia.
               }
               
-              assert (Htemp6: size (concurrent_last_messages u (vote u)) + size (concurrent_last_messages u (Some value)) <= n - size Eu) by nia.
+              assert (Htemp6: size (concurrent_last_messages u (vote u)) + size (concurrent_last_messages u (Some value)) <= n - size Eu) by lia.
               rewrite Heqvalue_voters in Hvotes_for. 
               assert (Htemp7 : size (senders (concurrent_last_messages u (Some value))) <= size (concurrent_last_messages u (Some value))). {
                  specialize (set_map_size_upper_bound (C := Cm) (D := Ci) sender (concurrent_last_messages u (Some value))).
@@ -1627,9 +1615,12 @@ Context
               intuition.
           }
           
+          clear Heqvalue' Heqq' HeqrelSet' Heqc0' Hc0' HeqHc0' Htop Hcom.
+          
           unfold k in IHHcom. simpl in IHHcom.
           
           remember (A u' (Some value) c1) as Au'.
+          clear Hineq2 Hsz_voters.
           
           assert (Hineq2main : (size (Au' ∪ Veq) + size Vchange - size extra_voters) * 2 ^ k0 >= (2 * q0 - n) * (2 ^ k0 - 1)). {
             specialize (union_size_ge_average Au' Veq) as Havg.
@@ -1677,6 +1668,8 @@ Context
             
             nia.
           }
+          
+          clear Hineq1 Hineq3 HVk1_sz Hvoters_size1 IHHcom Heqnew_skel Htemp Heqcom'.
           
           rewrite HeqPdown' in Hmin_u'.
           unfold is_minimal_wrt_P in Hmin_u'.
@@ -1780,7 +1773,7 @@ Context
             assert (Hv_equiv: v ∈ equivocators_from_set (c1 ∪ downSet u)). {
               unfold equivocators_from_set.
               apply elem_of_filter.
-              rewrite <- Is_true_iff_eq_true. rewrite bool_decide_eq_true.
+              rewrite bool_decide_spec.
               split.
               - unfold is_equivocating_from_set.
                 exists vk. exists vdif.
@@ -1850,8 +1843,7 @@ Context
               specialize (Hsubpr ((λ i1 : index, bool_decide (is_equivocating_from_message u i1))) _ _ index_set).
               spec Hsubpr. {
                 intros k.
-                rewrite <- !Is_true_iff_eq_true.
-                rewrite !bool_decide_eq_true.
+                rewrite !bool_decide_spec.
                 destruct Hu_u' as [Hu_u'|Hu_u'].
                 + apply is_equivocating_from_message_hb.
                   intuition.
@@ -1918,8 +1910,7 @@ Context
                     exists v_latest_u.
                     split;[intuition|].
                     apply elem_of_filter.
-                    rewrite <- Is_true_iff_eq_true. 
-                    rewrite bool_decide_eq_true.
+                    rewrite bool_decide_spec.
                     split;[|intuition].
                     destruct (@decide (vote v_latest_u = Some value)).
                     apply decide_eq.
@@ -1951,9 +1942,8 @@ Context
                         intuition.
                       }
                       spec Heach. {
-                        apply elem_of_filter in Hv. 
-                        rewrite <- Is_true_iff_eq_true in Hv.
-                        rewrite bool_decide_eq_true in Hv.
+                        apply elem_of_filter in Hv.
+                        rewrite bool_decide_spec in Hv. 
                         intuition.
                       }
                       
@@ -2007,8 +1997,7 @@ Context
                       
                       assert (Hv_equiv_u : v ∈ equivocators_from_message u). {
                         apply elem_of_filter.
-                        rewrite <- Is_true_iff_eq_true.
-                        rewrite bool_decide_eq_true.
+                        rewrite bool_decide_spec.
                         split;[|apply index_set_one].
                         
                         assert (Hcomp_v'_wc1 : comparable happens_before' v' witness_c1). {
@@ -2088,7 +2077,7 @@ Context
                   rewrite Heqextra_voters.
                   apply elem_of_difference.
                   rewrite Heqvalue_voters.
-                  split;intuition.
+                  split;assumption.
          }
          
          assert (HAu'_Vchange_disjoint : Au' ## Vchange). {
@@ -2161,8 +2150,7 @@ Context
                   intuition congruence.
                 * destruct Hv'_comp as [Hv'_comp|Hv'_comp].
                   -- apply elem_of_filter in Hequiv_c1_u'.
-                     rewrite <- Is_true_iff_eq_true in Hequiv_c1_u'.
-                     rewrite bool_decide_eq_true in Hequiv_c1_u'.
+                     rewrite bool_decide_spec in Hequiv_c1_u'.
                      destruct Hequiv_c1_u' as [Hequiv _].
                      apply is_equivocating_from_set_union in Hequiv.
                      destruct Hequiv as [witness_c1 [witness_u' Hcomp]].
@@ -2216,7 +2204,7 @@ Context
                      
                      contradict contra.
                      apply elem_of_filter.
-                     rewrite <- Is_true_iff_eq_true. rewrite bool_decide_eq_true.
+                     rewrite bool_decide_spec.
                      split;[|apply index_set_one].
                      
                      exists witness_c1, witness_u'.
@@ -2256,7 +2244,7 @@ Context
                apply disjoint_union_l.
                intuition.
              }
-             nia.
+             lia.
            }
            
            rewrite <- Hunion.
@@ -2277,14 +2265,14 @@ Context
            
            assert (size ((Au' ∪ Veq ∪ Vchange) ∖ extra_voters) <= size Au). { 
               specialize (subseteq_size ((Au' ∪ Veq ∪ Vchange) ∖ extra_voters) Au Hdif).
-              nia.
+              lia.
            }
            
            assert (Hdif_size : size ((Au' ∪ Veq ∪ Vchange) ∖ extra_voters) >= size (Au' ∪ Veq ∪ Vchange) - size extra_voters). {
               specialize (StdppFinSetExtras.difference_size_ge_disjoint_case (Au' ∪ Veq ∪ Vchange) extra_voters).
-              nia.
+              lia.
            }
-          nia.
+          lia.
          }
          
          assert (HAu_size': size Au * 2 ^ k0  >= (size (Au' ∪ Veq) + size Vchange - size extra_voters) * 2 ^ k0). {
@@ -2301,7 +2289,7 @@ Context
           }
           nia.
          }
-         nia.
+         lia.
     Qed.
       
 End Inspector.
