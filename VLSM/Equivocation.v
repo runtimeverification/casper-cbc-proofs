@@ -2474,20 +2474,22 @@ Section has_been_received_in_state.
     (Hbr : has_been_received_capability X)
   .
 
-  
   Lemma has_been_received_in_state s1 m:
     protocol_state_prop X s1 ->
     has_been_received X s1 m ->
-    exists (s0 : state) (lbl : label) (tr : list transition_item),
-      protocol_state_prop X s0 /\
-      vvalid X lbl (s0, Some m) /\
-      finite_protocol_trace_from X (fst (vtransition X lbl (s0, Some m))) tr /\
-      finite_trace_last s1 tr = s1
-  .
+    exists (s0 : state) (lbl : label) (tr : list transition_item) (s0' : state) (oom : option message),
+      finite_protocol_trace_from_to
+        X
+        s0
+        s1
+        ( (Build_transition_item
+             lbl
+             (Some m)
+             s0'
+             oom
+          ) :: tr).
   Proof.
     intros Hpsp Hhbr.
-    Search protocol_state_prop "trace".
-    Check protocol_state_has_trace.
     pose proof (Hetr := protocol_state_has_trace _ _ Hpsp).
     destruct Hetr as [ist [tr Hetr]].
     apply proper_received in Hhbr.
@@ -2501,40 +2503,25 @@ Section has_been_received_in_state.
     unfold finite_protocol_trace_init_to in Hhbr.
     unfold finite_protocol_trace_init_to in Hetr.
     destruct Hetr as [Hfptf Hisp].
-    apply preloaded_weaken_finite_protocol_trace_from_to in Hfptf.
-    specialize (Hhbr (conj Hfptf Hisp)).
-    (* From Hfptf I need only that [tr] ends with [s1]. *)
-    Search trace_has_message.
+    pose proof (Hfptf' := preloaded_weaken_finite_protocol_trace_from_to _ _ _ _ Hfptf).
+    specialize (Hhbr (conj Hfptf' Hisp)).
+    clear Hfptf'.
+
     unfold trace_has_message in Hhbr. unfold field_selector in Hhbr.
-    Print transition_item.
-    Search List.Exists nat.
-    Check in_split.
-    Check finite_trace_last.
-    (*
-    apply Exists_nth in Hhbr.
-    destruct Hhbr as [idx [dummy [Hidx Hnth]]].
-    destruct idx.
-    - (* if idx = 0, use [ist] *)
-      remember (nth 0 tr dummy) as trit.
-      destruct trit.
-      admit.
-    - (* otherwise, use the state in the list on the position idx-1 *)
-*)    
-(*
     apply Exists_exists in Hhbr.
-    destruct Hhbr as [tritem Htritem].
-    destruct tritem as [lbl om].
-    simpl in Htritem. destruct Htritem as [Hin Htmp].
-    subst om.
-    Search List.Exists ex.
-    *)
-    Print List.Exists.
-    (*clear Hfptf Hisp. *)
-    (* now I want [specialize Hhbr Hetr] but I need to convert the protocol trace
-       to preloaded *)
-    Search protocol_transition pre_loaded_with_all_messages_vlsm.
-    Search finite_protocol_trace_from_to pre_loaded_with_all_messages_vlsm.
-  Abort.
+    destruct Hhbr as [tritem [Htritemin Hintritem]].
+    apply in_split in Htritemin.
+    destruct Htritemin as [l1 [l2 Heqtr]].
+    rewrite Heqtr in Hfptf.
+    apply (finite_protocol_trace_from_to_app_split X) in Hfptf.
+    destruct Hfptf as [Htr1 Htr2].
+    destruct tritem eqn:Heqtritem.
+    simpl in Hintritem. subst input.
+    
+    eexists. eexists. eexists. eexists. eexists.
+    apply Htr2.
+  Qed.
+  
   
     
     
