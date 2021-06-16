@@ -2168,8 +2168,26 @@ Section composition.
       + rewrite state_update_id in Hss2.
         { reflexivity. }
         auto.
-      + 
-  Abort.
+      +  pose proof (IH := IHtr _ _ Hss2 component).
+        destruct IH as [n Hn].
+        destruct (decide (idx = component)).
+        2: { rewrite state_update_neq in Hn. apply nesym. exact n0. exists n. apply Hn. }
+        subst component.
+        rewrite state_update_eq in Hn.
+        (* n <> 0 *)
+        destruct n.
+        { rewrite list_prefix_0 in Hn. simpl in Hn.
+          destruct Hn as [_ Hn].
+          apply eq_sym in Hn.
+          destruct (last_not_null _ _ Hn).
+        }
+        simpl in Hn.
+        destruct Hn as [Hl Hn].
+        
+        apply list_prefix_S in Hn.
+        2: { exact Hl. }
+        exists n. split. lia. apply Hn. 
+  Qed.
   
   Check has_been_received.
   Locate has_been_received.
