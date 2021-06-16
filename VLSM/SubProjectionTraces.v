@@ -610,7 +610,7 @@ Proof.
     simpl in *.
     specialize (Hmsg m eq_refl eq_refl f).
     destruct Hmsg as [Hseed | [item [Hitem [Hout Hsub_item]]]]
-    ; [right; right; assumption|].
+    ; [right; assumption|].
     left.
     specialize (proper_sent Sub_Free lst) as Hproper.
     assert (Hlstp : protocol_state_prop (pre_loaded_with_all_messages_vlsm Sub_Free) lst).

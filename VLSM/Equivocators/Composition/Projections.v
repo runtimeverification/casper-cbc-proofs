@@ -1424,7 +1424,7 @@ Proof.
       unfold vinitial_message_prop in Hinput at 1. simpl in Hinput.
       destruct Hc as [Hc _]. apply or_comm in Hc.
       destruct Hc as [Hinit_input | Hno_equiv]
-      ; [apply Hinput in Hinit_input|]
+      ; [specialize (Hinput (or_intror Hinit_input))|]
       ; [repeat split; [assumption| |assumption|assumption]|].
       { apply initial_message_is_protocol. assumption. }
       clear Hinput.

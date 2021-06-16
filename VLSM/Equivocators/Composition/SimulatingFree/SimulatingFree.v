@@ -544,9 +544,9 @@ Proof.
       - split; [|exact I].
         unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
         destruct (null_dec (transitions eqv_msg_run)).
-        + right.
-          apply (vlsm_run_no_transitions_output SeededXE)
-            with (run := eqv_msg_run); assumption.
+        + specialize (vlsm_run_no_transitions_output SeededXE _ Heqv_msg_run e _ Hom) as Him.
+          destruct Him as [Him | Hseedm]; [|right; assumption].
+            with; assumption.
         + left. apply proper_sent.
           {
             specialize (finite_ptrace_last_pstate SeededXE _ _ Happ)

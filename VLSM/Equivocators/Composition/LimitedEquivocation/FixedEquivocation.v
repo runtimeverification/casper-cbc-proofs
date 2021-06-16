@@ -368,7 +368,7 @@ Context
   (Free_has_been_sent_capability : has_been_sent_capability Free := free_composite_has_been_sent_capability IM finite_index Hbs)
   (Free_has_been_received_capability : has_been_received_capability Free := free_composite_has_been_received_capability IM finite_index Hbr)
   (Free_has_been_observed_capability : has_been_observed_capability Free := has_been_observed_capability_from_sent_received Free)
-  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free comopsite_initial_decidable)
+  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free)
   (index_equivocating_prop : index -> Prop := sub_index_prop equivocating)
   (equivocating_index : Type := sub_index equivocating)
   (equivocating_i0 : Inhabited equivocating_index := sub_index_i0 equivocating Hi0_equiv)
@@ -646,11 +646,7 @@ Proof.
       simpl in Hno_equiv.
       apply or_comm in Hno_equiv.
       destruct Hno_equiv as [Hinit_input | Hno_equiv]
-      ; [apply fixed_equivocators_initial_message in Hinit_input|]
-      ; [repeat split; [assumption| |assumption| apply Hconstraintinitial; assumption |assumption]|].
-      { apply protocol_message_prop_iff. left. exists (exist _ _ Hinit_input).
-        reflexivity.
-      }
+      ; [contradiction|].
       assert
         (Hs_free : protocol_state_prop FreeE (finite_trace_last is tr')).
       { destruct Hs as [_om Hs].

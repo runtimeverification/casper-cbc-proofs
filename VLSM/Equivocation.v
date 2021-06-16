@@ -483,7 +483,7 @@ Section Simple.
       (som : state * option message)
       : Prop
       :=
-      no_equivocations_except_from (vinitial_message_prop vlsm) l som.
+      no_equivocations_except_from (fun m => False) l som.
 
 
     Class has_been_received_capability := {
@@ -1213,21 +1213,20 @@ Definition no_additional_equivocations
   (m : message)
   : Prop
   :=
-  has_been_observed vlsm s m \/ vinitial_message_prop vlsm m.
+  has_been_observed vlsm s m \/ False.
 
-(** If the [initial_message_prop] is decidable, then the
-    [no_additional_equivocations] is also decidable.
+(** [no_additional_equivocations] is decidable.
 *)
 
   Lemma no_additional_equivocations_dec
   {message : Type}
   (vlsm : VLSM message)
   {Hbo : has_been_observed_capability vlsm}
-  (initial_dec : vdecidable_initial_messages_prop vlsm)
   : RelDecision (no_additional_equivocations vlsm).
 Proof.
-  intros s m. apply Decision_or; [|apply initial_dec].
-  apply has_been_observed_dec.
+  intros s m. apply Decision_or.
+  - apply has_been_observed_dec.
+  - right. intuition. 
 Qed.
 
 Definition no_additional_equivocations_constraint
@@ -1370,12 +1369,12 @@ Section NoEquivocationInvariants.
     (Henforced: forall l s om, vvalid X l (s,om) -> no_equivocations X l (s,om))
   .
 
-  Definition observed_were_sent_or_initial (s: state) : Prop :=
-    forall msg, has_been_observed X s msg -> has_been_sent X s msg \/ vinitial_message_prop X msg.
+  Definition observed_were_sent (s: state) : Prop :=
+    forall msg, has_been_observed X s msg -> has_been_sent X s msg.
 
   Lemma observed_were_sent_initial s:
     vinitial_state_prop X s ->
-    observed_were_sent_or_initial s.
+    observed_were_sent s.
   Proof.
     intros Hinitial msg Hsend.
     contradict Hsend.
@@ -1385,8 +1384,8 @@ Section NoEquivocationInvariants.
 
   Lemma observed_were_sent_preserved l s im s' om:
     protocol_transition X l (s,im) (s',om) ->
-    observed_were_sent_or_initial s ->
-    observed_were_sent_or_initial s'.
+    observed_were_sent s ->
+    observed_were_sent s'.
   Proof.
     intros Hptrans Hprev msg Hobs.
     specialize (Hprev msg).
@@ -1400,17 +1399,16 @@ Section NoEquivocationInvariants.
     - (* by [no_equivocations], the incoming message [im] was previously sent *)
       rewrite H in Hv.
       specialize (Henforced Hv).
-      destruct Henforced; [|right; assumption].
-      left. right. assumption.
-    - left. left. assumption.
+      destruct Henforced; [|contradiction].
+      right. assumption.
+    - left. assumption.
     - specialize (Hprev H).
-      destruct Hprev as [Hprev|Hprev]; [|right; assumption].
-      left. right. assumption.
+      right. assumption.
   Qed.
 
   Lemma observed_were_sent_invariant s:
     protocol_state_prop X s ->
-    observed_were_sent_or_initial s.
+    observed_were_sent s.
   Proof.
     intro Hproto.
     induction Hproto using protocol_state_prop_ind.
@@ -1430,11 +1428,11 @@ Section NoEquivocationInvariants.
       + (* by [no_equivocations], the incoming message [im] was previously sent *)
         rewrite H in Hv.
         spec Henforced Hv.
-        destruct Henforced as [Hbs | Hinitial]; [|right; assumption].
-        left. right. assumption.
-      + left. left. assumption.
-      + spec IHHproto H. destruct IHHproto; [|right; assumption].
-        left. right. assumption.
+        destruct Henforced as [Hbs | Hinitial]; [|contradiction].
+        right. assumption.
+      + left. assumption.
+      + spec IHHproto H.
+        right. assumption.
   Qed.
 
   Lemma no_equivocations_preloaded_traces
@@ -1462,7 +1460,7 @@ Section NoEquivocationInvariants.
       destruct iom as [m|]; [|apply option_protocol_message_None].
       apply option_protocol_message_Some.
       destruct Hv as [Hbsm | Him]
-      ; [|apply initial_message_is_protocol; assumption].
+      ; [|contradiction].
       apply proper_sent in Hbsm; [|assumption].
       specialize (Hbsm _ tr (ptrace_add_default_last Htr)).
       apply can_emit_protocol.
@@ -1785,14 +1783,11 @@ Section Composite.
     sender m = None.
 
   Lemma no_additional_equivocations_constraint_dec
-    (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
     : RelDecision (no_additional_equivocations_constraint Free).
   Proof.
     intros l (s, om).
     destruct om; [|left; exact I].
     apply no_additional_equivocations_dec.
-    apply (composite_decidable_initial_message IM finite_index).
-    assumption.
   Qed.
 
   Context
@@ -1847,11 +1842,10 @@ Section Composite.
     :=
     { known_equivocators_nodup :
       forall s, NoDup (globally_known_equivocators s)
-    ; known_equivocators_transition_no_sender :
+    ; known_equivocators_transition_None :
         forall
-          l s iom s' oom,
-          composite_transition IM l (s, iom) = (s', oom) ->
-          option_initial_message_prop (sign := composite_sig IM) iom ->
+          l s s' oom,
+          composite_transition IM l (s, None) = (s', oom) ->
           set_eq (globally_known_equivocators s') (globally_known_equivocators s)
     ; known_equivocators_exhibit_message_equivocation :
       forall s v,
@@ -1953,20 +1947,7 @@ Section Composite.
       equivocation_fault s' = equivocation_fault s.
   Proof.
     intro Ht.
-    specialize (known_equivocators_transition_no_sender _ _ _ _ _ Ht) as Heqv.
-    spec Heqv. { exact I. }
-    revert Heqv.
-    apply eq_globally_known_equivocators_equivocation_fault.
-  Qed.
-
-  Lemma composite_transition_initial_message_equivocators_weight
-    l s im s' oom
-    : composite_transition IM l (s, Some im) = (s', oom) ->
-      composite_initial_message_prop IM im ->
-      equivocation_fault s' = equivocation_fault s.
-  Proof.
-    intros Ht Him.
-    specialize (known_equivocators_transition_no_sender _ _ _ _ _ Ht Him) as Heqv.
+    specialize (known_equivocators_transition_None _ _ _ _ Ht) as Heqv.
     revert Heqv.
     apply eq_globally_known_equivocators_equivocation_fault.
   Qed.
@@ -2140,12 +2121,12 @@ Section CompositeNoEquivocationInvariants.
     (Hsubsumed: constraint_subsumption IM constraint (no_equivocations Free))
   .
 
-  Definition composite_observed_were_sent_or_initial (s: state) : Prop :=
-    forall msg, composite_has_been_observed s msg -> composite_has_been_sent s msg \/ composite_initial_message_prop IM msg.
+  Definition composite_observed_were_sent (s: state) : Prop :=
+    forall msg, composite_has_been_observed s msg -> composite_has_been_sent s msg.
 
   Lemma composite_observed_were_sent_initial s:
     composite_initial_state_prop IM s ->
-    composite_observed_were_sent_or_initial s.
+    composite_observed_were_sent s.
   Proof.
     intros Hinitial msg Hsend.
     elim (oracle_no_inits (vlsm := Free) has_been_observed_stepwise_props s Hinitial msg).
@@ -2154,8 +2135,8 @@ Section CompositeNoEquivocationInvariants.
 
   Lemma composite_observed_were_sent_preserved l s im s' om:
     protocol_transition X l (s,im) (s',om) ->
-    composite_observed_were_sent_or_initial s ->
-    composite_observed_were_sent_or_initial s'.
+    composite_observed_were_sent s ->
+    composite_observed_were_sent s'.
   Proof.
     intros Hptrans Hprev msg Hobs.
     specialize (Hprev msg).
@@ -2176,17 +2157,16 @@ Section CompositeNoEquivocationInvariants.
     destruct Hobs as [[|]|].
     - (* by [no_equivocations], the incoming message [im] was previously sent *)
       rewrite H in Hctr.
-      destruct Hctr; [|right; assumption].
-      left. right. assumption.
-    - left. left. assumption.
+      destruct Hctr; [|contradiction].
+      right. assumption.
+    - left. assumption.
     - specialize (Hprev H).
-      destruct Hprev as [Hprev|Hprev]; [|right; assumption].
-      left. right. assumption.
+      right. assumption.
   Qed.
 
   Lemma composite_observed_were_sent_invariant s:
     protocol_state_prop X s ->
-    composite_observed_were_sent_or_initial s.
+    composite_observed_were_sent s.
   Proof.
     intro Hproto.
     induction Hproto using protocol_state_prop_ind.
@@ -2426,8 +2406,7 @@ Section full_node_constraint.
   [node_generated_without_further_equivocation] by node @i@ if the message
   can be produced by node @i@ pre_loaded with all messages in a trace in which
   all message equivocation is done through messages causing
-  [no_additional_equivocations] to state @s@
-  (message [has_been_observed] in @s@ or it has the [initial_message_prop]erty).
+  [no_additional_equivocations] to state @s@ (message [has_been_observed] in @s@).
   *)
   Definition node_generated_without_further_equivocation
     (s : composite_state IM)
@@ -2564,9 +2543,8 @@ the newly added initial messages are safe to be received at all times.
     Definition no_equivocations_additional_constraint_with_pre_loaded
       (l : composite_label IM)
       (som : composite_state IM * option message)
-      (initial_or_seed := fun m => vinitial_message_prop X m \/ seed m)
       :=
-      no_equivocations_except_from X initial_or_seed l som
+      no_equivocations_except_from X seed l som
       /\ constraint l som.
 
     Definition composite_no_equivocation_vlsm_with_pre_loaded
@@ -2640,9 +2618,8 @@ the newly added initial messages are safe to be received at all times.
       unfold no_equivocations.
       unfold no_equivocations_except_from.
       destruct som as (s, [m|]); [|exact id].
-      rewrite <- or_assoc.
       intros [[H|contra] Hc]; [|contradiction].
-      split; assumption.
+      split; [left|]; assumption.
     - specialize
         (Hincl
           no_equivocations_additional_constraint
@@ -2655,10 +2632,9 @@ the newly added initial messages are safe to be received at all times.
       unfold no_equivocations.
       unfold no_equivocations_except_from.
       destruct som as (s, [m|]); [|exact id].
-      rewrite <- or_assoc.
       intros [H Hc].
       split; [|assumption].
-      left. assumption.
+      assumption.
   Qed.
 
 End seeded_composite_vlsm_no_equivocation.
