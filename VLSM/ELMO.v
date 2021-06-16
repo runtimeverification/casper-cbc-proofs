@@ -2119,8 +2119,23 @@ Section composition.
         contradiction.
   Qed.
 
-
-  Lemma trace_from_to_
+  Lemma trace_from_to_impl_observations_prefix s1 s2 tr component:
+    finite_protocol_trace_from_to free_composite_elmo s1 s2 tr ->
+    exists (n : nat),
+      list_prefix (observationsOf (s2 component)) n = observationsOf (s1 component).
+  Proof.
+    intros Htr.
+    move: s1 s2 Htr component.
+    induction tr; intros s1 s2 Htr component.
+    - inversion Htr. subst.
+      exists (length (observationsOf (s2 component))).
+      rewrite -> list_prefix_all by lia.
+      reflexivity.
+    - inversion Htr. subst. clear Htr.
+      destruct l as [idx lbl].
+  Abort.
+  
+  .
   
   Check has_been_received.
   Locate has_been_received.
