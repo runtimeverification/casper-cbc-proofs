@@ -547,6 +547,24 @@ Fixpoint list_prefix
     | S n, a :: l => a :: list_prefix l n
     end.
 
+Lemma list_prefix_0 {A : Type} (l : list A) : list_prefix l 0 = [].
+Proof.
+  induction l; auto.
+Qed.
+
+Lemma list_prefix_all {A : Type} (l : list A) (n : nat) :
+  n >= length l ->
+  list_prefix l n = l.
+Proof.
+  generalize dependent n.
+  induction l; intros n Hlen.
+  - simpl. destruct n; reflexivity.
+  - simpl. destruct n.
+    + simpl in Hlen. inversion Hlen.
+    + simpl in Hlen. rewrite IHl by lia. reflexivity.
+Qed.
+
+
 Lemma list_prefix_split
   {A : Type}
   (l left right: list A)
@@ -608,6 +626,37 @@ Proof.
   - simpl in *. f_equal.
     apply IHn.
     lia.
+Qed.
+
+Lemma list_prefix_S {A : Type} (l1 l2 : list A) (x : A) (n : nat) :
+  length l1 >= (S n) ->
+  list_prefix l1 (S n) = l2 ++ [x] ->
+  list_prefix l1 n = l2.
+Proof.
+  intros Hlen H.
+  generalize dependent x.
+  generalize dependent l2.
+  generalize dependent l1.
+  induction n; intros l1 Hlen l2 x H.
+  - simpl.
+    rewrite list_prefix_0.
+    assert (H1: length (list_prefix l1 1) = length (l2 ++ [x])).
+    { rewrite H. reflexivity. }
+    rewrite app_length in H1. simpl in H1.
+    rewrite list_prefix_length in H1.
+    + assert (length l2 = 0).
+      { lia. }
+      symmetry. apply length_zero_iff_nil. exact H0.
+    + destruct l1.
+      2: { simpl. lia. }
+      simpl in H1. lia.
+  - destruct l1, l2; simpl; simpl in H; inversion H; subst.
+    2: {
+      f_equal. eapply IHn. simpl in Hlen. lia. apply H2.
+    }
+    destruct l1.
+    2: { simpl in H2. inversion H2. }
+    simpl in Hlen. lia.
 Qed.
 
 Lemma list_suffix_length
@@ -1798,3 +1847,246 @@ Definition list_sum_project_right
   : list B
   :=
   map_option sum_project_right x.
+
+Fixpoint zip_with {A B C : Type} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
+  match l1 with
+  | [] => []
+  | x::xs =>
+    match l2 with
+    |  [] => []
+    |  y::ys => (f x y) :: zip_with f xs ys
+    end
+  end.
+
+Lemma in_notin_impl_not_eq {A : Type} (x : A) (l1 l2 : list A):
+  List.In x l1 ->
+  ~List.In x l2 ->
+  l1 <> l2.
+Proof.
+  intros.
+  generalize dependent l2.
+  induction l1; intros l2 H0.
+  - simpl in H. inversion H.
+  - destruct l2 as [| b l2].
+    + simpl in H.
+      discriminate.
+    + simpl in H. simpl in H0.
+      destruct H as [Heq|Hin].
+      * subst. intros Hcontra.
+        inversion Hcontra. subst.
+        apply H0. left. reflexivity.
+      * intros Hcontra. inversion Hcontra. subst. clear Hcontra.
+        apply H0. right. apply Hin.
+Qed.
+
+Lemma In_firstn_S {A : Type} {eqdec : EqDecision A} (l : list A) (x : A) (n : nat) :
+  List.In x (firstn n l) -> List.In x (firstn (S n) l).
+Proof.
+  generalize dependent n.
+  induction l; intros n H.
+  - rewrite firstn_nil in H. simpl in H. inversion H.
+  - simpl.
+    destruct (decide (a = x)).
+    { left. exact e. }
+    right.
+    destruct n.
+    { simpl in H. inversion H. }
+    apply IHl.
+    simpl in H.
+    destruct H; [contradiction|assumption].
+Qed.
+
+Lemma In_firstn {A : Type} (l : list A) (x : A) (n : nat):
+  List.In x (firstn n l) -> List.In x l.
+Proof.
+  generalize dependent n.
+  induction l; intros n H.
+  - rewrite firstn_nil in H. simpl in H. inversion H.
+  -  destruct n.
+    { simpl in H. inversion H. }
+    simpl in H. simpl.
+    destruct H as [H|H].
+    { left. exact H. }
+    right. eapply IHl. apply H.
+Qed.
+
+Fixpoint findInList' {A : Type} {eqdec : EqDecision A}
+         (element : A) (index : nat) (elems : list A) :=
+    match elems with 
+    | [] => index
+    | x::xs
+      => if decide (x = element)
+         then index
+         else findInList' element (S index) xs
+    end.
+
+
+Lemma findInList'_found {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (elems': list A) :
+  In element elems' ->
+  findInList' element index elems' < length elems' + index.
+Proof.
+  intros Hin.
+  generalize dependent index.
+  induction elems'.
+  - simpl in Hin. inversion Hin.
+  - intros index.
+    simpl.
+    destruct (decide (a = element)); simpl.
+    + lia.
+    + simpl in Hin.
+      destruct Hin as [Haeqidx|Hin].
+      * contradiction.
+      * specialize (IHelems' Hin).
+        specialize (IHelems' (S index)).
+        lia.
+Qed.
+
+Definition findInList {A : Type} {eqdec : EqDecision A} (element : A) (elems : list A) :=
+  findInList' element 0 elems.
+
+
+Lemma findInList_found {A : Type} {eqdec : EqDecision A} (element : A) (elems : list A) :
+  In element elems ->
+  findInList element elems < length elems.
+Proof.
+  intros H.
+  pose proof (P := @findInList'_found A eqdec).
+  specialize (P element 0 elems).
+  rewrite Nat.add_0_r in P.
+  apply P.
+  apply H.
+Qed.
+
+Lemma findInList'_geq_index {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (elems : list A) :
+  findInList' element index elems >= index.
+Proof.
+  generalize dependent index.
+  induction elems; intros index.
+  - simpl. lia.
+  - simpl.
+    destruct (decide (a = element)).
+    + lia.
+    + specialize (IHelems (S index)).
+      lia.
+Qed.
+
+Lemma findInList'_S_index {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (elems : list A) :
+  findInList' element (S index) elems = S (findInList' element index elems).
+Proof.
+  generalize dependent index.
+  induction elems; intros index.
+  - reflexivity.
+  - simpl.
+    destruct (decide (a = element)).
+    + reflexivity.
+    + specialize (IHelems (S index)).
+      exact IHelems.
+Qed.
+
+
+Lemma findInList'_correct {A : Type} {eqdec : EqDecision A}
+      (element : A) (index : nat) (default : A) (elems : list A) :
+  In element elems ->
+  nth ((findInList' element index elems) - index) elems default = element.
+Proof.
+  intros Hin.
+  generalize dependent index.
+  induction elems; intros index.
+  - simpl in Hin. inversion Hin.
+  - simpl. simpl in Hin.
+    destruct (decide (a = element)).
+    + subst a. rewrite Nat.sub_diag. reflexivity.
+    + assert (Hin': In element elems).
+      { destruct Hin. contradiction. exact H. }
+      clear Hin.
+      specialize (IHelems Hin').
+      clear Hin'.
+      pose proof (Hgeq := findInList'_geq_index element (S index) elems).
+      destruct (findInList' element (S index) elems - index) eqn:Heq.
+      { lia. }
+      rewrite findInList'_S_index in Heq.
+      rewrite <- minus_Sn_m in Heq.
+      2: { lia. }
+      inversion Heq. clear Heq. subst n0.
+      apply IHelems.
+Qed.
+
+Lemma findInList_correct {A : Type} {eqdec : EqDecision A}
+      (element : A) (default : A) (elems : list A) :
+  In element elems ->
+  nth (findInList element elems) elems default = element.
+Proof.
+  pose proof (findInList'_correct element 0 default elems).
+  rewrite Nat.sub_0_r in H.
+  exact H.
+Qed.
+
+Lemma findInList'_nth {A : Type} {eqdec : EqDecision A}
+      (n m : nat) (default : A) (elems : list A) :
+  n < length elems ->
+  NoDup elems ->
+  findInList' (nth n elems default) m elems = n + m.
+Proof.
+  unfold findInList.
+  intros Hlen Hnd.
+  generalize dependent n.
+  generalize dependent m.
+  induction elems; intros m n Hlen.
+  - simpl in Hlen. lia.
+  - simpl in Hlen.
+    simpl.
+    destruct n.
+    + unfold findInList. simpl.
+      destruct (decide (a = a)).
+      reflexivity. contradiction.
+    + apply NoDup_cons_iff in Hnd.
+      destruct Hnd as [Hnotin Hnd].
+      specialize (IHelems Hnd).
+      assert (Hlen' : n < length elems).
+      { lia. } 
+      destruct (decide (a = nth n elems default)).
+      * pose proof (nth_In elems default Hlen').
+        subst a.
+        contradiction.
+      * simpl.
+        rewrite <- Nat.add_succ_r.
+        apply IHelems.
+        exact Hlen'.
+Qed.
+
+Lemma findInList_nth {A : Type} {eqdec : EqDecision A}
+      (n : nat) (default : A) (elems : list A) :
+  n < length elems ->
+  NoDup elems ->
+  findInList (nth n elems default) elems = n.
+Proof.
+  unfold findInList.
+  pose proof (H := findInList'_nth n 0 default elems).
+  rewrite Nat.add_0_r in H.
+  exact H.
+Qed.
+
+Lemma fold_right_andb_false l:
+  fold_right andb false l = false.
+Proof.
+  induction l.
+  - reflexivity.
+  - simpl. rewrite IHl. apply andb_false_r.
+Qed.
+
+Lemma Forall_fold_right_bool {A : Type} (P : A -> bool) (l : list A):
+  Forall (fun x => P x = true) l <-> (fold_right andb true (map P l)) = true.
+Proof.
+  induction l.
+  - simpl. split; intros H. reflexivity. apply Forall_nil.
+  - simpl. split; intros H.
+    + inversion H. subst. clear H.
+      rewrite H2. apply IHl in H3. rewrite H3.
+      reflexivity.
+    + apply andb_prop in H. destruct H as [Ha Hfr].
+      apply IHl in Hfr.
+      exact (Forall_cons _ Ha Hfr).
+Qed.
