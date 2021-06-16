@@ -1358,6 +1358,31 @@ following result is not surprising.
       reflexivity.
     Qed.
 
+
+    Lemma protocol_state_projection
+      (s : vstate X)
+      (Hps : protocol_state_prop X s)
+      : protocol_state_prop Xj (s j).
+    Proof.
+      induction Hps using protocol_state_prop_ind.
+      - apply initial_is_protocol.
+        exact (Hs j).
+      - apply protocol_transition_in in Ht as Hom.
+        apply protocol_message_projection in Hom.
+        destruct (protocol_transition_project_any j _ _ _ _ _ Ht)
+          as [<-|Hresult];[assumption|].
+        destruct Hresult as [li [-> [_ Htrans]]].
+        exists om'.
+        change transition with (vtransition Xj) in Htrans.
+        change (s' j, om') with (s' j, om').
+        rewrite <- Htrans.
+        assert (vvalid Xj li (s j, om)).
+        { exists s;split;[reflexivity|apply Ht]. }
+        destruct Hom as [_s Hom].
+        destruct IHHps as [_om Hsj].
+        eapply @protocol_generated;eassumption.
+    Qed.
+
     Lemma projection_valid_implies_projection_protocol_message
       (l : label)
       (s : state)
@@ -1370,21 +1395,57 @@ following result is not surprising.
       apply projection_valid_implies_composition_protocol_message.
     Qed.
 
-    Lemma projection_valid_preserves_protocol_state
+  Lemma projection_valid_implies_projection_protocol_state
+    (lj : label)
+    (sj : state)
+    (om : option message)
+    (Hv : vvalid Xj lj (sj, om))
+    : protocol_state_prop Xj sj.
+  Proof.
+    destruct Hv as [s [Heq_sj [Hs _]]].
+    subst sj. revert Hs. apply protocol_state_projection.
+  Qed.
+
+  Lemma projection_valid_implies_destination_projection_protocol_prop
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : vvalid Xj l (s, om))
+      : protocol_prop Xj (vtransition (IM j) l (s, om)).
+    Proof.
+      apply projection_valid_implies_projection_protocol_state in Hv as Hs.
+      destruct Hs as [_om Hs].
+      apply projection_valid_implies_projection_protocol_message in Hv as Hom.
+      destruct Hom as [_s Hom].
+      apply (protocol_generated Xj  _ _ _ Hs _ _ Hom Hv).
+    Qed.
+
+  Lemma projection_valid_implies_destination_projection_protocol_state
       (l : label)
       (s : state)
       (om : option message)
       (Hv : vvalid Xj l (s, om))
       (s' := fst (vtransition (IM j) l (s, om)))
-      : protocol_state_prop Xj s -> protocol_state_prop Xj s'.
+      : protocol_state_prop Xj s'.
     Proof.
-      intros [_om Hs].
-      apply projection_valid_implies_projection_protocol_message in Hv as Hom.
-      destruct Hom as [_s Hom].
-      specialize (protocol_generated Xj _ _ _ Hs _ _ Hom Hv) as Hpp.
+      apply projection_valid_implies_destination_projection_protocol_prop in Hv.
       subst s'.
       simpl in *.
-      rewrite surjective_pairing in Hpp. eexists. apply Hpp.
+      rewrite surjective_pairing in Hv. eexists. apply Hv.
+    Qed.
+
+  Lemma projection_valid_implies_destination_projection_protocol_message
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : vvalid Xj l (s, om))
+      (om' := snd (vtransition (IM j) l (s, om)))
+      : option_protocol_message_prop Xj om'.
+    Proof.
+      apply projection_valid_implies_destination_projection_protocol_prop in Hv.
+      subst om'.
+      simpl in *.
+      rewrite surjective_pairing in Hv. eexists. apply Hv.
     Qed.
 
 (**

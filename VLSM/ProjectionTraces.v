@@ -294,46 +294,6 @@ Proof.
       assumption.
 Qed.
 
-Lemma protocol_state_projection
-  (s : state)
-  (Hps : protocol_state_prop X s)
-  : protocol_state_prop Xj (s j).
-Proof.
-  apply protocol_state_has_trace in Hps.
-  destruct Hps as [is [tr [Htr Hinit]]].
-  pose proof (ptrace_get_last Htr) as Hlast.
-  apply ptrace_forget_last in Htr.
-  specialize (finite_trace_projection_last_state _ _ Htr) as Hlst.
-  apply _finite_ptrace_projection in Htr as Hptr.
-  - apply finite_ptrace_last_pstate in Hptr.
-    simpl in *.
-    congruence.
-  - apply initial_is_protocol. apply (Hinit j).
-Qed.
-
-Lemma projection_valid_implies_projection_protocol_state
-  (lj : label)
-  (sj : state)
-  (om : option message)
-  (Hv : vvalid Xj lj (sj, om))
-  : protocol_state_prop Xj sj.
-Proof.
-  destruct Hv as [s [Heq_sj [Hs _]]].
-  subst sj. revert Hs. apply protocol_state_projection.
-Qed.
-
-Lemma projection_valid_implies_transition_projection_protocol_state
-  (l : label)
-  (s : state)
-  (om : option message)
-  (Hv : vvalid Xj l (s, om))
-  (s' := fst (vtransition (IM j) l (s, om)))
-  : protocol_state_prop Xj s'.
-Proof.
-  apply projection_valid_preserves_protocol_state; [assumption|].
-  revert Hv. apply projection_valid_implies_projection_protocol_state.
-Qed.
-
 (* The projection of a finite protocol trace remains a protocol trace *)
 
 Lemma finite_ptrace_projection

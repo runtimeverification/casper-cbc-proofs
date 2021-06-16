@@ -74,7 +74,7 @@ Proof.
     change s' with (fst (s',om')).
     destruct Ht as [[_ [_ Hvalid]] Htrans].
     rewrite <- Htrans.
-    apply (projection_valid_implies_transition_projection_protocol_state IM constraint i).
+    apply (projection_valid_implies_destination_projection_protocol_state IM constraint i).
     apply (Hvalidating l (s,om));assumption.
 Qed.
     
