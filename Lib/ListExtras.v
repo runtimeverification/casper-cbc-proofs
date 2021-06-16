@@ -628,6 +628,37 @@ Proof.
     lia.
 Qed.
 
+Lemma list_prefix_S {A : Type} (l1 l2 : list A) (x : A) (n : nat) :
+  length l1 >= (S n) ->
+  list_prefix l1 (S n) = l2 ++ [x] ->
+  list_prefix l1 n = l2.
+Proof.
+  intros Hlen H.
+  generalize dependent x.
+  generalize dependent l2.
+  generalize dependent l1.
+  induction n; intros l1 Hlen l2 x H.
+  - simpl.
+    rewrite list_prefix_0.
+    assert (H1: length (list_prefix l1 1) = length (l2 ++ [x])).
+    { rewrite H. reflexivity. }
+    rewrite app_length in H1. simpl in H1.
+    rewrite list_prefix_length in H1.
+    + assert (length l2 = 0).
+      { lia. }
+      symmetry. apply length_zero_iff_nil. exact H0.
+    + destruct l1.
+      2: { simpl. lia. }
+      simpl in H1. lia.
+  - destruct l1, l2; simpl; simpl in H; inversion H; subst.
+    2: {
+      f_equal. eapply IHn. simpl in Hlen. lia. apply H2.
+    }
+    destruct l1.
+    2: { simpl in H2. inversion H2. }
+    simpl in Hlen. lia.
+Qed.
+
 Lemma list_suffix_length
   {A : Type}
   (l : list A)
