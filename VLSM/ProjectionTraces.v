@@ -311,6 +311,29 @@ Proof.
   - apply initial_is_protocol. apply (Hinit j).
 Qed.
 
+Lemma projection_valid_implies_projection_protocol_state
+  (lj : label)
+  (sj : state)
+  (om : option message)
+  (Hv : vvalid Xj lj (sj, om))
+  : protocol_state_prop Xj sj.
+Proof.
+  destruct Hv as [s [Heq_sj [Hs _]]].
+  subst sj. revert Hs. apply protocol_state_projection.
+Qed.
+
+Lemma projection_valid_implies_transition_projection_protocol_state
+  (l : label)
+  (s : state)
+  (om : option message)
+  (Hv : vvalid Xj l (s, om))
+  (s' := fst (vtransition (IM j) l (s, om)))
+  : protocol_state_prop Xj s'.
+Proof.
+  apply projection_valid_preserves_protocol_state; [assumption|].
+  revert Hv. apply projection_valid_implies_projection_protocol_state.
+Qed.
+
 (* The projection of a finite protocol trace remains a protocol trace *)
 
 Lemma finite_ptrace_projection

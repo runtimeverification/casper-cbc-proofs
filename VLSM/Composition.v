@@ -1384,8 +1384,7 @@ following result is not surprising.
       specialize (protocol_generated Xj _ _ _ Hs _ _ Hom Hv) as Hpp.
       subst s'.
       simpl in *.
-      destruct (vtransition (IM j) l (s, om)) as (s', om').
-      exists om'. assumption.
+      rewrite surjective_pairing in Hpp. eexists. apply Hpp.
     Qed.
 
 (**
