@@ -2193,11 +2193,11 @@ Section composition.
 
   (* If there is a [Cobservation Receive m component], then there is also
                    [Cobservation Send m component]. *)
-  Lemma received_from_self_implies_sent st s component component':
+  Lemma received_from_self_implies_sent st s component:
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
     let obs := observationsOf (st (component_to_index component)) in
-    In (Cobservation Receive (Cpremessage s component) component') obs ->
+    In (Cobservation Receive (Cpremessage s component) component) obs ->
     In (Cobservation Send (Cpremessage s component) component) obs.
   Proof.
     simpl.
@@ -2207,6 +2207,15 @@ Section composition.
       simpl. unfold composite_has_been_received.
       exists (component_to_index component). simpl.
       unfold elmo_has_been_received_oracle.
+      rewrite component_to_index_to_component.
+      { exact Haddr. }
+      apply (filter_in _ (isWitnessedBy component)) in Hrecv.
+      2: { unfold isWitnessedBy. simpl.
+           destruct (bool_decide (component = component)) eqn:Heq.
+           reflexivity.
+           apply bool_decide_eq_false_1 in Heq. contradiction.
+      }
+      
       apply (filter_in _ isReceive) in Hrecv.
       2: { reflexivity. }
       Check in_map.
