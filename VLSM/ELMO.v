@@ -2189,65 +2189,6 @@ Section composition.
         exists n. split. lia. apply Hn. 
   Qed.
   
-  Check has_been_received.
-  Locate has_been_received.
-  Print finite_protocol_trace.
-  Search trace_has_message.
-  Lemma floating_around_implies_sent st s component tr:
-    address_valid component ->
-    finite_protocol_trace free_composite_elmo (fun=> Cprestate []) tr ->
-    last_error (List.map destination tr) = Some st ->
-    trace_has_message (field_selector output) (Cpremessage s component) tr ->
-    In (Cobservation Send (Cpremessage s component) component)
-       (observationsOf (st (component_to_index component))).
-  Proof.
-    intros Haddr Htr Hst Hmsg.
-    destruct Htr as [Htr Hinit].
-    induction Htr.
-    - simpl in Hst. inversion Hst.
-    - simpl in Hst. inversion Hst. subst st. clear Hst.
-      unfold protocol_transition in H.
-      destruct H as [Hvalid Htrans].
-      simpl in Htrans.
-      destruct l as [i li].
-      remember (vtransition (IM i) li (s' i, iom)) as VT.
-      destruct VT as [si' om'].
-      inversion Htrans. subst. clear Htrans.
-
-      unfold vtransition in HeqVT. simpl in HeqVT.
-      destruct li,iom,(decide (component_to_index component = i));
-        inversion HeqVT; subst; clear HeqVT.
-      + rewrite component_to_index_to_component.
-        { exact Haddr. }
-        rewrite component_to_index_to_component in Htr.
-        { exact Haddr. }
-        rewrite component_to_index_to_component in Hmsg.
-        { exact Haddr. }
-        rewrite component_to_index_to_component in IHHtr.
-        { exact Haddr. }
-        remember (state_update IM s' (component_to_index component)
-             (Cprestate
-                (observationsOf (s' (component_to_index component)) ++
-                                [Cobservation Receive p component]))) as s''.
-
-        (* s'' is not initial *)
-        clear IHHtr.
-        
-        
-        
-        rewrite state_update_eq.
-      
-      destruct (decide (component_to_index component = i)).
-      2: { rewrite state_update_neq in HeqVT.
-           { exact n. }
-           auto.
-      }
-      subst i.
-      rewrite state_update_eq in Hin.
-      destruct (decide (
-  Abort.
-  
-    
 
   (* If there is a [Cobservation Receive m component], then there is also
                    [Cobservation Send m component]. *)
