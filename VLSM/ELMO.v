@@ -2197,19 +2197,39 @@ Section composition.
                    [Cobservation Send m component]. *)
   Lemma received_from_self_implies_sent st s component component':
     address_valid component ->
+    protocol_state_prop free_composite_elmo st ->
     let obs := observationsOf (st (component_to_index component)) in
     In (Cobservation Receive (Cpremessage s component) component') obs ->
     In (Cobservation Send (Cpremessage s component) component) obs.
   Proof.
     simpl.
-    intros Haddr Hrecv.
+    intros Haddr Hpsp Hrecv.
     assert (Hhbr: has_been_received free_composite_elmo st (Cpremessage s component)).
     {
       simpl. unfold composite_has_been_received.
       exists (component_to_index component). simpl.
       unfold elmo_has_been_received_oracle.
-      Search filter.
+      apply (filter_in _ isReceive) in Hrecv.
+      2: { reflexivity. }
+      Check in_map.
+      apply (in_map messageOf) in Hrecv.
+      exact Hrecv.
     }
+    clear Hrecv.
+    pose proof (Htmp := has_been_received_in_state _ _ _ _ Hpsp Hhbr).
+    destruct Htmp as [s0 [item [tr [Hin Hfpt]]]].
+    inversion Hfpt. subst. clear Hfpt.
+    simpl in Hin. subst iom.
+    (* We will use H3 later for monotonicity. *)
+    rename H4 into Hpt.
+    unfold protocol_transition in Hpt.
+    destruct Hpt as [Hvalid Hs1].
+    simpl in Hvalid.
+    destruct Hvalid as [Hs0 [Hmsg Hvalid]].
+    unfold constrained_composite_valid in Hvalid.
+    destruct Hvalid as [Hvalid _].
+    simpl in Hvalid.
+    destruct l as [i li].
   Abort.
   
   
