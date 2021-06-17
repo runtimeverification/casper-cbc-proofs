@@ -397,10 +397,12 @@ Section capabilities.
   Check oracle_stepwise_props.
 
   Definition elmo_has_been_received_oracle (s : Prestate) (m : Premessage) : Prop :=
-    List.In m (map messageOf (filter isReceive (filter (isWitnessedBy component) (observationsOf s)))).
+    (* List.In m (map messageOf (filter isReceive (filter (isWitnessedBy component) (observationsOf s)))). *)
+    List.In m (map messageOf (filter isReceive (observationsOf s))).
 
   Definition elmo_has_been_sent_oracle (s : Prestate) (m : Premessage) : Prop :=
-    List.In m (map messageOf (filter isSend (filter (isWitnessedBy component) (observationsOf s)))).
+    (*List.In m (map messageOf (filter isSend (filter (isWitnessedBy component) (observationsOf s)))).*)
+    List.In m (map messageOf (filter isSend (observationsOf s))).
 
   Lemma elmo_has_been_received_oracle_dec : RelDecision elmo_has_been_received_oracle.
   Proof.
@@ -445,7 +447,7 @@ Section capabilities.
     unfold elmo_has_been_received_oracle.
     destruct l, im; inversion Htransition; subst; clear Htransition; simpl.
     - rewrite filter_app.
-      rewrite filter_app.
+      (*rewrite filter_app.*)
       rewrite map_app.
       rewrite in_app_iff.
       simpl. unfold isWitnessedBy. simpl.
@@ -477,7 +479,7 @@ Section capabilities.
           simpl in H2. unfold vvalid in H2. simpl in H2. inversion H2.
         * exact H.
     - rewrite filter_app.
-      rewrite filter_app.
+      (*rewrite filter_app.*)
       rewrite map_app.
       rewrite in_app_iff.
       simpl. unfold isWitnessedBy. simpl.
@@ -532,7 +534,7 @@ Section capabilities.
     unfold elmo_has_been_sent_oracle.
     destruct l, im; inversion Htransition; subst; clear Htransition; simpl.
     - rewrite filter_app.
-      rewrite filter_app.
+      (*rewrite filter_app.*)
       rewrite map_app.
       rewrite in_app_iff.
       simpl. unfold isWitnessedBy. simpl.
@@ -558,7 +560,7 @@ Section capabilities.
         * inversion H; subst.
         * exact H.
     - rewrite filter_app.
-      rewrite filter_app.
+      (*rewrite filter_app.*)
       rewrite map_app.
       rewrite in_app_iff.
       simpl. unfold isWitnessedBy. simpl.
@@ -1628,7 +1630,7 @@ Section composition.
         destruct Hin as [Hin|Hin]; inversion Hin.
   Qed.
 
-  Lemma free_composite_elmo_has_been_received_capability:
+  Instance free_composite_elmo_has_been_received_capability:
     has_been_received_capability free_composite_elmo.
   Proof.
     unfold free_composite_elmo. unfold free_composite_vlsm.
@@ -1659,12 +1661,13 @@ Section composition.
       exists idx.
       unfold has_been_received. unfold elmo_has_been_received_capability. simpl.
       unfold elmo_has_been_received_oracle.
+      (*
       apply (filter_in _ (isWitnessedBy (index_to_component idx))) in Hin.
       2: { unfold isWitnessedBy. simpl.
            destruct (bool_decide (index_to_component idx = index_to_component idx)) eqn:Heq.
            reflexivity.
            apply bool_decide_eq_false_1 in Heq. contradiction.
-      }
+      }*)
       apply (filter_in _ isReceive) in Hin.
       2: { reflexivity. }
       
@@ -2198,6 +2201,15 @@ Section composition.
     In (Cobservation Receive (Cpremessage s component) component') obs ->
     In (Cobservation Send (Cpremessage s component) component) obs.
   Proof.
+    simpl.
+    intros Haddr Hrecv.
+    assert (Hhbr: has_been_received free_composite_elmo st (Cpremessage s component)).
+    {
+      simpl. unfold composite_has_been_received.
+      exists (component_to_index component). simpl.
+      unfold elmo_has_been_received_oracle.
+      Search filter.
+    }
   Abort.
   
   
