@@ -85,9 +85,8 @@ Existing Instance i0.
 
 Definition composite_state_sub_projection
   (s : composite_state IM)
-  (subi : sub_index)
-  : vstate (sub_IM subi)
-  := s (proj1_sig subi).
+  : composite_state sub_IM
+  := fun (subi : sub_index) => s (proj1_sig subi) : vstate (sub_IM subi).
 
 Lemma composite_initial_state_sub_projection
   (s : composite_state IM)
@@ -347,8 +346,11 @@ Lemma preloaded_finite_trace_sub_projection_last_state
   (start : composite_state IM)
   (transitions : list (composite_transition_item IM))
   (Htr : finite_protocol_trace_from Pre start transitions)
-  (lstx := last (List.map destination transitions) start)
-  (lstj := last (List.map destination (finite_trace_sub_projection transitions)) (composite_state_sub_projection start))
+  (lstx := finite_trace_last start transitions)
+  (lstj := finite_trace_last 
+            (composite_state_sub_projection start)
+            (finite_trace_sub_projection transitions)
+            )
   : lstj = composite_state_sub_projection lstx.
 Proof.
   unfold lstx. unfold lstj. clear lstx. clear lstj.
@@ -356,26 +358,25 @@ Proof.
   match goal with
   |- context[finite_trace_sub_projection (?i :: _)] => remember i as item
   end.
-  rewrite map_cons.
-  rewrite unroll_last. simpl.
+  rewrite finite_trace_last_cons.
+  simpl.
   destruct (decide (from_sub_projection item)).
-  - subst. rewrite map_cons. rewrite unroll_last.
-    assumption.
-  - destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
+  - rewrite finite_trace_last_cons.
+    subst. simpl. assumption.
+  - subst. simpl.
+    rewrite <- IHHtr; clear IHHtr. f_equal.
+    destruct H as [[[_om Hs'] [[_s Hiom] Hvalid]] Htransition].
     unfold transition in Htransition; simpl in Htransition.
     unfold vtransition in Htransition. simpl in Htransition.
     destruct l as (i, l).
     destruct (vtransition (IM i) l (s' i, iom)) as [si' om'] eqn:Hteq.
     inversion Htransition; subst. clear Htransition.
-    simpl.
     unfold from_sub_projection in n. simpl in n.
-    simpl in *.
-    rewrite <- IHHtr. f_equal.
     apply functional_extensionality_dep_good.
     intros (j, Hj). unfold composite_state_sub_projection.
     simpl. symmetry. apply (state_update_neq _ s').
     apply bool_decide_eq_true_1 in Hj.
-    intro contra. subst. contradiction.
+    clear -n Hj; congruence.
 Qed.
 
 Lemma X_incl_Pre : VLSM_incl X Pre.
@@ -389,8 +390,10 @@ Lemma finite_trace_sub_projection_last_state
   (start : composite_state IM)
   (transitions : list (composite_transition_item IM))
   (Htr : finite_protocol_trace_from X start transitions)
-  (lstx := last (List.map destination transitions) start)
-  (lstj := last (List.map destination (finite_trace_sub_projection transitions)) (composite_state_sub_projection start))
+  (lstx := finite_trace_last start transitions)
+  (lstj := finite_trace_last
+    (composite_state_sub_projection start)
+    (finite_trace_sub_projection transitions))
   : lstj = composite_state_sub_projection lstx.
 Proof.
   apply preloaded_finite_trace_sub_projection_last_state.
@@ -537,8 +540,7 @@ Definition state_sub_item_input_is_seeded_or_sub_previously_sent
   (s : composite_state IM)
   : Prop
   := forall is tr,
-    finite_protocol_trace Pre is tr ->
-    last (map destination tr) is = s ->
+    finite_protocol_trace_init_to Pre is s tr ->
     trace_sub_item_input_is_seeded_or_sub_previously_sent tr.
 
 Lemma finite_protocol_trace_sub_projection
@@ -620,11 +622,13 @@ Proof.
     apply has_been_sent_consistency; [apply Sub_Free_has_been_sent_capability| assumption| ].
     exists (composite_state_sub_projection s), (finite_trace_sub_projection tr).
     split.
-    { apply (VLSM_incl_finite_protocol_trace _ _ Xj_incl_Pre_Sub_Free).
-      split; assumption.
+    { split;[|assumption].
+       apply (VLSM_incl_finite_protocol_trace_from_to _ _ Xj_incl_Pre_Sub_Free).
+       apply ptrace_add_last.
+       assumption.
+       symmetry;assumption.
     }
-    symmetry in Heqlst.
-    exists Heqlst.
+    unfold trace_has_message.
     apply Exists_exists. exists (composite_transition_item_sub_projection item Hsub_item).
     split; [|assumption].
     apply finite_trace_sub_projection_list_in. assumption.
@@ -637,23 +641,22 @@ Lemma protocol_state_sub_projection
   : protocol_state_prop Xj (composite_state_sub_projection s).
 Proof.
   apply protocol_state_has_trace in Hps.
-  destruct Hps as [is [tr [Htr Hlst]]].
+  destruct Hps as [is [tr Htr]].
+  specialize (Hs _ _ (VLSM_incl_finite_protocol_trace_init_to _ _ X_incl_Pre _ _ _ Htr)).
+  apply ptrace_get_last in Htr as Hlst.
+  apply ptrace_forget_last in Htr.
   specialize (finite_trace_sub_projection_last_state _ _ (proj1 Htr)) as Hlst'.
-  apply finite_protocol_trace_sub_projection in Htr as Hptr.
+  apply (finite_protocol_trace_sub_projection _ _ Hs) in Htr as Hptr.
   - destruct Hptr as [Hptr _]. apply finite_ptrace_last_pstate in Hptr.
     simpl in *.
     rewrite Hlst' in Hptr.
     subst. assumption.
-  - unfold state_sub_item_input_is_seeded_or_sub_previously_sent in Hs.
-    apply Hs with is; [|assumption].
-    apply VLSM_incl_finite_protocol_trace; [|assumption].
-    apply X_incl_Pre.
 Qed.
 
 Lemma finite_protocol_trace_from_sub_projection
   (s : composite_state IM)
   (tr : list (composite_transition_item IM))
-  (lst := last (map destination tr) s)
+  (lst := finite_trace_last s tr)
   (Hmsg : state_sub_item_input_is_seeded_or_sub_previously_sent lst)
   (Htr : finite_protocol_trace_from X s tr)
   : finite_protocol_trace_from Xj (composite_state_sub_projection s) (finite_trace_sub_projection tr).
@@ -673,9 +676,12 @@ Proof.
     rewrite Hpre_lst in Htr. assumption.
   - specialize (Hmsg is (pre ++ tr)).
     apply Hmsg.
-    + apply VLSM_incl_finite_protocol_trace; [|assumption].
-      apply X_incl_Pre.
-    + rewrite map_app, last_app. subst lst s. reflexivity.
+    apply VLSM_incl_finite_protocol_trace_init_to;
+    [apply X_incl_Pre|].
+    apply ptrace_add_last.
+    assumption.
+    rewrite finite_trace_last_app.
+    unfold lst. subst. reflexivity.
 Qed.
 
 Lemma in_futures_sub_projection
@@ -684,10 +690,13 @@ Lemma in_futures_sub_projection
   (Hfutures : in_futures X s1 s2)
   : in_futures Xj (composite_state_sub_projection s1) (composite_state_sub_projection s2).
 Proof.
-  destruct Hfutures as [tr [Htr Heq_s2]]. subst s2.
+  destruct Hfutures as [tr Htr].
+  apply ptrace_get_last in Htr as Heq_s2.
+  apply ptrace_forget_last in Htr.
+  subst s2.
   specialize (finite_protocol_trace_from_sub_projection s1 tr Hs2 Htr); intros Htrj.
   exists (finite_trace_sub_projection tr).
-  split; [assumption|].
+  apply ptrace_add_last;[assumption|].
   apply finite_trace_sub_projection_last_state.
   assumption.
 Qed.

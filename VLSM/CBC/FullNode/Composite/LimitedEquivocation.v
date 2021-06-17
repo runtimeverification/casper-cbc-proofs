@@ -20,6 +20,31 @@ From CasperCBC
     ObservableEquivocation
     .
 
+Local Ltac destruct_match_term_as e pats Heq :=
+  lazymatch e with
+  | context [ match ?e with | _ => _ end] =>
+    destruct_match_term_as e pats Heq
+  | _ => destruct e as pats eqn:Heq
+  end.
+Local Ltac destruct_match_tac pats Heq :=
+  lazymatch goal with
+  | |- context [ match ?s with | _ => _ end] =>
+    destruct_match_term_as s pats Heq
+  end.
+Local Ltac destruct_match_in_tac H pats Heq :=
+  lazymatch type of H with
+  | context [ match ?s with | _ => _ end] =>
+    destruct_match_term_as s pats Heq
+  end.
+Local Tactic Notation "destruct_match" "as" simple_intropattern(pats)
+  := destruct_match_tac pats ident:(Ht).
+Local Tactic Notation "destruct_match" "as" simple_intropattern(pats) "eqn" ":" ident(Heq)
+  := destruct_match_tac pats Heq.
+Local Tactic Notation "destruct_match" "as" simple_intropattern(pats) "in" ident(H)
+  := destruct_match_in_tac H pats ident:(Ht).
+Local Tactic Notation "destruct_match" "as" simple_intropattern(pats) "eqn" ":" ident(Heq) "in" ident(H)
+  := destruct_match_in_tac H pats Heq.
+
 (** * VLSM Composing Validators with Limited Equivocation *)
 
 Section ConstrainedValidators.
@@ -319,7 +344,7 @@ Fixpoint receive_messages
     match in_dec decide_eq m (get_message_set (project s i)) with
     | left _ => items
     | right _ =>
-      let final := last (map destination items) s in
+      let final := finite_trace_last s items in
       let item := receive_message final i m in
       items ++ [item]
     end
@@ -330,7 +355,7 @@ Lemma receive_messages_set_eq
   (i : index)
   (ms : list message)
   (Hms : incl ms (state_union indices s))
-  : set_eq (state_union indices s) (state_union indices (last (map destination (receive_messages s i (rev ms))) s)).
+  : set_eq (state_union indices s) (state_union indices (finite_trace_last s (receive_messages s i (rev ms)))).
 Proof.
   generalize dependent s.
   induction ms using rev_ind; intros; simpl; try apply set_eq_refl.
@@ -339,14 +364,13 @@ Proof.
   specialize (IHms s Hi).
   rewrite rev_unit. simpl.
   destruct (in_dec decide_eq x (get_message_set (project s i))); try assumption.
-  rewrite map_app. simpl. rewrite last_last.
+  rewrite finite_trace_last_is_last.
+  simpl.
   unfold receive_destination.  unfold vtransition. simpl.
   unfold vtransition. simpl.
   destruct IHms as [I1 I2].
   split; intros m Hm; destruct i as [v | client]; simpl in *.
-  - match goal with |- context [last ?l s (inl v)] =>
-                    destruct (last l s (inl v)) as (msgs, final) eqn:Ht
-    end.
+  - destruct_match as [msgs final].
     apply state_union_iff;[exact finite_index|..].
     apply I1 in Hm.
     apply state_union_iff in Hm;[..|exact finite_index].
@@ -364,8 +388,8 @@ Proof.
       rewrite state_update_neq; try assumption.
       intro H; discriminate H.
   - match goal with
-      |- context [last ?l s (inr client)] =>
-      remember (last l s (inr client)) as msgs eqn:Ht
+      |- context [@finite_trace_last _ ?T s ?l (inr client)] =>
+      remember (@finite_trace_last _ T s l (inr client)) as msgs eqn:Ht
     end.
     specialize (I1 m Hm).
     apply state_union_iff in I1;[|exact finite_index].
@@ -378,10 +402,7 @@ Proof.
       apply set_add_iff. right.
       subst msgs. assumption.
     + right. exists client'. simpl. rewrite state_update_neq; assumption.
-  - match type of Hm with
-      context [last ?l s (inl v)] =>
-      destruct (last l s (inl v)) as (msgs, final) eqn:Ht
-    end.
+  - destruct_match as [msgs final] in Hm.
     apply state_union_iff in Hm;[|exact finite_index].
     destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (decide ((inl v':index) = inl v)).
     + inversion e. subst v'. simpl in Hm. rewrite state_update_eq in Hm.
@@ -402,8 +423,8 @@ Proof.
       right. exists client'.
       assumption.
   - match type of Hm with
-      context [last ?l s (inr client)] =>
-      remember (last l s (inr client)) as msgs eqn:Ht
+      context [@finite_trace_last _ ?T s ?l (inr client)] =>
+      remember (@finite_trace_last _ T s l (inr client)) as msgs eqn:Ht
     end.
     apply state_union_iff in Hm;[|exact finite_index].
     destruct Hm as [[v' Hm] | [client' Hm]]; try destruct (decide ((inr client':index) = inr client)).
@@ -428,7 +449,7 @@ Lemma receive_messages_v
   (s : vstate FreeX)
   (i : index)
   (ms : list message)
-  : set_eq (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i)) (set_union decide_eq (get_message_set (project s i)) ms).
+  : set_eq (get_message_set (project (finite_trace_last s (receive_messages s i (rev ms))) i)) (set_union decide_eq (get_message_set (project s i)) ms).
 Proof.
   generalize dependent s.
   induction ms using rev_ind; intros; try apply set_eq_refl.
@@ -443,17 +464,15 @@ Proof.
     - apply in_app_iff in Hm. destruct Hm as [Hm | Hm]; try (right; assumption).
       left. inversion Hm; try contradiction. subst. assumption.
   }
-  rewrite map_app. simpl.
-  rewrite last_last.
+  rewrite finite_trace_last_is_last.
+  simpl.
   split; intros m Hm.
   - apply set_union_iff.
     unfold receive_destination in Hm.
     unfold vtransition in Hm. simpl in Hm.
     destruct i as [v | client]; simpl in *
     ; unfold vtransition in Hm; simpl in Hm.
-    + match type of Hm with context [last ?l s (inl v)] =>
-                            destruct (last l s (inl v)) as (msgs, final) eqn:Heqlst
-      end.
+    + destruct_match as (msgs, final) eqn: Heqlst in Hm.
       simpl in Hm.
       rewrite state_update_eq in Hm. simpl in Hm.
       apply set_add_iff in Hm.
@@ -468,8 +487,8 @@ Proof.
         right.
         apply in_app_iff. left. assumption.
     + match type of Hm with
-        context [last ?l s (inr client)] =>
-        remember (last l s (inr client)) as msgs eqn:Heqlst
+        context [@finite_trace_last _ ?T s ?l (inr client)] =>
+        remember (@finite_trace_last _ T s l (inr client)) as msgs eqn:Heqlst
       end.
       simpl in Hm.
       rewrite state_update_eq in Hm. simpl in Hm.
@@ -487,10 +506,7 @@ Proof.
     unfold vtransition. simpl.
     destruct i as [v | client]; simpl in *
     ; unfold vtransition; simpl.
-    + match goal with
-        |- context [last ?l s (inl v)] =>
-        destruct (last l s (inl v)) as (msgs, final) eqn:Heqlst
-      end.
+    + destruct_match as (msgs, final) eqn:Heqlst.
       simpl.
       rewrite state_update_eq. simpl.
       apply set_add_iff.
@@ -504,8 +520,8 @@ Proof.
       * right. apply Hincl. apply set_union_iff. right. assumption.
       * subst x. left. reflexivity.
     + match goal with
-        |- context [last ?l s (inr client)] =>
-        remember (last l s (inr client)) as msgs eqn:Heqlst
+        |- context [@finite_trace_last _ ?T s ?l (inr client)] =>
+        remember (@finite_trace_last _ T s l (inr client)) as msgs eqn:Heqlst
       end.
       simpl.
       rewrite state_update_eq. simpl.
@@ -525,24 +541,24 @@ Lemma receive_messages_not_v
   (i i' : index)
   (Hv' : i' <> i)
   (ms : list message)
-  : project (last (map destination (receive_messages s i (rev ms))) s) i' = project s i'.
+  : project (finite_trace_last s (receive_messages s i (rev ms))) i' = project s i'.
 Proof.
   generalize dependent s.
   induction ms using rev_ind; intros; try apply reflexivity.
   specialize (IHms s).
   rewrite rev_unit. simpl.
   destruct (in_dec decide_eq x (get_message_set (project s i))); try assumption.
-  rewrite map_app. simpl.
-  rewrite last_last.
+  rewrite finite_trace_last_is_last.
+  simpl.
   unfold receive_destination.
   unfold vtransition. simpl.
   destruct i as [v | client]; destruct i' as [v' | client']; simpl in *
   ;unfold vtransition; simpl;
     match goal with
-      |- context[last ?l s ?ix] =>
+      |- context[@finite_trace_last _ ?T s ?l ?ix] =>
       match ix with
-      | (inl _) => destruct (last l s ix) as (msgs, final) eqn:Ht
-      | (inr _) => remember (last l s ix) as msgs eqn:Ht
+      | (inl _) => destruct (@finite_trace_last _ T s l ix) as (msgs, final) eqn:Ht
+      | (inr _) => remember (@finite_trace_last _ T s l ix) as msgs eqn:Ht
       end
     end
   ; simpl
@@ -554,7 +570,7 @@ Lemma receive_messages_state_union_all
   (s : vstate FreeX)
   (i : index)
   (ms : list message)
-  : incl ms (state_union indices (last (map destination (receive_messages s i (rev ms))) s)).
+  : incl ms (state_union indices (finite_trace_last s (receive_messages s i (rev ms)))).
 Proof.
   intros m Hm.
   specialize (receive_messages_v s i ms).
@@ -680,15 +696,15 @@ Proof.
       intros [_ Hincl].
       simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
       destruct (in_dec decide_eq x (s (inr client))); try (elim n; assumption).
-      rewrite map_app in Hincl. simpl in Hincl.
-      rewrite last_last in Hincl.
+      rewrite finite_trace_last_is_last in Hincl.
+      simpl in Hincl.
       unfold receive_destination in Hincl.
       unfold vtransition in Hincl. simpl in Hincl.
       match goal with
-      | |- context [last ?l s] =>
-        remember (last l s) as lst
+      | |- context [@finite_trace_last _ ?T s ?l] =>
+        remember (@finite_trace_last _ T s l) as lst
       end.
-      replace (last _ _) with lst in Hincl.
+      replace (finite_trace_last _ _) with lst.
       assert (Hincl' : incl (set_add decide_eq x (lst (inr client))) (state_union indices s)).
       {
         intros m Hm. apply Hincl.
@@ -710,18 +726,19 @@ Proof.
       simpl in Hincl. rewrite rev_unit in Hincl. simpl in Hincl.
       destruct (in_dec decide_eq x (get_message_set (project s i)))
       ; [elim n; assumption|]. clear n0.
-      rewrite map_app in Hincl. simpl in Hincl.
-      rewrite last_last in Hincl.
+      rewrite finite_trace_last_is_last in Hincl.
+      simpl in Hincl.
       unfold receive_destination in Hincl.
-      unfold vtransition in Hincl. simpl in *.
+      unfold vtransition in Hincl. simpl in * |- *.
+      Set Printing Implicit.
       match goal with
-          |- context[last ?l s] =>
-            remember (last l s) as lst eqn:Hlst
+          |- context[@finite_trace_last ?msg ?T s ?l] =>
+            remember (@finite_trace_last msg T s l) as lst eqn:Hlst
       end.
       destruct (receive_label lst i x) as (j, lj) eqn:Hrlabel.
-      match goal with
-          |- context[last ?l s] =>
-            replace (last l s) with lst by (subst;reflexivity)
+      lazymatch goal with
+          |- context[@finite_trace_last ?msg ?T s ?l j] =>
+          replace (@finite_trace_last msg T s l) with lst by assumption
       end.
       match type of Hincl with
       | context [let (si', om') := ?v in _] => destruct v as (si', om') eqn:Ht
@@ -737,10 +754,8 @@ Proof.
       destruct i as [v | client]
       ; [|reflexivity].
       unfold vtransition. simpl.
-      match goal with |- context [last ?l s (inl v)] =>
-                        destruct (last l s (inl v)) as (msgs, final) eqn:Hmsgs
-      end.
-      replace (last _ s (inl v)) with (msgs, final).
+      destruct_match as (msgs, final) eqn:Hmsgs.
+      replace (finite_trace_last s _ (inl v)) with (msgs, final).
       reflexivity.
 Qed.
 
@@ -754,7 +769,7 @@ Fixpoint receive_messages_iterated
   | [] => []
   | i :: is' =>
     let items := receive_messages s i (rev ms) in
-    let s' := last (List.map destination items) s in
+    let s' := finite_trace_last s items in
     let items' := receive_messages_iterated s' ms is' in
     items ++ items'
   end.
@@ -765,11 +780,11 @@ Lemma receive_messages_iterated_out
   (is : list index)
   (i : index)
   (Hi : ~In i is)
-  : project (last (map destination (receive_messages_iterated s ms is)) s) i = project s i.
+  : project (finite_trace_last s (receive_messages_iterated s ms is)) i = project s i.
 Proof.
   generalize dependent s.
   induction is; intros; simpl; try reflexivity.
-  rewrite map_app. rewrite last_app.
+  rewrite finite_trace_last_app.
   assert (Hi' : ~In i is) by (intro; elim Hi; right; assumption).
   specialize (IHis Hi'). rewrite IHis.
   apply receive_messages_not_v.
@@ -783,16 +798,16 @@ Lemma receive_messages_iterated_in
   (i : index)
   (Hi : In i is)
   : set_eq
-    (get_message_set (project (last (map destination (receive_messages_iterated s ms is)) s) i))
+    (get_message_set (project (finite_trace_last s (receive_messages_iterated s ms is)) i))
     (set_union decide_eq (get_message_set (project s i)) ms).
 Proof.
   generalize dependent s.
   induction is; intros; simpl; inversion Hi
-  ; rewrite map_app; rewrite last_app.
+  ; rewrite finite_trace_last_app.
   - subst a.
     destruct (in_dec decide_eq i is).
-    + specialize (IHis i1 (last (map destination (receive_messages s i (rev ms))) s)).
-      apply set_eq_tran with (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i));[|solve[apply receive_messages_v]].
+    + specialize (IHis i1 (finite_trace_last s (receive_messages s i (rev ms)))).
+      apply set_eq_tran with (get_message_set (project (finite_trace_last s (receive_messages s i (rev ms))) i));[|solve[apply receive_messages_v]].
       destruct IHis as [Hincl Hincl'].
       split; intros m Hm.
       * apply Hincl in Hm.
@@ -810,17 +825,17 @@ Proof.
         apply set_union_iff.
         left. assumption.
     + clear IHis.
-      specialize (receive_messages_iterated_out (last (map destination (receive_messages s i (rev ms))) s) ms is i n).
+      specialize (receive_messages_iterated_out (finite_trace_last s (receive_messages s i (rev ms))) ms is i n).
       intro Heq.
-      apply set_eq_tran with (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i))
+      apply set_eq_tran with (get_message_set (project (finite_trace_last s (receive_messages s i (rev ms))) i))
       ; try apply receive_messages_v.
       replace (project _ i)
-      with (project (last (map destination (receive_messages s i (rev ms))) s) i).
+      with (project (finite_trace_last s (receive_messages s i (rev ms))) i).
       apply set_eq_refl.
   - destruct (decide (i = a)).
     + subst a.
-      specialize (IHis H (last (map destination (receive_messages s i (rev ms))) s)).
-      apply set_eq_tran with (get_message_set (project (last (map destination (receive_messages s i (rev ms))) s) i))
+      specialize (IHis H (finite_trace_last s (receive_messages s i (rev ms)))).
+      apply set_eq_tran with (get_message_set (project (finite_trace_last s (receive_messages s i (rev ms))) i))
       ;[|solve[apply receive_messages_v]].
       destruct IHis as [Hincl Hincl'].
       split; intros m Hm.
@@ -840,7 +855,7 @@ Proof.
         left. assumption.
     + specialize (receive_messages_not_v s a i n ms).
       intro Heq.
-      specialize (IHis H (last (map destination (receive_messages s a (rev ms))) s)).
+      specialize (IHis H (finite_trace_last s (receive_messages s a (rev ms)))).
       rewrite Heq in IHis.
       assumption.
 Qed.
@@ -912,7 +927,7 @@ Definition union_state
   :=
   let msgs := sorted_state_union s in
   let tr := receive_messages_iterated s msgs indices in
-  last (map destination tr) s.
+  finite_trace_last s tr.
 
 Lemma union_state_state_union
   (s : vstate FreeX)
@@ -947,7 +962,7 @@ Proof.
   exists (union_state s).
   split.
   - exists (receive_messages_iterated s (sorted_state_union s) indices).
-    split; try reflexivity.
+    apply ptrace_add_last;[|reflexivity].
     apply receive_sorted_messages_protocol; try assumption.
     + apply sorted_state_union_nodup.
       destruct Hs as [om Hs].

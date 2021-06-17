@@ -269,11 +269,10 @@ prefix of the trace with the same property and no prior observation of
 the event.
 *)
 Lemma in_observable_events_first
-  (is : vstate X)
+  (is s : vstate X)
   (tr : list (vtransition_item X))
-  (Htr : finite_protocol_trace X is tr)
+  (Htr : finite_protocol_trace_init_to X is s tr)
   (e : event)
-  (s := last (map destination tr) is)
   (He : has_been_observed s e)
   : s = is \/
     exists
@@ -285,7 +284,7 @@ Lemma in_observable_events_first
 Proof.
   destruct (null_dec tr) as [Htr0 | Htr0].
   - subst tr.
-    left. reflexivity.
+    left. destruct Htr as [Htr _]. inversion Htr. reflexivity.
   - right. destruct (exists_last Htr0) as [l' [a Heq]].
     specialize
       (Exists_first tr (fun item => has_been_observed (destination item) e))
@@ -295,9 +294,11 @@ Proof.
     { apply Exists_exists. exists a.
       split.
       * subst tr. apply in_app_iff. right. left. reflexivity.
-      * unfold s in *. clear s. rewrite Heq in He.
-        rewrite map_app in He. simpl in He. rewrite last_last in He.
-        assumption.
+      * replace (destination a) with s;[assumption|].
+        rewrite Heq in Htr.
+        apply ptrace_get_last in Htr.
+        rewrite finite_trace_last_is_last in Htr.
+        symmetry;assumption.
     }
     destruct Hfirst as [pre [suf [a' [He' [Heq' Hfirst]]]]].
     exists pre, suf, a'.
@@ -363,7 +364,7 @@ Definition trace_generated_event
   exists
   (prefix suffix : list transition_item)
   (item : vtransition_item X)
-  (s := last (map destination prefix) is)
+  (s := finite_trace_last is prefix)
   (s' := destination item),
   tr = prefix ++ [item] ++ suffix /\
   transition_generated_event s (input item) s' e.
@@ -381,7 +382,7 @@ Proof.
         (fun t =>
           match t with
           (prefix, item, _) =>
-            transition_generated_event (last (map destination prefix) is) (input item) (destination item) e
+            transition_generated_event (finite_trace_last is prefix) (input item) (destination item) e
           end)
         (one_element_decompositions tr)))
   ; [rewrite Exists_exists; split|].
@@ -443,7 +444,7 @@ Lemma not_trace_generated_event
   (prefix suffix : list transition_item)
   (item : transition_item)
   (Heq : tr = prefix ++ [item] ++ suffix)
-  (s := last (map destination prefix) is)
+  (s := finite_trace_last is prefix)
   (s' := destination item)
   (Hin : has_been_observed s' e)
   : has_been_observed s e \/ option_message_has_been_observed (input item) e.
@@ -465,7 +466,7 @@ in the same trace.
 Definition equivocating_in_trace_last
   (is : vstate X)
   (tr : list transition_item)
-  (s := last (map destination tr) is)
+  (s := finite_trace_last is tr)
   (v : validator)
   : Prop
   :=
@@ -485,7 +486,8 @@ Lemma not_equivocating_in_trace_last_initial
   : ~ equivocating_in_trace_last s [] v.
 Proof.
   intro contra. destruct contra as [e [Hv [He Hne]]].
-  specialize (no_event_subject_in_initial_state (last (map destination []) s) Hs) as Hno.
+  rewrite finite_trace_last_nil in He.
+  specialize (no_event_subject_in_initial_state s Hs) as Hno.
   spec Hno e He. congruence.
 Qed.
 
@@ -517,8 +519,7 @@ Definition equivocating_in_all_traces_ending_in_state
   := forall
     (is : vstate X)
     (tr : list transition_item)
-    (Htr : finite_protocol_trace X is tr)
-    (Hlast : last (map destination tr) is = proj1_sig s),
+    (Htr : finite_protocol_trace_init_to X is (proj1_sig s) tr),
     equivocating_in_trace_last is tr v.
 
 (**
@@ -532,8 +533,7 @@ Definition not_equivocating_in_some_traces_ending_in_state
   := exists
     (is : vstate X)
     (tr : list transition_item),
-    finite_protocol_trace X is tr /\
-    last (map destination tr) is = proj1_sig s /\
+    finite_protocol_trace_init_to X is (proj1_sig s) tr /\
     ~equivocating_in_trace_last is tr v.
 
 (**
@@ -547,8 +547,7 @@ Definition not_equivocating_in_all_traces_ending_in_state
   := forall
     (is : vstate X)
     (tr : list transition_item)
-    (Htr : finite_protocol_trace X is tr)
-    (Hlast : last (map destination tr) is = proj1_sig s),
+    (Htr : finite_protocol_trace_init_to X is (proj1_sig s) tr),
     ~equivocating_in_trace_last is tr v.
 
 (**
@@ -563,13 +562,13 @@ Lemma not_equivocating_in_traces_ending_in_state
   : not_equivocating_in_some_traces_ending_in_state s v.
 Proof.
   destruct s as [s [_om Hs]].
-  destruct (protocol_is_trace X s _om Hs) as [Hinit | [is [tr [Htr [Hlast _]]]]].
+  destruct (protocol_is_trace X s _om Hs) as [Hinit | [is [tr [Htr _]]]].
   - exists s. exists [].
     repeat split; try assumption.
     + constructor. apply initial_is_protocol. assumption.
     + apply not_equivocating_in_trace_last_initial. assumption.
-  - assert (Hlst := last_error_destination_last tr s Hlast is).
-    exists is. exists tr. split; [assumption|].  split; [assumption|].
+  - exists is. exists tr.
+    split; [assumption|].
     apply (Hall is tr); assumption.
 Qed.
 
@@ -603,7 +602,9 @@ Proof.
     congruence.
   }
   assert (He' := He).
-  apply (in_observable_events_first is tr Htr e) in He.
+  assert (finite_protocol_trace_init_to X is (finite_trace_last is tr) tr) as Htr'
+    by (apply ptrace_add_last;[assumption|reflexivity]).
+  apply (in_observable_events_first is _ tr Htr' e) in He.
   destruct He as [He | He]; [rewrite He in He'; intuition|].
   destruct He as [pre [suf [item [Heq [He Hpre]]]]].
   rewrite app_assoc in Heq.
@@ -616,12 +617,12 @@ Proof.
   apply finite_protocol_trace_from_app_iff in Htr.
   destruct Htr as [Htr Ht].
   inversion Ht. subst item tl s'. clear Ht H2. simpl in He.
-  assert (Hnpre : ~has_been_observed (last (map destination pre) is) e).
+  assert (Hnpre : ~has_been_observed (finite_trace_last is pre) e).
   { destruct (null_dec pre) as [Hpre0 | Hpre0].
     - subst pre. assumption.
     - destruct (exists_last Hpre0) as [pre' [item' Heq']].
       subst pre.
-      rewrite map_app. simpl. rewrite last_last.
+      rewrite finite_trace_last_is_last.
       apply (Hpre item').
       apply in_app_iff. right. left. reflexivity.
   }
@@ -720,12 +721,11 @@ a protocol trace are uncomparable and one of them is generated, then
 there exists an equivocation (the other cannot be).
 *)
 Lemma uncomparable_with_generated_event_equivocation
-  (is : vstate X)
+  (is s : vstate X)
   (tr : list transition_item)
-  (Htr : finite_protocol_trace X is tr)
+  (Htr : finite_protocol_trace_init_to X is s tr)
   (v : validator)
   (e1 e2 : event)
-  (s := last (map destination tr) is)
   (He1 : has_been_observed s e1)
   (He2 : has_been_observed s e2)
   (Hv1 : subject_of_observation e1 = Some v)
@@ -734,6 +734,8 @@ Lemma uncomparable_with_generated_event_equivocation
   (Hgen1 : trace_generated_event is tr e1)
   : equivocating_in_trace_last is tr v.
 Proof.
+  apply ptrace_get_last in Htr as Hlast.
+  apply ptrace_forget_last in Htr; subst s.
   destruct (trace_generated_event_dec is tr e2) as [Hgen2|Hgen2].
   - contradict Hnc.
     exact (comparable_generated_events is tr Htr v e1 e2 Hgen1 Hgen2 Hv1 Hv2).
@@ -759,12 +761,14 @@ Lemma evidence_implies_equivocation
   (Heqv : ~comparable happens_before e1 e2)
   : equivocating_in_all_traces_ending_in_state (exist _ s Hs) v.
 Proof.
-  intro is; intros. simpl in Hlast.
-  subst s.
+  intro is; intros.
+  simpl in Htr.
   destruct (trace_generated_event_dec is tr e1) as [Hgen1| Hgen1].
-  - apply uncomparable_with_generated_event_equivocation with e1 e2
+  - apply uncomparable_with_generated_event_equivocation with s e1 e2
     ; assumption.
-  - exists e1. repeat split; assumption.
+  - exists e1.
+    rewrite (ptrace_get_last Htr).
+    repeat split; assumption.
 Qed.
 
 (**
@@ -787,8 +791,8 @@ Proof.
   destruct (comparable_dec happens_before e1 e2) as [|Hcmp]; [assumption|].
   specialize (evidence_implies_equivocation s Hs v e1 e2 He1 He2 Hv1 Hv2 Hcmp)
     as Heqv.
-  destruct Hneqv as [is [tr [Htr [Hlast Hneqv]]]]. elim Hneqv.
-  specialize (Heqv is tr Htr Hlast). assumption.
+  destruct Hneqv as [is [tr [Htr Hneqv]]]. elim Hneqv.
+  apply Heqv. assumption.
 Qed.
 
 (** ** No-equivocation composition constraint guarantees no equivocations
@@ -807,21 +811,22 @@ Lemma no_equivocation_constraint_implies_no_equivocations
   (v : validator)
   : not_equivocating_in_all_traces_ending_in_state (exist _ s Hs) v.
 Proof.
-  intro is; intros. simpl in Hlast.
+  intro is; intros. simpl in Htr.
   intro contra.
-  apply event_equivocation_implies_message_equivocation in contra; try assumption.
+  apply event_equivocation_implies_message_equivocation in contra;
+  [|apply ptrace_forget_last in Htr;assumption].
   destruct contra as [m [contra Hnoinitial]].
   destruct contra as [pre [suf [item [Heq [Hinput contra]]]]].
   subst tr.
   destruct Htr as [Htr Hinit].
-  apply finite_protocol_trace_from_app_iff in Htr.
+  apply finite_protocol_trace_from_to_app_split in Htr.
   destruct Htr as [Hpre Htr].
   inversion Htr.
   subst. simpl in Hinput. subst.
-  destruct H3 as [[Hps [Hpm Hv]] Ht].
+  destruct H4 as [[Hps [Hpm Hv]] Ht].
   apply Hno_equiv in Hv.
   pose (Pre := pre_loaded_with_all_messages_vlsm X).
-  assert (Hpps : protocol_state_prop Pre (last (map destination pre) is)).
+  assert (Hpps : protocol_state_prop Pre (finite_trace_last is pre)).
   { destruct Hps as [_om Hps].
     exists _om.
     apply (pre_loaded_with_all_messages_protocol_prop X).
@@ -832,13 +837,12 @@ Proof.
   spec Hv is pre.
   assert (Hincl : VLSM_incl X Pre)
     by apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
-  specialize (VLSM_incl_finite_protocol_trace_from _ _ Hincl) as Htr_incl.
+  specialize (VLSM_incl_finite_protocol_trace_init_to _ _ Hincl) as Htr_incl.
   spec Hv.
-  { split; [|assumption].
-    apply Htr_incl. clear -Hpre.
-    destruct X as (Xt, (Xs, Xm)). assumption.
+  { apply Htr_incl.
+    split;[|assumption].
+    clear -Hpre. destruct X as (Xt, (Xs, Xm)). exact Hpre.
   }
-  specialize (Hv eq_refl).
   apply Exists_exists in Hv.
   elim contra.
   apply in_map_iff.
@@ -885,7 +889,6 @@ Proof.
   specialize (contra is []).
   spec contra.
   { split; try assumption. constructor. assumption. }
-  specialize (contra eq_refl).
   destruct contra as [e [Hv [He _]]]. simpl in He.
   specialize (no_event_subject_in_initial_state is Hs) as Heis.
   spec Heis e He. congruence.
@@ -1230,7 +1233,7 @@ Lemma trace_generated_index
   (item : transition_item)
   (Heq : tr = prefix ++ [item] ++ suffix)
   (i := projT1 (l item))
-  (s := last (map destination prefix) is)
+  (s := finite_trace_last is prefix)
   (s' := destination item)
   (He : transition_generated_event X s (input item) s' e)
   : A v = i.

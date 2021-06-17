@@ -1026,7 +1026,6 @@ Context
 
   Lemma in_future_message_obs
     (s s' : vstate X)
-    (Hprs : protocol_state_prop X s)
     (target : index)
     (Hf : in_futures X s s')
     (e : simp_lv_event)
@@ -1034,16 +1033,12 @@ Context
     In e (wcobs_messages s' target).
   Proof.
     unfold in_futures in Hf.
-    destruct Hf as [tr [Hpr Hlst]].
-    generalize dependent s.
-    induction tr.
-    - intros. simpl in *. rewrite <- Hlst. intuition.
-    - intros.
-      inversion Hpr.
-      rewrite map_cons in Hlst.
-      rewrite unroll_last in Hlst.
-      assert (Hproto' := H3).
-      destruct H3 as [Hproto Htrans].
+    destruct Hf as [tr Hpr].
+    induction Hpr.
+    - assumption.
+    - apply IHHpr; clear IHHpr.
+      apply protocol_transition_origin in H as Hprs'.
+      destruct H as [Hproto Htrans].
       unfold transition in Htrans.
       simpl in Htrans.
       destruct l. simpl in *.
@@ -1052,19 +1047,6 @@ Context
       unfold vvalid in Hproto. unfold valid in Hproto. simpl in *.
       unfold vtransition in Htrans.
       unfold transition in Htrans. simpl in Htrans.
-      destruct a. simpl in *.
-      inversion H.
-      specialize (IHtr s0).
-      spec IHtr. {
-        apply protocol_transition_destination in Hproto'.
-        intuition.
-      }
-      spec IHtr. intuition.
-      spec IHtr. {
-        rewrite H6.
-        intuition.
-      }
-      apply IHtr.
       destruct v eqn : eq_v.
       + subst v.
         inversion Htrans.
@@ -1072,18 +1054,14 @@ Context
         * subst x.
           apply wcobs_message_existing_same2. intuition. intuition.
         * apply wcobs_message_existing_same1; intuition.
-      + inversion Htrans.
-        destruct iom eqn : eq_iom;[|intuition].
-        inversion H8.
-        specialize (cobs_message_existing_other_rt' s Hprs (snd m)) as Hex.
-        spec Hex. intuition.
+      + destruct iom eqn : eq_iom;[|solve[intuition]].
+        inversion Htrans;clear Htrans;subst s oom.
+        specialize (cobs_message_existing_other_rt' s' Hprs' (snd m)) as Hex.
+        spec Hex. apply Hproto.
         specialize (Hex x (fst m) target).
-        spec Hex. intuition. simpl in Hex.
-        spec Hex. intuition.
-        unfold incl in Hex.
-        specialize (Hex e).
-        apply Hex.
-        intuition.
+        spec Hex. apply Hproto. simpl in Hex.
+        spec Hex. apply Hproto.
+        apply Hex. assumption.
   Qed.
 
   End EquivObsUtils.
@@ -2046,11 +2024,11 @@ Context
         unfold set_eq.
         inversion eq_trans. clear H3.
         assert (In (SimpObs Message' from so) (cobs res_long from)). {
-          specialize (@in_future_message_obs index_listing s res_long Hpr from) as Hf.
+          specialize (@in_future_message_obs index_listing s res_long from) as Hf.
           spec Hf. {
             unfold in_futures.
             exists (fst (apply_plan X s a)).
-            split.
+            apply ptrace_add_last.
             - assert (finite_protocol_plan_from X s a). {
                 intuition.
               }

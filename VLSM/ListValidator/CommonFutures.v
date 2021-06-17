@@ -544,10 +544,8 @@ Context
   Proof.
     unfold in_futures.
     exists (send_phase_transitions s).
-    split.
-    apply send_phase_protocol.
-    assumption.
-    assumption.
+    apply ptrace_add_last.
+    apply send_phase_protocol;assumption.
     unfold send_phase_transitions.
     unfold send_phase_result.
     apply (apply_plan_last X).
@@ -735,7 +733,7 @@ Context
             rewrite <- e.
             assumption.
             unfold state_eqb. rewrite eq_dec_if_true. all : auto.
-          + specialize (received_component_protocol_composed IM_index (free_constraint IM_index) Hfinite (fun m => Some (fst m)) has_been_received_capabilities s') as Hope.
+          + specialize (received_component_protocol_composed IM_index (free_constraint IM_index) Hfinite has_been_received_capabilities s') as Hope.
             spec Hope. assumption.
             specialize (Hope inter (from, sa)).
             apply Hope.
@@ -2394,9 +2392,8 @@ Context
     Proof.
       unfold in_futures.
       exists (receive_phase_transitions s).
-      split.
-      apply receive_phase_protocol.
-      assumption.
+      apply ptrace_add_last.
+      apply receive_phase_protocol;assumption.
       unfold receive_phase_transitions.
       unfold receive_phase_result.
       apply apply_plan_last.
@@ -2542,7 +2539,7 @@ Context
         setoid_rewrite hbo_cobs' in contra.
 
         destruct contra as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
-        specialize (@in_future_message_obs _ _ _ _ _ _ _ (GH s) s res Hpr a) as Hfuture.
+        specialize (@in_future_message_obs _ _ _ _ _ _ _ (GH s) s res a) as Hfuture.
         spec Hfuture. {
           unfold res.
           apply receive_phase_future.

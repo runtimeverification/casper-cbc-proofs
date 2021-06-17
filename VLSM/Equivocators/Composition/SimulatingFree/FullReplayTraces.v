@@ -16,6 +16,9 @@ From CasperCBC
     VLSM.Plans
     .
 
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
+
 (** * VLSM Equivocator Full Replay Traces *)
 
 Section all_equivocating.
@@ -42,12 +45,6 @@ Context {message : Type}
   (SeededFree := pre_loaded_vlsm (free_composite_vlsm equivocator_IM) seed)
   (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
   .
-
-Local Ltac unfold_transition Ht :=
-  ( unfold transition, equivocator_IM, Common.equivocator_IM, equivocator_vlsm,
-        mk_vlsm, machine, projT2, equivocator_vlsm_machine, equivocator_transition,
-        snd in Ht
-   ).
 
   (**
   Transforms a [composite_transition_item] of the [equivocator_IM] into
@@ -158,7 +155,7 @@ Lemma replayed_trace_from_app
   (is : composite_state equivocator_IM)
   (tra trb : list (composite_transition_item equivocator_IM))
   (eqva := replayed_trace_from full_replay_state is tra)
-  (lsta := last (map destination eqva) full_replay_state)
+  (lsta := finite_trace_last full_replay_state eqva)
   : replayed_trace_from full_replay_state is (tra ++ trb) =
     eqva ++
     fst
@@ -456,9 +453,8 @@ Proof.
       simpl in Hplan_replay_x.
       inversion Hplan_replay_x. subst. clear Hplan_replay_x. simpl in *.
       rewrite last_error_is_last. simpl.
-      unfold vtransition in Ht_s_epref_i, Ht_s_replay_epref_i.
-      unfold_transition Ht_s_epref_i.
-      unfold_transition Ht_s_replay_epref_i.
+      unfold_vtransition Ht_s_epref_i.
+      unfold_vtransition Ht_s_replay_epref_i.
       destruct (IHepref i) as [Hsizei [_ Hstatei]].
       specialize (IHepref eqv). destruct IHepref as [Hsize [_ Hstate]].
       destruct (s_replay_epref i) as (ns_replay_epref_i, bs_replay_epref_i)
@@ -570,9 +566,9 @@ Lemma replayed_trace_from_state_correspondence
   (is : composite_state equivocator_IM)
   (tr : list (composite_transition_item equivocator_IM))
   (Htr : finite_protocol_trace SeededXE is tr)
-  (last_is_tr := last (map destination tr) is)
+  (last_is_tr := finite_trace_last is tr)
   (tr_full_replay_is_tr := replayed_trace_from full_replay_state is tr)
-  (last_full_replay_is_tr := last (map destination tr_full_replay_is_tr) full_replay_state)
+  (last_full_replay_is_tr := finite_trace_last full_replay_state tr_full_replay_is_tr)
   : (tr <> [] -> option_map output (last_error tr) = option_map output (last_error tr_full_replay_is_tr))
   /\ forall
     (eqv : equiv_index),
@@ -634,7 +630,7 @@ Lemma replayed_trace_from_full_replay_state_project
   (tr : list (composite_transition_item equivocator_IM))
   (Htr : finite_protocol_trace SeededXE is tr)
   (tr_full_replay_is_tr := replayed_trace_from full_replay_state is tr)
-  (last_full_replay_is_tr := last (map destination tr_full_replay_is_tr) full_replay_state)
+  (last_full_replay_is_tr := finite_trace_last full_replay_state tr_full_replay_is_tr)
   (eqv_descriptors : equivocator_descriptors)
   (Heqv_descriptors : proper_equivocator_descriptors eqv_descriptors full_replay_state)
   : proper_equivocator_descriptors eqv_descriptors last_full_replay_is_tr /\
@@ -645,7 +641,9 @@ Proof.
   - intro eqv. specialize (Heqv_descriptors eqv). unfold proper_descriptor in *.
     destruct (eqv_descriptors eqv); [assumption|].
     destruct (proj2 (replayed_trace_from_state_correspondence full_replay_state _ _ Htr) eqv)
-      as [Hsize _]. unfold last_full_replay_is_tr. unfold tr_full_replay_is_tr.
+      as [Hsize _].
+    fold tr_full_replay_is_tr in Hsize.
+    change (finite_trace_last full_replay_state _) with last_full_replay_is_tr in Hsize.
     lia.
   - apply functional_extensionality_dep_good.
     intros eqv.
@@ -668,6 +666,9 @@ Proof.
     rewrite Hfull_replay_state_eqv in Hstate_pre.
     specialize (Hstate_pre n Heqv_descriptors).
     unfold last_full_replay_is_tr in *. unfold tr_full_replay_is_tr in *.
+    Set Printing All.
+    change (@type _ equivocators_no_equivocations_vlsm)
+      with (composite_type equivocator_IM) in Hlast_full_replay_is_tr_eqv.
     rewrite Hlast_full_replay_is_tr_eqv in Hstate_pre.
     unfold projT1,projT2 in Hstate_pre.
     destruct Hstate_pre as [Hi Hstate_pre].
@@ -731,7 +732,7 @@ Lemma replayed_trace_from_protocol
       (Hleitem : l eitem = existT _ eqv (l0, Existing (IM (eqv)) id fd)),
       constraint
         (existT _ eqv (l0, Existing (IM eqv) (id + S (projT1 (full_replay_state eqv))) fd))
-        (last (map destination (replayed_trace_from full_replay_state is epref)) full_replay_state
+        (finite_trace_last full_replay_state (replayed_trace_from full_replay_state is epref)
         , input eitem)
   )
   : finite_protocol_trace_from (pre_loaded_vlsm (composite_vlsm equivocator_IM constraint) seed)
@@ -932,17 +933,17 @@ Proof.
   specialize (finite_ptrace_last_pstate _ _ _ Hepref_pre) as Hlast_pre.
 
   apply proper_sent in Heqv; [|assumption].
-  specialize (Heqv is epref (conj Hepref_pre His) eq_refl).
+  apply ptrace_add_default_last in Hepref_pre as Hepref_pre'.
+  specialize (Heqv is epref (conj Hepref_pre' His)).
   apply has_been_sent_consistency; [|assumption|].
   { apply (composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index (equivocator_Hbs IM Hbs)).
   }
   apply finite_protocol_trace_from_complete_left in Hreplay_epref_pre as Hpre_replay.
   destruct Hpre_replay as [is_replay [trs_replay [Htrs_replay Hfull_replay_state_lst]]].
-  eexists _. eexists _. exists Htrs_replay.
-  split.
-  - rewrite map_app, last_app. simpl.
-    subst.
-    reflexivity.
+  apply ptrace_add_default_last in Htrs_replay as Htrs_replay'.
+  rewrite finite_trace_last_app in Htrs_replay'.
+  rewrite Hfull_replay_state_lst in Htrs_replay'.
+  eexists _. eexists _. exists Htrs_replay'.
   - apply Exists_exists in Heqv.
     destruct Heqv as [mitem [Hmitem Houtput]].
     apply in_split in Hmitem.

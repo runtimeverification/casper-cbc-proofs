@@ -216,9 +216,9 @@ Qed.
 Definition equivocators_state_project
   (eqv_descriptors : equivocator_descriptors)
   (s : vstate equivocators_free_vlsm)
-  (eqv : index)
-  : vstate (IM eqv)
+  : vstate X
   :=
+  fun (eqv : index) =>
   equivocator_state_descriptor_project (IM eqv) (s eqv) (eqv_descriptors eqv).
 
 Definition lift_to_equivocators_state

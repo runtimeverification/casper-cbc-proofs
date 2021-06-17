@@ -436,8 +436,9 @@ Proof.
   destruct Htr as [Htr1 Htr2].
   inversion Htr1. subst. clear Htr1.
   simpl in Hm1. subst.
-  rewrite map_app in Htr2.
-  rewrite last_app in Htr2. simpl in Htr2.
+  simpl in Htr2.
+  rewrite finite_trace_last_cons in Htr2.
+  simpl in Htr2.
   apply pre_free_protocol_transition_out in H3.
   destruct H3 as [Hl [_ Hm1]].
   simpl in Hvalidator. rewrite Hvalidator in Hl.
@@ -450,18 +451,18 @@ Proof.
   subst j2.
   apply in_unmake_message_set.
   apply in_make_justification.
+  change (vstate VLSM_full_composed_free) in s0.
   apply
     (@get_messages_in_futures C V about_C about_V Hestimator
       (State.sender m1) (s0 (inl (State.sender m1)))
-      (last (map destination middle) s0 (inl (State.sender m1)))
+      (finite_trace_last s0 middle (inl (State.sender m1)))
     ); try assumption.
   specialize
-    (pre_loaded_with_all_messages_projection_in_futures IM_index s0 (last (map destination middle) s0))
+    (pre_loaded_with_all_messages_projection_in_futures IM_index s0 (finite_trace_last s0 middle))
     as Hproj.
   spec Hproj; try (specialize (Hproj (inl (State.sender m1))); apply Hproj).
   exists middle.
-  split; try assumption.
-  reflexivity.
+  apply ptrace_add_last;[assumption|reflexivity].
 Qed.
 
 Lemma full_composed_free_sent_messages_comparable

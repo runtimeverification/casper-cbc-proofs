@@ -37,7 +37,7 @@ state for the corresponding projection.
 Definition preloaded_protocol_equivocator_vlsm_trace_oproject
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (nj : Fin.t (S (projT1 (last (map destination btr) is))))
+  (nj : Fin.t (S (projT1 (finite_trace_last is btr))))
   : option (vstate X * list (vtransition_item X))
   :=
   let (j, _) := to_nat nj in
@@ -59,7 +59,7 @@ Definition equivocator_vlsm_projector_type
   : Type
   :=
   forall
-    (nj : Fin.t (S (projT1 (last (map destination btr) (is))))),
+    (nj : Fin.t (S (projT1 (finite_trace_last is btr)))),
     option (vstate X * list (vtransition_item X)).
 
 (** We define an update operation on such projectors.  This will
@@ -69,9 +69,9 @@ Definition equivocator_projection_update
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
   (projector : equivocator_vlsm_projector_type is btr)
-  (ni : Fin.t (S (projT1 (last (map destination btr) is))))
+  (ni : Fin.t (S (projT1 (finite_trace_last is btr))))
   (ni_trace : option (vstate X * list (vtransition_item X)))
-  (nj : Fin.t (S (projT1 (last (map destination btr) is))))
+  (nj : Fin.t (S (projT1 (finite_trace_last is btr))))
   : option (vstate X * list (vtransition_item X))
   :=
   if Fin.eq_dec ni nj then ni_trace else projector nj.
@@ -82,7 +82,7 @@ Definition equivocator_projection_update
 Definition preloaded_protocol_equivocator_vlsm_trace_oproject_update
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (ni : Fin.t (S (projT1 (last (map destination btr) is))))
+  (ni : Fin.t (S (projT1 (finite_trace_last is btr))))
   (isi : vstate X)
   (tri : list (vtransition_item X))
   : equivocator_vlsm_projector_type is btr
@@ -97,7 +97,7 @@ Definition projection_traces
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
   (projector : equivocator_vlsm_projector_type is btr)
-  (n := projT1 (last (map destination btr) is))
+  (n := projT1 (finite_trace_last is btr))
   : list (vstate X * list (vtransition_item X))
   :=
   map_option projector (fin_t_listing (S n)).
@@ -109,7 +109,7 @@ Definition projection_traces
 Definition projection_traces_replace_one
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (ni : Fin.t (S (projT1 (last (map destination btr) is))))
+  (ni : Fin.t (S (projT1 (finite_trace_last is btr))))
   (isi : vstate X)
   (tri : list (vtransition_item X))
   : list (vstate X * list (vtransition_item X))
@@ -124,7 +124,7 @@ Lemma projection_traces_replace_one_length
   (is : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
   (Hbtr : finite_protocol_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm) is btr)
-  (n := projT1 (last (map destination btr) is))
+  (n := projT1 (finite_trace_last is btr))
   (ni : Fin.t (S n))
   (isi : vstate X)
   (tri : list (vtransition_item X))
@@ -143,13 +143,15 @@ Proof.
   - rewrite eq_dec_if_false by assumption.
     unfold preloaded_protocol_equivocator_vlsm_trace_oproject.
     destruct (to_nat nj) as [j Hj] eqn:Heqnj.
+    pose proof (ptrace_add_last
+      (base_prop:=@finite_protocol_trace_from) (proj1 Hbtr) (eq_refl _)).
     destruct
-      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ (proj1 Hbtr) _ Hj false)
+      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ _ H _ Hj false)
       as [trX [di [Hproject Hdi]]].
     rewrite Hproject.
     destruct di as [sn | i fi].
     + congruence.
-    + destruct Hdi as [Hi [HlstX [HtrX]]].
+    + destruct Hdi as [Hi [HtrX]].
       destruct (le_lt_dec (S (projT1 is)) i); [lia|].
       congruence.
 Qed.
@@ -169,7 +171,7 @@ Context
     : forall i : Fin.t (S n),
       let (ni, _) := to_nat i in
       match nth ni traces (proj1_sig (vs0 X), []) with (isi, tri) =>
-        last (map destination tri) isi = projT2 goal_state i
+        finite_trace_last isi tri = projT2 goal_state i
       end
   )
   .
@@ -221,7 +223,7 @@ Definition lift_traces_to_equivocator
             let trxi := snd tracei in
             match rez with (tr, s) =>
               let tri := lift_trace_to_equivocator s isxi trxi in
-              (tr ++ tri, last (map destination tri) s)
+              (tr ++ tri, finite_trace_last s tri)
             end
           ) traces ([], proj1_sig (vs0 equivocator_vlsm))
         ))

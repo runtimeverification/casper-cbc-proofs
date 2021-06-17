@@ -743,14 +743,11 @@ Section Protocol_Proofs.
     revert v t H_plan H_time.
     change (clock_limit_invariant s).
     apply protocol_state_has_trace in Hproto.
-    destruct Hproto as [is [tr [[Htr Hinit] Hlast]]].
-    rewrite <- Hlast; clear Hlast s.
+    destruct Hproto as [is [tr [Htr Hinit]]].
     apply clock_limit_invariant_init in Hinit.
     induction Htr.
     - assumption.
-    - simpl map.
-      rewrite ListExtras.unroll_last.
-      apply IHHtr.
+    - apply IHHtr.
       revert H Hinit.
       apply clock_limit_invariant_step.
   Qed.

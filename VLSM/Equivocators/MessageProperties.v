@@ -112,9 +112,9 @@ For any [transition_item] in a protocol trace segment of an
 the projection of the item.
 *)
 Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
-  (bs : vstate equivocator_vlsm)
+  (bs bf : vstate equivocator_vlsm)
   (btr : list (vtransition_item equivocator_vlsm))
-  (Hbtr : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs btr)
+  (Hbtr : finite_protocol_trace_from_to (pre_loaded_with_all_messages_vlsm equivocator_vlsm) bs bf btr)
   (bitem : vtransition_item equivocator_vlsm)
   (Hitem : In bitem btr)
   (idl : nat)
@@ -127,23 +127,23 @@ Lemma preloaded_equivocator_vlsm_trace_project_protocol_item
         In item tr /\
         exists (dfinal dfirst : MachineDescriptor),
           proper_descriptor X dfirst bs /\
-          not_equivocating_descriptor X dfinal (last (map destination btr) bs) /\
+          not_equivocating_descriptor X dfinal (finite_trace_last bs btr) /\
           equivocator_vlsm_trace_project _ btr dfinal = Some (tr, dfirst).
 Proof.
-  specialize (preloaded_equivocator_vlsm_protocol_trace_project_inv2 X bs btr) as Hinv2.
+  specialize (preloaded_equivocator_vlsm_protocol_trace_project_inv2 X bs bf btr) as Hinv2.
   spec Hinv2. { intro contra. subst. inversion Hitem. }
   spec Hinv2 Hbtr.
   apply in_split in Hitem.
   destruct Hitem as [bprefix [bsuffix Heq]].
   subst btr.
-  apply (finite_protocol_trace_from_app_iff (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hbtr.
+  apply (finite_protocol_trace_from_to_app_split (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hbtr.
   destruct Hbtr as [Hbprefix Hbsuffix].
   match type of Hbsuffix with
-  | finite_protocol_trace_from _ ?l _ =>
+  | finite_protocol_trace_from_to _ ?l _ _ =>
   remember l as lst
   end.
   inversion Hbsuffix. subst s' tl.
-  destruct H3 as [[_ [_ Hv]] Ht].
+  destruct H4 as [[_ [_ Hv]] Ht].
   specialize
     (equivocator_protocol_transition_item_project_inv5 _ l s lst iom oom Hv Ht) as Hpitem.
   replace (@Build_transition_item message (@type message (@Common.equivocator_vlsm message X)) l iom s oom)
@@ -155,8 +155,9 @@ Proof.
   rewrite <- H in Hlbitem. subst dl.
   destruct (Hpitem false _ _ eq_refl) as [i [Hi [itemx Hitemx]]].
   pose (dfinal := Existing X i false).
+  apply ptrace_forget_last in H3.
   destruct
-    (preloaded_equivocator_vlsm_trace_project_protocol_inv _ _ _ H2 _ Hi false)
+    (preloaded_equivocator_vlsm_trace_project_protocol_inv _ _ _ H3 _ Hi false)
     as [fsuffix [suffix Hsuffix]].
   specialize (Hpitem fsuffix _ _ eq_refl).
   destruct Hpitem as [_i [_Hi [_itemx _Hitemx]]].
@@ -184,7 +185,7 @@ Proof.
   inversion _Heq. subst _i' _fi'. clear _Heq.
   subst lst.
   destruct
-    (preloaded_equivocator_vlsm_trace_project_protocol _ _ _ Hbprefix idl id fdl)
+    (preloaded_equivocator_vlsm_trace_project_protocol _ _ _ _ Hbprefix idl id fdl)
     as [prefix [dfirst [Hprefix _]]].
   specialize
     (equivocator_vlsm_trace_project_app_inv _ _ _ _ _ _ _ _ Hprefix Hsuffix')
@@ -196,11 +197,18 @@ Proof.
   destruct Hinv2 as [Hdfinal Hdinitial].
   split.
   - apply in_app_iff. right. left. reflexivity.
-  - eexists _. eexists _. repeat split; [..|apply Htr]; [|assumption].
+  - eexists _. eexists _. repeat split; [..|apply Htr].
+    2:{
+      apply equivocator_vlsm_trace_project_inv with (fj:=false).
+      destruct bprefix;discriminate.
+      fold equivocator_vlsm in Htr.
+      rewrite Htr.
+      discriminate.
+    }
     clear -Hdinitial.
     destruct dfirst as [sn | j fj].
-    + destruct Hdinitial as [_ [_ Hsn]]. assumption.
-    + destruct Hdinitial as [Hdinitial _]. assumption.
+    + destruct Hdinitial as [_ Hinit]. assumption.
+    + destruct Hdinitial as [Hdinitial _]. assumption.      
 Qed.
 
 (**
@@ -216,7 +224,7 @@ Lemma equivocator_vlsm_trace_project_output_reflecting_inv
   : exists
     (j i : MachineDescriptor)
     (Hi : proper_descriptor X i is)
-    (Hj : not_equivocating_descriptor X j (last (map destination tr) is))
+    (Hj : not_equivocating_descriptor X j (finite_trace_last is tr))
     (trX: list (vtransition_item X))
     (HtrX: equivocator_vlsm_trace_project _ tr j = Some (trX, i))
     ,
@@ -230,9 +238,10 @@ Proof.
        _ _ Htr _ Hin _ Hsndl)
     as Hitem.
     destruct Hitem as [_ [Hcontra _]]. congruence.
-  - specialize
+  - apply ptrace_add_last with (f:=finite_trace_last is tr) in Htr;[|reflexivity].
+    specialize
     (preloaded_equivocator_vlsm_trace_project_protocol_item
-       _ _ Htr _ Hin _ _ Hsndl)
+       _ _ _ Htr _ Hin _ _ Hsndl)
     as Hitem.
   destruct Hitem as [itemx [[d Hitemx] [trx [Hinx [ifinal [ifirst [Hifirst [Hifinal Htrx]]]]]]]].
   exists ifinal. exists ifirst. split; [assumption|].
@@ -291,7 +300,10 @@ Lemma equivocator_has_been_sent_consistency
   : selected_messages_consistency_prop equivocator_vlsm (field_selector output) s m.
 Proof.
   split.
-  - intros [bis [btr [Hbtr [Hlast Hsome]]]].
+  - intros [bis [btr [Hbtr' Hsome]]].
+    pose proof (ptrace_forget_last Hbtr') as Hbtr.
+    pose proof (ptrace_get_last Hbtr') as Hlast.
+
     destruct (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Hbtr) _ Hsome)
       as [j [i [_ [_ [trX [Hproject Hsomex]]]]]].
     destruct j as [sj | j fj];
@@ -299,10 +311,10 @@ Proof.
       ; inversion Hproject; subst; inversion Hsomex]|].
     assert (Hntr : btr <> []) by (intro contra; subst; inversion Hsome).
     specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr (proj1 Hbtr) _ _ _ _ Hproject)
+      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ _ Hntr (proj1 Hbtr') _ _ _ _ Hproject)
       as HpreX.
     simpl in *.
-    rewrite Hlast in HpreX. destruct HpreX as [Hj Hi].
+    destruct HpreX as [Hj Hi].
     assert (Hsj : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (projT2 s (of_nat_lt Hj))).
     { simpl.  simpl in *.
       specialize
@@ -315,40 +327,34 @@ Proof.
     assert (Hall : selected_message_exists_in_all_preloaded_traces X (field_selector output) (projT2 s (of_nat_lt Hj)) m).
     { apply has_been_sent_consistency; [assumption|assumption|].
       destruct i as [sn | i fi].
-      - destruct Hi as [Hlastx HtrX].
-        symmetry in Hlastx.
-        exists sn. exists trX. exists HtrX. exists Hlastx. assumption.
-      - destruct Hi as [Hi [Hlastx [HtrX HinitX]]].
-        specialize (HinitX (proj2 Hbtr)).
-        exists (projT2 bis (of_nat_lt Hi)). exists trX. exists (conj HtrX HinitX).
-        symmetry in Hlastx. exists Hlastx.
-        assumption.
+      - exists sn, trX.
+        split;assumption.
+      - destruct Hi as [Hi [HtrX HinitX]].
+        exists (projT2 bis (of_nat_lt Hi)). exists trX.
+        split;[|assumption].
+        split;[assumption|].
+        apply HinitX. apply Hbtr.
     }
     clear -Hall MachineDescriptor equivocator_vlsm.
-    intros bis btr Hbtr Hlast.
-    subst s.
+    intros bis btr Hbtr.
     destruct
-      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ (proj1 Hbtr) _ Hj false)
+      (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ _ (proj1 Hbtr) _ Hj false)
       as [trX [di [Hproject Hdi]]].
     apply
       (equivocator_vlsm_trace_project_output_reflecting  _ _ _ _ Hproject m).
     destruct di as [sn | i fi].
-    + destruct Hdi as [Hlast HtrX].
-      symmetry in Hlast.
-      apply (Hall _ _ HtrX Hlast).
-    + destruct Hdi as [Hi [Hlast [HtrX HinitX]]]. specialize (HinitX (proj2 Hbtr)).
-      symmetry in Hlast.
-      apply (Hall _ _ (conj HtrX HinitX) Hlast).
+    + apply (Hall _ _ Hdi).
+    + destruct Hdi as [Hi [HtrX HinitX]].
+      specialize (HinitX (proj2 Hbtr)).
+      apply (Hall _ _ (conj HtrX HinitX)).
   - intro Hall.
     destruct Hs as [om Hs].
     apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
-    destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
+    destruct Hs as [Hinit | [is [tr [Htr  _]]]]
     ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit (field_selector output) m)
       ; assumption|].
     exists is. exists tr. exists Htr.
-    assert (Hlst := last_error_destination_last _ _ Hlast is).
-    exists Hlst.
-    apply (Hall _ _ Htr Hlst).
+    apply (Hall _ _ Htr).
 Qed.
 
 (**
@@ -366,37 +372,32 @@ Proof.
     destruct Hbbs as [j Hjbs].
     apply (proper_sent X) in Hjbs
     ; [|apply (preloaded_equivocator_state_project_protocol_state _ _ Hs j)].
-    specialize (preloaded_equivocator_vlsm_project_protocol_trace _ start tr (proj1 Htr)) as Hpre.
+    specialize (preloaded_equivocator_vlsm_project_protocol_trace _ start _ tr (proj1 Htr)) as Hpre.
     assert (Hj := of_nat_to_nat_inv j).
     simpl in *.
-    rewrite Hlast in Hpre.
-    simpl in Hpre.
     destruct (to_nat j) as [nj Hnj]. simpl in Hj.
     specialize (Hpre nj Hnj false).
     destruct Hpre as [trX [di [Hproject Hdi]]].
     destruct di as [sn | i fi].
-    + destruct Hdi as [HlastX HtrX].
-      symmetry in HlastX.
-      rewrite Hj in HlastX.
-      spec Hjbs sn trX HtrX HlastX.
+    + rewrite Hj in Hdi.
+      spec Hjbs sn trX Hdi.
       apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ nj false) (NewMachine _ sn)
       ; assumption.
-    + destruct Hdi as [Hi [HlastX [HtrX HinitX]]]. specialize (HinitX (proj2 Htr)).
-      symmetry in HlastX.
-      rewrite Hj in HlastX.
-      spec Hjbs (projT2 start (of_nat_lt Hi)) trX (conj HtrX HinitX) HlastX.
+    + destruct Hdi as [Hi [HtrX HinitX]].
+      specialize (HinitX (proj2 Htr)).
+      rewrite Hj in HtrX.
+      spec Hjbs (projT2 start (of_nat_lt Hi)) trX (conj HtrX HinitX).
       apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ nj false) (Existing _ i fi)
       ; assumption.
   - intro Hbbs. assert (Hbbs' := Hbbs).
     destruct Hs as [om Hs].
     apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
-    destruct Hs as [Hinit | [is [tr [Htr [Hlast _]]]]]
+    destruct Hs as [Hinit | [is [tr [Htr _]]]]
     ; [elim (selected_message_exists_in_all_traces_initial_state equivocator_vlsm s Hinit (field_selector output) m)
       ; assumption|].
-    assert (Hlst := last_error_destination_last _ _ Hlast is).
-    spec Hbbs is tr Htr Hlst.
+    spec Hbbs is tr Htr.
     destruct
-      (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Htr) _ Hbbs)
+      (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (ptrace_forget_last (proj1 Htr)) _ Hbbs)
       as [j [i [_ [_ [trX [HtrX Hjbs]]]]]].
     assert (Hntr : tr <> []) by (intro contra; subst; inversion Hbbs).
     destruct j as [sj | j fj]
@@ -404,33 +405,24 @@ Proof.
       ; inversion HtrX; subst; inversion Hjbs
       |].
     specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr (proj1 Htr) _ _ _ _ HtrX)
+      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ _ Hntr (proj1 Htr) _ _ _ _ HtrX)
       as HpreX.
     simpl in *.
-    rewrite Hlst in HpreX. simpl in HpreX.
     destruct HpreX as [Hj Hi].
     unfold equivocator_has_been_sent.
     destruct s as (ns, bs).
     exists (of_nat_lt Hj).
     assert (Hbsj : protocol_state_prop (pre_loaded_with_all_messages_vlsm X) (bs (of_nat_lt Hj))).
-    { simpl in *.
-      specialize
-        (finite_ptrace_last_pstate (pre_loaded_with_all_messages_vlsm equivocator_vlsm) _ _  (proj1 Htr))
-        as Hpbs.
-      simpl in *.
-      rewrite Hlst in Hpbs.
+    { apply ptrace_last_pstate in Htr as Hpbs.
       apply (preloaded_equivocator_state_project_protocol_state _ _ Hpbs).
     }
     apply (proper_sent X); [assumption|].
     apply has_been_sent_consistency; [assumption|assumption|].
     destruct i as [sn | i fi].
-    + destruct Hi as [Hlstx Htrx].
-      exists sn. exists trX. exists Htrx. symmetry in Hlstx. exists Hlstx.
-      assumption.
-    + destruct Hi as [Hi [Hlstx [Htrx HinitX]]]. specialize (HinitX (proj2 Htr)).
+    + exists sn. exists trX. exists Hi. assumption.
+    + destruct Hi as [Hi [Htrx HinitX]]. specialize (HinitX (proj2 Htr)).
       exists (projT2 is (of_nat_lt Hi)).
       exists trX. exists (conj Htrx HinitX).
-      symmetry in Hlstx. exists Hlstx.
       assumption.
 Qed.
 
@@ -504,42 +496,40 @@ Proof.
     apply (sent_messages_consistency X) in Hm; [|assumption].
     destruct Hs as [om Hs].
     apply (protocol_is_trace (pre_loaded_with_all_messages_vlsm equivocator_vlsm)) in Hs.
-    destruct Hs as [Hs | [is [tr [Htr [Hlast _]]]]].
+    destruct Hs as [Hs | [is [tr [Htr _]]]].
     + specialize (Hm (projT2 s i) []).
       spec Hm.
       { split.
-        - apply (finite_ptrace_empty (pre_loaded_with_all_messages_vlsm X)). assumption.
+        - constructor. assumption.
         - destruct Hs as [Hzero His].
           destruct s as [n s]. simpl in *. subst n.
           dependent destruction i; [|inversion i].
           assumption.
       }
-      specialize (Hm eq_refl). inversion Hm.
-    + specialize (last_error_destination_last _ _ Hlast is) as Hlst. clear Hlast.
+      inversion Hm.
+    + apply ptrace_get_last in Htr as Hlst.
       assert (Hinv := of_nat_to_nat_inv i).
       destruct (to_nat i) as [ni Hi]. simpl in Hinv. subst i.
       assert (Hbm : selected_message_exists_in_some_preloaded_traces equivocator_vlsm (field_selector output) s m)
       ; [|exists (exist _ m Hbm); reflexivity].
-      exists is. exists tr. exists Htr. exists Hlst.
+      exists is. exists tr. exists Htr.
       subst s.
       destruct
-        (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ (proj1 Htr) _ Hi false)
+        (preloaded_equivocator_vlsm_project_protocol_trace _ _ _ _ (proj1 Htr) _ Hi false)
         as [trX [di Hdi]].
       destruct di as [sn | i fi].
-      * destruct Hdi as [Hproject [Hlast HtrX]].
+      * destruct Hdi as [Hproject HtrX].
         apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ ni false) (NewMachine _ sn)
         ; [assumption|].
-        symmetry in Hlast.
-        apply (Hm _ _ HtrX Hlast).
-      * destruct Hdi as [Hproject [Hi' [Hlast [HtrX HinitX]]]]. specialize (HinitX (proj2 Htr)).
+        apply (Hm _ _ HtrX).
+      * destruct Hdi as [Hproject [Hi' [HtrX HinitX]]]. specialize (HinitX (proj2 Htr)).
         apply equivocator_vlsm_trace_project_output_reflecting with trX (Existing _ ni false) (Existing _ i fi)
         ; [assumption|].
-        symmetry in Hlast.
-        apply (Hm _ _ (conj HtrX HinitX) Hlast).
+        apply (Hm _ _ (conj HtrX HinitX)).
   - intros [[m' Hm] Heq]. simpl in Heq. subst m'.
-    destruct Hm as [is [tr [Htr [Hlst Hexists]]]].
+    destruct Hm as [is [tr [Htr Hexists]]].
     destruct
-      (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 Htr) _ Hexists)
+      (equivocator_vlsm_trace_project_output_reflecting_inv _ _ (proj1 (ptrace_forget_last Htr)) _ Hexists)
       as [ifinal [istart [_ [_ [trX [Hproject HexistsX]]]]]].
     assert (Hntr : tr <> []) by (intro contra; subst; inversion Hexists).
     destruct ifinal as [sfinal | i ffinal]
@@ -548,10 +538,9 @@ Proof.
       ; inversion Hproject; subst; inversion HexistsX
       |].
     specialize
-      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ Hntr (proj1 Htr) _ _ _ _ Hproject)
+      (preloaded_equivocator_vlsm_protocol_trace_project_inv2 _ _ _ _ Hntr (proj1 Htr) _ _ _ _ Hproject)
       as HpreX.
     simpl in *.
-    rewrite Hlst in HpreX.
     destruct HpreX as [Hi Histart].
     apply set_union_in_iterated. apply Exists_exists.
     exists (sent_messages_fn X (projT2 s (of_nat_lt Hi))).
@@ -562,13 +551,10 @@ Proof.
       assert (Hm : selected_message_exists_in_some_preloaded_traces X (field_selector output) (projT2 s (of_nat_lt Hi)) m)
       ; [|exists (exist _ m Hm); reflexivity].
       destruct istart as [sstart | istart fstart].
-      * destruct Histart as [Hlast HtrX].
-        exists sstart. exists trX. exists HtrX. symmetry in Hlast. exists Hlast.
-        assumption.
-      * destruct Histart as [Histart [Hlast [HtrX HinitX]]]. specialize (HinitX (proj2 Htr)).
+      * exists sstart. exists trX. exists Histart. assumption.
+      * destruct Histart as [Histart [HtrX HinitX]]. specialize (HinitX (proj2 Htr)).
         exists (projT2 is (of_nat_lt Histart)).
         exists trX. exists (conj HtrX HinitX).
-        symmetry in Hlast. exists Hlast.
         assumption.
 Qed.
 

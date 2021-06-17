@@ -86,7 +86,7 @@ Section apply_plans.
     (start : state)
     (a : list plan_item)
     (after_a := _apply_plan start a)
-    : last (map destination (fst after_a)) start = snd after_a.
+    : finite_trace_last start (fst after_a) = snd after_a.
   Proof.
     induction a using rev_ind; try reflexivity.
     unfold after_a. clear after_a. unfold _apply_plan.
@@ -99,7 +99,8 @@ Section apply_plans.
     destruct x.
     destruct (transition label_a0 (final, input_a0)) as (dest,out) eqn:Ht.
     unfold fst. unfold snd.
-    simpl. rewrite map_app. simpl. rewrite last_last. reflexivity.
+    simpl.
+    rewrite finite_trace_last_is_last. reflexivity.
   Qed.
 
   Lemma _apply_plan_app
@@ -186,7 +187,7 @@ Section protocol_plans.
     (start : vstate X)
     (a : plan)
     (after_a := apply_plan start a)
-    : last (map destination (fst after_a)) start = snd after_a
+    : finite_trace_last start (fst after_a) = snd after_a
     := (@_apply_plan_last _ (type X) (vtransition X) start a).
 
   (** A plan is protocol w.r.t. a state if by applying it to that state we
@@ -247,24 +248,18 @@ Section protocol_plans.
     (Htr : finite_protocol_trace_from X s tr)
     : fst (apply_plan s (trace_to_plan tr)) = tr.
   Proof.
-    induction tr using rev_ind; try reflexivity.
-    apply finite_protocol_trace_from_app_iff in Htr.
-    destruct Htr as [Htr Hx].
-    specialize (IHtr Htr).
-    setoid_rewrite map_app. rewrite apply_plan_app.
-    specialize (apply_plan_last s (map _transition_item_to_plan_item tr)) as Hlst.
-    destruct (apply_plan s (map _transition_item_to_plan_item tr)) as (aitems, afinal)
-      eqn:Hapl.
-    setoid_rewrite Hapl in IHtr. simpl in IHtr.
+    induction Htr using finite_protocol_trace_from_rev_ind
+    ;[reflexivity|].
+    unfold trace_to_plan, _trace_to_plan.
+    rewrite map_app, apply_plan_app.
+    change (map _ tr) with (trace_to_plan tr).
+    specialize (apply_plan_last s (trace_to_plan tr)) as Hlst.
+    destruct (apply_plan s (trace_to_plan tr))
+      as (sitems,afinal) eqn:Hapl.
     simpl in *. subst.
-    apply first_transition_valid in Hx.
-    destruct Hx as [_ Ht].
-    unfold _transition_item_to_plan_item. simpl. unfold apply_plan, _apply_plan.
+    unfold _transition_item_to_plan_item, apply_plan, _apply_plan.
     simpl.
-    match goal with
-    |- context[vtransition X ?l ?lst] => replace (vtransition X l lst) with (destination x, output x)
-    end.
-    destruct x.
+    replace (vtransition X l _) with (sf,oom) by (symmetry;apply Hx).
     reflexivity.
   Qed.
 

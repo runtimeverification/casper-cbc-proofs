@@ -46,6 +46,70 @@ Definition validating_projection_prop :=
         protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li siomi ->
         vvalid Xi li siomi.
 
+(** An alternative formulation of the above property with a seemingly
+stronger hypoyesis, states that component (IM i) is validating for constraint
+if for any @si@ protocol state in the projection @Xi@, @li valid (IM i) (si, om)@
+implies  that there exists a state @s@ whose ith  component is @si@,
+and @s@ and @om@ are protocol in @X@, and @(i,li) valid (s,om)@ in @X@, that is,
+we have that @li valid (si, om)@ in the projection @Xi@.
+*)
+Definition validating_projection_prop_alt :=
+    forall (li : vlabel (IM i)) (siom : vstate (IM i) * option message),
+        let (si, om) := siom in
+        vvalid (IM i) li siom ->
+        protocol_state_prop Xi si ->
+        vvalid Xi li siom.
+
+(** Under validating assumptions, all reachable states for component @IM i@ are
+protocol states in the projection @Xi@.
+*)
+Lemma validating_alt_free_states_are_projection_states
+    : validating_projection_prop_alt ->
+    forall s,
+        protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) s ->
+        protocol_state_prop Xi s.
+Proof.
+    intros Hvalidating s Hs.
+    induction Hs using protocol_state_prop_ind;
+    [apply initial_is_protocol;assumption|].
+    change s' with (fst (s',om')).
+    destruct Ht as [[_ [_ Hvalid]] Htrans].
+    rewrite <- Htrans.
+    apply (projection_valid_implies_destination_projection_protocol_state IM constraint i).
+    apply (Hvalidating l (s,om));assumption.
+Qed.
+    
+
+(** Below we show that the two definitions above are actually equivalent.
+*)
+Lemma validating_projection_prop_alt_iff
+    : validating_projection_prop_alt <-> validating_projection_prop.
+Proof.
+    split.
+    - intros Hvalidating l (si, om) Hvalid.
+      destruct Hvalid as [Hsi [_ Hvalid]].
+      apply validating_alt_free_states_are_projection_states in Hsi
+      ; [|assumption].
+      exact (Hvalidating l (si,om) Hvalid Hsi).
+    - intros Hvalidating l (si, om) Hvalid HXisi.
+      specialize (Hvalidating l (si, om)).
+      apply Hvalidating.
+      repeat split; [| apply any_message_is_protocol_in_preloaded | assumption].
+      revert HXisi.
+      apply VLSM_incl_protocol_state.
+      apply proj_pre_loaded_with_all_messages_incl.
+Qed.
+
+Lemma validating_free_states_are_projection_states
+    : validating_projection_prop ->
+    forall s,
+        protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) s ->
+        protocol_state_prop Xi s.
+Proof.
+    rewrite <- validating_projection_prop_alt_iff.
+    apply validating_alt_free_states_are_projection_states.
+Qed.
+
 (**
 It is easy to see that the [validating_projection_prop]erty includes the
 [validating_projection_received_messages_prop]erty.
@@ -89,31 +153,21 @@ is equivalent with the [validating_transitions] property.
 Lemma validating_projection_messages_transitions
     : validating_projection_prop -> validating_transitions.
 Proof.
-    unfold validating_projection_prop. unfold validating_transitions.
-    unfold projection_valid. unfold protocol_transition.
-    simpl. intros.
-    specialize (H li (si, omi) H0). clear H0. simpl in H.
-    destruct H as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
-    remember (vtransition X (existT _ i li) (s, omi)) as t.
-    destruct t as [s' om'].
+    intros Hvalidating si omi li Hpvi.
+    specialize (Hvalidating li (si, omi) Hpvi). clear Hpvi.
+    destruct Hvalidating as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
+    destruct (vtransition X (existT _ i li) (s, omi)) as (s', om') eqn:Heqt.
     exists s. exists s'. exists om'.
-    symmetry in Hsi. subst si; simpl.
-    repeat split; try assumption.
-    unfold vtransition in Heqt.
-    simpl in Heqt.
-    remember (vtransition (IM i) li (s i, omi)) as t.
-    destruct t as [si' om''].
-    inversion Heqt; subst.
-    reflexivity.
+    subst si.
+    repeat split; assumption.
 Qed.
 
 Lemma validating_transitions_messages
     : validating_transitions -> validating_projection_prop.
 Proof.
-    unfold validating_projection_prop. unfold validating_transitions. intros.
-    destruct siomi as [si omi].
-    specialize (H si omi li H0); clear H0.
-    destruct H as [s [s' [om' [Hsi [Hvalid Htransition]]]]].
+    intros Hvalidating li (si,omi) Hpvi.
+    specialize (Hvalidating si omi li Hpvi). clear Hpvi.
+    destruct Hvalidating as [s [s' [om' [Hsi [Hvalid Htransition]]]]].
     symmetry in Hsi.
     exists s. split; assumption.
 Qed.
@@ -145,27 +199,14 @@ of a trace. The [validating_projection_prop]erty is used to translate
         apply VLSM_incl_finite_traces_characterization.
         intros.
         split; [|apply H].
-        destruct H as [Htr Hs].
-        (* reverse induction on the length of the trace. *)
-        induction tr using rev_ind.
-        - constructor. apply initial_is_protocol. assumption.
-        - apply finite_protocol_trace_from_app_iff in Htr.
-          destruct Htr as [Htr Hx].
-          specialize (IHtr Htr).
-          apply (finite_protocol_trace_from_app_iff Xi).
-          split; [assumption|].
-          apply (first_transition_valid Xi).
-          apply first_transition_valid in Hx.
+        induction H using finite_protocol_trace_rev_ind.
+        - apply (finite_ptrace_empty Xi). apply initial_is_protocol. assumption.
+        - apply (extend_right_finite_trace_from Xi);[assumption|].
           destruct Hx as [Hvx Htx].
           split; [|assumption].
-          (* This is the interesting part of the proof, using the
-             Hvalidating hypothesis. *)
-          match goal with
-          |- protocol_valid _ ?l ?siom =>
-            specialize (Hvalidating l siom)
-          end.
-          apply Hvalidating in Hvx.
-          apply projection_valid_protocol. assumption.
+          apply projection_valid_protocol.
+          apply Hvalidating.
+          assumption.
     Qed.
 
 (**
@@ -198,7 +239,7 @@ Context
 
 (**
 Let us fix a (regular) VLSM <<X>>. <<X>> is (self-)validating if every [valid]
-(reachable) [state] and <<message>> are [protocol_state] and [protocol_message]
+reachable [state] and <<message>> are [protocol_state] and [protocol_message]
 for that VLSM, respectively.
 *)
 
