@@ -78,7 +78,6 @@ Proof.
     apply (projection_valid_implies_destination_projection_protocol_state IM constraint i).
     apply (Hvalidating l (s,om));assumption.
 Qed.
-    
 
 (** Below we show that the two definitions above are actually equivalent.
 *)
@@ -195,7 +194,7 @@ of a trace. The [validating_projection_prop]erty is used to translate
     Lemma pre_loaded_with_all_messages_validating_proj_incl
         : VLSM_incl PreLoaded Xi.
     Proof.
-        (* reduce inlusion to inclusion of finite traces. *)
+        (* reduce inclusion to inclusion of finite traces. *)
         apply VLSM_incl_finite_traces_characterization.
         intros.
         split; [|apply H].
