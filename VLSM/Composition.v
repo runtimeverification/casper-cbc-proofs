@@ -413,6 +413,23 @@ the [composite_valid]ity.
       := (@_apply_plan_last _ composite_type composite_transition start a).
     Definition composite_trace_to_plan := (@_trace_to_plan _ composite_type).
 
+  Lemma lift_to_composite_state_initial
+    (constraint : composite_label -> composite_state * option message -> Prop)
+    (j : index)
+    (sj : vstate (IM j))
+    (Hinitj : vinitial_state_prop (IM j) sj)
+    : vinitial_state_prop (composite_vlsm constraint) (lift_to_composite_state j sj).
+  Proof.
+    intro i.
+    unfold lift_to_composite_state.
+    destruct (decide (i = j)).
+    - subst. rewrite state_update_eq. assumption.
+    - rewrite state_update_neq; try assumption.
+      simpl.
+      unfold vs0. destruct s0 as [s Hs].
+      assumption.
+  Qed.
+
     Section constraint_subsumption_part_one.
 (** ** Constraint subsumption
 
@@ -1334,6 +1351,17 @@ the <<j>>th component of an [initial_state] of <<X>> is initial for <<Xj>>
       assumption.
     Qed.
 
+    Lemma projection_valid_implies_composition_protocol_message
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : vvalid Xj l (s, om))
+      : option_protocol_message_prop X om.
+    Proof.
+      destruct Hv as [sx [Hs [HpsX [HpmX Hv]]]].
+      assumption.
+    Qed.
+
 (**
 Since all [protocol_message]s of <<X>> become [initial_message]s in <<Xj>>, the
 following result is not surprising.
@@ -1347,6 +1375,96 @@ following result is not surprising.
       destruct iom as [m|];[|exact I].
       exists (exist _ m HpmX).
       reflexivity.
+    Qed.
+
+
+    Lemma protocol_state_projection
+      (s : vstate X)
+      (Hps : protocol_state_prop X s)
+      : protocol_state_prop Xj (s j).
+    Proof.
+      induction Hps using protocol_state_prop_ind.
+      - apply initial_is_protocol.
+        exact (Hs j).
+      - apply protocol_transition_in in Ht as Hom.
+        apply protocol_message_projection in Hom.
+        destruct (protocol_transition_project_any j _ _ _ _ _ Ht)
+          as [<-|Hresult];[assumption|].
+        destruct Hresult as [li [-> [_ Htrans]]].
+        exists om'.
+        change transition with (vtransition Xj) in Htrans.
+        change (s' j, om') with (s' j, om').
+        rewrite <- Htrans.
+        assert (vvalid Xj li (s j, om)).
+        { exists s;split;[reflexivity|apply Ht]. }
+        destruct Hom as [_s Hom].
+        destruct IHHps as [_om Hsj].
+        eapply @protocol_generated;eassumption.
+    Qed.
+
+    Lemma projection_valid_implies_projection_protocol_message
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : vvalid Xj l (s, om))
+      : option_protocol_message_prop Xj om.
+    Proof.
+      apply protocol_message_projection.
+      revert Hv.
+      apply projection_valid_implies_composition_protocol_message.
+    Qed.
+
+  Lemma projection_valid_implies_projection_protocol_state
+    (lj : label)
+    (sj : state)
+    (om : option message)
+    (Hv : vvalid Xj lj (sj, om))
+    : protocol_state_prop Xj sj.
+  Proof.
+    destruct Hv as [s [Heq_sj [Hs _]]].
+    subst sj. revert Hs. apply protocol_state_projection.
+  Qed.
+
+  Lemma projection_valid_implies_destination_projection_protocol_prop
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : vvalid Xj l (s, om))
+      : protocol_prop Xj (vtransition (IM j) l (s, om)).
+    Proof.
+      apply projection_valid_implies_projection_protocol_state in Hv as Hs.
+      destruct Hs as [_om Hs].
+      apply projection_valid_implies_projection_protocol_message in Hv as Hom.
+      destruct Hom as [_s Hom].
+      apply (protocol_generated Xj  _ _ _ Hs _ _ Hom Hv).
+    Qed.
+
+  Lemma projection_valid_implies_destination_projection_protocol_state
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : vvalid Xj l (s, om))
+      (s' := fst (vtransition (IM j) l (s, om)))
+      : protocol_state_prop Xj s'.
+    Proof.
+      apply projection_valid_implies_destination_projection_protocol_prop in Hv.
+      subst s'.
+      simpl in *.
+      rewrite surjective_pairing in Hv. eexists. apply Hv.
+    Qed.
+
+  Lemma projection_valid_implies_destination_projection_protocol_message
+      (l : label)
+      (s : state)
+      (om : option message)
+      (Hv : vvalid Xj l (s, om))
+      (om' := snd (vtransition (IM j) l (s, om)))
+      : option_protocol_message_prop Xj om'.
+    Proof.
+      apply projection_valid_implies_destination_projection_protocol_prop in Hv.
+      subst om'.
+      simpl in *.
+      rewrite surjective_pairing in Hv. eexists. apply Hv.
     Qed.
 
 (**
@@ -1434,32 +1552,6 @@ We can now finally prove the main result for this section:
       (Hsi : s j = sj)
       , vvalid X (existT _ j lj) (s, om).
 
-  Lemma projection_friendliness_sufficient_condition_protocol_message
-    (l : label)
-    (s : state)
-    (om : option message)
-    (Hv : protocol_valid Xj l (s, om))
-    : option_protocol_message_prop X om.
-  Proof.
-    destruct Hv as [Hpsj [Hpmj [sx [Hs [HpsX [HpmX Hv]]]]]].
-    assumption.
-  Qed.
-
-  Lemma lift_to_composite_state_initial
-    (sj : vstate (IM j))
-    (Hinitj : vinitial_state_prop (IM j) sj)
-    : vinitial_state_prop X (lift_to_composite_state IM j sj).
-  Proof.
-    intro i.
-    unfold lift_to_composite_state.
-    destruct (decide (i = j)).
-    - subst. rewrite state_update_eq. assumption.
-    - rewrite state_update_neq; try assumption.
-      simpl.
-      unfold vs0. destruct s0 as [s Hs].
-      assumption.
-  Qed.
-
   Lemma projection_friendliness_sufficient_condition_protocol_state
     (Hfr : projection_friendliness_sufficient_condition)
     (s : state)
@@ -1485,7 +1577,7 @@ We can now finally prove the main result for this section:
         unfold lift_to_composite_state at 1 in Hfr.
         rewrite state_update_eq in Hfr.
         specialize (Hfr eq_refl).
-        specialize (projection_friendliness_sufficient_condition_protocol_message _ _ _ Hpvj)
+        specialize (projection_valid_implies_composition_protocol_message _ _ _ _ (proj2 (proj2 Hpvj)))
         ; intros  [_sX HpmX].
         destruct IHHp1 as [_omX HpsX].
         apply
@@ -1542,7 +1634,7 @@ We can now finally prove the main result for this section:
     specialize (protocol_generated_valid Xj Hps Hpm Hv); intros Hpv.
     repeat split.
     - apply projection_friendliness_sufficient_condition_protocol_state with _om; assumption.
-    - apply projection_friendliness_sufficient_condition_protocol_message in Hpv. assumption.
+    - destruct Hpv as [_ [_ Hpv]]. apply projection_valid_implies_composition_protocol_message in Hpv. assumption.
     - specialize (projection_friendliness_sufficient_condition_valid Hfr l is iom Hpv); intros [HvX _].
       assumption.
     - specialize (projection_friendliness_sufficient_condition_valid Hfr l is iom Hpv); intros [_ Hctr].

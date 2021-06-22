@@ -25,7 +25,7 @@ Context
 
 (**
 We say that the component <<i>> of X is validating received messages if
-non-[projection_valid]itiy implied non-component-[valid]ity.
+non-[projection_valid]itiy implied non-component-[valid]ity (or non-reachability).
 *)
 
 Definition validating_projection_received_messages_prop
@@ -37,13 +37,77 @@ Definition validating_projection_received_messages_prop
 (**
 We can slightly generalize the definition above to also include empty messages
 and state it in a positive manner as the [validating_projection_prop]erty below,
-requiring that [valid]ity in the component implies [projection_valid]ity.
+requiring that [valid]ity in the component (for reachable states) implies
+[projection_valid]ity.
 *)
 
 Definition validating_projection_prop :=
     forall (li : vlabel (IM i)) (siomi : vstate (IM i) * option message),
         protocol_valid (pre_loaded_with_all_messages_vlsm (IM i)) li siomi ->
         vvalid Xi li siomi.
+
+(** An alternative formulation of the above property with a seemingly
+stronger hypoyesis, states that component (IM i) is validating for constraint
+if for any @si@ protocol state in the projection @Xi@, @li valid (IM i) (si, om)@
+implies  that there exists a state @s@ whose ith  component is @si@,
+and @s@ and @om@ are protocol in @X@, and @(i,li) valid (s,om)@ in @X@, that is,
+we have that @li valid (si, om)@ in the projection @Xi@.
+*)
+Definition validating_projection_prop_alt :=
+    forall (li : vlabel (IM i)) (siom : vstate (IM i) * option message),
+        let (si, om) := siom in
+        vvalid (IM i) li siom ->
+        protocol_state_prop Xi si ->
+        vvalid Xi li siom.
+
+(** Under validating assumptions, all reachable states for component @IM i@ are
+protocol states in the projection @Xi@.
+*)
+Lemma validating_alt_free_states_are_projection_states
+    : validating_projection_prop_alt ->
+    forall s,
+        protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) s ->
+        protocol_state_prop Xi s.
+Proof.
+    intros Hvalidating s Hs.
+    induction Hs using protocol_state_prop_ind;
+    [apply initial_is_protocol;assumption|].
+    change s' with (fst (s',om')).
+    destruct Ht as [[_ [_ Hvalid]] Htrans].
+    rewrite <- Htrans.
+    apply (projection_valid_implies_destination_projection_protocol_state IM constraint i).
+    apply (Hvalidating l (s,om));assumption.
+Qed.
+
+(** Below we show that the two definitions above are actually equivalent.
+*)
+Lemma validating_projection_prop_alt_iff
+    : validating_projection_prop_alt <-> validating_projection_prop.
+Proof.
+    split.
+    - intros Hvalidating l (si, om) Hvalid.
+      destruct Hvalid as [Hsi [_ Hvalid]].
+      apply validating_alt_free_states_are_projection_states in Hsi
+      ; [|assumption].
+      exact (Hvalidating l (si,om) Hvalid Hsi).
+    - intros Hvalidating l (si, om) Hvalid HXisi.
+      specialize (Hvalidating l (si, om)).
+      apply Hvalidating.
+      repeat split; [| apply any_message_is_protocol_in_preloaded | assumption].
+      revert HXisi.
+      apply VLSM_incl_protocol_state.
+      apply proj_pre_loaded_with_all_messages_incl.
+Qed.
+
+Lemma validating_free_states_are_projection_states
+    : validating_projection_prop ->
+    forall s,
+        protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) s ->
+        protocol_state_prop Xi s.
+Proof.
+    rewrite <- validating_projection_prop_alt_iff.
+    apply validating_alt_free_states_are_projection_states.
+Qed.
 
 (**
 It is easy to see that the [validating_projection_prop]erty includes the
@@ -59,7 +123,8 @@ Qed.
 
 (**
 We say that component <<i>> is [validating_transitions] if any [valid]
-transition in component <<i>> can be "lifted" to a [protocol_transition] in <<X>>.
+transition (from a reachable state) in component <<i>> can be "lifted" to
+a [protocol_transition] in <<X>>.
 
 *)
 
@@ -87,31 +152,21 @@ is equivalent with the [validating_transitions] property.
 Lemma validating_projection_messages_transitions
     : validating_projection_prop -> validating_transitions.
 Proof.
-    unfold validating_projection_prop. unfold validating_transitions.
-    unfold projection_valid. unfold protocol_transition.
-    simpl. intros.
-    specialize (H li (si, omi) H0). clear H0. simpl in H.
-    destruct H as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
-    remember (vtransition X (existT _ i li) (s, omi)) as t.
-    destruct t as [s' om'].
+    intros Hvalidating si omi li Hpvi.
+    specialize (Hvalidating li (si, omi) Hpvi). clear Hpvi.
+    destruct Hvalidating as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
+    destruct (vtransition X (existT _ i li) (s, omi)) as (s', om') eqn:Heqt.
     exists s. exists s'. exists om'.
-    symmetry in Hsi. subst si; simpl.
-    repeat split; try assumption.
-    unfold vtransition in Heqt.
-    simpl in Heqt.
-    remember (vtransition (IM i) li (s i, omi)) as t.
-    destruct t as [si' om''].
-    inversion Heqt; subst.
-    reflexivity.
+    subst si.
+    repeat split; assumption.
 Qed.
 
 Lemma validating_transitions_messages
     : validating_transitions -> validating_projection_prop.
 Proof.
-    unfold validating_projection_prop. unfold validating_transitions. intros.
-    destruct siomi as [si omi].
-    specialize (H si omi li H0); clear H0.
-    destruct H as [s [s' [om' [Hsi [Hvalid Htransition]]]]].
+    intros Hvalidating li (si,omi) Hpvi.
+    specialize (Hvalidating si omi li Hpvi). clear Hpvi.
+    destruct Hvalidating as [s [s' [om' [Hsi [Hvalid Htransition]]]]].
     symmetry in Hsi.
     exists s. split; assumption.
 Qed.
@@ -130,14 +185,16 @@ Section pre_loaded_with_all_messages_validating_proj.
         .
 
 (**
-We can show that <<Preloaded>> is included in <<Xi>> by applying the
-meta-lemma [basic_VLSM_incl], using the [validating_projection_prop]erty and
-Lemma [protocol_message_projection] to show that its conditions are fulfilled.
+We can show that <<Preloaded>> is included in <<Xi>> by applying the meta-lemma
+[VLSM_incl_finite_traces_characterization], and by induction on the length
+of a trace. The [validating_projection_prop]erty is used to translate
+[protocol_valid]ity for the preloaded machine into the [projection_valid]ity.
 *)
 
     Lemma pre_loaded_with_all_messages_validating_proj_incl
         : VLSM_incl PreLoaded Xi.
     Proof.
+        (* reduce inclusion to inclusion of finite traces. *)
         apply VLSM_incl_finite_traces_characterization.
         intros.
         split; [|apply H].
@@ -152,10 +209,11 @@ Lemma [protocol_message_projection] to show that its conditions are fulfilled.
     Qed.
 
 (**
-Given that any projection is included in the [pre_loaded_with_all_messages_vlsm] of its component
-(Lemma [proj_pre_loaded_with_all_messages_incl]), we conclude that <<Preloaded>> and <<Xi>> are
-trace-equal.  This means that all the byzantine behavior of a
-validating component is exhibited by its corresponding projection.
+Given that any projection is included in the [pre_loaded_with_all_messages_vlsm]
+of its component (Lemma [proj_pre_loaded_with_all_messages_incl]), we conclude
+that <<Preloaded>> and <<Xi>> are trace-equal.  This means that all the
+byzantine behavior of a validating component is exhibited by its corresponding
+projection.
 *)
     Lemma pre_loaded_with_all_messages_validating_proj_eq
         : VLSM_eq PreLoaded Xi.
@@ -180,8 +238,8 @@ Context
 
 (**
 Let us fix a (regular) VLSM <<X>>. <<X>> is (self-)validating if every [valid]
-[state] and <<message>> are [protocol_state] and [protocol_message] for that
-VLSM, respectively.
+reachable [state] and <<message>> are [protocol_state] and [protocol_message]
+for that VLSM, respectively.
 *)
 
 Definition validating_vlsm_prop
@@ -192,9 +250,9 @@ Definition validating_vlsm_prop
 
 (**
 In the sequel we will show that a VLSM with the [validating_vlsm_prop]erty
-is trace-equal to its associated [pre_loaded_with_all_messages_vlsm], basically meaning that
-(due to Lemma [byzantine_pre_loaded_with_all_messages]) all traces with
-the [byzantine_trace_prop]erty associated to a validating VLSMs are also
+is trace-equal to its associated [pre_loaded_with_all_messages_vlsm], basically
+meaning (due to Lemma [byzantine_pre_loaded_with_all_messages]) that all traces
+with the [byzantine_trace_prop]erty associated to a validating VLSMs are also
 [protocol_trace]s for that VLSM, meaning that the VLSM cannot exhibit
 byzantine behavior.
 *)
@@ -206,11 +264,11 @@ Context
 
 (**
 Let <<PreLoaded>> be the [pre_loaded_with_all_messages_vlsm] associated to X.
-From Lemma [vlsm_incl_pre_loaded_with_all_messages_vlsm] we know that <<X>> is included
-in <<PreLoaded>>.
+From Lemma [vlsm_incl_pre_loaded_with_all_messages_vlsm] we know that <<X>> is
+included in <<PreLoaded>>.
 
 To prove the converse we use the [validating_vlsm_prop]erty to
-verify the conditions of meta-lemma [basic_VLSM_incl].
+verify the conditions of meta-lemma [VLSM_incl_finite_traces_characterization].
 *)
 
     Lemma pre_loaded_with_all_messages_validating_vlsm_incl
@@ -218,10 +276,12 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
     Proof.
         unfold validating_vlsm_prop  in Hvalidating.
         destruct X as [T [S M]]. simpl in *.
+        (* redcuction to inclusion of finite traces. *)
         apply VLSM_incl_finite_traces_characterization.
         intros.
         split; [|apply H].
         destruct H as [Htr Hs].
+        (* reverse induction on the length of a trace. *)
         induction tr using rev_ind.
         - constructor. apply initial_is_protocol. assumption.
         - apply finite_protocol_trace_from_app_iff in Htr.
@@ -233,6 +293,7 @@ verify the conditions of meta-lemma [basic_VLSM_incl].
           apply first_transition_valid in Hx.
           destruct Hx as [Hvx Htx].
           split; [|assumption].
+          (* using the [validating_vlsm_prop]erty. *)
           revert Hvx.
           apply Hvalidating.
     Qed.
