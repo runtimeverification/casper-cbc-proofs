@@ -2202,7 +2202,12 @@ Section composition.
   Proof.
     simpl.
     intros Haddr Hpsp Hrecv.
-    assert (Hhbr: has_been_received free_composite_elmo st (Cpremessage s component)).
+    set (j := component_to_index component).
+    set (Xj := composite_vlsm_constrained_projection IM (free_constraint IM) j).
+
+    Check has_been_received.
+    Print state_message_oracle.
+    assert (Hhbr: has_been_received Xj (st j) (Cpremessage s component)).
     {
       simpl. unfold composite_has_been_received.
       exists (component_to_index component). simpl.
@@ -2222,7 +2227,27 @@ Section composition.
       apply (in_map messageOf) in Hrecv.
       exact Hrecv.
     }
-    clear Hrecv.
+    assert (Hhbr': has_been_received free_composite_elmo st (Cpremessage s component)).
+    {
+      simpl. unfold composite_has_been_received.
+      exists (component_to_index component). simpl.
+      unfold elmo_has_been_received_oracle.
+      rewrite component_to_index_to_component.
+      { exact Haddr. }
+      apply (filter_in _ (isWitnessedBy component)) in Hrecv.
+      2: { unfold isWitnessedBy. simpl.
+           destruct (bool_decide (component = component)) eqn:Heq.
+           reflexivity.
+           apply bool_decide_eq_false_1 in Heq. contradiction.
+      }
+      
+      apply (filter_in _ isReceive) in Hrecv.
+      2: { reflexivity. }
+      Check in_map.
+      apply (in_map messageOf) in Hrecv.
+      exact Hrecv.
+    }
+    (*clear Hrecv.*)
     pose proof (Htmp := has_been_received_in_state _ _ _ _ Hpsp Hhbr).
     destruct Htmp as [s0 [item [tr [Hin Hfpt]]]].
     inversion Hfpt. subst. clear Hfpt.
