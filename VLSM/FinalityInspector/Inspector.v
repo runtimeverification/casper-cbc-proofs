@@ -43,6 +43,9 @@ Context
   (computable_sent : forall (i : index), computable_sent_messages (IM i))
   (computable_received : forall (i : index), computable_received_messages (IM i)). 
   
+  Local Ltac split_prune_and := split_and?;(try solve[intuition]).
+  Local Ltac feed_specialize_prune H := feed specialize H; (try solve[intuition]).
+  
   Lemma hb_subseteq 
     (m1 m2 : message)
     (Hhb : happens_before' m1 m2) :
@@ -343,7 +346,10 @@ Context
     
   Local Instance is_equivocating_from_message_dec : RelDecision is_equivocating_from_message.
   Proof.
-  Admitted.
+    unfold is_equivocating_from_message.
+    unfold RelDecision. intros m i.
+    apply is_equivocating_from_set_dec.
+  Qed.
   
   Definition equivocators_from_message
     (m : message) : Ci := 
@@ -377,8 +383,7 @@ Context
     equivocating_pair u' v i.
   Proof.
     unfold equivocating_pair in *.
-    split;[intuition|].
-    split;[intuition|].
+    split_prune_and.
     destruct Hequiv as [Hsender_u [Hsender_v Hcomp]].
     intros contra.
     destruct contra as [contra|contra].
@@ -646,10 +651,9 @@ Context
     - rewrite bool_decide_eq_false in eqb.
       contradict Hnon_equiv.
       exists v. exists w.
-      split;[apply HdownSetCorrect;intuition|].
-      split;[intuition|].
-      split;[apply HdownSetCorrect;intuition|].
-      split;[symmetry;intuition|intuition].
+      split_prune_and.
+      + apply HdownSetCorrect;intuition.
+      + apply HdownSetCorrect;intuition.
   Qed.
   
   Lemma compare_messages1
@@ -876,8 +880,7 @@ Context
       
       induction Hvalid.
       - intros.
-        split;[intuition|split;[intuition|]].
-        split;[intuition|].
+        split_prune_and.
         intros c Hc.
         destruct Hc; set_solver.
       - intros.
@@ -899,17 +902,11 @@ Context
 
         specialize (IHHvalid new_skel).
         subst new_skel.
-        spec IHHvalid. intuition.
-        spec IHHvalid. intuition.
-        spec IHHvalid. intuition.
-        spec IHHvalid. intuition.
-        spec IHHvalid. intuition.
+        feed_specialize_prune IHHvalid.
         simpl in IHHvalid.
         specialize (IHHvalid Hbase eq_refl).
         destruct IHHvalid as [base IHHvcom].
-        split;[intuition|].
-        split;[intuition|].
-        split;[intuition|].
+        split_prune_and.
         intros c Hc.
         destruct IHHvcom as [_ [_ IHH]].
         simpl in Hc.
@@ -1034,7 +1031,7 @@ Context
             split;[|apply index_set_one].
             rewrite bool_decide_spec.
             exists m1, m2.
-            (repeat split); (try solve[intuition]||rewrite HrelSet).
+            split_prune_and;rewrite HrelSet.
             + apply elem_of_subseteq with (X0 := c0).
               apply set_downSet'_self.
               intuition.
@@ -1313,8 +1310,7 @@ Context
           destruct Hv as [Hv Hvn].
           specialize (Hmi v).
           spec Hmi. {
-            split;[intuition congruence|].
-            split.
+            split_prune_and.
             - intros contra. contradict Hvn. apply elem_of_union. left. intuition.
             - intros contra. contradict Hvn. apply elem_of_union. right. intuition.
           }
@@ -1610,9 +1606,10 @@ Context
             destruct Hmin_u' as [Hmin_u'1 Hmin_u'2].
             split.
             - intuition.
-            - intros.
+            - intros m' Hmin_u'3.
               specialize (Hmin_u'2 m').
-              intuition.
+              apply Hmin_u'2.
+              apply Hmin_u'3.
           }
           
           clear Heqvalue' Heqq' HeqrelSet' Heqc0' Hc0' HeqHc0' Htop Hcom.
@@ -1692,10 +1689,7 @@ Context
             }
             
             assert (Hvdif_in_latest: vdif ∈ latest_messages u). {
-              apply latest_message_in_latest_messages.
-              replace (sender vdif) with v by intuition; intuition.
-              replace (sender vdif) with v by intuition.
-              intuition.
+              apply latest_message_in_latest_messages; replace (sender vdif) with v by intuition; intuition.
             }
             
             assert (Hvtemp: v ∈ Vk_1). {
@@ -1745,18 +1739,17 @@ Context
                   
                   specialize (contra2 vdif).
                   spec contra2. {
-                    split.
+                    split_and?.
                     - left.
                       destruct Hutemp.
                       + apply t_trans with (y := u); intuition.
                       + subst fake_u. intuition.
-                    - split.
-                      + apply protocol_state_closed with (u := u); intuition.
-                      + split;[intuition|].
-                        exists vk.
-                        split.
-                        * apply HdownSetCorrect. assumption.
-                        * rewrite Htop_sm1. intuition.
+                    - apply protocol_state_closed with (u := u); intuition.
+                    - intuition.
+                    - exists vk.
+                      split_and?.
+                      + apply HdownSetCorrect. assumption.
+                      + rewrite Htop_sm1. clear -Hvk. intuition.
                   }
                   intuition.
                 + contradict Hc0_convex.
@@ -1777,23 +1770,21 @@ Context
               split.
               - unfold is_equivocating_from_set.
                 exists vk. exists vdif.
-                split.
+                split_and?.
                 + apply elem_of_union. 
                   left.
                   apply Hsm1_in_c0; intuition.
-                + split;[intuition|].
-                  split.
-                  * apply elem_of_union.
-                    right.
-                    destruct Hdif as [Hdif _].
-                    apply latest_message_from_compares in Hdif.
-                    apply HdownSetCorrect. 
-                    intuition.
-                  * destruct Hdif as [Hdif _].
-                    apply latest_message_sender in Hdif.
-                    split;[intuition|].
-                    apply Hncomp.
-                    
+                + intuition.
+                + apply elem_of_union.
+                  right.
+                  destruct Hdif as [Hdif _].
+                  apply latest_message_from_compares in Hdif.
+                  apply HdownSetCorrect. 
+                  intuition.
+                + destruct Hdif as [Hdif _].
+                  apply latest_message_sender in Hdif.
+                  intuition.
+                + apply Hncomp.
               - specialize (index_set_listing {[ v ]}).
                 unfold subseteq. unfold set_subseteq_instance.
                 intros Htemp'. specialize (Htemp' v).
