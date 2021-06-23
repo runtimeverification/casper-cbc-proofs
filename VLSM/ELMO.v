@@ -348,7 +348,11 @@ Definition elmo_valid
   | Receive, Some m =>
     bool_decide (List.In (authorOf m) addresses) &&
     fullNode m (observationsOf state) component &&
-    (*if (decide (...)) then it is in prefix else true &&*)
+    (if (decide (authorOf m = component)) then
+      bool_decide (List.In (Cobservation Send m component) (observationsOf state))
+    else
+      true
+    ) &&
     isProtocol (stateOf m) (authorOf m) weights treshold
   end.
 
