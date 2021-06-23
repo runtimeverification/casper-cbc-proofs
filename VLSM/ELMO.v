@@ -2124,37 +2124,38 @@ Section composition.
         contradiction.
   Qed.
 
-  Lemma trace_from_to_impl_observations_prefix s1 s2 tr component:
-    finite_protocol_trace_from_to free_composite_elmo s1 s2 tr ->
+  Lemma trace_from_to_impl_observations_prefix s1 s2 (tr : list transition_item) component:
+    let i := component_to_index component in
+    finite_protocol_trace_from_to (pre_loaded_with_all_messages_vlsm (IM i)) s1 s2 tr ->
     exists (n : nat),
-      length (observationsOf (s2 component)) >= n /\
-      list_prefix (observationsOf (s2 component)) n = observationsOf (s1 component).
+      length (observationsOf s2) >= n /\
+      list_prefix (observationsOf s2) n = observationsOf s1.
   Proof.
+    intros i.
     intros Htr.
-    move: s1 s2 Htr component.
-    induction tr; intros s1 s2 Htr component.
+    move: s1 s2 component i Htr.
+    induction tr; intros s1 s2 component i Htr.
     - inversion Htr. subst.
-      exists (length (observationsOf (s2 component))).
+      exists (length (observationsOf s2)).
       split. lia.
       rewrite -> list_prefix_all by lia.
       reflexivity.
     - inversion Htr. subst. clear Htr.
-      destruct l as [idx lbl].
+      rename l into lbl.
+      (*destruct l as [idx lbl].*)
       unfold protocol_transition in H4.
       simpl in H4.
       destruct H4 as [[[opmp Hopmp] [Hiom Hvalid]] Htrans].
       rename H3 into Hss2.
-      remember (vtransition (IM idx) lbl (s1 idx, iom)) as VT.
+      remember (vtransition (IM i) lbl (s1, iom)) as VT.
       destruct VT as [s1' oom'].
       inversion Htrans. subst. clear Htrans.
       unfold vtransition in HeqVT. simpl in HeqVT.
-      destruct lbl,iom; inversion HeqVT; subst; clear HeqVT.
-      + pose proof (IH := IHtr _ _ Hss2 component).
+      destruct lbl,iom; inversion HeqVT; subst; clear HeqVT
+      + simpl.
+        pose proof (IH := IHtr _ _ component i Hss2).
         destruct IH as [n Hn].
-        destruct (decide (idx = component)).
-        2: { rewrite state_update_neq in Hn. apply nesym. exact n0. exists n. apply Hn. }
-        subst component.
-        rewrite state_update_eq in Hn.
+
         (* n <> 0 *)
         destruct n.
         { rewrite list_prefix_0 in Hn. simpl in Hn.
@@ -2168,18 +2169,10 @@ Section composition.
         apply list_prefix_S in Hn.
         2: { exact Hl. }
         exists n. split. lia. apply Hn.
-      + rewrite state_update_id in Hss2.
-        { reflexivity. }
-        auto.
-      + rewrite state_update_id in Hss2.
-        { reflexivity. }
-        auto.
-      +  pose proof (IH := IHtr _ _ Hss2 component).
+      + eauto.
+      + eauto.
+      + pose proof (IH := IHtr _ _ component i Hss2).
         destruct IH as [n Hn].
-        destruct (decide (idx = component)).
-        2: { rewrite state_update_neq in Hn. apply nesym. exact n0. exists n. apply Hn. }
-        subst component.
-        rewrite state_update_eq in Hn.
         (* n <> 0 *)
         destruct n.
         { rewrite list_prefix_0 in Hn. simpl in Hn.
