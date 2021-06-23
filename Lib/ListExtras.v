@@ -659,6 +659,22 @@ Proof.
     simpl in Hlen. lia.
 Qed.
 
+Lemma In_list_prefix {A : Type} (l : list A) (n : nat) (x : A) :
+  In x (list_prefix l n) -> In x l.
+Proof.
+  generalize dependent n.
+  induction l; intros n H.
+  - simpl in H. destruct n; simpl in H; inversion H.
+  - simpl in H.
+    destruct n.
+    { simpl in H. inversion H. }
+    simpl in H.
+    destruct H as [H|H].
+    { subst. simpl. left. reflexivity. }
+    simpl. right.
+    eauto.
+Qed.
+
 Lemma list_suffix_length
   {A : Type}
   (l : list A)
