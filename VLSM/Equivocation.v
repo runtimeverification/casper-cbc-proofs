@@ -2513,6 +2513,44 @@ Section has_been_received_in_state.
     split.
     2: { apply  Htr2. }
     reflexivity.
-  Qed.    
+  Qed.
+
+  Lemma has_been_received_in_state_preloaded s1 m:
+    protocol_state_prop (pre_loaded_with_all_messages_vlsm X) s1 ->
+    has_been_received X s1 m ->
+    exists (s0 : state) (item : transition_item) (tr : list transition_item),
+      input item = Some m /\
+      finite_protocol_trace_from_to (pre_loaded_with_all_messages_vlsm X) s0 s1 (item :: tr).
+  Proof.
+    intros Hpsp Hhbr.
+    pose proof (Hetr := protocol_state_has_trace _ _ Hpsp).
+    destruct Hetr as [ist [tr Hetr]].
+    apply proper_received in Hhbr.
+    2: { apply Hpsp. }
+
+    unfold selected_message_exists_in_all_preloaded_traces in Hhbr.
+    unfold specialized_selected_message_exists_in_all_traces in Hhbr.
+    specialize (Hhbr ist tr).
+    unfold finite_protocol_trace_init_to in Hhbr.
+    unfold finite_protocol_trace_init_to in Hetr.
+    destruct Hetr as [Hfptf Hisp].
+    specialize (Hhbr (conj Hfptf Hisp)).
+
+    unfold trace_has_message in Hhbr. unfold field_selector in Hhbr.
+    apply Exists_exists in Hhbr.
+    destruct Hhbr as [tritem [Htritemin Hintritem]].
+    apply in_split in Htritemin.
+    destruct Htritemin as [l1 [l2 Heqtr]].
+    rewrite Heqtr in Hfptf.
+    apply (finite_protocol_trace_from_to_app_split (pre_loaded_with_all_messages_vlsm X)) in Hfptf.
+    destruct Hfptf as [Htr1 Htr2].
+    destruct tritem eqn:Heqtritem.
+    simpl in Hintritem. subst input.
+    eexists. eexists. eexists.
+    split.
+    2: { apply  Htr2. }
+    reflexivity.
+  Qed.
+
   
 End has_been_received_in_state.

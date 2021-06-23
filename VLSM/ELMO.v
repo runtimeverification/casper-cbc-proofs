@@ -348,6 +348,7 @@ Definition elmo_valid
   | Receive, Some m =>
     bool_decide (List.In (authorOf m) addresses) &&
     fullNode m (observationsOf state) component &&
+    (*if (decide (...)) then it is in prefix else true &&*)
     isProtocol (stateOf m) (authorOf m) weights treshold
   end.
 
@@ -584,14 +585,14 @@ Section capabilities.
        |}
   .
 
-  Lemma elmo_has_been_sent_capability : has_been_sent_capability vlsm.
+  Instance elmo_has_been_sent_capability : has_been_sent_capability vlsm.
   Proof.
     eapply has_been_sent_capability_from_stepwise.
     2: apply elmo_has_been_sent_oracle_stepwise_props.
     apply elmo_has_been_sent_oracle_dec.
   Defined.
 
-  Lemma elmo_has_been_received_capability : has_been_received_capability vlsm.
+  Instance elmo_has_been_received_capability : has_been_received_capability vlsm.
   Proof.
     eapply has_been_received_capability_from_stepwise.
     2: apply elmo_has_been_received_oracle_stepwise_props.
@@ -2202,6 +2203,7 @@ Section composition.
   Proof.
     simpl.
     intros Haddr Hpsp Hrecv.
+    (*
     set (j := component_to_index component).
     set (Xj := composite_vlsm_constrained_projection IM (free_constraint IM) j).
 
@@ -2227,10 +2229,20 @@ Section composition.
       apply (in_map messageOf) in Hrecv.
       exact Hrecv.
     }
-    assert (Hhbr': has_been_received free_composite_elmo st (Cpremessage s component)).
+     *)
+    Check has_been_received.
+    Search has_been_received_capability.
+    Check elmo_has_been_received_capability.
+    assert (Hhbr:
+              @has_been_received
+                _
+                (IM (component_to_index component))
+                (elmo_has_been_received_capability _ _ _ _)
+                (st (component_to_index component))
+                (Cpremessage s component)
+           ).
     {
-      simpl. unfold composite_has_been_received.
-      exists (component_to_index component). simpl.
+      simpl.
       unfold elmo_has_been_received_oracle.
       rewrite component_to_index_to_component.
       { exact Haddr. }
@@ -2247,8 +2259,19 @@ Section composition.
       apply (in_map messageOf) in Hrecv.
       exact Hrecv.
     }
+    (* Maybe if we had the check that the message was already sent... *)
     (*clear Hrecv.*)
-    pose proof (Htmp := has_been_received_in_state _ _ _ _ Hpsp Hhbr).
+
+    remember (component_to_index component) as i.
+    assert (Hpspi: protocol_state_prop (pre_loaded_with_all_messages_vlsm (IM i)) (st i)).
+    { apply preloaded_composed_protocol_state.
+      apply pre_loaded_with_all_messages_protocol_state_prop.
+      exact Hpsp.
+    }
+
+    Check has_been_received_in_state_preloaded.
+    pose proof (Htmp := has_been_received_in_state_preloaded _ _ _ _ Hpspi Hhbr).
+    (*pose proof (Htmp := has_been_received_in_state _ _ _ _ Hpsp Hhbr).*)
     destruct Htmp as [s0 [item [tr [Hin Hfpt]]]].
     inversion Hfpt. subst. clear Hfpt.
     simpl in Hin. subst iom.
@@ -2259,9 +2282,11 @@ Section composition.
     simpl in Hvalid.
     destruct Hvalid as [Hs0 [Hmsg Hvalid]].
     unfold constrained_composite_valid in Hvalid.
-    destruct Hvalid as [Hvalid _].
+    (*destruct Hvalid as [Hvalid _]*)
     simpl in Hvalid.
-    destruct l as [i li].
+    (*destruct l as [i li].*)
+    unfold vvalid in Hvalid. simpl in Hvalid.
+    destruct li; try inversion Hvalid.
   Abort.
   
   
@@ -2353,9 +2378,15 @@ Section composition.
                 Then the following cases might happen:
                 * n1 = n -> Either l=Send, and we can use Hx. Or l=Receive, and by (2), there is some Send in obs.
                 * n1 <> n -> the message was sent by some other node, and by (3) we have l=Receive, and we can use Hx.
-              *)
+                *)
+
+             simpl in Hvalid. clear Hvalid. (* a Send transition is trivially valid *)
              destruct (decide (n1 = n)); simpl; apply bool_decide_eq_true_2.
-             - subst n1. simpl in IHHpsp. admit.
+             - subst n1.
+               destruct l.
+               +  admit.
+               + Fail exact Hx.
+               simpl in IHHpsp. admit.
              - 
         }
         apply fullNode_appObservation. auto.
