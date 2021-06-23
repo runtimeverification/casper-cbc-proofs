@@ -286,7 +286,29 @@ Context
   
   Local Instance is_equivocating_from_set_dec : RelDecision is_equivocating_from_set.
   Proof.
-  Admitted.
+    intros sm i.
+    unfold is_equivocating_from_set.
+    remember (fun m => sender m = i /\ exists m2, sender m2 = i /\ m2 ∈ sm /\ ~comparable happens_before' m m2) as P.
+    assert (Htemp : forall x, Decision (P x)). {
+      intros m. rewrite HeqP.
+      apply Decision_and.
+      - apply idec.
+      - remember (fun m' => sender m' = i /\ ~comparable happens_before' m' m) as P'.
+        assert (Htemp2 : forall x, Decision (P' x)). {
+          rewrite HeqP'.
+          intros m'.
+          apply Decision_and.
+          - apply idec.
+          - apply Decision_not.
+            apply comparable_dec; intuition.
+        }
+        specialize (set_Exists_dec P' sm) as Hex2.
+        rewrite HeqP' in Hex2. clear -Hex2. firstorder.
+    }
+    specialize (set_Exists_dec P sm) as Hex. unfold set_Exists in Hex.
+    rewrite HeqP in Hex. 
+    clear -Hex. firstorder.
+  Qed.
   
   Definition index_set : Ci := (list_to_set index_listing).
   
@@ -411,8 +433,6 @@ Context
     (m : message) 
     (i : index) : Cm :=
     set_filter (fun (m' : message) => bool_decide (sender m' = i)) _ (downSet m).
-    
-  Print messages_from.
   
   Definition latest_message_from
     (m : message)
@@ -777,18 +797,6 @@ Context
       v ∈ (composite_observed s).
     Proof.
     Admitted.
-    
-    Definition is_equivocating_from_state
-      (s : vstate X) :=
-      is_equivocating_from_set (composite_observed s).
-    
-    Local Instance is_equivocating_from_state_dec : RelDecision is_equivocating_from_state.
-    Proof.
-    Admitted.
-    
-    Definition equivocators_from_state
-      (s : vstate X) :=
-      set_filter (fun i => negb (bool_decide (is_equivocating_from_state s i))) _ index_set.
     
     Definition A
       (m : message)
