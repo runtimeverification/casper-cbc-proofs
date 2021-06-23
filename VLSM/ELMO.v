@@ -2207,36 +2207,6 @@ Section composition.
   Proof.
     simpl.
     intros Haddr Hpsp Hrecv.
-    (*
-    set (j := component_to_index component).
-    set (Xj := composite_vlsm_constrained_projection IM (free_constraint IM) j).
-
-    Check has_been_received.
-    Print state_message_oracle.
-    assert (Hhbr: has_been_received Xj (st j) (Cpremessage s component)).
-    {
-      simpl. unfold composite_has_been_received.
-      exists (component_to_index component). simpl.
-      unfold elmo_has_been_received_oracle.
-      rewrite component_to_index_to_component.
-      { exact Haddr. }
-      apply (filter_in _ (isWitnessedBy component)) in Hrecv.
-      2: { unfold isWitnessedBy. simpl.
-           destruct (bool_decide (component = component)) eqn:Heq.
-           reflexivity.
-           apply bool_decide_eq_false_1 in Heq. contradiction.
-      }
-      
-      apply (filter_in _ isReceive) in Hrecv.
-      2: { reflexivity. }
-      Check in_map.
-      apply (in_map messageOf) in Hrecv.
-      exact Hrecv.
-    }
-     *)
-    Check has_been_received.
-    Search has_been_received_capability.
-    Check elmo_has_been_received_capability.
     assert (Hhbr:
               @has_been_received
                 _
@@ -2273,13 +2243,16 @@ Section composition.
       exact Hpsp.
     }
 
-    Check has_been_received_in_state_preloaded.
+
     pose proof (Htmp := has_been_received_in_state_preloaded _ _ _ _ Hpspi Hhbr).
     (*pose proof (Htmp := has_been_received_in_state _ _ _ _ Hpsp Hhbr).*)
     destruct Htmp as [s0 [item [tr [Hin Hfpt]]]].
-    inversion Hfpt. subst. clear Hfpt.
+    (* We will need Hfpt' later for monotonicity. *)
+    pose proof (Hfpt' := Hfpt).
+    inversion Hfpt. subst tl f s' item. clear Hfpt.
     simpl in Hin. subst iom.
     (* We will use H3 later for monotonicity. *)
+    
     rename H4 into Hpt.
     unfold protocol_transition in Hpt.
     destruct Hpt as [Hvalid Hs1].
@@ -2290,7 +2263,20 @@ Section composition.
     simpl in Hvalid.
     (*destruct l as [i li].*)
     unfold vvalid in Hvalid. simpl in Hvalid.
-    destruct li; try inversion Hvalid.
+    destruct l; [| inversion Hvalid].
+    Search andb and.
+    apply andb_prop in Hvalid. destruct Hvalid as [Hvalid _].
+    apply andb_prop in Hvalid. destruct Hvalid as [_ Hvalid].
+    rewrite Heqi in Hvalid.
+    rewrite component_to_index_to_component in Hvalid.
+    { exact Haddr. }
+    destruct (decide (component = component)).
+    2: { contradiction. }
+    simpl in Hvalid. clear e.
+    Search bool_decide true.
+    apply bool_decide_eq_true_1 in Hvalid.
+    (* Now I want to show that there is a finite protocol trace in preloaded from s0 to (st i) *)
+    
   Abort.
   
   
