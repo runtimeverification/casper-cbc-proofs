@@ -2257,7 +2257,7 @@ Section composition.
     (*destruct l as [i li].*)
     unfold vvalid in Hvalid. simpl in Hvalid.
     destruct l; [| inversion Hvalid].
-    Search andb and.
+
     apply andb_prop in Hvalid. destruct Hvalid as [Hvalid _].
     apply andb_prop in Hvalid. destruct Hvalid as [_ Hvalid].
     rewrite Heqi in Hvalid.
@@ -2266,12 +2266,14 @@ Section composition.
     destruct (decide (component = component)).
     2: { contradiction. }
     simpl in Hvalid. clear e.
-    Search bool_decide true.
     apply bool_decide_eq_true_1 in Hvalid.
-    (* Now I want to show that there is a finite protocol trace in preloaded from s0 to (st i) *)
-    
-  Abort.
-  
+    subst i.
+    pose proof (Hprefix := trace_from_to_impl_observations_prefix _ _ _ _ Hfpt').
+    destruct Hprefix as [n [_ Hprefix]].
+    rewrite -Hprefix in Hvalid.
+    eapply In_list_prefix.
+    apply Hvalid.
+  Qed.
   
   Lemma sent_is_fullNode st m component component':
     address_valid component ->
