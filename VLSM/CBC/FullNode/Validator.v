@@ -421,7 +421,7 @@ Section proper_sent_received.
     unfold in_futures in Hs. destruct Hs as [tr Htr].
     induction Htr; intros.
     - apply incl_refl.
-    - revert IHHtr. apply incl_tran. 
+    - revert IHHtr. apply incl_tran.
       clear -H.
       destruct H as [_ Ht]. simpl in Ht. unfold vtransition in Ht. simpl in Ht.
       destruct s' as (msgs, final).
@@ -508,7 +508,7 @@ Section proper_sent_received.
     + simpl in *.
       specialize (IHHprefix Horacle).
       destruct oom as [om|]; try destruct (decide (om = m)); try subst om.
-      * eexists. split;[left;reflexivity|reflexivity]. 
+      * eexists. split;[left;reflexivity|reflexivity].
       * assert (Hs0 : ~In m (State.sent_messages s)).
         { intro Hbs.
           apply (has_been_sent_protocol_transition _ _ _ _ _ H _ Hstart) in Hbs.

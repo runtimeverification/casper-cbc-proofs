@@ -1062,6 +1062,25 @@ Proof.
   apply protocol_transition_preloaded_project_any.
 Qed.
 
+(** If a message can be emitted by a composition, then it can be emited by one of the
+components.
+*)
+Lemma can_emit_composite_free_project
+  {message} `{EqDecision V} `{Inhabited V} {IM: V -> VLSM message} {constraint}
+  (X := composite_vlsm IM constraint)
+  (m : message)
+  (Hemit: can_emit (pre_loaded_with_all_messages_vlsm X) m)
+  : exists (j : V), can_emit (pre_loaded_with_all_messages_vlsm (IM j)) m.
+Proof.
+  apply can_emit_iff in Hemit.
+  destruct Hemit as [s2 [(s1, oim) [l Ht]]].
+  exists (projT1 l).
+  apply can_emit_iff.
+  exists (s2 (projT1 l)).
+  exists (s1 (projT1 l), oim), (projT2 l).
+  revert Ht. apply protocol_transition_preloaded_project_active.
+Qed.
+
 Section projections.
 
 (** ** Composite VLSM projections
@@ -1079,13 +1098,13 @@ Let us fix an indexed set of VLSMs <<IM>> and their composition <<X>> using <<co
           (constraint : composite_label IM -> composite_state IM * option message -> Prop)
           (X := composite_vlsm IM constraint)
   .
-  
+
 
   Definition projected_state_prop (j : index) (sj : vstate (IM j)) := exists (s : protocol_state X), proj1_sig s j = sj.
   Definition projected_states (j : index) := { sj : vstate (IM j) | projected_state_prop j sj }.
 
 (**
-The definition [VLSM1_projection_valid] is deprecated and should not be used.    
+The definition [VLSM1_projection_valid] is deprecated and should not be used.
 *)
   Definition VLSM1_projection_valid
              (i : index)
@@ -1094,8 +1113,8 @@ The definition [VLSM1_projection_valid] is deprecated and should not be used.
     := vvalid (IM i) li siomi
        /\ projected_state_prop i (fst (vtransition (IM i) li siomi))
        /\ option_protocol_message_prop X (snd (vtransition (IM i) li siomi)).
-      
-          
+
+
 (**
 The [VLSM_type] of a projection of <<X>> to component <<i>> is the
 type of the <<i>>th component of <<X>>.
@@ -1134,8 +1153,8 @@ to be all [protocol_message]s of <<X>>:
    of validity in a projection VLSM to the original definition from the VLSM1
    paper: the conclusion is that the VLSM1 definition is weaker.
    *)
-  
-  
+
+
   Lemma projection_valid_impl_VLSM1_projection_valid
         (i : index)
         (li : vlabel (IM i))
@@ -1209,7 +1228,7 @@ to be all [protocol_message]s of <<X>>:
     destruct (id Hpt) as [[_ [Hpmomi _]]_].
     unfold option_protocol_message_prop in Hpmomi.
     destruct Hpmomi as [s'' Hs''].
-    
+
     eapply protocol_generated.
     3: { unfold valid. unfold machine. simpl.
          unfold constrained_composite_valid.
@@ -1221,7 +1240,7 @@ to be all [protocol_message]s of <<X>>:
     { apply Hsom. }
     { apply Hs''. }
   Qed.
-  
+
   Lemma VLSM1_projection_valid_impl_projection_valid
         (i : index)
         (li : vlabel (IM i))
@@ -1260,7 +1279,7 @@ to be all [protocol_message]s of <<X>>:
     { apply Hvalid. }
     apply Hconstraint.
   Qed.
-  
+
 (**
 Since [projection_valid]ity is derived from [protocol_valid]ity, which in turn
 depends on [valid]ity in the component, it is easy to see that

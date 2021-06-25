@@ -60,6 +60,19 @@ Inductive MachineDescriptor : Type
   | NewMachine : vstate X -> MachineDescriptor
   | Existing : nat -> bool -> MachineDescriptor.
 
+Definition is_newmachine_descriptor (d : MachineDescriptor) : Prop
+  := match d with
+    | NewMachine _ => True
+    | _ => False
+  end.
+
+Lemma Decision_newmachine_descriptor (d : MachineDescriptor)
+  : Decision (is_newmachine_descriptor d).
+Proof.
+  destruct d.
+  - left. exact I.
+  - right. simpl. intuition.
+Qed.
 
 Definition equivocator_type : VLSM_type message :=
   {| state := {n : nat & Fin.t (S n) -> vstate X};
@@ -342,6 +355,16 @@ Definition not_equivocating_descriptor
   | _ => False
   end.
 
+(** Existing-only descriptor. *)
+Definition existing_descriptor
+  (d : MachineDescriptor)
+  (s : vstate equivocator_vlsm)
+  :=
+  match d with
+  | Existing _ i _ => i < S (projT1 s)
+  | _ => False
+  end.
+
 Lemma not_equivocating_descriptor_proper
   (d : MachineDescriptor)
   (s : vstate equivocator_vlsm)
@@ -406,6 +429,17 @@ Proof.
   end.
   destruct ef; inversion Ht; subst; [|exact id].
   destruct s. simpl. congruence.
+Qed.
+
+Lemma equivocator_transition_preserves_equivocating_state
+  (iom oom: option message)
+  (l: vlabel equivocator_vlsm)
+  (s s': vstate equivocator_vlsm)
+  (Ht: vtransition equivocator_vlsm l (s, iom) = (s', oom))
+  : is_equivocating_state X s -> is_equivocating_state X s'.
+Proof.
+  intros Hs Hs'. elim Hs. clear Hs. revert Ht Hs' .
+  apply equivocator_transition_reflects_singleton_state.
 Qed.
 
 (**

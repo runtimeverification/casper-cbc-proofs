@@ -29,6 +29,7 @@ Context {message : Type}
   (index := equiv_index)
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
+  (no_initial_messages_in_IM : forall i m, ~vinitial_message_prop (IM i) m)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   {i0 : Inhabited index}
   (X := free_composite_vlsm IM)
@@ -544,9 +545,11 @@ Proof.
       - split; [|exact I].
         unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
         destruct (null_dec (transitions eqv_msg_run)).
-        + right.
-          apply (vlsm_run_no_transitions_output SeededXE)
-            with (run := eqv_msg_run); assumption.
+        + specialize (vlsm_run_no_transitions_output SeededXE _ Heqv_msg_run e _ Hom) as Him.
+          destruct Him as [Him | Hseedm]; [|right; assumption].
+          destruct Him as [i [[_m Him] Heq]]. simpl in Heq. subst _m.
+          elim (no_initial_messages_in_IM i m).
+          assumption.
         + left. apply proper_sent.
           {
             specialize (finite_ptrace_last_pstate SeededXE _ _ Happ)
@@ -574,7 +577,7 @@ Proof.
           }
           assert
             (Hbs_free : has_been_sent_capability (free_composite_vlsm equivocator_IM)).
-          { exact (composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index (equivocator_Hbs IM Hbs)).
+          { exact (free_composite_has_been_sent_capability equivocator_IM finite_index (equivocator_Hbs IM Hbs)).
           }
           apply ptrace_add_last with (f:=es) in Happ_pre.
           2:{
@@ -792,6 +795,7 @@ Lemma equivocators_protocol_trace_project_rev
   {IndEqDec : EqDecision index}
   {i0 : Inhabited index}
   (IM : index -> VLSM message)
+  (no_initial_messages_in_IM : forall i m, ~vinitial_message_prop (IM i) m)
   (X := free_composite_vlsm IM)
   (isX : vstate X)
   (trX : list (vtransition_item X))
@@ -816,7 +820,7 @@ Proof.
     apply VLSM_incl_finite_protocol_trace. apply Hincl.
   }
   destruct
-    (seeded_equivocators_protocol_trace_project_rev IM Hbs _ finite_index
+    (seeded_equivocators_protocol_trace_project_rev IM no_initial_messages_in_IM Hbs _ finite_index
        _ _ _ HtrX'
     )
     as [is [tr [Htr [descriptors [Hpr_tr Hpr_is]]]]].
@@ -836,8 +840,7 @@ Proof.
     + intros l s om [Hs [Hom [Hv [Hc _]]]].
       repeat split; [assumption|].
       destruct om; [|exact I]. simpl in *.
-      apply or_assoc in Hc.
       destruct Hc as [Hc | Hfalse]; [|contradiction].
-      assumption.
+      left. assumption.
     + intros; reflexivity.
 Qed.
