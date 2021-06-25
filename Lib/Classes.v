@@ -29,6 +29,8 @@ Class Inhabited (A : Type) : Type := populate { inhabitant : A }.
 Hint Mode Inhabited ! : typeclass_instances.
 Arguments populate {_} _ : assert.
 
+Class Comparison A := compare : A -> A -> comparison.
+
 Class Inj {A B} (R : relation A) (S : relation B) (f : A -> B) : Prop :=
   inj x y : S (f x) (f y) -> R x y.
 Class Inj2 {A B C} (R1 : relation A) (R2 : relation B)
@@ -36,7 +38,7 @@ Class Inj2 {A B C} (R1 : relation A) (R2 : relation B)
   inj2 x1 x2 y1 y2 : S (f x1 x2) (f y1 y2) -> R1 x1 y1 /\ R2 x2 y2.
 Class Cancel {A B} (S : relation B) (f : A -> B) (g : B -> A) : Prop :=
   cancel : forall x, S (f (g x)) x.
-Class Surj {A B} (R : relation B) (f : A -> B) :=
+Class Surj {A B} (R : relation B) (f : A -> B) : Prop :=
   surj y : exists x, R (f x) y.
 Class IdemP {A} (R : relation A) (f : A -> A -> A) : Prop :=
   idemp x : R (f x x) x.
@@ -55,7 +57,7 @@ Class RightAbsorb {A} (R : relation A) (i : A) (f : A -> A -> A) : Prop :=
 Class AntiSymm {A} (R S : relation A) : Prop :=
   anti_symm x y : S x y -> S y x -> R x y.
 Class Total {A} (R : relation A) := total x y : R x y \/ R y x.
-Class Trichotomy {A} (R : relation A) :=
+Class Trichotomy {A} (R : relation A) : Prop :=
   trichotomy x y : R x y \/ x = y \/ R y x.
 Class TrichotomyT {A} (R : relation A) :=
   trichotomyT x y : {R x y} + {x = y} + {R y x}.

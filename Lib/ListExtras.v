@@ -433,19 +433,21 @@ Qed.
 
 (** Polymorphic list library **)
 
-Fixpoint is_member {W} `{StrictlyComparable W} (w : W) (l : list W) : bool :=
+Check In_dec.
+
+Program Instance StrictlyComparable_In `{StrictlyComparable W} (w : W) (l : list W) : Decision (In w l) :=
+  In_dec decide_eq w l.
+Proof.
+revert l w.
+induction l.
+
+Fixpoint is_member `{StrictlyComparable W} (w : W) (l : list W) : bool :=
   match l with
   | [] => false
   | hd :: tl => match compare w hd with
               | Eq => true
               | _ => is_member w tl
               end
-  end.
-
-Definition compareb {A} `{StrictlyComparable A} (a1 a2 : A) : bool :=
-  match compare a1 a2 with
-  | Eq => true
-  | _ => false
   end.
 
 Lemma is_member_correct {W} `{StrictlyComparable W}
