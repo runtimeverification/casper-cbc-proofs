@@ -214,8 +214,8 @@ Context
   (Free_has_been_sent_capability : has_been_sent_capability Free := free_composite_has_been_sent_capability IM finite_index Hbs)
   (Free_has_been_received_capability : has_been_received_capability Free := free_composite_has_been_received_capability IM finite_index Hbr)
   (Free_has_been_observed_capability : has_been_observed_capability Free := has_been_observed_capability_from_sent_received Free)
-  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free comopsite_initial_decidable)
-  (Free_no_additional_equivocation_constraint_dec := no_additional_equivocations_constraint_dec IM finite_index Hbo Hdec_init )
+  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free)
+  (Free_no_additional_equivocation_constraint_dec := no_additional_equivocations_constraint_dec IM finite_index Hbo )
   (Heqv_idx_basic_equivocation : basic_equivocation (composite_state (equivocator_IM IM)) index
     := equivocating_indices_basic_equivocation IM _ finite_index _ reachable_threshold)
   .
@@ -405,7 +405,6 @@ Lemma _equivocators_protocol_trace_project
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
   (X' := composite_vlsm IM constraint)
   (HconstraintNone : forall l s, protocol_state_prop X' s -> constraint l (s, None))
-  (Hconstraintinitial : forall l s m, protocol_state_prop X' s -> vinitial_message_prop FreeE m -> constraint l (s, Some m))
   (Hconstraint_hbs :  full_node_limited_equivocation_constraint_sufficient_condition_prop constraint)
   : exists
     (trX : list (composite_transition_item IM))
@@ -562,14 +561,7 @@ Proof.
       ; [|repeat split; [assumption| apply option_protocol_message_None |assumption| apply HconstraintNone; assumption |assumption]].
       simpl in Hno_equiv.
       apply or_comm in Hno_equiv.
-      destruct Hno_equiv as [Hinit_input | Hno_equiv].
-      { repeat split; [assumption | | assumption| | assumption].
-        - apply protocol_message_prop_iff. left. exists (exist _ _ Hinit_input).
-          reflexivity.
-        - apply Hconstraintinitial; [assumption|].
-          destruct Hinit_input as [eqv [emi Hem]].
-          exists eqv, emi. assumption.
-      }
+      destruct Hno_equiv as [Hinit_input | Hno_equiv]; [contradiction|].
       assert
         (Hs_free : protocol_state_prop FreeE (finite_trace_last is tr')).
       { destruct Hs as [_om Hs].
@@ -780,7 +772,7 @@ Proof.
   intros eqv Heqv.
   apply known_equivocators_exhibit_message_equivocation
     with (has_been_sent_capabilities := Hbs) (has_been_received_capabilities := Hbr)
-    (A := fun x => x) (sender0 := sender) (i1 := i0)
+    (A := fun x => x) (sender0 := sender)
     in Heqv; [|assumption].
   destruct Heqv as [j [Hjeqv [m [Hsender [Hnbs Hrcv]]]]].
   specialize
@@ -808,8 +800,7 @@ Proof.
     specialize (no_sender_for_initial_message sender (fun i => i) IM m Hinit) as Hnone.
     congruence.
   }
-  destruct Hinvariant as [Hsent | Hinitial]; [| contradiction].
-  destruct Hsent as [_eqv Hsent]. destruct (s _eqv) as (ns_eqv, bs_eqv) eqn:Hs_eqv.
+  destruct Hinvariant as [_eqv Hsent]. destruct (s _eqv) as (ns_eqv, bs_eqv) eqn:Hs_eqv.
   destruct Hsent as [iseqv Hsent].
   assert (Hs_pre : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeE) s).
   { revert Hs. apply VLSM_incl_protocol_state.
@@ -927,12 +918,12 @@ Proof.
     { apply Rle_trans with (sum_weights (globally_known_equivocators destination)).
       { right. apply set_eq_nodup_sum_weight_eq.
         - apply NoDup_filter. apply state_validators_nodup.
-        - apply known_equivocators_nodup with i0 Hbs (fun i => i) sender Hbr. assumption.
+        - apply known_equivocators_nodup with Hbs (fun i => i) sender Hbr. assumption.
         - apply globally_known_equivocators_equivocating_validators.
       }
       revert Hincl. rewrite Heq_destination.
       apply sum_weights_incl.
-      - apply known_equivocators_nodup with i0 Hbs (fun i => i) sender Hbr.
+      - apply known_equivocators_nodup with Hbs (fun i => i) sender Hbr.
         assumption.
       - apply set_union_nodup; apply NoDup_filter; apply finite_index.
     }
@@ -997,24 +988,6 @@ Proof.
         finite_index IM Hbs Hbr i0 sender globally_known_equivocators
         _ H
       ).
-  - split.
-    + destruct l. simpl.
-      intros dm Hdmm.
-      rewrite
-        (initial_message_not_dependent sender (fun x => x) IM m H0)
-        in Hdmm.
-      inversion Hdmm.
-    + destruct (composite_transition IM l (s, Some m)) as (s', oom) eqn:Ht.
-      simpl. unfold not_heavy.
-      rewrite
-        (composite_transition_initial_message_equivocators_weight IM Hbs (fun i => i) sender Hbr _ Hknown_equivocators
-          _ _ _ _ _ _ _ Ht H0
-        ).
-      apply
-        (full_node_limited_equivocation_protocol_state_weight
-          finite_index IM Hbs Hbr i0 sender globally_known_equivocators
-          _ H
-        ).
   - apply
       (full_node_limited_equivocation_constraint_sufficient_condition
         _ _ _ _ _ _ _ Htr

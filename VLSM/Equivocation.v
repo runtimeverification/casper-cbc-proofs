@@ -474,8 +474,8 @@ Section Simple.
       | Some m => has_been_sent s m \/ exception m
       end.
 
-    (** The [no_equivocations] constraint only allows initial messages
-    as exceptions (messages being received without being previously sent).
+    (** The [no_equivocations] constraint does not allow any exceptions
+    (messages being received must have been previously sent).
     *)
     Definition no_equivocations
       {Hbs : has_been_sent_capability}
@@ -1213,20 +1213,18 @@ Definition no_additional_equivocations
   (m : message)
   : Prop
   :=
-  has_been_observed vlsm s m \/ False.
+  has_been_observed vlsm s m.
 
 (** [no_additional_equivocations] is decidable.
 *)
 
-  Lemma no_additional_equivocations_dec
+Lemma no_additional_equivocations_dec
   {message : Type}
   (vlsm : VLSM message)
   {Hbo : has_been_observed_capability vlsm}
   : RelDecision (no_additional_equivocations vlsm).
 Proof.
-  intros s m. apply Decision_or.
-  - apply has_been_observed_dec.
-  - right. intuition. 
+  apply has_been_observed_dec.
 Qed.
 
 Definition no_additional_equivocations_constraint

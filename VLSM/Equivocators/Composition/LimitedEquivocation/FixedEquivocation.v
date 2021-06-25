@@ -532,7 +532,6 @@ Lemma _equivocators_protocol_trace_project
   (Htr : finite_protocol_trace XE is tr)
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
   (HconstraintNone : forall l s, constraint l (s, None))
-  (Hconstraintinitial : forall l s m, vinitial_message_prop FreeE m -> constraint l (s, Some m))
   (Hconstraint_hbs :  constraint_has_been_sent_prop constraint)
   (X' := composite_vlsm IM constraint)
   : exists
@@ -884,10 +883,6 @@ Proof.
   destruct (Free_no_additional_equivocation_decidable lst_trX m)
   ; [left; assumption|right].
   unfold no_additional_equivocations in n.
-  match type of n with
-  | ~ (?o \/ ?i) => assert (Hn : ~ o /\ ~ i) by intuition
-  end.
-  clear n; destruct Hn as [Hno Hni].
   assert (Hsuf_free : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm FreeE) (finite_trace_last is pre) ([item] ++ suf)).
   { apply VLSM_incl_finite_protocol_trace_from with (machine XE); [|assumption].
     apply VLSM_incl_trans with (machine FreeE)
@@ -959,7 +954,7 @@ Proof.
   ; [|assumption].
   specialize
     (not_equivocating_sent_message_has_been_observed_in_projection
-      is pre (conj Hpre His) pre_item Hpre_item n m Hpre_m final_descriptors'
+      is pre (conj Hpre His) pre_item Hpre_item n0 m Hpre_m final_descriptors'
       Hfinal'
     )
     as Hobs_m.
@@ -968,7 +963,7 @@ Proof.
   rewrite Htr_project in _Htr_project. inversion _Htr_project. subst _preX _initial_descriptors.
   clear _Htr_project. rewrite Hpre_final_state in Hobs_m.
 
-  elim Hno.
+  elim n.
   revert Hobs_m.
   apply in_futures_preserving_oracle_from_stepwise with item_sends_or_receives.
   - apply has_been_observed_stepwise_props.
@@ -1145,8 +1140,8 @@ Proof.
     split; [|exact I].
     destruct om; [| exact I].
     simpl in Hc. simpl.
-    destruct Hc as [Hc | [Hc | Hc]]
-    ; [| right; left; assumption| right; right; apply Hseed12; assumption].
+    destruct Hc as [Hc | Hc ]
+    ; [| right; apply Hseed12; assumption].
     left.
     destruct Hc as [subi Hibs].
     exists subi. revert Hibs.
@@ -1190,8 +1185,8 @@ Proof.
     split; [|exact I].
     destruct om; [| exact I].
     simpl in Hc. simpl.
-    destruct Hc as [Hc | [Hc | Hc]]
-    ; [| right; left; assumption| right; right; apply Hseed12; assumption].
+    destruct Hc as [Hc | Hc]
+    ; [| right; apply Hseed12; assumption].
     left.
     destruct Hc as [subi Hibs].
     exists subi. revert Hibs.
@@ -1441,7 +1436,6 @@ Proof.
   apply _equivocators_protocol_trace_project; [assumption | assumption| ..]
   ; intros.
   - left. exact I.
-  - left. right. assumption.
   - apply fixed_equivocation_constraint_has_constraint_has_been_sent_prop.
 Qed.
 
