@@ -2356,7 +2356,7 @@ Section composition.
              apply Forall_forall.
              intros x Hx. destruct x. simpl. destruct p. simpl.
 
-             (* I need to prove separately some things:
+             (* Some facts:
                 1. All observations in a state have the same witness - which is the address
                   of the node (lemma [observationsHaveSameWitness]).
                 2. If there is a [Cobservation Receive m component], then there is also
@@ -2386,16 +2386,20 @@ Section composition.
                  rewrite Heqobs in Hx.
                  exact Hx.
                + exact Hx.
-             - 
+             - assert (l = Receive).
+               {
+                 pose proof (H := observationsWithAddressNotComponentAreReceive).
+                 rewrite Heqobs in Hx.
+                 specialize (H _ _ _ Haddr Hpsp Hx).
+                 simpl in H.
+                 auto.
+               }
+               subst l. exact Hx.
+               
         }
         apply fullNode_appObservation. auto.
   Qed.
 
-      
-    
-  
-  
-  
   Lemma isProtocol_implies_protocol component st m:
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
