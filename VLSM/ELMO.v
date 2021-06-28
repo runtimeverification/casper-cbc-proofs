@@ -2691,11 +2691,17 @@ Section composition.
           *)
         }
         inversion Hfn. rewrite H1 in Hgen.
-        unfold addresses in Hgen.
-        unfold address_valid in Haddr.
-        Search In seq.
-        assert (In n1 (seq 0 (length indices))).
-        { apply in_seq. split. lia. Search n1.
+        Check protocol_message_has_valid_sender.
+        pose proof (Haddr' := protocol_message_has_valid_sender _ _ (@ex_intro _ _ _sm Hmproto)).
+        assert (Hain : bool_decide (In n1 addresses) = true).
+        {
+          unfold address_valid in Haddr'.
+          assert (In n1 (seq 0 (length indices))).
+          { apply in_seq. split; lia. }
+          apply bool_decide_eq_true. exact H.
+        }
+        rewrite Hain in Hgen. simpl in Hgen. clear Haddr' Hain.
+         
                                                          
         
         (*
