@@ -2700,7 +2700,7 @@ Section composition.
           { apply in_seq. split; lia. }
           apply bool_decide_eq_true. exact H.
         }
-        rewrite Hain in Hgen. simpl in Hgen. clear Haddr' Hain.
+        rewrite Hain in Hgen. simpl in Hgen. clear Haddr' Hain H1.
          
                                                          
         
