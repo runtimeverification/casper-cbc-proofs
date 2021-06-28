@@ -2701,6 +2701,11 @@ Section composition.
           apply bool_decide_eq_true. exact H.
         }
         rewrite Hain in Hgen. simpl in Hgen. clear Haddr' Hain H1.
+        (* How to prove the non-self-equivocation check in Hgen?
+           By [Hmproto] we know that [Cpremessage p n] is protocol;
+           therefore, it must have been sent by the node [n], and therefore
+           [n] should have its Send observation in the state (that is, in [l]).
+         *)
          
                                                          
         
