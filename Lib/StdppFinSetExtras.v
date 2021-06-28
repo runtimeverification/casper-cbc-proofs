@@ -182,7 +182,7 @@ Section map.
     intros a Ha.
     apply elem_of_map in Ha.
     apply elem_of_map.
-    intuition firstorder.
+    firstorder.
   Qed.
   
   Lemma set_map_size_upper_bound
