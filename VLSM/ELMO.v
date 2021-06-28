@@ -2355,8 +2355,10 @@ Section composition.
              remember (observationsOf (s (component_to_index n))) as obs.
              apply Forall_forall.
              intros x Hx. destruct x. simpl. destruct p. simpl.
+
              (* I need to prove separately some things:
-                1. All observations in a state have the same witness - which is the address of the node.
+                1. All observations in a state have the same witness - which is the address
+                  of the node (lemma [observationsHaveSameWitness]).
                 2. If there is a [Cobservation Receive m component], then there is also
                    [Cobservation Send m component].
                 3. All observations with sender other than the component are Receive observations.
@@ -2364,14 +2366,26 @@ Section composition.
                 * n1 = n -> Either l=Send, and we can use Hx. Or l=Receive, and by (2), there is some Send in obs.
                 * n1 <> n -> the message was sent by some other node, and by (3) we have l=Receive, and we can use Hx.
                 *)
+             simpl in Haddr.
+             
+             assert (n0 = n).
+             { rewrite Heqobs in Hx.
+               pose proof (observationsHaveSameWitness s n _ Haddr Hpsp Hx).
+               simpl in H. exact H.
+             }
+             subst n0.
 
              simpl in Hvalid. clear Hvalid. (* a Send transition is trivially valid *)
              destruct (decide (n1 = n)); simpl; apply bool_decide_eq_true_2.
              - subst n1.
                destruct l.
-               +  admit.
-               + Fail exact Hx.
-               simpl in IHHpsp. admit.
+               + rewrite Heqobs.
+                 apply received_from_self_implies_sent.
+                 { exact Haddr. }
+                 { exact Hpsp. }
+                 rewrite Heqobs in Hx.
+                 exact Hx.
+               + exact Hx.
              - 
         }
         apply fullNode_appObservation. auto.
