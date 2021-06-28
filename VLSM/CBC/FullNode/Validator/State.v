@@ -14,11 +14,11 @@ From CasperCBC
 
 Import ListNotations.
 
+(** * VLSM Full-Node State Tracking Sent Messages *)
+
 Set Contextual Implicit.
 Set Implicit Arguments.
 Section FullNodeState.
-
-(** * Full-node state tracking sent messages *)
 
 (** The development below defines a full-node-like state based on pointed sets,
 with the distinguished element being the last message sent by the machine.

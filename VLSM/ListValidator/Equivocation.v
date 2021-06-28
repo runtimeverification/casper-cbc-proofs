@@ -1,19 +1,21 @@
-Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting.
-Require Import Lia.
+From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
 Import ListNotations.
+
 From CasperCBC
 Require Import
   Lib.Preamble
   Lib.ListExtras
   Lib.ListSetExtras
   Lib.SortedLists
+  Lib.Measurable
   VLSM.Common
   VLSM.Composition
   VLSM.Equivocation
   VLSM.ListValidator.ListValidator
   VLSM.ObservableEquivocation
-  CBC.Common
-  CBC.Equivocation.
+  .
+
+(** * VLSM List Validator Equivocation *)
 
 Section Equivocation.
 
@@ -30,10 +32,10 @@ Context
   {mdec : EqDecision (@message index index_listing)}
   {Mindex : Measurable index}
   {Rindex : ReachableThreshold index}.
-  
+
   Local Notation get_history' := (@get_history index index_listing idec).
   Local Notation last_sent' := (@last_sent index index_self index_listing idec).
-  
+
   Definition state_eqb (s1 s2 : state) : bool :=
     match @state_eq_dec _ index_listing s1 s2 with
     | left _ => true
@@ -103,7 +105,7 @@ Context
       remember (x, x0) as gigi.
       clear x x0 Heqgigi.
       induction H.
-      - simpl. 
+      - simpl.
         destruct Hs.
         congruence.
       - destruct l eqn : eq.
@@ -447,36 +449,36 @@ Context
      (s1 s2 : (@state index index_listing))
      : Prop
      := In s1 (get_history s2 i).
-     
+
      Definition state_ltb'
       (i : index)
       (s1 s2 : (@state index index_listing))
       : bool
       := inb decide_eq s1 (get_history s2 i).
-      
+
     Definition state_lt_ext
       (i : index)
       (s1 s2 : (@state index index_listing)) :=
       (s1 = Bottom /\ s2 <> Bottom) \/
       state_lt' i s1 s2.
-      
-    Lemma state_lt'_dec 
+
+    Lemma state_lt'_dec
       (i : index)
       : RelDecision (state_lt' i).
     Proof.
       unfold RelDecision; intros.
       unfold Decision.
-      destruct (state_ltb' i x y) eqn : eqb; 
+      destruct (state_ltb' i x y) eqn : eqb;
       (unfold state_lt'; unfold state_ltb' in eqb).
       - left. apply in_correct in eqb. assumption.
-      - right. intros contra. 
-        apply in_correct in contra. 
+      - right. intros contra.
+        apply in_correct in contra.
         rewrite eqb in contra.
-        discriminate contra. 
+        discriminate contra.
     Qed.
-    
+
     Existing Instance state_lt'_dec.
-    
+
     Lemma state_lt'_trans
       (i : index)
       (s1 s2 s3 : state)
@@ -496,7 +498,7 @@ Context
       apply in_cons.
       assumption.
     Qed.
-    
+
     Lemma state_lt'_antisymmetric
       (i : index)
       (s1 s2 : (@state index index_listing)) :
@@ -520,8 +522,8 @@ Context
       apply in_app_iff. right.
       intuition.
      Qed.
-    
-    Lemma state_lt_ext_dec 
+
+    Lemma state_lt_ext_dec
       (i : index)
       : RelDecision (state_lt_ext i).
     Proof.
@@ -532,14 +534,14 @@ Context
       - right. intros contra. destruct contra;[intuition congruence|].
         unfold state_lt' in H. simpl in H. intuition.
       - left. left. intuition congruence.
-      - right. intros contra. 
+      - right. intros contra.
         destruct contra;[intuition|].
         unfold state_lt' in H. simpl in H. intuition.
       - destruct (decide (state_lt' i x y)); subst x; subst y.
         * left. right. intuition.
-        * right. intros contra. destruct contra;[intuition congruence|intuition]. 
+        * right. intros contra. destruct contra;[intuition congruence|intuition].
     Qed.
-    
+
     Lemma state_lt_ext_antisymmetric
      (i : index)
      (s1 s2 : (@state index index_listing)) :
@@ -559,7 +561,7 @@ Context
         + apply state_lt'_antisymmetric in H.
           intuition.
     Qed.
-    
+
     Lemma state_lt_ext_tran
       (i : index)
       (s1 s2 s3 : state)
@@ -575,14 +577,14 @@ Context
         unfold state_lt' in H0.
         destruct s3;[simpl in H0;intuition|].
         congruence.
-      - unfold state_lt' in H. 
-        destruct H0 as [H0 _]. rewrite H0 in H. 
-        simpl in H. intuition. 
+      - unfold state_lt' in H.
+        destruct H0 as [H0 _]. rewrite H0 in H.
+        simpl in H. intuition.
       - unfold state_lt_ext. right.
         apply state_lt'_trans with (s2 := s2).
         intuition.
     Qed.
-    
+
     Lemma state_lt_ext_proj
       (i : index)
       (s1 s2 : state) :
@@ -631,7 +633,7 @@ Context
         left.
         reflexivity.
     Qed.
-    
+
     Lemma non_empty_history_nb_project
       (s so : state)
       (i : index)
@@ -839,7 +841,7 @@ Context
         split; try assumption. reflexivity.
       - destruct om as [m|]; inversion Ht.
     Qed.
-    
+
     Global Instance lv_sent_capability:
       has_been_sent_capability X.
     Proof.
@@ -882,7 +884,7 @@ Context
                   congruence.
             -- subst index_self. intuition.
           * destruct H.
-            -- inversion H. 
+            -- inversion H.
                assert (fst msg = index_self) by (rewrite <- H3; simpl; intuition).
                unfold send_oracle.
                rewrite decide_True by intuition.
@@ -924,7 +926,7 @@ Context
             intuition.
             rewrite e. intuition.
     Defined.
-    
+
     Global Instance lv_received_capability:
       has_been_received_capability X.
     Proof.
@@ -967,7 +969,7 @@ Context
             destruct (decide (fst m = fst msg)).
             -- unfold receive_oracle in H.
                destruct (decide (snd m = snd msg)).
-               ++ left. f_equal. destruct m; destruct msg. simpl in *. 
+               ++ left. f_equal. destruct m; destruct msg. simpl in *.
                   rewrite e. rewrite e0. intuition.
                ++ right. rewrite e in H.
                   rewrite history_append in H.
@@ -989,7 +991,7 @@ Context
             destruct (decide (fst msg = index_self));[intuition congruence|].
             destruct H.
             -- inversion H.
-               subst m. 
+               subst m.
                rewrite history_append.
                2 : apply protocol_prop_no_bottom; intuition.
                2, 3 : intuition.
@@ -1009,11 +1011,11 @@ Context
                ++ rewrite <- history_oblivious by intuition.
                   intuition.
     Defined.
-    
+
     Lemma bottom_project_empty_history
       (s : state)
       (i : index)
-      (Hb : project s i = Bottom) : 
+      (Hb : project s i = Bottom) :
       get_history' s i = [].
     Proof.
       unfold get_history'.

@@ -9,18 +9,19 @@ From CasperCBC
     Require Import
       Preamble
       ListExtras
+      Lib.Measurable
+      VLSM.Equivocation
       Validator.State
-      CBC.Common
-      CBC.Equivocation
       VLSM.ObservableEquivocation
     .
 
 Import ListNotations.
 
+(** * VLSM Full Node State Equivocation *)
+
 Section Equivocation.
 
-(** * Full-node [State.message] [HasEquivocation]
-
+(**
 Here we instantiate the [HasEquivocation] class for the full-node-like states
 based on pointed sets, by defining <<m1 preceeds m2>> iff <<m1>> is in the
 justification of <<m2>>.

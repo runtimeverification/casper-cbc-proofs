@@ -9,8 +9,10 @@ From CasperCBC
     Preamble
     VLSM.Common
     .
+Local Arguments le_lt_dec : simpl never.
+Local Arguments nat_eq_dec : simpl never.
 
-(** * Equivocator VLSMs
+(** * VLSM Equivocation
 
 An [equivocator_vlsm] for a given [VLSM] <<X>> is a VLSM which
 - starts as a regular machine X
@@ -31,14 +33,14 @@ To achieve this, we'll extend the labels of <<X>>, say <<L_X>> as follows
 
 The second component of the label tells which internal machine should be
 used for performing the transition. It can be one of the following:
-* [NewMachine <<s>>] where <<s>> is an state of <<X>>, will
+- [NewMachine <<s>>] where <<s>> is an state of <<X>>, will
   extend the state with a new machine initialized with <<s>>
   and will perform the transition on that machine.
-* [Existing <<i>> <<is_equiv>>] perform transition on internal machine <<i>>
+- [Existing <<i>> <<is_equiv>>] perform transition on internal machine <<i>>
   but may equivocate, depending on the <<is_equiv>> as follows:
 
-  * if <<is_equiv>> is [false], update the state of machine <<i>>
-  * if <<is_equiv>> is [true], duplicate the state of machine <<i>> and
+  - if <<is_equiv>> is [false], update the state of machine <<i>>
+  - if <<is_equiv>> is [true], duplicate the state of machine <<i>> and
     perform transition on the copy
 
 These changes are reflected in the validity and transition functions.
@@ -139,7 +141,7 @@ Definition equivocator_state_descriptor_project
     match equivocator_state_project s j with
     | Some sj => sj
     | None => projT2 s F1
-    end 
+    end
   end.
 
 Definition equivocator_state_update
@@ -351,12 +353,60 @@ Proof.
   assumption.
 Qed.
 
-Local Ltac unfold_transition H :=
-  ( unfold transition in H; unfold equivocator_vlsm in H
-  ; unfold Common.equivocator_vlsm in H
-  ; unfold mk_vlsm in H; unfold machine in H
-  ; unfold projT2 in H; unfold equivocator_vlsm_machine in H
-  ; unfold equivocator_transition in H).
+(* TODO: derive some some simpler lemmas about the equivocator operations,
+or a simpler way of defining the equivocator_transition
+- it's not nice to need to pick apart these cases from inside
+equivocator_transition inside of so many proofs.
+*)
+
+(** If the state obtained after one transition has no equivocation, then
+the descriptor of the label of the transition must be Existing 0 false
+*)
+Lemma equivocator_transition_no_equivocation_zero_descriptor
+  (iom oom: option message)
+  (l: vlabel equivocator_vlsm)
+  (s s': vstate equivocator_vlsm)
+  (Hv: vvalid equivocator_vlsm l (s, iom))
+  (Ht: vtransition equivocator_vlsm l (s, iom) = (s', oom))
+  (Hs' : is_singleton_state X s')
+  : snd l = Existing _ 0 false.
+Proof.
+  unfold is_singleton_state in Hs'.
+  unfold_vtransition Ht.
+  destruct l as (l, [sn | ei ef]); unfold snd in Ht
+  ; [inversion Ht; subst; destruct s; simpl; inversion Hs'|].
+  destruct Hv as [Hei _].
+  destruct (le_lt_dec (S (projT1 s)) ei); [lia|].
+  match type of Ht with
+  | (let (_, _) := ?t in _) = _ => destruct t as (_s', _om')
+  end.
+  destruct ef; inversion Ht; subst; clear Ht.
+  - destruct s. inversion Hs'.
+  - destruct s. simpl in *. assert (ei = 0) by lia. subst. reflexivity.
+Qed.
+
+(** If the state obtained after one transition has no equivocation, then
+the state prior to the transition has no equivocation as well.
+*)
+Lemma equivocator_transition_reflects_singleton_state
+  (iom oom: option message)
+  (l: vlabel equivocator_vlsm)
+  (s s': vstate equivocator_vlsm)
+  (Ht: vtransition equivocator_vlsm l (s, iom) = (s', oom))
+  : is_singleton_state X s' -> is_singleton_state X s.
+Proof.
+  unfold is_singleton_state.
+  unfold_vtransition Ht.
+  destruct l as (l, [sn | ei ef]); unfold snd in Ht
+  ; [inversion Ht; subst; destruct s; simpl; congruence|].
+  destruct (le_lt_dec (S (projT1 s)) ei)
+  ; [inversion Ht; subst; exact id|].
+  match type of Ht with
+  | (let (_, _) := ?t in _) = _ => destruct t as (_s', _om')
+  end.
+  destruct ef; inversion Ht; subst; [|exact id].
+  destruct s. simpl. congruence.
+Qed.
 
 (**
 Protocol messages in the [equivocator_vlsm] are also protocol in the
@@ -388,8 +438,8 @@ Proof.
     destruct descriptor as [sn| i is_equiv].
     + destruct Hv as [Hsn Hv]. subst om0.
       simpl in x. inversion x. subst. apply IHHbs2.
-    + unfold_transition x.
-      unfold snd in x. destruct Hv as [Hi Hv].
+    + simpl in x.
+      destruct Hv as [Hi Hv].
       destruct (le_lt_dec (S (projT1 s)) i); [lia|].
       replace (of_nat_lt l0) with (of_nat_lt Hi) in * by apply of_nat_ext.
       clear l0.
@@ -416,8 +466,8 @@ Proof.
     destruct IHHbs1 as [_ IHHbs1].
     specialize (IHHbs2 X _s om0 eq_refl JMeq_refl).
     specialize (protocol_generated X) as Hgen.
-    unfold_transition x.
-    destruct l as (l, descriptor). unfold snd in x.
+    destruct l as (l, descriptor).
+    simpl in x.
     destruct descriptor as [sn | i is_equiv].
     + destruct Hv as [Hsn Hv]. subst om0.
       inversion x. subst om.
@@ -497,13 +547,12 @@ Proof.
     dependent destruction i; [|inversion i].
     assumption.
   - destruct Ht as [[Hps [_ Hv]] Ht].
-    simpl in Ht. unfold vtransition in Ht. unfold_transition Ht.
+    simpl in Ht.
     destruct l as (l, description).
-    unfold snd in Ht.
+    unfold_vtransition Ht.
     destruct description as [sn| j is_equiv].
     + destruct Hv as [Hsn Hv]. subst om.
       inversion Ht. subst.
-      unfold equivocator_state_extend.
       destruct s as (ns, bs).
       simpl in *. destruct (to_nat i) as (ni, Hni).
       destruct (nat_eq_dec ni (S ns)); [|apply IHHbs].
@@ -535,7 +584,7 @@ Next couple of lemmas characterize the projections of a [equivocator_state]
 after taking a transition in terms of the preceeeding state.
 
 These are simpler version of the results concerning the projection of
-states from the composition of equivocators over [equivocation_choice]s.
+states from the composition of equivocators over [equivocation_descriptors].
 
 These results are used for characterizing the projection of the [destination]
 of a [transition_item] in an equivocator trace in
@@ -606,19 +655,17 @@ Lemma existing_true_label_equivocator_state_project_not_last
   = equivocator_state_descriptor_project X s (Existing _ ni fi').
 Proof.
   destruct l as (li, ex_true). simpl in Hex_true. subst ex_true.
-  unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+  unfold_vtransition Ht.
   destruct ( le_lt_dec (S (projT1 s)) ieqvi ); [lia|].
   destruct
-    (vtransition X (fst (li, Existing X ieqvi true))
+    (vtransition X li
     (projT2 s (of_nat_lt l), oin))
     as (si'', om'').
   inversion Ht. subst. clear Ht.
-  unfold equivocator_state_descriptor_project.
-  unfold equivocator_state_project.
-  unfold equivocator_state_extend.
-  unfold equivocator_state_extend in Hni.
+  simpl.
   destruct s as (nsi', bsi').
-  unfold projT1 in Hni.
+  simpl in Hni.
+  simpl.
   destruct (le_lt_dec (S (S nsi')) ni); [lia|].
   rewrite to_nat_of_nat.
   destruct (nat_eq_dec ni (S nsi')); [lia|].
@@ -641,19 +688,16 @@ Lemma existing_false_label_equivocator_state_project_not_same
   = equivocator_state_descriptor_project X s (Existing _ ni fi').
 Proof.
   destruct l as (li, ex_false). simpl in Hex_false. subst ex_false.
-  unfold vtransition in Ht. unfold_transition Ht. unfold snd in Ht.
+  unfold_vtransition Ht.
   destruct ( le_lt_dec (S (projT1 s)) ieqvi ); [lia|].
   destruct
-    (vtransition X (fst (li, Existing X ieqvi false))
+    (vtransition X li
     (projT2 s (of_nat_lt l), oin))
     as (si'', om'').
   inversion Ht. subst. clear Ht.
-  unfold equivocator_state_descriptor_project.
-  unfold equivocator_state_project.
   destruct s as (nsi', bsi').
-  simpl in Hieqvi, l.
-  unfold equivocator_state_update in *.
-  unfold projT1 in *.
+  simpl.
+  simpl in Hieqvi, l, Hni.
   destruct (le_lt_dec (S nsi') ni); [lia|].
   rewrite eq_dec_if_false; [reflexivity|].
   intro contra. elim Hnieqvi.

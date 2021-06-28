@@ -1,15 +1,12 @@
-Require Import Coq.Logic.FinFun.
-Require Import Bool List Streams Logic.Epsilon.
-Require Import Coq.Arith.Compare_dec.
-Require Import Lia.
-Import List Notations.
+From Coq Require Import FinFun Bool List Streams Logic.Epsilon Arith.Compare_dec Lia.
+Import ListNotations.
+
 From CasperCBC
   Require Import
     Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras
-    CBC.Protocol CBC.Common CBC.Definitions
     VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
-(* 3.1 Decisions on consensus values *)
+(** * VLSM Decisions on Consensus Values *)
 
 (* Need to add consensus values (and decision functions) to VLSM definitions? *)
 Class consensus_values :=
@@ -36,8 +33,8 @@ Section CommuteSingleton.
   Definition final_original : vdecision V -> Prop :=
     fun (D : vdecision V) => forall (tr : protocol_trace V),
         forall (n1 n2 : nat) (s1 s2 : state) (c1 c2 : C),
-          (trace_nth V (proj1_sig tr) n1 = Some s1) ->
-          (trace_nth V (proj1_sig tr) n2 = Some s2) ->
+          (trace_nth (proj1_sig tr) n1 = Some s1) ->
+          (trace_nth (proj1_sig tr) n2 = Some s2) ->
           (D s1 = (Some c1)) ->
           (D s2 = (Some c2)) ->
           c1 = c2.
@@ -60,7 +57,7 @@ Section CommuteSingleton.
       (* Every protocol trace (already beginning from an initial state) contains a state deciding on each consensus value *)
       (forall (c : C) ,
           exists (tr : protocol_trace V) (s : state) (n : nat),
-            (trace_nth V (proj1_sig tr) n) = Some s /\ D s = (Some c)).
+            (trace_nth (proj1_sig tr) n) = Some s /\ D s = (Some c)).
 
   (* 3.3.2 No stuck states *)
 
@@ -71,8 +68,8 @@ Section CommuteSingleton.
                  (decided_state : state)
                  (n_s n_decided : nat)
                  (c : C),
-         trace_nth V (proj1_sig tr) n_s = Some s /\
-         trace_nth V (proj1_sig tr) n_decided = Some decided_state /\
+         trace_nth (proj1_sig tr) n_s = Some s /\
+         trace_nth (proj1_sig tr) n_decided = Some decided_state /\
          n_decided >= n_s /\
          D decided_state = Some c).
 
@@ -115,8 +112,8 @@ Section CommuteIndexed.
       forall (s1 s2 : vstate X),
       forall (c1 c2 : C),
       j <> k ->
-      trace_nth X (proj1_sig tr) n1 = (Some s1) ->
-      trace_nth X (proj1_sig tr) n2 = (Some s2) ->
+      trace_nth (proj1_sig tr) n1 = (Some s1) ->
+      trace_nth (proj1_sig tr) n2 = (Some s2) ->
       (ID j) (s1 j) = (Some c1) ->
       (ID k) (s2 k) = (Some c2) ->
       c1 = c2.
@@ -212,7 +209,7 @@ Section CommuteIndexed.
     forall (tr : @Trace _ (type X)),
       complete_trace_prop X tr ->
       exists (s : vstate X) (n : nat) (i : index) (c : C),
-        trace_nth X tr n = Some s /\
+        trace_nth tr n = Some s /\
         (ID i) (s i) = Some c.
 
 End CommuteIndexed.
@@ -220,6 +217,12 @@ End CommuteIndexed.
 (* Section 5 *)
 
 Section Estimators.
+
+  (* Defining the estimator function as a relation *)
+  Class Estimator state C :=
+    { estimator : state -> C -> Prop
+    ; estimator_total : forall s : state, exists c : C, estimator s c
+    }.
 
   Context
     {CV : consensus_values}

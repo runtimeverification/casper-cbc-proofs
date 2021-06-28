@@ -6,11 +6,10 @@ Import ListNotations.
 
 From CasperCBC
   Require Import
+    stdpp.base stdpp.fin_sets tactics
     Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras Lib.TopSort Lib.StdppFinSetExtras
     CBC.Protocol CBC.Common CBC.Definitions
     VLSM.Common VLSM.Composition VLSM.Decisions VLSM.Equivocation VLSM.ProjectionTraces.
-
-From stdpp Require Import base fin_sets tactics.
 
 Section FullNodeLike.
 
@@ -121,7 +120,7 @@ Context
             apply elem_of_list_In. simpl. intuition.
           }
           apply elem_of_filter in Hmin.
-          set_solver.
+          rewrite bool_decide_spec in Hmin. intuition.
         + assert (Hmin : m_min ∈ set_filter (λ m1 : message, bool_decide (P m1)) _ d). {
             unfold set_filter.
             apply elem_of_list_to_set.
@@ -129,7 +128,8 @@ Context
             intuition.
           }
           apply elem_of_filter in Hmin.
-          set_solver.
+          rewrite bool_decide_spec in Hmin.
+          intuition.
       }
       destruct Hmin as [Hmind HminP].
       exists m_min.
@@ -150,6 +150,7 @@ Context
         destruct (@decide (m' ∈ d) (elem_of_dec_slow m' d)).
         * assert (Hm' : m' ∈ (set_filter (fun m1 : message => bool_decide (P m1)) _ d)). {
             apply elem_of_filter.
+            rewrite bool_decide_spec.
             set_solver.
           }
           
@@ -289,12 +290,12 @@ Context
     intros sm i.
     unfold is_equivocating_from_set.
     remember (fun m => sender m = i /\ exists m2, sender m2 = i /\ m2 ∈ sm /\ ~comparable happens_before' m m2) as P.
-    assert (Htemp : forall x, Decision (P x)). {
+    assert (Htemp : forall x, base.Decision (P x)). {
       intros m. rewrite HeqP.
       apply Decision_and.
       - apply idec.
       - remember (fun m' => sender m' = i /\ ~comparable happens_before' m' m) as P'.
-        assert (Htemp2 : forall x, Decision (P' x)). {
+        assert (Htemp2 : forall x, base.Decision (P' x)). {
           rewrite HeqP'.
           intros m'.
           apply Decision_and.
@@ -346,6 +347,8 @@ Context
     apply elem_of_filter.
     apply elem_of_filter in Hi.
     specialize (is_equivocating_from_set_subseteq).
+    rewrite bool_decide_spec in *.
+    intros H'.
     set_solver.
   Qed.
   
@@ -499,7 +502,7 @@ Context
     (Z.of_nat (size (honest_validators_from_message m)) = n - size (equivocators_from_message m))%Z.
   Proof.
     assert (Htemp : (honest_validators_from_message m) ≡ index_set ∖ (equivocators_from_message m)). {
-      apply set_equiv. intros i.
+      apply set_equiv_equivalence. intros i.
       split; intros Hi.
       - apply elem_of_difference.
         apply elem_of_filter in Hi.
@@ -712,32 +715,15 @@ Context
       intuition.
   Qed. 
   
-      Program Definition divergent_last_messages 
+  Definition divergent_last_messages 
       (m : message)
       (v : option C) :=
     set_filter (fun m' => negb (@bool_decide (vote m' = v) _)) _ (latest_messages m).
-    Next Obligation.
-      intros.
-      apply decide_eq.
-    Defined.
-    Next Obligation.
-      intros.
-      solve_decision.
-    Defined.
     
-    Program Definition concurrent_last_messages 
+  Definition concurrent_last_messages 
       (m : message)
       (v : option C) :=
     set_filter (fun m' => @bool_decide (vote m' = v) _) _ (latest_messages m).
-    Next Obligation.
-      intros.
-      apply decide_eq.
-    Defined.
-    Next Obligation.
-      intros.
-      solve_decision.
-    Qed.
-    
  
 Section Inspector.
 
@@ -754,8 +740,6 @@ Context
       (oc : option C) :=
     List.count_occ decide_eq (List.map vote (elements (latest_messages m))) oc.
     
-    Check downSet'.
-    
     Definition set_downSet'
       (cm : Cm) : Cm := ⋃ List.map downSet' (elements cm). 
       
@@ -764,7 +748,7 @@ Context
       cm ⊆ set_downSet' cm.
     Proof.
       unfold subseteq.
-      unfold set_subseteq_instance.
+      unfold set_subseteq.
       intros m Hm.
       apply elem_of_union_list.
       exists (downSet' m).
@@ -786,8 +770,11 @@ Context
       (s : vstate X) : Cm := ⋃ (List.map (fun i : index => received_set i (s i)) index_listing).
       
     Definition composite_observed
-      (s : vstate X) := ⋃ (List.map (fun i : index => received_set i (s i)) index_listing).
+      (s : vstate X) := composite_sent s ∪ composite_received s.
     
+    (* This is left admitted as the composition constraint of X will soon be changed to
+       match the more general FullNode-condition typeclass. *)
+       
     Lemma protocol_state_closed
       (s : vstate X)
       (Hpr : protocol_state_prop X s)
@@ -923,8 +910,6 @@ Context
     Qed.
     
     Local Open Scope Z_scope.
-    
-    (* Local Coercion Z_of_nat : nat >-> Z. *)
     
     Theorem main
       (s : vstate X)
@@ -1301,7 +1286,8 @@ Context
              specialize (subseteq_union_1 Veq Vk_1) as Htemp2.
              spec Htemp2.
              rewrite HeqVeq.
-             clear. set_solver.
+             apply elem_of_subseteq. intros i H'.
+             apply elem_of_filter in H'. intuition.
              set_solver.
           }
           rewrite <- Hveq2 in Hinv.
@@ -1455,7 +1441,9 @@ Context
           unfold Au.
           unfold A.
           rewrite HeqEu in HVeq_incl_Eu.
-          clear -HVeq_incl_Eu.
+          apply elem_of_subseteq. intros i Hi.
+          apply elem_of_union. left.
+          clear -HVeq_incl_Eu Hi.
           set_solver.
         }
         
@@ -1794,7 +1782,7 @@ Context
                   intuition.
                 + apply Hncomp.
               - specialize (index_set_listing {[ v ]}).
-                unfold subseteq. unfold set_subseteq_instance.
+                unfold subseteq. unfold set_subseteq.
                 intros Htemp'. specialize (Htemp' v).
                 apply Htemp'.
                 apply elem_of_singleton. reflexivity.
@@ -1824,7 +1812,7 @@ Context
             intros contra.
             rewrite <- equivocators_from_equiv in  Hv.
             specialize (is_equivocating_from_message_hb u' u v Hu_u') as Hb.
-            spec Hb. clear -contra. set_solver.
+            spec Hb. apply elem_of_filter in contra. rewrite bool_decide_spec in contra. intuition.
             intuition.
           - subst u'. intuition.
          }
@@ -2207,11 +2195,7 @@ Context
                      split;[|apply index_set_one].
                      
                      exists witness_c1, witness_u'.
-                     split;[intuition|].
-                     split;[intuition|].
-                     split;[intuition|].
-                     split;[intuition|].
-                     intuition.
+                     split_prune_and.
                      
                      apply Hinvk4.
                      rewrite HeqVchange in Hv_Vchange. apply elem_of_intersection in Hv_Vchange. intuition.

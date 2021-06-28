@@ -1,7 +1,10 @@
-Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts.
+From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts.
 Import ListNotations.
+
 From CasperCBC
 Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Protocol CBC.Definitions.
+
+(** * CBC CTL Definition and Properties *)
 
 Definition reach_one `{CBC_protocol_eq} (sigma1 sigma2 : pstate) : Prop :=
   sigma1 <> sigma2 /\

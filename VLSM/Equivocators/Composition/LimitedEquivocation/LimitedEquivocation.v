@@ -8,12 +8,14 @@ Import ListNotations.
 From CasperCBC
   Require Import
     Preamble ListExtras FinExtras
-    CBC.Common
+    Lib.Measurable
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
     .
+
+(** * VLSM Limited Equivocation *)
 
 Section equivocators_composition_projections.
 
