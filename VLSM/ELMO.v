@@ -2623,7 +2623,7 @@ Section composition.
         rewrite component_to_index_to_component in Hgen.
         { exact Haddr. }
         
-        assert (fullNode (Cpremessage p n1) l n).
+        assert (Hfn: fullNode (Cpremessage p n1) l n).
         {
           destruct (decide (n1 = n)).
           2: { eapply isProtocol_last_fullNode. exact n2. apply Hproto'. }
@@ -2632,8 +2632,20 @@ Section composition.
              And an invariant should hold that for all 'send' observations, fullNode holds
              (with the prefix). And (3), the prefix is a prefix of [l].
            *)
-          Check isProtocol_last_sendInPrefix.
           pose proof (Hinp := isProtocol_last_sendInPrefix _ _ _ _ Hproto').
+          pose proof (Hfn := sent_is_fullNode).
+          specialize (Hfn Sy (Cpremessage p n)).
+          specialize (Hfn n n Haddr).
+          unfold protocol_state_prop in Hfn.
+          specialize (Hfn (@ex_intro _ _ omSy Hsyproto)).
+          simpl in Hfn.
+          specialize (Hfn (eq_refl n)).
+          rewrite Hsyn in Hfn.
+          simpl in Hfn.
+          specialize (Hfn Hinp).
+          exact Hfn.
+          (*
+          Print ex_intro.
           Check sent_is_protocol.
           epose proof (Hpmp := sent_is_protocol _ _ _ Haddr).
           
@@ -2643,10 +2655,8 @@ Section composition.
           Check fullNode_appone.
           pose proof (Hfull' := fullNode_appone _ _ _ _ _ Hfull).
           Search obs. Search _sm.
-
+          *)
         }
-        
-        Search fullNode.
                                                          
         
         (*
