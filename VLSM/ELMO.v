@@ -2274,6 +2274,39 @@ Section composition.
     eapply In_list_prefix.
     apply Hvalid.
   Qed.
+
+
+  Lemma protocol_message_has_valid_sender p address:
+    protocol_message_prop free_composite_elmo (Cpremessage p address) ->
+    address_valid address.
+  Proof.
+    intros Hpmp.
+    apply protocol_message_prop_iff in Hpmp.
+    destruct Hpmp.
+    - destruct H as [im Him].
+      unfold initial_message in im.
+      pose proof (proj2_sig im). simpl in H. unfold composite_initial_message_prop in H.
+      destruct H as [n [mi Hmi]].
+      unfold vinitial_message,initial_message in mi.
+      pose proof (proj2_sig mi). simpl in H. inversion H.
+    - destruct H as [l [som [s' Htrans]]].
+      destruct l.
+      unfold protocol_transition in Htrans.
+      destruct Htrans as [_ Htrans].
+      unfold transition in Htrans.
+      simpl in Htrans.
+      unfold composite_transition in Htrans. destruct som.
+      remember (vtransition (IM x) v (s x, o)) as VT.
+      destruct VT. inversion Htrans. subst. clear Htrans.
+      unfold vtransition,transition in HeqVT.
+      simpl in HeqVT.
+      destruct v,o; inversion HeqVT. clear HeqVT. subst.
+      unfold address_valid.
+      unfold index_to_component.
+      apply findInList_found.
+      apply finite_index.
+  Qed.
+  
   
   Lemma sent_is_fullNode st m component component':
     address_valid component ->
@@ -2657,6 +2690,12 @@ Section composition.
           Search obs. Search _sm.
           *)
         }
+        inversion Hfn. rewrite H1 in Hgen.
+        unfold addresses in Hgen.
+        unfold address_valid in Haddr.
+        Search In seq.
+        assert (In n1 (seq 0 (length indices))).
+        { apply in_seq. split. lia. Search n1.
                                                          
         
         (*
