@@ -10,6 +10,8 @@ From CasperCBC
     Preamble ListExtras ListSetExtras FinExtras
     Lib.Measurable
     VLSM.Common VLSM.Composition VLSM.Equivocation
+    VLSM.Equivocation.KnownEquivocators
+    VLSM.Equivocation.LimitedEquivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
@@ -111,69 +113,6 @@ Definition full_node_equivocators_limited_equivocation_vlsm : VLSM message :=
 
 End limited_state_equivocation_with_full_node.
 
-Section limited_message_equivocation.
-
-Context
-  {message : Type}
-  {index : Type}
-  {IndEqDec : EqDecision index}
-  {index_listing : list index}
-  (finite_index : Listing index_listing)
-  {ValMeasurable : Measurable index}
-  (IM : index -> VLSM message)
-  (Hbs : forall i, has_been_sent_capability (IM i))
-  (Hbr : forall i, has_been_received_capability (IM i))
-  (Hbo := fun i => has_been_observed_capability_from_sent_received (IM i))
-  (i0 : Inhabited index)
-  (X := free_composite_vlsm IM)
-  (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index Hbs)
-  (X_has_been_received_capability : has_been_received_capability X := free_composite_has_been_received_capability IM finite_index Hbr)
-  (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
-  (sender : message -> option index)
-  {Hdm : MessageDependencies sender (fun i => i) IM}
-  {reachable_threshold : ReachableThreshold index}
-  (globally_known_equivocators : composite_state IM -> set index)
-  {Hknown_equivocators : known_equivocators_capability IM Hbs (fun i => i) sender Hbr globally_known_equivocators}
-  (Hknown_equivocators_basic_equivocation := known_equivocators_basic_equivocation IM globally_known_equivocators _ finite_index)
-  .
-
-Existing Instance Hknown_equivocators_basic_equivocation.
-
-Definition full_node_limited_equivocation_constraint
-  (l : composite_label IM)
-  (som : composite_state IM * option message)
-  :=
-  message_dependencies_local_full_node_constraint l som /\
-  let s' := fst (composite_transition IM l som) in
-  not_heavy s'.
-
-
-Definition full_node_limited_equivocation_vlsm_composition
-  :=
-  composite_vlsm IM full_node_limited_equivocation_constraint.
-
-Lemma full_node_limited_equivocation_protocol_state_weight s
-  : protocol_state_prop full_node_limited_equivocation_vlsm_composition s ->
-    not_heavy s.
-Proof.
-  intro Hs.
-  unfold not_heavy.
-  induction Hs using protocol_state_prop_ind.
-  - specialize (initial_state_equivocators_weight  _ _ _ _ _ _ _ _ finite_index s Hs)
-      as Hrew.
-    unfold Hknown_equivocators_basic_equivocation.
-    unfold composite_state in Hrew. simpl in *.
-    rewrite Hrew.
-    destruct threshold. intuition.
-  - destruct Ht as [[Hs [Hom [Hv [Hc Hw]]]] Ht].
-    unfold transition in Ht. simpl in Ht.
-    simpl in Hw.
-    rewrite Ht in Hw.
-    assumption.
-Qed.
-
-End limited_message_equivocation.
-
 Section limited_equivocation_state_to_message.
 
 (** ** From composition of equivocators to composition of simple nodes
@@ -200,7 +139,7 @@ Context
   (sender : message -> option index)
   (globally_known_equivocators : composite_state IM -> set index)
   {Hdm : MessageDependencies sender (fun i => i) IM}
-  {Hknown_equivocators : known_equivocators_capability IM Hbs (fun x => x) sender Hbr globally_known_equivocators}
+  {Hknown_equivocators : known_equivocators_capability IM Hbs Hbr index (fun x => x) sender globally_known_equivocators}
   {reachable_threshold : ReachableThreshold index}
   (XE : VLSM message := full_node_equivocators_limited_equivocation_vlsm IM Hbs finite_index sender Hbr)
   (X : VLSM message := full_node_limited_equivocation_vlsm_composition finite_index IM Hbs Hbr i0 sender globally_known_equivocators)
@@ -771,7 +710,7 @@ Proof.
   intros.
   intros eqv Heqv.
   apply known_equivocators_exhibit_message_equivocation
-    with (has_been_sent_capabilities := Hbs) (has_been_received_capabilities := Hbr)
+    with (Hbs0 := Hbs) (Hbr0 := Hbr)
     (A := fun x => x) (sender0 := sender)
     in Heqv; [|assumption].
   destruct Heqv as [j [Hjeqv [m [Hsender [Hnbs Hrcv]]]]].
@@ -918,12 +857,12 @@ Proof.
     { apply Rle_trans with (sum_weights (globally_known_equivocators destination)).
       { right. apply set_eq_nodup_sum_weight_eq.
         - apply NoDup_filter. apply state_validators_nodup.
-        - apply known_equivocators_nodup with Hbs (fun i => i) sender Hbr. assumption.
+        - apply known_equivocators_nodup with Hbs Hbr (fun i => i) sender. assumption.
         - apply globally_known_equivocators_equivocating_validators.
       }
       revert Hincl. rewrite Heq_destination.
       apply sum_weights_incl.
-      - apply known_equivocators_nodup with Hbs (fun i => i) sender Hbr.
+      - apply known_equivocators_nodup with Hbs Hbr (fun i => i) sender.
         assumption.
       - apply set_union_nodup; apply NoDup_filter; apply finite_index.
     }
@@ -981,7 +920,7 @@ Proof.
     unfold not_heavy.
     rewrite
       (composite_transition_None_equivocators_weight
-        _ _ _ _ _ _ Hknown_equivocators _ _ _ _ _ _ Ht
+        _ _ _ _ _ _ _ Hknown_equivocators _ _ _ _ _ _ Ht
       ).
     apply
       (full_node_limited_equivocation_protocol_state_weight
