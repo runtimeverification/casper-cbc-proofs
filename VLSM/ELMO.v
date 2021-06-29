@@ -2751,10 +2751,13 @@ Section composition.
          *)
 
         assert (n1 = n -> In (Cobservation Send (Cpremessage p n1) n) l).
-        { intros. subst n1.
-          Search Sy.
-          Check protocol_message_was_sent_from_protocol_state.
-        }
+        { intros. subst n1. eapply isProtocol_last_receive_impl_send. apply Hproto'. }
+        assert ((if is_left (decide (n1 = n))
+          then bool_decide (In (Cobservation Send (Cpremessage p n1) n) l)
+                 else true) = true).
+        { destruct (decide (n1 = n)); simpl. subst.
+          apply bool_decide_eq_true. apply H. reflexivity. reflexivity. }
+        rewrite H1 in Hgen. simpl in Hgen. clear H H1.
         
                                                          
         
