@@ -2598,15 +2598,24 @@ Section composition.
            But do we have a Receive observation for [Cpremessage p n1] ?
            
          *)
+
+        assert(Hin' : n1 = component ->
+                     In (Cobservation Send (Cpremessage p component) component)
+                        (observationsOf (st (component_to_index component)))).
+        {
+          intros. subst.
+          pose proof (Hin := fullNode_last_receive_self _ _ _ _ _ _ Hfull).
+          exact Hin.
+        }
+        
         assert (Hmproto: protocol_message_prop free_composite_elmo (Cpremessage p n1)).
         {
           destruct (decide (n1 = component)).
           + subst.
-            pose proof (Hin := fullNode_last_receive_self _ _ _ _ _ _ Hfull).
-            Check has_send_observation_implies_is_protocol.
+            specialize (Hin' (eq_refl component)).
             (* Maybe the state from which the protocol message is sent can reach st? *)
             eapply has_send_observation_implies_is_protocol.
-            2: { apply Hin. }
+            2: { apply Hin'. }
             exact Hpsp.
           + 
             (*Check all_receive_observation_have_component_as_witness.
@@ -2702,11 +2711,16 @@ Section composition.
         }
         rewrite Hain in Hgen. simpl in Hgen. clear Haddr' Hain H1.
         (* How to prove the non-self-equivocation check in Hgen?
-           By [Hmproto] we know that [Cpremessage p n] is protocol;
+           By [Hmproto] we know that [Cpremessage p n] is protocol (in the composite);
            therefore, it must have been sent by the node [n], and therefore
            [n] should have its Send observation in the state (that is, in [l]).
          *)
-         
+
+        assert (n1 = n -> In (Cobservation Send (Cpremessage p n1) n) l).
+        { intros. subst n1.
+          Check protocol_message_was_sent_from_protocol_state.
+        }
+        
                                                          
         
         (*
