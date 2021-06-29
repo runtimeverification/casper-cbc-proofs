@@ -2439,6 +2439,37 @@ Section composition.
         apply fullNode_appObservation. auto.
   Qed.
 
+
+  Lemma isProtocol_last_receive_impl_send l p n n0:
+    isProtocol (Cprestate (l ++ [Cobservation Receive (Cpremessage p n) n0]))
+               n weights treshold ->
+    In (Cobservation Send (Cpremessage p n) n) l.
+  Proof.
+    intros H.
+    unfold isProtocol in H.
+    rewrite fold_left_app in H. simpl in H.
+    remember (fold_left
+          (isProtocol_step n weights treshold (l ++ [Cobservation Receive (Cpremessage p n) n0])) l
+          (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
+    inversion H.
+    pose proof (isProtocol_step_result_true _ _ _ _ _ _ H1).
+    destruct FL as [[[b n'] ps] sn]. simpl in H0. subst b.
+    clear -H1. unfold isProtocol_step in H1. simpl in H1.
+    destruct (bool_decide (n0 = n)); simpl in H1.
+    2: { inversion H1. }
+    destruct (bool_decide (n = n)) eqn:Heq.
+    2: { apply bool_decide_eq_false in Heq. contradiction. }
+    clear Heq.
+    simpl in H1. apply bool_decide_eq_true in H1.
+    rewrite firstn_app in H1.
+    apply in_app_or in H1.
+    destruct H1.
+    2: { Search In firstn. apply In_firstn in H. simpl in H.
+         destruct H; [|contradiction]. inversion H.
+    }
+    eapply In_firstn. apply H.
+  Qed.
+  
   Lemma isProtocol_implies_protocol component st m:
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
@@ -2720,7 +2751,8 @@ Section composition.
          *)
 
         assert (n1 = n -> In (Cobservation Send (Cpremessage p n1) n) l).
-        { intros. subst n1. Search Sy.
+        { intros. subst n1.
+          Search Sy.
           Check protocol_message_was_sent_from_protocol_state.
         }
         
