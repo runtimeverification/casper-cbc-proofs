@@ -1847,11 +1847,15 @@ Section composition.
     simpl in H. exact H.
   Qed.
 
+  (* TODO s1 is reachable from s0 *)
   Lemma protocol_message_was_sent_from_protocol_state s1 st author:
     protocol_prop free_composite_elmo (s1, Some (Cpremessage st author)) ->
+    (
     exists s0,
       protocol_state_prop free_composite_elmo s0
-      /\ (s0 (component_to_index author)) = st.
+      /\ (s0 (component_to_index author)) = st
+    ) /\ (List.In (Cobservation Send (Cpremessage st author) author) (observationsOf (s1 (component_to_index author))))
+  .
   Proof.
     intros H.
     inversion H; subst; clear H.
@@ -1867,9 +1871,11 @@ Section composition.
     unfold vtransition in HeqVT. simpl in HeqVT.
     destruct li,om; inversion HeqVT; subst; clear HeqVT.
     rewrite index_to_component_to_index.
-
-    unfold protocol_state_prop.
-    eexists. split. eexists. apply Hps. reflexivity.
+    split.
+    - unfold protocol_state_prop.
+      eexists. split. eexists. apply Hps. reflexivity.
+    - rewrite state_update_eq. simpl.
+      apply in_or_app. right. simpl. left. reflexivity.
   Qed.
 
   Lemma isProtocol_last_fullNode l p n1 n0 component:
@@ -2564,9 +2570,6 @@ Section composition.
         rename v into lbl.
         remember (observationsOf (st (component_to_index component))) as obs.
 
-        Search obs.
-        Search isProtocol.
-        Search fullNode.
         (* I want to prove the goal using [protocol_generated].
            I.e., there needs to be a state [Sx] from which a transition goes to some state [s1]
            and  generates the message
@@ -2646,7 +2649,7 @@ Section composition.
         }
         (* We have a protocol state Sy such that [Sy (component_to_index n) = Cprestate l]. *)
         pose proof (Htmp := protocol_message_was_sent_from_protocol_state _ _ _ Hs).
-        destruct Htmp as [Sy [Hsyproto Hsyn]].
+        destruct Htmp as [[Sy [Hsyproto Hsyn]] Hin''].
         (* Maybe s0 is reachable from Sy ? *)
 
         (* When the component [n] receives [Cpremessage p n1] in [Sy], the result is some state [Sx]
@@ -2717,7 +2720,7 @@ Section composition.
          *)
 
         assert (n1 = n -> In (Cobservation Send (Cpremessage p n1) n) l).
-        { intros. subst n1.
+        { intros. subst n1. Search Sy.
           Check protocol_message_was_sent_from_protocol_state.
         }
         
