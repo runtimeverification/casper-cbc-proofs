@@ -654,6 +654,8 @@ Proof.
   - apply top_sort_sorted.
 Qed.
 
+(** ** Maximal elements *)
+
 Definition get_maximal_element := ListExtras.last_error (top_sort l).
 
 Lemma maximal_element_in 

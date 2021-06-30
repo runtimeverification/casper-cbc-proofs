@@ -1,6 +1,7 @@
 From CasperCBC.stdpp Require Import base fin_sets tactics.
 From CasperCBC.Lib Require Import Preamble.
 
+(** * Finite set utility definitions and lemmas *)
 
 Section fin_set.
 Context
@@ -140,9 +141,11 @@ Section general.
 End general.
 
 Section filter.
+  (* FIXME: remove notation after removal of Classes module *)
+  Local Notation Decision := base.Decision.
   Context (P P2 : A → Prop) 
-          `{!∀ x, base.Decision (P x)} 
-          `{!∀ x, base.Decision (P2 x)}
+          `{!∀ x, Decision (P x)}
+          `{!∀ x, Decision (P2 x)}
           (X Y : C).
   
   Lemma filter_subset
@@ -193,7 +196,6 @@ Section map.
     unfold set_map. 
     remember (f <$> elements X) as fX.
     specialize (list_to_set_size (A := B) fX) as Hsize.
-    
     assert (length fX = size X). {
       unfold size. unfold set_size. simpl.
       subst fX.

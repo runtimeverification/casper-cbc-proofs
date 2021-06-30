@@ -4,25 +4,32 @@ Require Import ZArith.BinInt.
 Require Import ZArith.Zpow_facts.
 Import ListNotations.
 
+From CasperCBC.stdpp Require Import base fin_sets tactics.
+
 From CasperCBC
   Require Import
-    stdpp.base stdpp.fin_sets tactics
     Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras Lib.TopSort Lib.StdppFinSetExtras
     CBC.Protocol CBC.Common CBC.Definitions
     VLSM.Common VLSM.Composition VLSM.Decisions VLSM.Equivocation VLSM.ProjectionTraces.
 
+(** * Finality inspector *)
+
 Section FullNodeLike.
+(* FIXME: remove notations after removal of Classes module *)
+Local Notation RelDecision := Classes.RelDecision.
+Local Notation EqDecision X := (Classes.EqDecision X).
+Local Notation Inhabited := Classes.Inhabited.
 
 Context
   {CV : consensus_values}
-  {CV_eq_dec : Classes.EqDecision C}
+  {CV_eq_dec : EqDecision C}
   {Cm Ci : Type}
   {message : Type}
   {index : Type}
   (vote : message -> option C)
   `{HfinSetMessage : FinSet message Cm}
   `{HfinSetIndex : FinSet index Ci}
-  {mdec : Classes.EqDecision message}
+  {mdec : EqDecision message}
   (happens_before : message -> message -> Prop)
   (happens_before' := clos_trans _ happens_before)
   (Hstrict : StrictOrder happens_before')
@@ -35,8 +42,8 @@ Context
   (HdownSetCorrect : forall (m1 m2 : message), happens_before' m1 m2 <-> m1 ∈ (downSet m2))
   {index_listing : list index}
   {Hfinite : Listing index_listing}
-  {idec : Classes.EqDecision index}
-  {i0 : Classes.Inhabited index}
+  {idec : EqDecision index}
+  {i0 : Inhabited index}
   (sender : message -> index)
   {IM : index -> VLSM message}
   (computable_sent : forall (i : index), computable_sent_messages (IM i))

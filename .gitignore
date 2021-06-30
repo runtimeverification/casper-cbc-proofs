@@ -18,6 +18,7 @@ Makefile.coq.conf
 _build
 resources/index.html
 .lia.cache
+.nia.cache
 html
 deps.dot
 deps.map
