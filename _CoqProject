@@ -64,6 +64,7 @@ Lib/Traces.v
 Lib/TraceProperties.v
 Lib/TraceClassicalProperties.v
 Lib/Measurable.v
+Lib/StdppFinSetExtras.v
 
 VLSM/Common.v
 VLSM/CommonTraces.v
@@ -78,6 +79,8 @@ VLSM/Plans.v
 VLSM/Equivocation.v
 VLSM/ObservableEquivocation.v
 VLSM/PreceedsEquivocation.v
+
+VLSM/FinalityInspector/Inspector.v
 
 VLSM/Equivocators/Common.v
 VLSM/Equivocators/Projections.v

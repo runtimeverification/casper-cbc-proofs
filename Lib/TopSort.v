@@ -654,4 +654,100 @@ Proof.
   - apply top_sort_sorted.
 Qed.
 
+(** ** Maximal elements *)
+
+Definition get_maximal_element := ListExtras.last_error (top_sort l).
+
+Lemma maximal_element_in 
+  (a : A)
+  (Hmax : get_maximal_element = Some a) :
+  In a l.
+Proof.
+  unfold get_maximal_element in Hmax.
+  assert (exists l', l' ++ [a] = top_sort l). {
+    destruct l.
+    - simpl in Hmax. intuition congruence.
+    - specialize (@exists_last _ (top_sort (a0 :: l0))) as Hlast.
+      spec Hlast. unfold top_sort. simpl. intuition congruence.
+      destruct Hlast as [l' [a' Heq]].
+      rewrite Heq in Hmax.
+      rewrite Heq.
+      exists l'.
+      specialize (last_error_is_last l' a') as Hlast.
+      intuition congruence.
+  }
+  assert (In a (top_sort l)). {
+    destruct H as [l' Heq].
+    rewrite <- Heq.
+    apply in_app_iff. right. intuition.
+  }
+  specialize (top_sort_correct) as [Htop _].
+  destruct Htop as [_ Htop].
+  specialize (Htop a H0).
+  intuition.
+Qed.
+
+Lemma get_maximal_element_correct 
+  (a max : A)
+  (Hina : In a l)
+  (Hmax : get_maximal_element = Some max) :
+  ~ preceeds max a.
+Proof.
+  specialize top_sort_correct as [Hseteq Htop].
+  unfold topologically_sorted in Htop.
+  intros contra.
+  specialize (Htop max a contra).
+  
+  assert (Hinmax: In max l) by (apply maximal_element_in; intuition).
+  assert (Hinatop : In a (top_sort l)) by (apply Hseteq; intuition). 
+  apply in_split in Hinatop.
+  destruct Hinatop as [prefA [sufA HeqA]].
+  unfold get_maximal_element in Hmax.
+  destruct sufA.
+  - rewrite HeqA in Hmax.
+    specialize (last_error_is_last prefA a) as Hlast.
+    assert (a = max) by intuition congruence.
+    subst a. 
+    specialize StrictOrder_Irreflexive as Hirr.
+    unfold Irreflexive in Hirr. unfold complement in Hirr.
+    unfold Reflexive in Hirr.
+    assert (P max). {
+      rewrite Forall_forall in Hl.
+      apply Hl. intuition.
+    }
+    specialize (Hirr (exist _ max H)).
+    intuition.
+  - rewrite HeqA in Hmax.
+    specialize (@exists_last _ (a0 :: sufA)) as Hex.
+    spec Hex. intuition congruence.
+    destruct Hex as [l' [a' Heq]].
+    rewrite Heq in Hmax.
+    specialize (last_error_is_last (prefA ++ a :: l') a') as Hlast.
+    rewrite <- app_assoc in Hlast.
+    simpl in Hlast.
+    assert (a' = max) by intuition congruence.
+    specialize (Htop prefA (l' ++ [a'])).
+    rewrite Heq in HeqA.
+    specialize (Htop HeqA).
+    subst a'.
+    contradict Htop.
+    apply in_app_iff. right. intuition.
+Qed.
+
+Lemma get_maximal_element_some
+  (Hne : l <> []) :
+  exists a, get_maximal_element = Some a.
+Proof.
+  unfold get_maximal_element.
+  destruct l.
+  - congruence.
+  - simpl.
+    exists (last
+       (top_sort_n (length l0)
+          (if decide (min_predecessors preceeds (a :: l0) l0 a = a)
+           then l0
+           else a :: set_remove decide_eq (min_predecessors preceeds (a :: l0) l0 a) l0))
+       (min_predecessors preceeds (a :: l0) l0 a)). intuition.
+Qed.
+
 End top_sort.
