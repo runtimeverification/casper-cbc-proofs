@@ -245,7 +245,7 @@ Program Definition update
            (m : Premessage)
            (component : nat)
            (weights : list pos_R)
-           (treshold : R)
+           (otreshold : option R)
            (curState : list Prestate)
            (curEq : set nat)
   : bool * (list Prestate) * (set nat) :=
@@ -267,17 +267,21 @@ Program Definition update
       (true, curState, curEq)
     else
       let newEq := curEq in
-      if (Rlt_dec (@sum_weights _ (Build_Measurable _ (fun idx => nth idx weights (exist _ 1%R _))) newEq) treshold) then
-        (false, curState, curEq)
-      else
-        (true, curState, newEq).
+      match otreshold with
+      | Some treshold =>
+        if (Rlt_dec (@sum_weights _ (Build_Measurable _ (fun idx => nth idx weights (exist _ 1%R _))) newEq) treshold) then
+          (false, curState, curEq)
+        else
+          (true, curState, newEq)
+      | None => (true, curState, newEq)
+      end.
 Next Obligation.
-  lra.
+   lra.
 Defined.
 
 
 Definition isProtocol_step
-           (component : nat) (weights : list pos_R) (treshold : R) (observations : list Observation)
+           (component : nat) (weights : list pos_R) (otreshold : option R) (observations : list Observation)
            (args : bool * nat * list Prestate * set nat) (ob : Observation)
   : bool * nat * list Prestate * set nat
   :=
@@ -316,7 +320,7 @@ Definition isProtocol_step
               let result := false in
               (result, i, curState, curEq)
             else
-              let: (result, curState, curEq) := update m component weights treshold curState curEq in
+              let: (result, curState, curEq) := update m component weights otreshold curState curEq in
               (result, i, curState, curEq)
           end 
     end.
@@ -325,18 +329,18 @@ Definition isProtocol
            (prestate : Prestate)
            (component : nat)
            (weights : list pos_R)
-           (treshold: R) : bool
+           (otreshold: option R) : bool
   :=
     let initialState := map (fun x => Cprestate nil) weights in
     let initialEq := @nil nat in
-    let result := (fold_left (isProtocol_step component weights treshold (observationsOf prestate)) (observationsOf prestate) (true, 0, initialState, initialEq )) in
+    let result := (fold_left (isProtocol_step component weights otreshold (observationsOf prestate)) (observationsOf prestate) (true, 0, initialState, initialEq )) in
     fst (fst (fst result)).
 
 Definition elmo_valid
            (addresses : list nat)
            (component : nat)
            (weights : list pos_R)
-           (treshold : R)
+           (otreshold : option R)
            (label : Label)
            (bsom : Prestate * option Premessage)
   : bool :=
@@ -353,13 +357,13 @@ Definition elmo_valid
     else
       true
     ) &&
-    isProtocol (stateOf m) (authorOf m) weights treshold
+    isProtocol (stateOf m) (authorOf m) weights otreshold
   end.
 
 Definition elmo_transition
            (component : nat)
            (weights : list pos_R)
-           (treshold : R)
+           (otreshold : option R)
            (label : Common.label)
            (bsom : Prestate * option Premessage)
   : Prestate * option Premessage
@@ -381,11 +385,11 @@ Definition elmo_transition
     end.
 
 Definition elmo_vlsm_machine (addresses : list nat)
-           (component : nat) (weights : list pos_R) (treshold : R)
+           (component : nat) (weights : list pos_R) (otreshold : option R)
   : @VLSM_class Premessage elmo_type elmo_sig
   :=
-    {| valid := elmo_valid addresses component weights treshold
-       ; transition := elmo_transition component weights treshold
+    {| valid := elmo_valid addresses component weights otreshold
+       ; transition := elmo_transition component weights otreshold
     |}.
 
 
@@ -394,8 +398,8 @@ Section capabilities.
     (addresses : list nat)
     (component : nat)
     (weights : list pos_R)
-    (treshold : R)
-    (vlsm := mk_vlsm (elmo_vlsm_machine addresses component weights treshold))
+    (otreshold : option R)
+    (vlsm := mk_vlsm (elmo_vlsm_machine addresses component weights otreshold))
   .
 
   Check (field_selector input).
@@ -801,12 +805,12 @@ Lemma ob_sent_contains_previous_prop_step
       (addresses : list nat)
       (component : nat)
       (weights : list pos_R)
-      (treshold : R)
+      (otreshold : option R)
       (label : Label)
       (bsom : Prestate * option Premessage) :
   ob_sent_contains_previous_prop (observationsOf (fst bsom)) ->
-  elmo_valid addresses component weights treshold label bsom ->
-  ob_sent_contains_previous_prop (observationsOf (fst (elmo_transition component weights treshold label bsom))).
+  elmo_valid addresses component weights otreshold label bsom ->
+  ob_sent_contains_previous_prop (observationsOf (fst (elmo_transition component weights otreshold label bsom))).
 Proof.
   destruct bsom as [bs om].
   intros Hinit Hvalid.
@@ -1101,11 +1105,11 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma isProtocol_step_app_fold component weights treshold l1 l2 l3 args:
+Lemma isProtocol_step_app_fold component weights otreshold l1 l2 l3 args:
   let: (b, idx, curState, curEq) := args in
   length l3 + idx <= length l1 ->
-  fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l3 args
-  = fold_left (isProtocol_step component weights treshold l1) l3 args.
+  fold_left (isProtocol_step component weights otreshold (l1 ++ l2)) l3 args
+  = fold_left (isProtocol_step component weights otreshold l1) l3 args.
 Proof.
   move: args.
   induction l3; intros args.
@@ -1115,7 +1119,7 @@ Proof.
     intros Hlen.
     simpl in Hlen.
     cbn [ fold_left ].
-    remember (isProtocol_step component weights treshold l1 (true, idx, curState, curEq) a) as stp.
+    remember (isProtocol_step component weights otreshold l1 (true, idx, curState, curEq) a) as stp.
     destruct stp as [[[b' idx'] curState'] curEq'] eqn:Heqstp'.
     assert (idx' = S idx).
     { unfold isProtocol_step in Heqstp.
@@ -1127,7 +1131,7 @@ Proof.
       destruct (fullNode (messageOf a) (firstn idx l1) component);
         simpl in Heqstp; inversion Heqstp.
       2: reflexivity.
-      destruct (update (messageOf a) component weights treshold curState curEq).
+      destruct (update (messageOf a) component weights otreshold curState curEq).
       destruct p.
       inversion Heqstp. subst. reflexivity.
     }
@@ -1148,9 +1152,9 @@ Proof.
 Qed.
 
   
-Lemma isProtocol_last component weights treshold l x:
-  isProtocol (Cprestate (l ++ [x])) component weights treshold ->
-  isProtocol (Cprestate l) component weights treshold.
+Lemma isProtocol_last component weights otreshold l x:
+  isProtocol (Cprestate (l ++ [x])) component weights otreshold ->
+  isProtocol (Cprestate l) component weights otreshold.
 Proof.
   unfold isProtocol.
   simpl.
@@ -1159,14 +1163,14 @@ Proof.
   intros H.
   inversion H. clear H. rename H1 into H.
   
-  remember (fold_left (isProtocol_step component weights treshold (l ++ [x])) l
+  remember (fold_left (isProtocol_step component weights otreshold (l ++ [x])) l
             (true, 0, map (fun=> Cprestate []) weights, [])) as FL1.
 
   pose proof (H' := isProtocol_step_result_true _ _ _ _ _ _ H).
-  remember (isProtocol_step component weights treshold (l ++ [x]) FL1 x) as ARG2.
+  remember (isProtocol_step component weights otreshold (l ++ [x]) FL1 x) as ARG2.
   rewrite H.
   subst ARG2. clear H.
-  pose proof (Htmp := isProtocol_step_app_fold component weights treshold l [x] l
+  pose proof (Htmp := isProtocol_step_app_fold component weights otreshold l [x] l
                                                (true, 0, map (fun=> Cprestate []) weights, [])).
   simpl in Htmp.
   rewrite Htmp in HeqFL1.
@@ -1175,8 +1179,8 @@ Proof.
 Qed.
      
 
-Lemma isProtocol_implies_ob_sent_contains_previous_prop component weights treshold l:
-  isProtocol (Cprestate l) component weights treshold ->
+Lemma isProtocol_implies_ob_sent_contains_previous_prop component weights otreshold l:
+  isProtocol (Cprestate l) component weights otreshold ->
   ob_sent_contains_previous_prop l.
 Proof.
   intros H.
@@ -1188,7 +1192,7 @@ Proof.
     unfold isProtocol in H.
     rewrite fold_left_app in H.
     simpl in H.
-    remember (fold_left (isProtocol_step component weights treshold (l ++ [x])) l
+    remember (fold_left (isProtocol_step component weights otreshold (l ++ [x])) l
                         (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
     pose proof (HFLtrue := isProtocol_step_result_true _ _ _ _ _ _ H).
     intros i Hi Hlbl j Hj.
@@ -1232,7 +1236,7 @@ Proof.
     rewrite H.
     (* Now l1 is a prefix of l *)
     (* First, i' = length l *)
-    pose proof (Hidx := isProtocol_step_fold_result_true_idx component weights treshold).
+    pose proof (Hidx := isProtocol_step_fold_result_true_idx component weights otreshold).
     specialize (Hidx (l ++ [Cobservation l0 (Cpremessage (Cprestate l1) component) component])).
     specialize (Hidx l (true, 0, map (fun=> Cprestate []) weights, [])).
     simpl in Hidx.
@@ -1245,11 +1249,11 @@ Qed.
 
 
 
-Lemma fold_isProtocol_step_app component weights treshold l1 l2 b (*n*) s es:
+Lemma fold_isProtocol_step_app component weights otreshold l1 l2 b (*n*) s es:
   ob_sent_contains_previous_prop (l1 ++ l2) ->
-  let FL := fold_left (isProtocol_step component weights treshold (l1 ++ l2)) l1 (b, (*n*)0, s, es) in
+  let FL := fold_left (isProtocol_step component weights otreshold (l1 ++ l2)) l1 (b, (*n*)0, s, es) in
   FL.1.1.1 = true ->
-  FL = fold_left (isProtocol_step component weights treshold l1) l1 (b, (*n*)0, s, es).
+  FL = fold_left (isProtocol_step component weights otreshold l1) l1 (b, (*n*)0, s, es).
 Proof.
   simpl.
   generalize dependent l2.
@@ -1271,7 +1275,7 @@ Proof.
   - destruct (null_or_exists_last l1).
     { subst. reflexivity. }
     destruct H as [l1' [x Hl1]].
-    remember (isProtocol_step component weights treshold) as step.
+    remember (isProtocol_step component weights otreshold) as step.
     remember (fold_left (step l1) l1 (b, (*n*)0, s, es)) as fl.
     destruct fl as [[[b' n'] s'] es'].
     rewrite Hl1. rewrite fold_left_app. simpl.
@@ -1305,7 +1309,7 @@ Proof.
     assert (Htrue'': (fold_left (step (l1' ++ [x])) l1' (b, 0, s, es)).1.1.1 = true).
     { subst.
       rewrite app_assoc in Htrue'.
-      pose proof (Htmp := isProtocol_step_app_fold component weights treshold (l1' ++ [x]) l2 l1' (b, 0, s, es)).
+      pose proof (Htmp := isProtocol_step_app_fold component weights otreshold (l1' ++ [x]) l2 l1' (b, 0, s, es)).
       cbv beta iota in Htmp. rewrite Htmp in Htrue'.
       { rewrite app_length. simpl. lia. }
       exact Htrue'.
@@ -1327,7 +1331,7 @@ Proof.
 
     assert (Htrue''': (fold_left (step l1') l1' (b, 0, s, es)).1.1.1 = true).
     { subst.
-      pose proof (Htmp := isProtocol_step_app_fold component weights treshold l1' [x] l1' (b, 0, s, es)).
+      pose proof (Htmp := isProtocol_step_app_fold component weights otreshold l1' [x] l1' (b, 0, s, es)).
       simpl in Htmp.
       rewrite Htmp in Htrue''.
       { lia. }
@@ -1336,7 +1340,7 @@ Proof.
 
     assert (n'' = length l1').
     { subst.
-      pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights treshold l1' l1' (b, 0, s, es)).
+      pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights otreshold l1' l1' (b, 0, s, es)).
       cbv beta iota in Htmp. rewrite -Heqfl' in Htmp. simpl in Htmp.
       apply Htmp. clear Htmp.
       rewrite -Heqfl' in Htrue'''.
@@ -1345,7 +1349,7 @@ Proof.
     }
     subst n''.
 
-    pose proof (Hs := isProtocol_step_in component weights treshold l1' l2 (b'', (length l1'), s'', es'') x).
+    pose proof (Hs := isProtocol_step_in component weights otreshold l1' l2 (b'', (length l1'), s'', es'') x).
     cbv iota zeta beta in Hs.
     specialize (Hs (eq_refl _)).
     apply Hs.
@@ -1504,7 +1508,7 @@ Section composition.
 
   Context
     (weights : list pos_R)
-    (treshold : R)
+    (otreshold : option R)
     (index : Type)
     {i0 : Inhabited index}
     {IndEqDec : EqDecision index}
@@ -1551,7 +1555,8 @@ Section composition.
     { apply finite_index. }
   Qed.
 
-  Definition IM' (i : index) := elmo_vlsm_machine addresses (index_to_component i) weights treshold.
+  
+  Definition IM' (i : index) := elmo_vlsm_machine addresses (index_to_component i) weights otreshold.
   Definition IM (i : index) := mk_vlsm (IM' i).
 
   (* `component` is equivocating and we have an evidence in some state
@@ -1577,7 +1582,11 @@ Section composition.
                                     states
                                     transitions in
          let eqs := equivocators new_states in
-         ((@sum_weights _ (Build_Measurable _ (fun idx => nth idx weights (exist _ 1%R _))) eqs) < treshold)%R
+         match otreshold with
+           | Some treshold =>
+             ((@sum_weights _ (Build_Measurable _ (fun idx => nth idx weights (exist _ 1%R _))) eqs) < treshold)%R
+           | None => True
+         end
        end.
   Next Obligation.
     lra.
@@ -1659,7 +1668,7 @@ Section composition.
     unfold free_composite_elmo_has_been_received_capability in Hhbr.
     simpl in Hhbr.
     unfold composite_has_been_received in Hhbr.
-    assert (Htmp: exists i : index, @has_been_received _ (IM i) (elmo_has_been_received_capability addresses (index_to_component i) weights treshold) (st i) m).
+    assert (Htmp: exists i : index, @has_been_received _ (IM i) (elmo_has_been_received_capability addresses (index_to_component i) weights otreshold) (st i) m).
     {
       exists idx.
       unfold has_been_received. unfold elmo_has_been_received_capability. simpl.
@@ -1771,7 +1780,7 @@ Section composition.
   
   Lemma protocol_state_satisfies_all_received_satisfy_isprotocol_prop st idx:
     protocol_state_prop free_composite_elmo st ->
-    @all_received_satisfy_isprotocol_prop weights treshold (observationsOf (st idx)).
+    @all_received_satisfy_isprotocol_prop weights otreshold (observationsOf (st idx)).
   Proof.
     intros Hpsp.
     induction Hpsp using protocol_state_prop_ind.
@@ -1837,7 +1846,7 @@ Section composition.
   Lemma protocol_state_contains_receive_implies_isProtocol st idx msg n0:
     protocol_state_prop free_composite_elmo st ->
     List.In (Cobservation Receive msg n0) (observationsOf (st idx)) ->
-    isProtocol (stateOf msg) (authorOf msg) weights treshold.
+    isProtocol (stateOf msg) (authorOf msg) weights otreshold.
   Proof.
     intros Hpsp Hin.
     pose proof (H := protocol_state_satisfies_all_received_satisfy_isprotocol_prop st idx Hpsp).
@@ -1881,7 +1890,7 @@ Section composition.
   Lemma isProtocol_last_fullNode l p n1 n0 component:
     n1 <> component ->
     isProtocol (Cprestate (l ++ [Cobservation Receive (Cpremessage p n1) n0]))
-               component weights treshold ->
+               component weights otreshold ->
     fullNode (Cpremessage p n1) l component.
   Proof.
     intros Hneq Hproto.
@@ -1889,7 +1898,7 @@ Section composition.
     
     rewrite fold_left_app in Hproto. simpl in Hproto.
     remember (fold_left
-                (isProtocol_step component weights treshold                 
+                (isProtocol_step component weights otreshold                 
                                  (l ++ [Cobservation Receive (Cpremessage p n1) n0])) l   
                 (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
     unfold isProtocol_step in Hproto at 1.
@@ -1901,7 +1910,7 @@ Section composition.
     destruct (bool_decide (n1 = component)) eqn:Heq; simpl in Hproto.
     { apply bool_decide_eq_true in Heq. contradiction. }
     
-    pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights treshold).
+    pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights otreshold).
     specialize (Htmp (l ++ [Cobservation Receive (Cpremessage p n1) n0])).
     specialize (Htmp l (true, 0, map (fun=> Cprestate []) weights, [])).
     simpl in Htmp.
@@ -1918,7 +1927,7 @@ Section composition.
 
   Lemma isProtocol_last_sendInPrefix l p n0 component:
     isProtocol (Cprestate (l ++ [Cobservation Receive (Cpremessage p component) n0]))
-               component weights treshold ->
+               component weights otreshold ->
     List.In (Cobservation Send (Cpremessage p component) component) l.
   Proof.
     intros Hproto.
@@ -1926,7 +1935,7 @@ Section composition.
     
     rewrite fold_left_app in Hproto. simpl in Hproto.
     remember (fold_left
-                (isProtocol_step component weights treshold                 
+                (isProtocol_step component weights otreshold                 
                                  (l ++ [Cobservation Receive (Cpremessage p component) n0])) l   
                 (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
     unfold isProtocol_step in Hproto at 1.
@@ -1939,7 +1948,7 @@ Section composition.
     2: { apply bool_decide_eq_false in Heq. contradiction. }
     apply bool_decide_eq_true in Hproto.
 
-    pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights treshold).
+    pose proof (Htmp := isProtocol_step_fold_result_true_idx component weights otreshold).
     specialize (Htmp (l ++ [Cobservation Receive (Cpremessage p component) n0])).
     specialize (Htmp l (true, 0, map (fun=> Cprestate []) weights, [])).
     simpl in Htmp.
@@ -2442,14 +2451,14 @@ Section composition.
 
   Lemma isProtocol_last_receive_impl_send l p n n0:
     isProtocol (Cprestate (l ++ [Cobservation Receive (Cpremessage p n) n0]))
-               n weights treshold ->
+               n weights otreshold ->
     In (Cobservation Send (Cpremessage p n) n) l.
   Proof.
     intros H.
     unfold isProtocol in H.
     rewrite fold_left_app in H. simpl in H.
     remember (fold_left
-          (isProtocol_step n weights treshold (l ++ [Cobservation Receive (Cpremessage p n) n0])) l
+          (isProtocol_step n weights otreshold (l ++ [Cobservation Receive (Cpremessage p n) n0])) l
           (true, 0, map (fun=> Cprestate []) weights, [])) as FL.
     inversion H.
     pose proof (isProtocol_step_result_true _ _ _ _ _ _ H1).
@@ -2471,14 +2480,15 @@ Section composition.
   Qed.
   
   Lemma isProtocol_implies_protocol component st m:
+    otreshold = None ->
     address_valid component ->
     protocol_state_prop free_composite_elmo st ->
     fullNode m (observationsOf (st (component_to_index component))) component ->
     address_valid (authorOf m) ->
-    isProtocol (stateOf m) (authorOf m) weights treshold  ->
+    isProtocol (stateOf m) (authorOf m) weights otreshold  ->
     protocol_message_prop free_composite_elmo m.
   Proof.
-    intros Hcomval Hpsp Hfull Haddr Hproto.
+    intros HnoEquivCheck Hcomval Hpsp Hfull Haddr Hproto.
     destruct m. destruct p. simpl.
     pose proof (Hob := isProtocol_implies_ob_sent_contains_previous_prop _ _ _ _ Hproto).
 
@@ -2527,7 +2537,7 @@ Section composition.
       unfold isProtocol in Hproto. simpl in Hproto.
       rewrite fold_left_app in Hproto. simpl in Hproto.
       unfold isProtocol_step in Hproto at 1.
-      remember (fold_left (isProtocol_step n weights treshold (l ++ [Cobservation l0 p n0])) l
+      remember (fold_left (isProtocol_step n weights otreshold (l ++ [Cobservation l0 p n0])) l
                           (true, 0, map (fun=> Cprestate []) weights, []))
         as fl.
       destruct fl as [[[b n'] pss] sn].
@@ -2546,7 +2556,7 @@ Section composition.
       + destruct (fullNode (Cpremessage p n1) (firstn n' (l ++ [Cobservation Receive (Cpremessage p n1) n0])) n).
         2: { simpl in Hproto. inversion Hproto. }
         simpl in Hproto. simpl in Heqfl.
-        remember (isProtocol_step n weights treshold) as step.
+        remember (isProtocol_step n weights otreshold) as step.
         (* We want to use Heqfl as the premise of IHl. But to do that, we must get rid
          of the "++ [...]" part. *)
         
