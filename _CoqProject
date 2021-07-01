@@ -78,6 +78,7 @@ VLSM/Plans.v
 VLSM/Equivocation.v
 VLSM/ObservableEquivocation.v
 VLSM/PreceedsEquivocation.v
+VLSM/MessageDependencies.v
 
 VLSM/Equivocators/Common.v
 VLSM/Equivocators/Projections.v

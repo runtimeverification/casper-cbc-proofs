@@ -606,11 +606,11 @@ Section Protocol_Proofs.
     received_were_sent s.
   Proof.
     intro H.
-    pose (composite_has_been_sent_capability _ _ validators_finite _
+    pose (composite_has_been_sent_capability _ validators_finite _ _
          : has_been_sent_capability X) as Hhbs.
-    pose (composite_has_been_observed_capability _ _ validators_finite _
+    pose (composite_has_been_observed_capability _ validators_finite _ _
          : has_been_observed_capability X) as Hhbo.
-    assert (observed_were_sent_or_initial _ X _ _ s).
+    assert (observed_were_sent_or_initial  _ X _ _ s).
     {
       apply observed_were_sent_invariant;[|assumption].
       clear.

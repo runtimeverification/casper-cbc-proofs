@@ -8,7 +8,7 @@ Import ListNotations.
 
 From CasperCBC
   Require Import
-    Preamble ListExtras FinExtras FinFunExtras
+    Preamble ListExtras ListSetExtras FinExtras FinFunExtras Measurable
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
@@ -34,7 +34,6 @@ including the forks.
 This amounts to removing from the trace all transitions in which the
 state copy index is not 1, forgetting the additional components of
 the label, and keeping only the copy of index 1 for each machine.
-
 *)
 
 Section fully_equivocating_composition.
@@ -45,6 +44,8 @@ Context {message : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
+  (Hbr : forall i : index, has_been_received_capability (IM i))
+  (Hbo := fun i => has_been_observed_capability_from_sent_received (IM i))
   {i0 : Inhabited index}
   (X := free_composite_vlsm IM)
   .
@@ -55,13 +56,28 @@ Definition equivocator_IM
   :=
   equivocator_vlsm (IM i).
 
-Lemma equivocator_Hbs
+Definition equivocator_Hbr
+  (i : index)
+  :  has_been_received_capability (equivocator_IM i).
+Proof.
+  unfold equivocator_IM.
+  apply equivocator_has_been_received_capability. apply Hbr.
+Defined.
+
+Definition equivocator_Hbs
   (i : index)
   :  has_been_sent_capability (equivocator_IM i).
 Proof.
   unfold equivocator_IM.
   apply equivocator_has_been_sent_capability. apply Hbs.
-Qed.
+Defined.
+
+Definition equivocator_Hbo
+  (i : index)
+  :  has_been_observed_capability (equivocator_IM i)
+  := has_been_observed_capability_from_sent_received
+    (Hbs := equivocator_Hbs i) (Hbr := equivocator_Hbr i) (equivocator_IM i). 
+
 
 Existing Instance is_equivocating_state_dec.
 
@@ -71,6 +87,72 @@ Definition equivocating_indices
   : list index
   :=
   filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
+
+Lemma equivocating_indices_nodup
+  (index_listing : list index)
+  (Hnodup : NoDup index_listing)
+  (s : composite_state equivocator_IM)
+  : NoDup (equivocating_indices index_listing s).
+Proof.
+  apply NoDup_filter. assumption.
+Qed.
+
+Section equivocating_indices_basic_equivocation.
+
+Context
+  (index_listing : list index)
+  (finite_index : Listing index_listing)
+  (Hmeasurable_index : Measurable index)
+  (Hreachable_threshold : ReachableThreshold index)
+  .
+
+Program Instance equivocating_indices_basic_equivocation : basic_equivocation (composite_state equivocator_IM) index
+  := {
+    is_equivocating := fun s v => In v (equivocating_indices index_listing s) ;
+    state_validators := fun s => index_listing
+  }.
+Next Obligation.
+  intro. intros.
+  apply in_dec. assumption.
+Qed.
+Next Obligation.
+  apply finite_index.
+Qed.
+
+
+Lemma equivocating_indices_equivocating_validators
+  : forall s, set_eq (equivocating_validators s) (equivocating_indices index_listing s).
+Proof.
+  intro s.
+  unfold equivocating_validators, is_equivocating, set_eq, incl.
+  simpl.
+  setoid_rewrite filter_In at 1 4. setoid_rewrite bool_decide_eq_true.
+  split; intros; [apply proj2 in H; assumption|].
+  split; [apply finite_index| assumption].
+Qed.
+
+
+Lemma eq_equivocating_indices_equivocation_fault
+: forall s1 s2,
+  set_eq (equivocating_indices index_listing s1) (equivocating_indices index_listing s2) ->
+  equivocation_fault s1 = equivocation_fault s2.
+Proof.
+  intros.
+  apply
+    (set_eq_nodup_sum_weight_eq
+      (equivocating_validators s1)
+      (equivocating_validators s2)
+    ).
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - apply (set_eq_tran (equivocating_validators s1) (equivocating_indices index_listing s1) (equivocating_validators s2))
+    ; [apply equivocating_indices_equivocating_validators|].
+    apply (set_eq_tran (equivocating_indices index_listing s1) (equivocating_indices index_listing s2) (equivocating_validators s2))
+    ; [assumption|].
+    apply set_eq_comm. apply equivocating_indices_equivocating_validators.
+Qed.
+
+End equivocating_indices_basic_equivocation.
 
 (**
 The statement below is obvious a transition cannot make an already equivocating
@@ -104,7 +186,8 @@ Context
   {index_listing : list index}
   (finite_index : Listing index_listing)
   (equivocators_free_vlsm := free_composite_vlsm equivocator_IM)
-  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index equivocator_Hbs)
+  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm :=
+   free_composite_has_been_sent_capability equivocator_IM finite_index equivocator_Hbs)
   .
 
 Existing Instance equivocators_free_Hbs.
@@ -238,6 +321,12 @@ Proof.
   intro i. spec Hs i.
   split; [reflexivity|assumption].
 Qed.
+
+Definition newmachine_descriptors_list
+  (index_listing : list index)
+  (descriptors : equivocator_descriptors)
+  : list index
+  := filter (fun i => @bool_decide _ (Decision_newmachine_descriptor (IM i) (descriptors i))) index_listing.
 
 (**
 A very useful operation on [equivocator_descriptors]s is updating the state corresponding

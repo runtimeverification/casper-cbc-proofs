@@ -1942,6 +1942,25 @@ in <<s>> by outputting <<m>> *)
         assumption.
     Qed.
 
+    (** For any protocol transition there exists a protocol trace ending in it. *)
+    Lemma exists_right_finite_trace_from
+      l s1 iom s2 oom
+      (Ht : protocol_transition l (s1, iom) (s2, oom))
+      : exists s0 ts, finite_protocol_trace_init_to s0 s2 (ts ++ [{| l := l; destination := s2; input := iom; output := oom |}])
+        /\ finite_trace_last s0 ts = s1.
+    Proof.
+      apply protocol_transition_origin in Ht as Hs1.
+      apply protocol_state_has_trace in Hs1.
+      destruct Hs1 as [s0 [ts Hts]].
+      exists s0, ts.
+      destruct Hts as [Hts Hinit].
+      repeat split; [|assumption|revert Hts; apply finite_protocol_trace_from_to_last].
+      apply finite_protocol_trace_from_to_app with s1; [assumption|].
+      apply finite_ptrace_from_to_singleton.
+      assumption.
+    Qed.
+
+
     (** Any trace with the 'finite_protocol_trace_from' property can be completed
     (to the left) to start in an initial state*)
     Lemma finite_protocol_trace_from_complete_left
