@@ -34,7 +34,6 @@ including the forks.
 This amounts to removing from the trace all transitions in which the
 state copy index is not 1, forgetting the additional components of
 the label, and keeping only the copy of index 1 for each machine.
-
 *)
 
 Section fully_equivocating_composition.
@@ -187,7 +186,8 @@ Context
   {index_listing : list index}
   (finite_index : Listing index_listing)
   (equivocators_free_vlsm := free_composite_vlsm equivocator_IM)
-  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := free_composite_has_been_sent_capability equivocator_IM finite_index equivocator_Hbs)
+  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm :=
+   free_composite_has_been_sent_capability equivocator_IM finite_index equivocator_Hbs)
   .
 
 Existing Instance equivocators_free_Hbs.

@@ -126,15 +126,20 @@ Context
   (Hbo := fun i => has_been_observed_capability_from_sent_received (IM i))
   (i0 : Inhabited index)
   (X := free_composite_vlsm IM)
-  (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index Hbs)
-  (X_has_been_received_capability : has_been_received_capability X := free_composite_has_been_received_capability IM finite_index Hbr)
-  (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
+  (X_has_been_sent_capability : has_been_sent_capability X :=
+    free_composite_has_been_sent_capability IM finite_index Hbs)
+  (X_has_been_received_capability : has_been_received_capability X :=
+    free_composite_has_been_received_capability IM finite_index Hbr)
+  (X_has_been_observed_capability : has_been_observed_capability X :=
+    has_been_observed_capability_from_sent_received X)
   (sender : message -> option index)
   {Hdm : MessageDependencies sender (fun i => i) IM}
   {reachable_threshold : ReachableThreshold index}
   (globally_known_equivocators : composite_state IM -> set index)
-  {Hknown_equivocators : known_equivocators_capability IM Hbs (fun i => i) sender Hbr globally_known_equivocators}
-  (Hknown_equivocators_basic_equivocation := known_equivocators_basic_equivocation IM globally_known_equivocators _ finite_index)
+  {Hknown_equivocators :
+    known_equivocators_capability IM Hbs (fun i => i) sender Hbr globally_known_equivocators}
+  (Hknown_equivocators_basic_equivocation :=
+    known_equivocators_basic_equivocation IM globally_known_equivocators _ finite_index)
   .
 
 Existing Instance Hknown_equivocators_basic_equivocation.
@@ -185,7 +190,6 @@ equivocation constraint.
 *)
 
 Context
-  {message : Type}
   `{EqDecision message}
   (index : Type)
   {IndEqDec : EqDecision index}
@@ -200,32 +204,41 @@ Context
   (sender : message -> option index)
   (globally_known_equivocators : composite_state IM -> set index)
   {Hdm : MessageDependencies sender (fun i => i) IM}
-  {Hknown_equivocators : known_equivocators_capability IM Hbs (fun x => x) sender Hbr globally_known_equivocators}
+  {Hknown_equivocators :
+    known_equivocators_capability IM Hbs (fun x => x) sender Hbr globally_known_equivocators}
   {reachable_threshold : ReachableThreshold index}
-  (XE : VLSM message := full_node_equivocators_limited_equivocation_vlsm IM Hbs finite_index sender Hbr)
-  (X : VLSM message := full_node_limited_equivocation_vlsm_composition finite_index IM Hbs Hbr i0 sender globally_known_equivocators)
-  (equivocators_free_Hbs := free_composite_has_been_sent_capability (equivocator_IM IM) finite_index (equivocator_Hbs IM Hbs))
+  (XE : VLSM message :=
+    full_node_equivocators_limited_equivocation_vlsm IM Hbs finite_index sender Hbr)
+  (X : VLSM message := full_node_limited_equivocation_vlsm_composition
+   finite_index IM Hbs Hbr i0 sender globally_known_equivocators)
+  (equivocators_free_Hbs :=
+    free_composite_has_been_sent_capability (equivocator_IM IM) finite_index (equivocator_Hbs IM Hbs))
   (FreeE : VLSM message := free_composite_vlsm (equivocator_IM IM))
-  (FreeE_has_been_sent_capability : has_been_sent_capability FreeE := free_composite_has_been_sent_capability (equivocator_IM IM) finite_index (equivocator_Hbs IM Hbs))
-  (FreeE_has_been_received_capability : has_been_received_capability FreeE := free_composite_has_been_received_capability (equivocator_IM IM) finite_index (equivocator_Hbr IM Hbr))
+  (FreeE_has_been_sent_capability : has_been_sent_capability FreeE :=
+    free_composite_has_been_sent_capability (equivocator_IM IM) finite_index (equivocator_Hbs IM Hbs))
+  (FreeE_has_been_received_capability : has_been_received_capability FreeE :=
+    free_composite_has_been_received_capability (equivocator_IM IM) finite_index (equivocator_Hbr IM Hbr))
   (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
-  (comopsite_initial_decidable := composite_decidable_initial_message IM finite_index Hdec_init)
+  (comopsite_initial_decidable :=
+    composite_decidable_initial_message IM finite_index Hdec_init)
   (Free := free_composite_vlsm IM)
-  (Free_has_been_sent_capability : has_been_sent_capability Free := free_composite_has_been_sent_capability IM finite_index Hbs)
-  (Free_has_been_received_capability : has_been_received_capability Free := free_composite_has_been_received_capability IM finite_index Hbr)
-  (Free_has_been_observed_capability : has_been_observed_capability Free := has_been_observed_capability_from_sent_received Free)
-  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free comopsite_initial_decidable)
-  (Free_no_additional_equivocation_constraint_dec := no_additional_equivocations_constraint_dec IM finite_index Hbo Hdec_init )
-  (Heqv_idx_basic_equivocation : basic_equivocation (composite_state (equivocator_IM IM)) index
-    := equivocating_indices_basic_equivocation IM _ finite_index _ reachable_threshold)
+  (Free_has_been_sent_capability : has_been_sent_capability Free :=
+    free_composite_has_been_sent_capability IM finite_index Hbs)
+  (Free_has_been_received_capability : has_been_received_capability Free :=
+    free_composite_has_been_received_capability IM finite_index Hbr)
+  (Free_has_been_observed_capability : has_been_observed_capability Free :=
+    has_been_observed_capability_from_sent_received Free)
+  (Free_no_additional_equivocation_decidable :=
+    no_additional_equivocations_dec Free comopsite_initial_decidable)
+  (Free_no_additional_equivocation_constraint_dec :=
+    no_additional_equivocations_constraint_dec IM finite_index Hbo Hdec_init )
+  (Heqv_idx_basic_equivocation : basic_equivocation (composite_state (equivocator_IM IM)) index :=
+    equivocating_indices_basic_equivocation IM _ finite_index _ reachable_threshold)
   .
 
 Existing Instance Heqv_idx_basic_equivocation.
 
-
-(**
-Inclusion in the free composition
-*)
+(** Inclusion in the free composition. *)
 Lemma equivocators_limited_equivocations_vlsm_incl_free
   : VLSM_incl XE (free_composite_vlsm (equivocator_IM IM)).
 Proof.
@@ -233,9 +246,7 @@ Proof.
   intros l som H. exact I.
 Qed.
 
-(**
-Inclusion in the free composition
-*)
+(** Inclusion in the free composition. *)
 Lemma equivocators_limited_equivocations_vlsm_incl_preloaded_free
   : VLSM_incl XE (pre_loaded_with_all_messages_vlsm (free_composite_vlsm (equivocator_IM IM))).
 Proof.
@@ -245,7 +256,6 @@ Proof.
   revert Hincl1 Hincl2.
   apply VLSM_incl_trans.
 Qed.
-
 
 (**
 Inclusion in the composition of equivocators with no message equivocation
@@ -258,9 +268,7 @@ Proof.
   intros l som H. apply H.
 Qed.
 
-
 Existing Instance i0.
-
 
 Lemma limited_equivocators_initial_state_project
   (es : vstate XE)
@@ -293,7 +301,7 @@ Proof.
   exists emi. assumption.
 Qed.
 
-(* A protocol state for a VLSM satisfying the limited equivocation assumption
+(** A protocol state for a VLSM satisfying the limited equivocation assumption
 has limited equivocation.
 *)
 Lemma protocol_state_limited_equivocation
@@ -613,8 +621,7 @@ Proof.
       reflexivity.
 Qed.
 
-(** Instantiating the lemma above with the free constraint.
-*)
+(** Instantiating the lemma above with the free constraint. *)
 Lemma free_equivocators_protocol_trace_project
   (final_descriptors : equivocator_descriptors IM)
   (is : composite_state (equivocator_IM IM))
@@ -729,7 +736,7 @@ Qed.
 (**
 The set of equivocator indices can only grow through a transition.
 
-If the transition label is a NewMachine, then the corresponding resulting state
+If the transition label is a [NewMachine], then the corresponding resulting state
 component is sure to be equivocating.
 *)
 Lemma equivocators_transition_preserves_equivocating_indices_and_newmachines
@@ -1021,7 +1028,5 @@ Proof.
         _ Hnot_equivocating _ _ Htr_project _ _ Hitem_project
       ).
 Qed.
-
-
 
 End limited_equivocation_state_to_message.

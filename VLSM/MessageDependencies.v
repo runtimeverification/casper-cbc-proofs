@@ -9,6 +9,15 @@ Require Import
   VLSM.Common VLSM.Composition VLSM.Equivocation
   .
 
+(** * VLSM Message Dependencies
+
+An abstract framework for the full-node condition.
+Assumes that each message has an associated set of [message_dependencies],
+which is empty for initial messages.
+Furthermore, it constraints senders to satisfy the
+[sender_strong_nontriviality] property.
+*)
+
 Section message_dependencies.
 
 Context
@@ -26,15 +35,10 @@ Context
   (X := free_composite_vlsm IM)
   .
 
-(** An abstract framework for the full-node condition.
-Assumes that each message has an associated set of [message_dependencies],
-which is empty for initial messages.
-Furthermore, it constraints senders to satisfy the
-[sender_strong_nontriviality] property.
-
-[message_dependencies] for a message @m@m are axiomatized to be exactly those
-messages which were received by the state emitting the message @m@, and are
-thus responsible for @m@ being created.
+(**
+In this typeclass, [message_dependencies] for a message @m@ are axiomatized
+to be exactly those messages which were received by the state emitting the
+message @m@, and are thus responsible for @m@ being created.
 *)
 Class MessageDependencies
   :=
@@ -69,7 +73,7 @@ Definition message_dependencies_local_full_node_condition
   := forall dm, In dm (message_dependencies m) ->
     @has_been_observed _ (IM i) (Hbo i) s dm.
 
-(** The constraint associated to the above condition. *)
+(** The constraint associated to [message_dependencies_local_full_node_condition]. *)
 Definition message_dependencies_local_full_node_constraint
   {Hdm : MessageDependencies}
   (l : composite_label IM)
@@ -89,7 +93,6 @@ End message_dependencies.
 Arguments message_dependencies { _ _ _ _ _ _ _ } _ .
 Arguments message_dependencies_local_full_node_constraint  { _ _ _ _ _ _ _ _ _ } _ _.
 Arguments message_dependencies_local_full_node_condition  { _ _ _ _ _ _ _ _ _ _} _ _.
-
 
 Section message_dependencies_full_node.
 

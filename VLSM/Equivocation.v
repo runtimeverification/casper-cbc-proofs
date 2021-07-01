@@ -91,8 +91,7 @@ Class basic_equivocation
  }.
 
 
-(**
-*** State-message oracles. Endowing states with history.
+(** *** State-message oracles and endowing states with history
 
     Our first step is to define some useful concepts in the context of a single VLSM.
 
@@ -814,8 +813,7 @@ Section Simple.
       |}.
 End Simple.
 
-(**
- *** Stepwise consistency properties for [state_message_oracle].
+(** *** Stepwise consistency properties for [state_message_oracle]
 
  The above definitions like [all_traces_have_message_prop]
  connect a [state_message_oracle] to a predicate on
@@ -1052,8 +1050,7 @@ Section StepwiseFromTrace.
   Defined.
 End StepwiseFromTrace.
 
-(**
-** Stepwise view of [has_been_sent_capability]
+(** ** Stepwise view of [has_been_sent_capability]
 
 This reduces the proof obligations in [has_been_sent_capability]
 to proving the stepwise properties of [oracle_stepwise_props].
@@ -1106,9 +1103,7 @@ Proof.
   exact (oracle_step_update (has_been_sent_stepwise_from_trace Hhbs)).
 Qed.
 
-(**
-** Stepwise view of [has_been_received_capability]
- *)
+(** ** Stepwise view of [has_been_received_capability] *)
 
 Definition has_been_received_stepwise_props
        [message] [vlsm: VLSM message] (has_been_received_pred: state_message_oracle vlsm) : Prop :=
@@ -1149,8 +1144,7 @@ Proof.
   exact (oracle_step_update (has_been_received_stepwise_from_trace Hhbs)).
 Qed.
 
-(**
-** A state message oracle for messages sent or received
+(** ** A state message oracle for messages sent or received
 
 In protocols like the CBC full node protocol, validators often
 work with the set of all messages they have directly observed,
@@ -1158,7 +1152,7 @@ which includes the messages the node sent itself along with
 messages that were received.
 The [has_been_observed] oracle holds for a message if the
 message was sent or received in any transition.
- *)
+*)
 
 Class has_been_observed_capability {message} (vlsm: VLSM message) :=
   {
@@ -1352,8 +1346,7 @@ Local Program Instance has_been_observed_capability_from_sent_received
 
 End sent_received_observed_capabilities.
 
-(**
-*** No-Equivocation Invariants
+(** *** No-equivocation invariants
 
 A VLSM that enforces the [no_equivocations] constraint and also
 supports [has_been_recevied] (or [has_been_observed]) obeys an
@@ -1489,8 +1482,7 @@ Section NoEquivocationInvariants.
 
 End NoEquivocationInvariants.
 
-(**
-*** Equivocation in compositions.
+(** *** Equivocation in compositions
 
  We now move on to a composite context. Each component of our composition
     will have [has_been_sent] and [has_been_received] capabilities.
@@ -2124,8 +2116,7 @@ Section Composite.
   Qed.
      (* end hide *)
 
-(**
-*** Composite No-Equivocation Invariants
+(** *** Composite no-equivocation invariants
 
 A VLSM composition whose constraint substumes the [no_equivocations] constraint
 and also supports [has_been_recevied] (or [has_been_observed]) obeys an

@@ -36,8 +36,7 @@ Context
 
 Existing Instance i0.
 
-(** Definition of fixed-equivocation for states of the composition of equivocators.
-*)
+(** Definition of fixed-equivocation for states of the composition of equivocators. *)
 Definition state_has_fixed_equivocation
   (s : composite_state equivocator_IM)
   : Prop
@@ -121,9 +120,7 @@ Proof.
     assumption.
 Qed.
 
-(**
-Inclusion in the free composition
-*)
+(** Inclusion in the free composition. *)
 Lemma equivocators_fixed_equivocations_vlsm_incl_free
   : VLSM_incl equivocators_fixed_equivocations_vlsm (free_composite_vlsm equivocator_IM).
 Proof.
@@ -159,13 +156,17 @@ Context
   (Hbr : forall i : index, has_been_received_capability (IM i))
   (equivocating : set index)
   (Hi0_equiv : equivocating <> [])
-  (i0 : Inhabited index := @SubProjectionTraces.i0 index equivocating Hi0_equiv)
+  (i0 : Inhabited index :=
+    @SubProjectionTraces.i0 index equivocating Hi0_equiv)
   (X := free_composite_vlsm IM)
   {index_listing : list index}
   (finite_index : Listing index_listing)
-  (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index Hbs)
-  (X_has_been_received_capability : has_been_received_capability X := free_composite_has_been_received_capability IM finite_index Hbr)
-  (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
+  (X_has_been_sent_capability : has_been_sent_capability X :=
+    free_composite_has_been_sent_capability IM finite_index Hbs)
+  (X_has_been_received_capability : has_been_received_capability X :=
+    free_composite_has_been_received_capability IM finite_index Hbr)
+  (X_has_been_observed_capability : has_been_observed_capability X :=
+    has_been_observed_capability_from_sent_received X)
   (equivocator_descriptors := equivocator_descriptors IM)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
@@ -173,10 +174,13 @@ Context
   (proper_equivocator_descriptors := proper_equivocator_descriptors IM)
   (index_equivocating_prop : index -> Prop := sub_index_prop equivocating)
   (equivocating_index : Type := sub_index equivocating)
-  (equivocating_i0 : Inhabited equivocating_index := sub_index_i0 equivocating Hi0_equiv)
+  (equivocating_i0 : Inhabited equivocating_index :=
+    sub_index_i0 equivocating Hi0_equiv)
   (equivocating_IM := sub_IM IM equivocating)
-  (equivocating_index_eq_dec : EqDecision equivocating_index := sub_index_eq_dec equivocating)
-  (free_equivocating_vlsm_composition : VLSM message := free_composite_vlsm equivocating_IM)
+  (equivocating_index_eq_dec : EqDecision equivocating_index :=
+    sub_index_eq_dec equivocating)
+  (free_equivocating_vlsm_composition : VLSM message :=
+    free_composite_vlsm equivocating_IM)
   (sub_equivocator_IM := sub_IM equivocator_IM equivocating)
   .
 

@@ -415,9 +415,7 @@ End oracle_lifting.
 
 Section has_been_received_lifting.
 
-(** ** Lifting the [has_been_received_capability]
-*)
-
+(** ** Lifting the [has_been_received_capability] *)
 
 Context
   {Hbr : has_been_received_capability X}
@@ -462,14 +460,11 @@ End has_been_received_lifting.
 
 Section has_been_sent_lifting.
 
-(** ** Lifting the [has_been_sent_capability]
-*)
-
+(** ** Lifting the [has_been_sent_capability] *)
 
 Context
   {Hbs : has_been_sent_capability X}
   .
-
 
 (** We define [has_been_sent] for the [equivocator_vlsm] as being sent by any
 of the internal machines.
@@ -510,8 +505,7 @@ End has_been_sent_lifting.
 
 Section computable_sent_messages_lifting.
 
-(** ** Lifting the [computable_sent_messages] property
-*)
+(** ** Lifting the [computable_sent_messages] property *)
 
 Context
   {Hsent_messages : computable_sent_messages X}
@@ -627,7 +621,6 @@ Next Obligation.
   apply has_been_sent_consistency; [| assumption].
   apply (equivocator_has_been_sent_capability (Hbs := Hbeen_sent_X)).
 Defined.
-
 
 End computable_sent_messages_lifting.
 
