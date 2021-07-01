@@ -2479,6 +2479,19 @@ Section composition.
     }
     eapply In_firstn. apply H.
   Qed.
+
+
+  Lemma protocol_implies_isProtocol m:
+    protocol_message_prop free_composite_elmo m ->
+    isProtocol (stateOf m) (authorOf m) weights otreshold.
+  Proof.
+    intros H.
+    destruct m. destruct p.
+    induction l using rev_ind; simpl.
+    - unfold isProtocol. simpl. reflexivity.
+    - Search protocol_message_prop app.
+  Abort.
+  
   
   Lemma isProtocol_implies_protocol component st m:
     otreshold = None ->
