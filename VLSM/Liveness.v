@@ -8,7 +8,9 @@ From CasperCBC
     VLSM.Common
     VLSM.Decisions
     VLSM.Composition
-    VLSM.Equivocation. (* for has_been_sent *)
+    VLSM.Equivocation (* for has_been_sent *)
+    VLSM.Equivocation.NoEquivocation
+    .
 
 (** * VLSM Liveness *)
 
@@ -221,7 +223,7 @@ Section StrongSynchrony.
   Definition no_synch_faults_no_equivocation_constraint :
     composite_label IM -> composite_state IM * option message -> Prop
     := fun l som =>
-         no_equivocations Free l som
+         composite_no_equivocations IM Hsents l som
          /\ delivery_time_constraint l som
          /\ timely_reception_constraint l som.
 

@@ -9,7 +9,7 @@ Import ListNotations.
 From CasperCBC
   Require Import
     Preamble ListExtras ListSetExtras FinExtras FinFunExtras Measurable
-    VLSM.Common VLSM.Composition VLSM.Equivocation
+    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.Equivocation.NoEquivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
     .
@@ -194,7 +194,7 @@ Existing Instance equivocators_free_Hbs.
 
 Definition equivocators_no_equivocations_constraint
   :=
-  no_equivocations_additional_constraint equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index.
+  no_equivocations_additional_constraint equivocator_IM equivocator_Hbs (free_constraint equivocator_IM).
 
 Definition equivocators_no_equivocations_vlsm
   : VLSM message
@@ -205,7 +205,7 @@ Definition seeded_equivocators_no_equivocation_vlsm
   (seed : message -> Prop)
   : VLSM message
   :=
-  composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index seed.
+  composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM equivocator_Hbs (free_constraint equivocator_IM) seed.
 
 Lemma equivocators_initial_state_size
   (is : vstate equivocators_no_equivocations_vlsm)

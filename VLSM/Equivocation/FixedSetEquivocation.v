@@ -6,7 +6,6 @@ From CasperCBC Require Import
     VLSM.Common
     VLSM.Equivocation
     VLSM.Composition
-    VLSM.Equivocation.KnownEquivocators
     VLSM.SubProjectionTraces
     .
 
@@ -86,60 +85,3 @@ Definition fixed_equivocation_vlsm_composition : VLSM message
 
 End fixed_equivocation_without_fullnode.
 
-(*
-Section known_equivocators_fixed_set.
-
-Context
-  {message : Type}
-  {index : Type}
-  {IndEqDec : EqDecision index}
-  {index_listing : list index}
-  (finite_index : Listing index_listing)
-  (IM : index -> VLSM message)
-  (Hbs : forall i, has_been_sent_capability (IM i))
-  (Hbr : forall i, has_been_received_capability (IM i))
-  (Hbo := fun i => has_been_observed_capability_from_sent_received (IM i))
-  (i0 : Inhabited index)
-  (Free := free_composite_vlsm IM)
-  (Free_has_been_sent_capability : has_been_sent_capability Free := free_composite_has_been_sent_capability IM finite_index Hbs)
-  (Free_has_been_received_capability : has_been_received_capability Free := free_composite_has_been_received_capability IM finite_index Hbr)
-  (Free_has_been_observed_capability : has_been_observed_capability Free := has_been_observed_capability_from_sent_received Free)
-  (sender : message -> option index)
-  (globally_known_equivocators : composite_state IM -> set index)
-  {Hknown_equivocators : known_equivocators_capability IM i0 Hbs Hbr index  (fun i => i) sender globally_known_equivocators}
-  (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-  (X := composite_vlsm IM constraint)
-  .
-
-Existing Instance Free_has_been_sent_capability.
-
-Definition known_equivocators_fixed_equivocation_constraint
-  (s : composite_state IM)
-  (ke := globally_known_equivocators s)
-  : composite_label IM -> composite_state IM * option message -> Prop
-  :=
-  match null_dec ke with
-  | left _ => no_equivocations Free
-  | right n => fixed_equivocation_constraint IM Hbs Hbr ke n finite_index
-  end.
-
-Definition known_equivocators_fixed_equivocation_additional_constraint
-  (base_state : composite_state IM)
-  (l : composite_label IM)
-  (som : composite_state IM * option message)
-  : Prop
-  := constraint l som /\ known_equivocators_fixed_equivocation_constraint base_state l som.
-
-Lemma mine
-  s0 s tr
-  (Htr : finite_protocol_trace_init_to X s0 s tr)
-  (Y := composite_vlsm IM (known_equivocators_fixed_equivocation_additional_constraint s))
-  : finite_protocol_trace_init_to Y s0 s tr.
-Proof.
-  destruct Htr as [Htr Hinit].
-  split; [| assumption]. clear Hinit.
-  induction Htr.
-
-
-End known_equivocators_fixed_set.
-*)

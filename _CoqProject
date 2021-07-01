@@ -80,6 +80,7 @@ VLSM/ObservableEquivocation.v
 VLSM/PreceedsEquivocation.v
 VLSM/MessageDependencies.v
 
+VLSM/Equivocation/NoEquivocation.v
 VLSM/Equivocation/KnownEquivocators.v
 VLSM/Equivocation/FixedSetEquivocation.v
 VLSM/Equivocation/LimitedEquivocation.v

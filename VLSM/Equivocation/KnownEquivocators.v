@@ -4,9 +4,11 @@ Import ListNotations.
 From CasperCBC Require Import
     Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable
     VLSM.Common
-    VLSM.MessageDependencies
     VLSM.Composition
-    VLSM.Equivocation.
+    VLSM.Equivocation
+    VLSM.Equivocation.NoEquivocation
+    VLSM.Equivocation.FixedSetEquivocation
+    .
 
 Section known_equivocators.
 
@@ -140,3 +142,41 @@ Qed.
 
 End known_equivocators_properties.
 End known_equivocators.
+
+Section known_equivocators_fixed_set.
+
+Context
+  {message : Type}
+  {index : Type}
+  {IndEqDec : EqDecision index}
+  {index_listing : list index}
+  (finite_index : Listing index_listing)
+  (IM : index -> VLSM message)
+  (Hbs : forall i, has_been_sent_capability (IM i))
+  (Hbr : forall i, has_been_received_capability (IM i))
+  (Hbo := fun i => has_been_observed_capability_from_sent_received (IM i))
+  (i0 : Inhabited index)
+  (Free := free_composite_vlsm IM)
+  (sender : message -> option index)
+  (globally_known_equivocators : composite_state IM -> set index)
+  .
+
+
+Definition known_equivocators_fixed_equivocation_constraint
+  (s : composite_state IM)
+  (ke := globally_known_equivocators s)
+  : composite_label IM -> composite_state IM * option message -> Prop
+  :=
+  match null_dec ke with
+  | left _ => composite_no_equivocations IM Hbs
+  | right n => fixed_equivocation_constraint IM Hbs Hbr ke n finite_index
+  end.
+
+Definition known_equivocators_fixed_equivocation_characterization : Prop :=
+  forall s,
+    protocol_state_prop Free s ->
+    exists s0 tr
+      (Y := composite_vlsm IM (known_equivocators_fixed_equivocation_constraint s)),
+      finite_protocol_trace_init_to Y s0 s tr.
+
+End known_equivocators_fixed_set.

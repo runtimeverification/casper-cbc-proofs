@@ -11,6 +11,7 @@ From CasperCBC
     Lib.Measurable
     VLSM.Common VLSM.Composition VLSM.Equivocation
     VLSM.Equivocation.KnownEquivocators
+    VLSM.Equivocation.NoEquivocation
     VLSM.Equivocation.LimitedEquivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
@@ -51,7 +52,7 @@ Definition equivocators_limited_equivocations_constraint
   (som : composite_state equivocator_IM * option message)
   (som' := composite_transition equivocator_IM l som)
   : Prop
-  := equivocators_no_equivocations_constraint IM Hbs finite_index l som
+  := equivocators_no_equivocations_constraint IM Hbs l som
   /\ not_heavy (fst som').
 
 Definition equivocators_limited_equivocations_vlsm
@@ -191,7 +192,7 @@ Inclusion in the composition of equivocators with no message equivocation
 (no restriction on state equivocation).
 *)
 Lemma equivocators_limited_equivocations_vlsm_incl_no_equivocations
-  : VLSM_incl XE (equivocators_no_equivocations_vlsm IM Hbs finite_index).
+  : VLSM_incl XE (equivocators_no_equivocations_vlsm IM Hbs).
 Proof.
   apply constraint_subsumption_incl.
   intros l som H. apply H.
@@ -715,7 +716,7 @@ Proof.
     in Heqv; [|assumption].
   destruct Heqv as [j [Hjeqv [m [Hsender [Hnbs Hrcv]]]]].
   specialize
-    (composite_observed_were_sent_invariant (equivocator_IM IM) finite_index (equivocator_Hbs IM Hbs) (equivocator_Hbo IM Hbs Hbr)
+    (composite_observed_were_sent_invariant (equivocator_IM IM) (equivocator_Hbs IM Hbs) (equivocator_Hbo IM Hbs Hbr) finite_index
       (full_node_equivocators_limited_equivocation_constraint IM Hbs finite_index sender Hbr)
     ) as Hinvariant.
   spec Hinvariant.  { intro. intros. apply H. }

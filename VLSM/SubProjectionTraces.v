@@ -2,7 +2,7 @@ From Coq Require Import List Nat Bool Lia FunctionalExtensionality Lia Program F
 Import ListNotations.
 
 From CasperCBC
-Require Import Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition VLSM.Equivocation.
+Require Import Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.Equivocation.NoEquivocation.
 
 (** * VLSM Subcomposition *)
 
@@ -477,9 +477,9 @@ Existing Instance X_has_been_sent_capability.
 
 Context
   (seed : message -> Prop)
-  (Hno_equiv : constraint_subsumption IM constraint (no_equivocations Free))
+  (Hno_equiv : constraint_subsumption IM constraint (composite_no_equivocations IM has_been_sent_capabilities))
   (seeded_constraint : composite_label sub_IM -> composite_state sub_IM * option message -> Prop)
-  (Xj := composite_no_equivocation_vlsm_with_pre_loaded sub_IM (free_constraint sub_IM) sub_has_been_sent_capabilities finite_sub_index seed)
+  (Xj := composite_no_equivocation_vlsm_with_pre_loaded sub_IM sub_has_been_sent_capabilities (free_constraint sub_IM) seed)
   .
 
 
@@ -491,8 +491,8 @@ Proof.
   specialize
     (preloaded_constraint_subsumption_pre_loaded_with_all_messages_incl sub_IM
       (no_equivocations_additional_constraint_with_pre_loaded sub_IM
-        (free_constraint sub_IM) sub_has_been_sent_capabilities
-        finite_sub_index seed)
+         sub_has_been_sent_capabilities(free_constraint sub_IM)
+        seed)
       (free_constraint sub_IM)
     ) as Hincl.
   spec Hincl; [intros s Hs l om H; exact I|].

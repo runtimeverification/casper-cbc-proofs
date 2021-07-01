@@ -10,7 +10,7 @@ From CasperCBC
   Require Import
     Preamble ListExtras FinExtras
     VLSM.Common VLSM.Composition VLSM.ProjectionTraces VLSM.SubProjectionTraces
-    VLSM.Equivocation
+    VLSM.Equivocation VLSM.Equivocation.NoEquivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
@@ -31,7 +31,7 @@ Context {message : Type}
   {index_listing : list index}
   (finite_index : Listing index_listing)
   (equivocator_descriptors := equivocator_descriptors IM)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocator_descriptors_update := equivocator_descriptors_update IM)
@@ -988,7 +988,7 @@ Context
   (seed : message -> Prop)
   (FreeE := free_composite_vlsm equivocator_IM)
   (PreFreeE := pre_loaded_with_all_messages_vlsm FreeE)
-  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs finite_index seed)
+  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs seed)
   (SeededX := pre_loaded_vlsm X seed)
   .
 
@@ -1002,10 +1002,10 @@ Proof.
   - right. assumption.
 Qed.
 
-Lemma seeded_equivocators_incl_preloaded
+Lemma seeded_no_equivocation_incl_preloaded
   : VLSM_incl SeededXE PreFreeE.
 Proof.
-  apply seeded_equivocators_incl_preloaded.
+  apply seeded_no_equivocation_incl_preloaded.
 Qed.
 
 (**
@@ -1433,7 +1433,7 @@ Proof.
       { clear -Hs.
         apply VLSM_incl_protocol_state with (machine SeededXE)
         ; [|assumption].
-        apply seeded_equivocators_incl_preloaded.
+        apply seeded_no_equivocation_incl_preloaded.
       }
 
       specialize
@@ -1443,7 +1443,7 @@ Proof.
       assert
         (Htr'pre : finite_protocol_trace PreFreeE is tr').
       {  split; [|assumption].
-        apply (VLSM_incl_finite_protocol_trace_from _ _ seeded_equivocators_incl_preloaded).
+        apply (VLSM_incl_finite_protocol_trace_from _ _ seeded_no_equivocation_incl_preloaded).
         assumption.
       }
       spec Hno_equiv;
@@ -1504,7 +1504,7 @@ Proof.
   destruct Htr' as [Hpre _].
   assert (HprePre : finite_protocol_trace pre_loaded_equivocators is0 pre).
   { split; [|assumption].
-    apply (VLSM_incl_finite_protocol_trace_from _ _ seeded_equivocators_incl_preloaded).
+    apply (VLSM_incl_finite_protocol_trace_from _ _ seeded_no_equivocation_incl_preloaded).
     assumption.
   }
   specialize
@@ -1544,7 +1544,7 @@ Proof.
     ) as Hproject.
   spec Hproject.
   { apply VLSM_incl_finite_protocol_trace_from; [|assumption].
-    specialize (false_composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index)
+    specialize (false_composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM (equivocator_Hbs IM Hbs) (free_constraint equivocator_IM))
       as Heq.
     match goal with
     |- VLSM_incl_part ?m1 ?m2 =>

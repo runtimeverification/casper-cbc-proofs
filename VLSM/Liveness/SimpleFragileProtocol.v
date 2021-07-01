@@ -11,6 +11,7 @@ Require Import
   VLSM.Liveness
   VLSM.Composition
   VLSM.Equivocation (* for has_been_sent *)
+  VLSM.Equivocation.NoEquivocation
 .
 
 (** * VLSM Simple Live Protocol *)
@@ -549,7 +550,7 @@ Section Protocol_Proofs.
 
   Context
     (constraint : composite_label IM -> composite_state IM * option (validator_message C V) -> Prop
-       := no_synch_faults_no_equivocation_constraint validators_finite IM
+       := no_synch_faults_no_equivocation_constraint IM
                  (validator_clock c0 plan estimator)
              message_time)
     (X: VLSM (validator_message C V) := composite_vlsm IM constraint)
@@ -1007,7 +1008,7 @@ Section Protocol_Proofs.
     }
     clear Hall_proto clocks_inv Hproto Hlt.
     revert s Heqlen tr Htr Hstart.
-    clear -P_dec.
+    clear -P_dec validators_finite.
     apply (Wf_nat.lt_wf_ind len);clear len.
     intros len IH s Hlen tr Htr HP.
     destruct Htr.
