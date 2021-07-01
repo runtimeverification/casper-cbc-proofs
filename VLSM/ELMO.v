@@ -2449,6 +2449,7 @@ Section composition.
   Qed.
 
 
+  (* FIXME: Duplicate of isProtocol_last_sendInPrefix *)
   Lemma isProtocol_last_receive_impl_send l p n n0:
     isProtocol (Cprestate (l ++ [Cobservation Receive (Cpremessage p n) n0]))
                n weights otreshold ->
@@ -2768,6 +2769,13 @@ Section composition.
         { destruct (decide (n1 = n)); simpl. subst.
           apply bool_decide_eq_true. apply H. reflexivity. reflexivity. }
         rewrite H1 in Hgen. simpl in Hgen. clear H H1.
+
+        rewrite HnoEquivCheck in Hgen.
+        assert (isProtocol p n1 weights None).
+        {
+          Check protocol_state_contains_receive_implies_isProtocol.
+          Search In isProtocol.
+        }
         
                                                          
         
