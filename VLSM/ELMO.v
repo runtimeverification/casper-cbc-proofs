@@ -2480,6 +2480,12 @@ Section composition.
     eapply In_firstn. apply H.
   Qed.
 
+  Lemma protocol_strip_last l x n:
+    protocol_message_prop free_composite_elmo (Cpremessage (Cprestate (l ++ [x])) n) ->
+    protocol_message_prop free_composite_elmo (Cpremessage (Cprestate l) n).
+  Proof.
+    intros H.
+  Abort.
 
   Lemma protocol_implies_isProtocol m:
     protocol_message_prop free_composite_elmo m ->
@@ -2489,7 +2495,7 @@ Section composition.
     destruct m. destruct p.
     induction l using rev_ind; simpl.
     - unfold isProtocol. simpl. reflexivity.
-    - Search protocol_message_prop app.
+    - 
   Abort.
   
   
