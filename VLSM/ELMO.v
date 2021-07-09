@@ -2504,10 +2504,14 @@ Section composition.
         the protocol message (Cpremessage (Cprestate l) n).
 
      *)
-    Search exist.
+
     destruct H as [s Hproto].
     pose proof (Htrace := protocol_is_trace free_composite_elmo _ _ Hproto).
     destruct Htrace.
+        (* TODO prove a lemma saying that all messages from the initial state contain only the empty state.
+       From that it should follow that s is not initial.
+       For that it could be helpful to prove that (1) initial state is empty, and (2) composite initial state is a collection of empty states.
+*)
     
     Check nth_error.
     Print transition_item.
