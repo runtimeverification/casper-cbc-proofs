@@ -2485,6 +2485,48 @@ Section composition.
     protocol_message_prop free_composite_elmo (Cpremessage (Cprestate l) n).
   Proof.
     intros H.
+    (* [Cpremessage (Cprestate (l ++ [x]))] must have been sent from some protocol state
+    [s] such that [s n = Cprestate (l ++ [x])].
+        Now if there were no transition to [s n] from some protocol state [s'] satisfying
+        [s' n = Cprestate l], then the [n]th projection of any state on any trace leading to [s]
+        would be [Cprestate (l ++ [x])] - even the initial state. But initial state is empty!
+        That is a contradiction, and therefore there must be some such [s'].
+
+        Consider a trace [is, tr] leading to [s]. There must be some position [i] such that
+        [map label (nth_error tr i) = Some (n, Receive)]
+        and [finite_trace_nth is tr i = Some l].
+        Well, it depends who's observation is [x].
+        At the very least, there must be some position [i] such that
+        and [finite_trace_nth is tr i = Some l] - because the state can only grow
+        and starts in empty state.
+
+        We can then extend the i-prefix of tr with label [(n, Send)] and get
+        the protocol message (Cpremessage (Cprestate l) n).
+
+     *)
+    Search exist.
+    destruct H as [s Hproto].
+    pose proof (Htrace := protocol_is_trace free_composite_elmo _ _ Hproto).
+    destruct Htrace.
+    
+    Check nth_error.
+    Print transition_item.
+    Search state list transition_item.
+    Check trace_is_protocol_prop.
+
+    
+    apply protocol_message_prop_iff in H.
+    destruct H.
+    { destruct H as [im H].
+      (* TODO extract this proof out. *)
+      unfold initial_message in im.
+      pose proof (proj2_sig im). rewrite -H in H0. simpl in H0.
+      unfold composite_initial_message_prop in H0. destruct H0 as [n0 [mi Hmi]].
+      unfold vinitial_message,initial_message in mi.
+      pose proof (proj2_sig mi). rewrite Hmi in H0. simpl in H0. inversion H0.
+    }
+    destruct H as [s Hproto].
+    induction Hproto usin
   Abort.
 
   Lemma protocol_implies_isProtocol m:
