@@ -2502,6 +2502,52 @@ Section composition.
     simpl in Hinitial.
     intros n. apply elmo_initial_state_is_empty. apply Hinitial.
   Qed.
+
+  Lemma next_to_last_from_message l x n ist s tr:
+    finite_protocol_trace_init_to free_composite_elmo ist s tr ->
+    option_map output (last_error tr) = Some (Some (Cpremessage (Cprestate (l ++ [x])) n)) ->
+    exists st,
+      (finite_trace_nth ist tr (length tr - 1) = Some st)
+      /\ st (component_to_index n) = (Cprestate (l ++ [x])).
+  Proof.
+    intros Hfpti Hlast.
+    pose proof (Htr := null_or_exists_last tr).
+    destruct Htr.
+    { subst tr. simpl in Hlast. inversion Hlast. }
+    destruct H as [tr' [a Htr']]. subst tr.
+    rewrite last_error_is_last in Hlast. simpl in Hlast.
+    inversion Hlast. clear Hlast.
+    rewrite app_length. simpl.
+
+    assert (Htmp: (length tr' + 1 - 1) = (length tr')) by lia.
+    rewrite Htmp. clear Htmp.
+    rewrite finite_trace_nth_app1.
+    { simpl. lia. }
+    unfold finite_protocol_trace_init_to in Hfpti.
+    destruct Hfpti as [Hfpt Hist].
+    pose proof (Hfpt' := finite_protocol_trace_from_to_app_split _ _ _ _ _ Hfpt).
+    simpl in Hfpt'.
+    destruct Hfpt' as [Hfpt1 Hfpt2].
+    inversion Hfpt2; subst; clear Hfpt2.
+    inversion H4; subst; clear H4.
+    simpl in H0. subst oom.
+    rewrite finite_trace_nth_last.
+    unfold protocol_transition in H5.
+    destruct H5 as [Hvalid Htransition].
+    simpl in Htransition.
+    destruct l0.
+    remember (vtransition (IM x0) v (finite_trace_last ist tr' x0, iom)) as VT.
+    rewrite -HeqVT in Htransition.
+    destruct VT. inversion Htransition. subst s o. clear Htransition.
+    unfold vtransition in HeqVT. simpl in HeqVT.
+    destruct v,iom; inversion HeqVT; subst. clear HeqVT.
+    rewrite -H2 in H.
+    simpl in H.
+    rewrite index_to_component_to_index.
+    exists (finite_trace_last ist tr').
+    rewrite -H2. tauto.
+  Qed.                                               
+    
   
   Lemma protocol_strip_last l x n:
     protocol_message_prop free_composite_elmo (Cpremessage (Cprestate (l ++ [x])) n) ->
@@ -2531,8 +2577,6 @@ Section composition.
 
     destruct H as [s Hproto].
     pose proof (Htrace := protocol_is_trace free_composite_elmo _ _ Hproto).
-    Print protocol_prop. Check vinitial_state_prop.
-    Check initial_state_is_collection_of_empty_states.
 
     (* [s] is not an initial state. TODO: extract a lemma. *)
     destruct Htrace.
@@ -2557,18 +2601,16 @@ Section composition.
         rewrite -app_assoc in H4. simpl in H4.
         apply app_eq_nil in H4. destruct H4. inversion H4.
     }
-    
-    
-      
-      unfold initial_state_prop in H. simpl in H. unfold composite_initial_state_prop in H.
-
-      
-    }
-    
-        (* TODO prove a lemma saying that all messages from the initial state contain only the empty state.
-       From that it should follow that s is not initial.
-       For that it could be helpful to prove that (1) initial state is empty, and (2) composite initial state is a collection of empty states.
-*)
+    clear Hproto.
+    Search existsb.
+    Check existsb_forall.
+    destruct H as [ist [tr [Htr Hlast]]].
+    Search ist.
+    Print transition_item.
+    (* First, we need to prove that the last state of tr before emitting the message is [Cprestate (l ++ [x])] *)
+       on the component [n]. *)
+    (* Now I need to be looking for a position in the trace where the [n]the component
+       takes a step.
     
     Check nth_error.
     Print transition_item.
