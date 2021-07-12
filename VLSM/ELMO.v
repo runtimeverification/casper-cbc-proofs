@@ -2503,12 +2503,12 @@ Section composition.
     intros n. apply elmo_initial_state_is_empty. apply Hinitial.
   Qed.
 
-  Lemma next_to_last_from_message l x n ist s tr:
+  Lemma next_to_last_from_message ps n ist s tr:
     finite_protocol_trace_init_to free_composite_elmo ist s tr ->
-    option_map output (last_error tr) = Some (Some (Cpremessage (Cprestate (l ++ [x])) n)) ->
+    option_map output (last_error tr) = Some (Some (Cpremessage ps n)) ->
     exists st,
       (finite_trace_nth ist tr (length tr - 1) = Some st)
-      /\ st (component_to_index n) = (Cprestate (l ++ [x])).
+      /\ st (component_to_index n) = ps.
   Proof.
     intros Hfpti Hlast.
     pose proof (Htr := null_or_exists_last tr).
@@ -2535,17 +2535,15 @@ Section composition.
     unfold protocol_transition in H5.
     destruct H5 as [Hvalid Htransition].
     simpl in Htransition.
-    destruct l0.
-    remember (vtransition (IM x0) v (finite_trace_last ist tr' x0, iom)) as VT.
+    destruct l.
+    remember (vtransition (IM x) v (finite_trace_last ist tr' x, iom)) as VT.
     rewrite -HeqVT in Htransition.
     destruct VT. inversion Htransition. subst s o. clear Htransition.
     unfold vtransition in HeqVT. simpl in HeqVT.
     destruct v,iom; inversion HeqVT; subst. clear HeqVT.
-    rewrite -H2 in H.
-    simpl in H.
     rewrite index_to_component_to_index.
     exists (finite_trace_last ist tr').
-    rewrite -H2. tauto.
+    tauto.    
   Qed.                                               
     
   
