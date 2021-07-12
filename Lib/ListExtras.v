@@ -267,6 +267,36 @@ Proof.
     tauto.
 Qed.
 
+Lemma Exists_last
+  {A : Type}
+  (l : list A)
+  (P : A -> Prop)
+  (Pdec : forall a, Decision (P a))
+  (Hsomething : Exists P l)
+  : exists (prefix : list A)
+         (suffix : list A)
+         (last : A),
+         P last /\
+         l = prefix ++ [last] ++ suffix /\
+         ~Exists P suffix.
+
+Proof.
+  induction l using rev_ind;[solve[inversion Hsomething]|].
+  destruct (decide (P x)).
+  - exists l, nil, x.
+    rewrite Exists_nil.
+    tauto.
+  - apply Exists_app in Hsomething.
+    destruct Hsomething.
+    2:{ inversion H; subst. contradiction. inversion H1. }
+    specialize (IHl H);clear H.
+    destruct IHl as [prefix [suffix [last [Hf [-> Hnone_after]]]]].
+    exists prefix, (suffix ++ [x]), last.
+    simpl. rewrite app_assoc_reverse. simpl.
+    rewrite Exists_app. rewrite Exists_cons. rewrite Exists_nil.
+    tauto.
+Qed.
+
 Lemma existsb_Exists {A} (f : A -> bool):
   forall l, existsb f l = true <-> Exists (fun x => f x = true) l.
 Proof.
@@ -1348,6 +1378,7 @@ Proof.
     exists la0b. subst. reflexivity.
 Qed.
 
+(* TODO remove (we have Exists_first) *)
 Lemma exists_first
   {A : Type}
   (l : list A)
