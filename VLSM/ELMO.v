@@ -2480,18 +2480,35 @@ Section composition.
     eapply In_firstn. apply H.
   Qed.
 
+  Lemma elmo_initial_state_is_empty s:
+    elmo_initial_state_prop s ->
+    s = Cprestate [].
+  Proof.
+    intros H.
+    destruct s.
+    inversion H. simpl in H0. subst.
+    reflexivity.
+  Qed.
+  
+  Lemma initial_state_is_collection_of_empty_states s:
+    vinitial_state_prop free_composite_elmo s ->
+    forall n : index, (s n) = Cprestate [].
+  Proof.
+    intros Hinitial.
+    unfold vinitial_state_prop in Hinitial.
+    simpl in Hinitial.
+    unfold composite_initial_state_prop in Hinitial.
+    unfold vinitial_state_prop in Hinitial.
+    simpl in Hinitial.
+    intros n. apply elmo_initial_state_is_empty. apply Hinitial.
+  Qed.
+  
   Lemma protocol_strip_last l x n:
     protocol_message_prop free_composite_elmo (Cpremessage (Cprestate (l ++ [x])) n) ->
     protocol_message_prop free_composite_elmo (Cpremessage (Cprestate l) n).
   Proof.
     intros H.
-    Check exists_first. (* <-- TODO remove *)
-    Check Exists_first.
-    Check existsb_first.
-
-    (* TODO write Exists_last *)
     
-    Search "exist" "++"
     (* [Cpremessage (Cprestate (l ++ [x]))] must have been sent from some protocol state
     [s] such that [s n = Cprestate (l ++ [x])].
         Now if there were no transition to [s n] from some protocol state [s'] satisfying
@@ -2514,7 +2531,40 @@ Section composition.
 
     destruct H as [s Hproto].
     pose proof (Htrace := protocol_is_trace free_composite_elmo _ _ Hproto).
+    Print protocol_prop. Check vinitial_state_prop.
+    Check initial_state_is_collection_of_empty_states.
+
+    (* [s] is not an initial state. TODO: extract a lemma. *)
     destruct Htrace.
+    {
+      pose proof (initial_state_is_collection_of_empty_states _ H).
+      inversion Hproto; subst.
+      - simpl in Hom. unfold composite_initial_message_prop in Hom.
+        destruct Hom as [n0 [mi Hmi]].
+        unfold vinitial_message,initial_message in mi.
+        destruct mi. simpl in Hmi. subst x0.
+        simpl in i. inversion i.
+      - destruct l0.
+        remember (vtransition (IM x0) v (s0 x0, om)) as VT.
+        destruct VT.
+        inversion H2. subst. clear H2.
+        unfold vtransition in HeqVT. simpl in HeqVT.
+        destruct v, om; inversion HeqVT; subst; clear HeqVT.
+        rewrite -H3 in H0. simpl in H0.
+        pose proof (H1 := H0 x0).
+        rewrite state_update_eq in H1. inversion H1.
+        simpl in H4.
+        rewrite -app_assoc in H4. simpl in H4.
+        apply app_eq_nil in H4. destruct H4. inversion H4.
+    }
+    
+    
+      
+      unfold initial_state_prop in H. simpl in H. unfold composite_initial_state_prop in H.
+
+      
+    }
+    
         (* TODO prove a lemma saying that all messages from the initial state contain only the empty state.
        From that it should follow that s is not initial.
        For that it could be helpful to prove that (1) initial state is empty, and (2) composite initial state is a collection of empty states.
