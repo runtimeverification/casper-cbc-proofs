@@ -2485,6 +2485,13 @@ Section composition.
     protocol_message_prop free_composite_elmo (Cpremessage (Cprestate l) n).
   Proof.
     intros H.
+    Check exists_first. (* <-- TODO remove *)
+    Check Exists_first.
+    Check existsb_first.
+
+    (* TODO write Exists_last *)
+    
+    Search "exist" "++"
     (* [Cpremessage (Cprestate (l ++ [x]))] must have been sent from some protocol state
     [s] such that [s n = Cprestate (l ++ [x])].
         Now if there were no transition to [s n] from some protocol state [s'] satisfying
