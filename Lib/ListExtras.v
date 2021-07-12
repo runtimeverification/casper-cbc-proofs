@@ -334,6 +334,25 @@ Proof.
   apply existsb_Exists;assumption.
 Qed.
 
+Lemma existsb_last
+  {A : Type}
+  (l : list A)
+  (f : A -> bool)
+  (Hsomething : existsb f l = true) :
+  exists (prefix : list A)
+         (suffix : list A)
+         (last : A),
+         (f last = true) /\
+         l = prefix ++ [last] ++ suffix /\
+         (existsb f suffix = false).
+Proof.
+  setoid_rewrite <-not_true_iff_false.
+  setoid_rewrite existsb_Exists.
+  apply Exists_last.
+  intro a;apply decide_eq.
+  apply existsb_Exists;assumption.
+Qed.
+
 Lemma in_not_in : forall A (x y : A) l,
   In x l ->
   ~ In y l ->
