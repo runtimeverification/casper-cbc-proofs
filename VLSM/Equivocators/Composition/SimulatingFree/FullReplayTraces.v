@@ -1,20 +1,10 @@
-Require Import
-  List Coq.Vectors.Fin FinFun
-  Arith.Compare_dec Lia
-  Program
-  Coq.Logic.JMeq
-  .
-Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras FinExtras FinFunExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    VLSM.Equivocators.MessageProperties
-    VLSM.Equivocators.Composition.Common
-    VLSM.Equivocators.Composition.Projections
-    VLSM.Plans
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Vectors.Fin FinFun Arith.Compare_dec Lia Program JMeq.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.FinExtras Lib.FinFunExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces.
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
+From CasperCBC Require Import VLSM.Equivocators.MessageProperties VLSM.Equivocators.Composition.Common.
+From CasperCBC Require Import VLSM.Equivocators.Composition.Projections VLSM.Plans.
 
 Local Arguments le_lt_dec : simpl never.
 Local Arguments nat_eq_dec : simpl never.
@@ -241,7 +231,7 @@ Proof.
     (Heq_state_in :
       forall
         (l : list equiv_index)
-        (Hnodup : NoDup l)
+        (Hnodup : List.NoDup l)
         (Heqv : In eqv l),
         snd
           (composite_apply_plan equivocator_IM full_replay_state
@@ -729,9 +719,9 @@ Lemma replayed_trace_from_protocol
       eitem
       id fd eqv l0]
       (Htr_eq : tr = epref ++ [eitem] ++ esuf)
-      (Hleitem : l eitem = existT _ eqv (l0, Existing (IM (eqv)) id fd)),
+      (Hleitem : l eitem = @existT _ _ eqv (l0, Existing (IM (eqv)) id fd)),
       constraint
-        (existT _ eqv (l0, Existing (IM eqv) (id + S (projT1 (full_replay_state eqv))) fd))
+        (@existT _ _ eqv (l0, Existing (IM eqv) (id + S (projT1 (full_replay_state eqv))) fd))
         (finite_trace_last full_replay_state (replayed_trace_from full_replay_state is epref)
         , input eitem)
   )

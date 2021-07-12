@@ -1,8 +1,7 @@
-From Coq Require Import List Nat Bool Lia FunctionalExtensionality Lia Program FinFun Eqdep.
-Import ListNotations.
-
-From CasperCBC
-Require Import Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition VLSM.Equivocation.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FunctionalExtensionality Lia FinFun Eqdep.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation.
 
 (** * VLSM Subcomposition *)
 
@@ -103,7 +102,7 @@ Definition composite_transition_item_sub_projection
   (j : sub_index := dec_exist _ i e)
   : composite_transition_item sub_IM
   :=
-  @Build_transition_item _ (composite_type sub_IM) (existT _ j (projT2 (l item))) (input item) (composite_state_sub_projection (destination item)) (output item).
+  @Build_transition_item _ (composite_type sub_IM) (@existT _ _ j (projT2 (l item))) (input item) (composite_state_sub_projection (destination item)) (output item).
 
 Lemma composite_state_transition_item_sub_projection
   (item : composite_transition_item IM)
@@ -150,7 +149,7 @@ Fixpoint finite_trace_sub_projection
 
 Definition finite_trace_sub_projection_alt
   (trx : list (composite_transition_item IM))
-  (ftrx := (filter (fun a => bool_decide (from_sub_projection a)) trx))
+  (ftrx := (List.filter (fun a => bool_decide (from_sub_projection a)) trx))
   (Hall: Forall from_sub_projection ftrx := filter_Forall trx)
   :=
   List.map
@@ -406,7 +405,7 @@ Lemma transition_sub_projection
   (Ht : composite_transition IM l  (s, om) = (s', om'))
   (Hsub : sub_index_prop (projT1 l))
   : composite_transition sub_IM
-    (existT (fun n : sub_index => vlabel (sub_IM n))
+    (@existT _ (fun n : sub_index => vlabel (sub_IM n))
       (dec_exist _ (projT1 l) Hsub)
       (projT2 l)
     )
@@ -441,7 +440,7 @@ Lemma valid_sub_projection
   (Hv : composite_valid IM l  (s, om))
   (Hsub : sub_index_prop (projT1 l))
   : composite_valid sub_IM
-    (existT (fun n : sub_index => vlabel (sub_IM n))
+    (@existT _ (fun n : sub_index => vlabel (sub_IM n))
       (dec_exist _ (projT1 l) Hsub)
       (projT2 l)
     )
@@ -468,7 +467,7 @@ Definition sub_constraint
   :=
   let i := proj1_sig (projT1 l) in
   let li := projT2 l in
-  let lx : composite_label IM := (existT (fun i : index => vlabel (IM i)) i li) in
+  let lx : composite_label IM := (@existT _ (fun i : index => vlabel (IM i)) i li) in
   let (ss, om) := som in
   let s := composite_state_sub_projection_lift ss in
   constraint lx (s, om).

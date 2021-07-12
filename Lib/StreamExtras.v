@@ -1,7 +1,8 @@
-From Coq Require Import List Streams Compare_dec Lia.
-Import ListNotations.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Streams Lia.
+From CasperCBC.Lib Require Import Preamble ListExtras.
 
-From CasperCBC Require Import Lib.ListExtras Preamble.
+Local Notation filter := List.filter.
 
 (** * Stream utility definitions and lemmas *)
 

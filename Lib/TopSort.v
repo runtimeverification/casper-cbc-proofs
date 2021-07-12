@@ -1,7 +1,9 @@
-From Coq Require Import Bool List ListSet Compare_dec RelationClasses Lia.
-Import ListNotations.
-
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet.
 From CasperCBC Require Import Preamble ListExtras ListSetExtras.
+
+Local Notation filter := List.filter.
+Local Notation NoDup := List.NoDup.
 
 (** * Topological sorting implementation *)
 
@@ -193,7 +195,7 @@ Proof.
     simpl.
     rewrite bool_decide_eq_false_2 by (apply preceeds_irreflexive;assumption).
 
-    assert ({l0=[]}+{l0<>[]}) by (destruct l0;clear;[left|right];congruence).
+    assert ({ l0=[] }+{l0 <> [] }) by (destruct l0;clear;[left|right];congruence).
     destruct H as [?|Hl0];[subst l0|].
     + left. reflexivity.
     + specialize (IHl0 Hl0).

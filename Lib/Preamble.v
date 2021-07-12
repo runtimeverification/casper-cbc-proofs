@@ -1,7 +1,5 @@
-Require Import Reals Bool Relations RelationClasses List ListSet EqdepFacts ProofIrrelevance Eqdep_dec.
-Import ListNotations.
-
-From CasperCBC Require Export Classes.
+From CasperCBC.stdpp Require Import base decidable.
+From Coq Require Import ProofIrrelevance Eqdep_dec.
 
 (** * General utility definitions, lemmas, and tactics *)
 
@@ -23,6 +21,150 @@ Tactic Notation "spec" hyp(H) constr(a) constr(b) constr(c) constr(d) :=
   (generalize (H a b c d); clear H; intro H).
 Tactic Notation "spec" hyp(H) constr(a) constr(b) constr(c) constr(d) constr(e) :=
   (generalize (H a b c d e); clear H; intro H).
+
+Notation decide_eq := (fun x y => decide (x = y)).
+
+Lemma Is_true_iff_eq_true: forall x: bool, x = true <-> x.
+Proof.
+  split. apply Is_true_eq_left. apply Is_true_eq_true.
+Qed.
+
+Lemma Decision_iff : forall {P Q}, (P <-> Q) -> Decision P -> Decision Q.
+Proof. firstorder. Qed.
+Lemma Decision_and : forall {P Q}, Decision P -> Decision Q -> Decision (P /\ Q).
+Proof. firstorder. Qed.
+Lemma Decision_or : forall {P Q}, Decision P -> Decision Q -> Decision (P \/ Q).
+Proof. firstorder. Qed.
+Lemma Decision_not : forall {P}, Decision P -> Decision (~P).
+Proof. firstorder. Qed.
+
+Instance bool_decision {b:bool} : Decision b :=
+  match b return {b}+{~b} with
+          | true => left I
+          | false => right (fun H => H)
+  end.
+
+Lemma bool_decide_eq_true_proof_irrelevance
+  `{!Decision P}
+  (p q : bool_decide P = true)
+  : p = q.
+Proof.
+  apply Eqdep_dec.UIP_dec.
+  apply Bool.bool_dec.
+Qed.
+
+(* Some relation facts *)
+Lemma Reflexive_reexpress_impl {A} (R S: Relation_Definitions.relation A):
+  relation_equivalence R S -> Reflexive R -> Reflexive S.
+Proof.
+  clear;firstorder.
+Qed.
+
+Lemma complement_equivalence {A}:
+  Morphisms.Proper (Morphisms.respectful relation_equivalence relation_equivalence) (@complement A).
+Proof.
+  clear;firstorder.
+Qed.
+
+Lemma Transitive_reexpress_impl {A} (R S: Relation_Definitions.relation A):
+  relation_equivalence R S -> Transitive R -> Transitive S.
+Proof.
+  clear.
+  unfold relation_equivalence, predicate_equivalence; simpl.
+  intros Hrel HtransR x y z.
+  rewrite <- !Hrel.
+  apply HtransR.
+Qed.
+
+Lemma StrictOrder_reexpress_impl {A} (R S: Relation_Definitions.relation A):
+  relation_equivalence R S -> StrictOrder R -> StrictOrder S.
+Proof.
+  clear.
+  intros Hrel [Hirr Htrans]. constructor.
+  revert Hirr;apply Reflexive_reexpress_impl. apply complement_equivalence. assumption.
+  revert Htrans;apply Transitive_reexpress_impl. assumption.
+Qed.
+
+Definition dec_sig {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)} : Type
+  := sig (fun a => bool_decide (P a) = true).
+
+Definition dec_exist {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)}
+  (a : A) (p : P a) : dec_sig P
+  := exist _ a (decide_True true false p).
+
+Definition dec_proj1_sig
+  `{P_dec : forall x : A, Decision (P x)}
+  (ap : dec_sig P) : A
+  := proj1_sig ap.
+
+Lemma dec_proj2_sig
+  `{P_dec : forall x: A, Decision (P x)}
+  (ap : dec_sig P) : P (dec_proj1_sig ap).
+Proof.
+  destruct ap;simpl.
+  apply bool_decide_eq_true in e.
+  assumption.
+Qed.
+
+Lemma dec_sig_eq_iff
+  `{P_dec : forall x: A, Decision (P x)}
+  (xp yp : dec_sig P)
+  : xp = yp <-> dec_proj1_sig xp = dec_proj1_sig yp.
+Proof.
+  apply eq_sig_hprop_iff.
+  intro x.
+  apply bool_decide_eq_true_proof_irrelevance.
+Qed.
+
+(** destructs a dec_sig element into a dec_exist construct
+*)
+
+Lemma dec_sig_to_exist {A} P {P_dec: forall (x:A), Decision (P x)}
+            (a: dec_sig P): exists a' (e: P a'), a = dec_exist _ a' e.
+Proof.
+  destruct a as (x,e).
+  exists x, (bool_decide_eq_true_1 _ e).
+  apply dec_sig_eq_iff.
+  reflexivity.
+Qed.
+
+Ltac destruct_dec_sig  a a' e H :=
+  match type of a with dec_sig ?P =>
+  pose proof (dec_sig_to_exist P a) as [a' [e H]]
+  end.
+
+Lemma dec_sig_eq_dec
+  `{P_dec : forall x: A, Decision (P x)}
+  (EqDecA : EqDecision A)
+  : EqDecision (dec_sig P).
+Proof.
+  intros x y.
+  apply (Decision_iff (iff_sym (dec_sig_eq_iff _ _))).
+  apply EqDecA.
+Qed.
+
+Lemma dec_sig_sigT_eq
+  {A} (P : A -> Prop) {P_dec : forall x, Decision (P x)}
+  (F : A -> Type)
+  (a : A)
+  (b1 b2 : F a)
+  (e1 e2 : P a)
+  (pa1 := dec_exist _ a e1)
+  (pa2 := dec_exist _ a e2)
+  (Heqb : b1 = b2)
+  : @existT _ (fun pa : dec_sig P => F (proj1_sig pa)) pa1 b1
+  = @existT _ (fun pa : dec_sig P => F (proj1_sig pa)) pa2 b2.
+Proof.
+  subst b2 pa1 pa2.
+  unfold dec_exist.
+  replace (decide_True true false e1) with (decide_True true false e2)
+  ; [reflexivity|].
+  apply bool_decide_eq_true_proof_irrelevance.
+Qed.
+
+Lemma ex_out (A : Type) (P : Prop) (Q : A -> Prop):
+  (exists x, P /\ Q x) <-> (P /\ exists x, Q x).
+Proof. firstorder. Qed.
 
 Definition noneOrAll
   (op : option Prop)
@@ -54,8 +196,6 @@ Proof.
   f_equal.
   now apply K_dec_type with (P := fun prf => prf = eq_refl).
 Qed.
-
-Instance nat_eq_dec: EqDecision nat := eq_nat_dec.
 
 Definition mid {X Y Z : Type} (xyz : X * Y * Z) : Y :=
   snd (fst xyz).
@@ -537,10 +677,12 @@ Proof.
   contradiction.
 Qed.
 
+Local Obligation Tactic := Tactics.program_simpl.
 Program Definition sigify_compare {X} `{StrictlyComparable X} (P : X -> Prop) : {x | P x} -> {x | P x} -> comparison := _.
 Next Obligation.
   exact (compare X0 X1).
 Defined.
+Local Obligation Tactic := idtac.
 
 (* StrictlyComparable option type *)
 Definition option_compare

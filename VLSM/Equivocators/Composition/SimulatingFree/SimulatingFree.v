@@ -1,21 +1,13 @@
-Require Import
-  List Coq.Vectors.Fin FinFun
-  Arith.Compare_dec Lia
-  Program
-  Coq.Logic.JMeq
-  .
-Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras FinExtras FinFunExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    VLSM.Equivocators.MessageProperties
-    VLSM.Equivocators.Composition.Common
-    VLSM.Equivocators.Composition.Projections
-    VLSM.Equivocators.Composition.SimulatingFree.FullReplayTraces
-    VLSM.Plans
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Vectors.Fin FinFun Arith.Compare_dec Lia Program JMeq.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.FinExtras Lib.FinFunExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces.
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
+From CasperCBC Require Import VLSM.Equivocators.MessageProperties.
+From CasperCBC Require Import VLSM.Equivocators.Composition.Common.
+From CasperCBC Require Import VLSM.Equivocators.Composition.Projections.
+From CasperCBC Require Import VLSM.Equivocators.Composition.SimulatingFree.FullReplayTraces.
+From CasperCBC Require Import VLSM.Plans.
 
 Local Arguments le_lt_dec : simpl never.
 Local Arguments nat_eq_dec : simpl never.
@@ -435,7 +427,7 @@ Proof.
     ; [contradict Heqv_state_descriptors_i|].
     destruct eqv_state_descriptors_f; [contradict Heqv_state_descriptors_i|].
     pose
-      (existT (fun i : index => vlabel (equivocator_IM i)) (eqv) (li, Existing (IM (eqv)) eqv_state_descriptors_i false))
+      (@existT _ (fun i : index => vlabel (equivocator_IM i)) (eqv) (li, Existing (IM (eqv)) eqv_state_descriptors_i false))
       as el.
     pose (finite_trace_last (start eqv_state_run) (transitions eqv_state_run ++ emsg_tr))
       as es.

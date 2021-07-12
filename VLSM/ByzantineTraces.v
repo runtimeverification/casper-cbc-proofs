@@ -1,5 +1,5 @@
-From Coq Require Import FinFun List.
-
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FinFun.
 From CasperCBC Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Validating.
 
 (** * VLSM Byzantine Traces
@@ -241,7 +241,7 @@ First note that _all_ messages are [protocol_message]s for <<Alt>>, as
         unfold vstate in s.
         exists s.
         replace (s, Some m) with
-          (vtransition Alt (existT _ second m) (s, None)).
+          (vtransition Alt (@existT _ _ second m) (s, None)).
         - assert (protocol_prop Alt (s, None)) as Hs
             by (apply protocol_initial_state;apply proj2_sig).
           apply protocol_generated with None s;[assumption..|].
@@ -290,7 +290,7 @@ Lifting a [protocol_state] of <<PreLoaded>> we obtain a [protocol_state] of <<Al
       - exists om'.
         assert (option_protocol_message_prop Alt om0) as Hom0
           by apply alt_option_protocol_message.
-        cut (protocol_transition Alt (existT _ first l) (lifted_alt_state s,om0) (lifted_alt_state s', om'))
+        cut (protocol_transition Alt (@existT _ _ first l) (lifted_alt_state s,om0) (lifted_alt_state s', om'))
           ;[apply protocol_prop_transition_out|].
         split.
         * split;[assumption|].

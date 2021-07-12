@@ -1,4 +1,6 @@
-From CasperCBC Require Import Lib.Preamble VLSM.Common VLSM.Composition VLSM.Decisions VLSM.ProjectionTraces.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From CasperCBC Require Import Lib.Preamble VLSM.Common VLSM.Composition. 
+From CasperCBC Require Import VLSM.Decisions VLSM.ProjectionTraces.
 
 (** * VLSM Common Futures and Decision Consistency *)
 

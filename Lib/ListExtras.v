@@ -1,10 +1,9 @@
-Require Import Coq.Bool.Bool.
-Require Import Arith.
-Require Import List ListSet.
-Require Import Lia.
-Import ListNotations.
-Require Import Coq.Logic.FinFun.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FinFun ListSet Lia.
 From CasperCBC.Lib Require Import Preamble.
+
+Local Notation filter := List.filter.
+Local Notation NoDup := List.NoDup.
 
 (** * Utility lemmas about lists *)
 
@@ -28,7 +27,8 @@ Qed.
 (** destructs a list in @l@ in either null or a prefix @l'@ and
 a last element @a@ with an equation @Heq@ stating that @l = l' ++ [a]@
 *)
-Ltac destruct_list_last l l' a Heq := destruct (null_or_exists_last l) as [Heq | [l' [a Heq]]]; rewrite Heq in *.
+Ltac destruct_list_last l l' a Heq :=
+ destruct (null_or_exists_last l) as [Heq | [l' [a Heq]]]; rewrite Heq in *.
 
 Lemma last_not_null {S} (l : list S) (a : S)
   : l ++ [a] <> [].
@@ -41,7 +41,6 @@ Definition last_error {S} (l : list S) : option S :=
   | [] => None
   | a :: t => Some (last t a)
   end.
-
 
 Lemma unfold_last_hd {S} : forall (random a b : S) (l : list S),
   last (a :: (b :: l)) random = last (b :: l) random.
@@ -1356,7 +1355,7 @@ Proof.
         exists needle.
         split.
         assumption.
-        intuition.
+        right; assumption.
    - generalize dependent a.
      generalize dependent haystack.
      induction haystack.
@@ -1542,7 +1541,7 @@ Proof.
     destruct Hle as [Hle _].
     rewrite eq_max in Hle. spec Hle. apply le_refl.
     rewrite Forall_forall in Hle.
-    specialize (Hle n). spec Hle. intuition.
+    specialize (Hle n). spec Hle. left; trivial.
     simpl. lia.
   - specialize (list_max_exists l) as Hmax.
     spec Hmax. lia. rewrite <- eq_max. intuition.

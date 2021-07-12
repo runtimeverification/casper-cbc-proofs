@@ -1,10 +1,7 @@
-From Coq Require Import FinFun Bool List Streams Logic.Epsilon Arith.Compare_dec Lia.
-Import ListNotations.
-
-From CasperCBC
-  Require Import
-    Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras
-    VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FinFun Streams Logic.Epsilon Arith.Compare_dec Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
 (** * VLSM Decisions on Consensus Values *)
 

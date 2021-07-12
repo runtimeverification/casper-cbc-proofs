@@ -1,8 +1,9 @@
-From Coq Require Import Bool List ListSet.
-Import ListNotations.
+From CasperCBC.stdpp Require Import base decidable.
+From Coq Require Import ListSet.
+From CasperCBC.Lib Require Import Preamble ListExtras.
 
-Require Import CasperCBC.Lib.Preamble.
-Require Import CasperCBC.Lib.ListExtras.
+Local Notation filter := List.filter.
+Local Notation NoDup := List.NoDup.
 
 (** * List set utility definitions and lemmas *)
 
@@ -276,7 +277,7 @@ Proof.
     apply set_union_nodup.
     specialize (H a).
     apply H.
-    intuition.
+    left; trivial.
     apply IHss.
     intros.
     specialize (H s).
@@ -663,7 +664,7 @@ Proof.
      assert (a = []). {
       specialize (H a).
       apply H.
-      intuition.
+      left; trivial.
      }
   rewrite H1.
   simpl.
@@ -715,8 +716,8 @@ Proof.
     + spec IHl. congruence.
       specialize (IHl H).
       destruct IHl as [a' [Hina' Heqa']].
-      exists a'. intuition.
-  - exists a. intuition.
+      exists a'. intuition; right; trivial.
+  - exists a. split; [left|]; trivial.
 Qed.
 
 (* Returns all elements X of l such that X does not compare less

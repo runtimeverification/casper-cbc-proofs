@@ -1,6 +1,8 @@
-From Coq Require Import Reals List ListSet.
-
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals ListSet.
 From CasperCBC Require Import Preamble ListExtras ListSetExtras.
+
+Local Notation NoDup := List.NoDup.
 
 (** * Measure-related definitions and lemmas *)
 

@@ -1,8 +1,8 @@
-From Coq Require Import List Streams Program.Equality.
-Import ListNotations.
-
-From CasperCBC Require Import Lib.SsrExport Lib.Traces Lib.TraceProperties Lib.TraceClassicalProperties.
-From CasperCBC Require Import Lib.StreamExtras Lib.Preamble VLSM.Common.
+From CasperCBC.stdpp Require Import base.
+From Coq Require Import Streams.
+From CasperCBC Require Import Lib.SsrExport Lib.Traces Lib.TraceProperties.
+From CasperCBC Require Import Lib.TraceClassicalProperties Lib.Preamble Lib.StreamExtras.
+From CasperCBC Require Import VLSM.Common.
 
 (** * VLSM Protocols Described by Possibly-Infinite Traces *)
 
@@ -102,6 +102,7 @@ Qed.
 
 (** ** Mappings between infinite traces and streams of transition items *)
 
+Local Obligation Tactic := Tactics.program_simpl.
 Program CoFixpoint protocol_trace_infinite_transition_items (tr : trace) (h: infiniteT tr) : Stream transition_item :=
 match tr with
 | Tnil _ => False_rect _ _
@@ -115,6 +116,7 @@ Defined.
 Next Obligation.
 by inversion h; subst.
 Defined.
+Local Obligation Tactic := idtac.
 
 CoFixpoint transition_items_stream_protocol_trace (s : state) (st : Stream transition_item) : trace :=
 match st with

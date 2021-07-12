@@ -1,9 +1,7 @@
-From Coq Require Import List ListSet Streams ProofIrrelevance Arith.Plus Arith.Minus FinFun Rdefinitions.
-Import ListNotations.
-
-From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.Measurable VLSM.Decisions VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
-
-Require Import Coq.Program.Tactics.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Streams ProofIrrelevance FinFun Rdefinitions Program.Tactics.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Decisions VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
 
 (** * VLSM Equivocation Definitions **)
 
@@ -30,7 +28,7 @@ Qed.
 
 Class ReachableThreshold V `{Hm : Measurable V} :=
   { threshold : {r | (r >= 0)%R}
-  ; reachable_threshold : exists (vs:list V), NoDup vs /\ (sum_weights vs > proj1_sig threshold)%R
+  ; reachable_threshold : exists (vs:list V), List.NoDup vs /\ (sum_weights vs > proj1_sig threshold)%R
   }.
 
 (** Assuming a set of <<state>>s, and a set of <<validator>>s,
@@ -67,7 +65,7 @@ Class basic_equivocation
 
   ; state_validators (s : state) : set validator
 
-  ; state_validators_nodup : forall (s : state), NoDup (state_validators s)
+  ; state_validators_nodup : forall (s : state), List.NoDup (state_validators s)
 
     (** All validators which are equivocating in a given composite state **)
 

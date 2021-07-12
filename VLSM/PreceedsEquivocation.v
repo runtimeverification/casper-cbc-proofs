@@ -1,5 +1,5 @@
-From Coq Require Import Bool Reals List ListSet Classes.RelationClasses.
-
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals ListSet Classes.RelationClasses.
 From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable.
 From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ObservableEquivocation.
 
@@ -135,7 +135,7 @@ Lemma state_encapsulating_messages_validators_nodup
   `{Hstate : state_encapsulating_messages state message}
   `{Hmessage : message_equivocation_evidence message validator}
   (s : state)
-  : NoDup (state_encapsulating_messages_validators s).
+  : List.NoDup (state_encapsulating_messages_validators s).
 Proof.
   apply NoDup_nodup.
 Qed.

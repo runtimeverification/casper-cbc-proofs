@@ -1,9 +1,6 @@
-Require Import Nat Lia.
-Require Import List Streams RelationClasses Morphisms.
-Import ListNotations.
-
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.StreamExtras.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Streams.
+From CasperCBC.Lib Require Import Preamble ListExtras StreamExtras.
 
 (** * VLSM Basics
 
@@ -107,7 +104,7 @@ function and a [valid]ity condition.
     {S : VLSM_sign T}
     (M : VLSM_class S)
     : VLSM message
-    := existT _ T (existT _ S M).
+    := @existT _ _ T (@existT _ _ S M).
 
   Definition pre_loaded_vlsm
     {message : Type}

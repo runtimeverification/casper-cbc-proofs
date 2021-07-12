@@ -1,7 +1,7 @@
-From Coq Require Import List Vectors.Fin Arith.Compare_dec Lia Program.
-Import ListNotations.
-
-From CasperCBC Require Import Preamble ListExtras VLSM.Common VLSM.Equivocators.Common.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Eqdep Vectors.Fin Arith.Compare_dec Lia Program.Equality.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Equivocators.Common.
 
 Local Arguments le_lt_dec : simpl never.
 Local Arguments nat_eq_dec : simpl never.
