@@ -2673,27 +2673,34 @@ Section composition.
       apply Nat.ltb_lt in Hlast'.
       lia.
     }
-    
 
-    
-    Check nth_error.
-    Print transition_item.
-    Search state list transition_item.
-    Check trace_is_protocol_prop.
+    (* now [last] and [v] have different sizes on the component [n], so [n] must have taken a step between the two *)
+    simpl in Hsuffix.
+    Search orb false.
+    apply Bool.orb_false_elim in Hsuffix.
+    destruct Hsuffix as [Hlenv Hsuffix].
+    assert (v (component_to_index n) <> last (component_to_index n)).
+    { congruence. }
+    pose proof (Htr' := Htr).
+    unfold finite_protocol_trace_init_to in Htr'. destruct Htr' as [Htr' Hist].
 
+    pose proof (Hskip := firstn_skipn (length prefix) tr').
+    rewrite -Hskip in Htr'.
+    rewrite -app_assoc in Htr'.
+    apply finite_protocol_trace_from_to_app_split in Htr'.
+    destruct Htr' as [Htr'1 Htr'2].
+    inversion Htr'2; subst.
+    { symmetry in H0. apply app_eq_nil in H0. destruct H0. inversion H1. }
     
-    apply protocol_message_prop_iff in H.
-    destruct H.
-    { destruct H as [im H].
-      (* TODO extract this proof out. *)
-      unfold initial_message in im.
-      pose proof (proj2_sig im). rewrite -H in H0. simpl in H0.
-      unfold composite_initial_message_prop in H0. destruct H0 as [n0 [mi Hmi]].
-      unfold vinitial_message,initial_message in mi.
-      pose proof (proj2_sig mi). rewrite Hmi in H0. simpl in H0. inversion H0.
+    remember (prefix ++ last :: v :: suffix) as rest.
+    destruct rest.
+    {
+      assert (length (@nil (forall n : index, vstate (IM n))) = length (prefix ++ last :: v :: suffix)).
+      { rewrite Heqrest. reflexivity. }
+      rewrite app_length in H0. simpl in H0. lia.
     }
-    destruct H as [s Hproto].
-    induction Hproto usin
+    
+    Search finite_protocol_trace_from_to.
   Abort.
 
   Lemma protocol_implies_isProtocol m:
