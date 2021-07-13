@@ -2605,10 +2605,13 @@ Section composition.
     destruct H as [ist [tr [Htr Hlast]]].
     Search ist.
     Print transition_item.
-    (* First, we need to prove that the last state of tr before emitting the message is [Cprestate (l ++ [x])] *)
-       on the component [n]. *)
-    (* Now I need to be looking for a position in the trace where the [n]the component
-       takes a step.
+    simpl.
+    Check next_to_last_from_message.
+    pose proof (Htmp := next_to_last_from_message _ _ _ _ _ Htr Hlast).
+    destruct Htmp as [st [Htrst Hst]].
+    Search finite_protocol_trace_init_to.
+    (* Now I need to be looking for a position in the trace where the [n]th component
+       takes a step. First I need to prove that it takes a step at all. *)
     
     Check nth_error.
     Print transition_item.
