@@ -2612,6 +2612,45 @@ Section composition.
     Search finite_protocol_trace_init_to.
     (* Now I need to be looking for a position in the trace where the [n]th component
        takes a step. First I need to prove that it takes a step at all. *)
+
+    (* split tr into tr' and a last transition item *)
+    pose proof (Htr' := null_or_exists_last tr).
+    destruct Htr'.
+    { subst tr. simpl in Htrst. unfold finite_trace_nth in Htrst. simpl in Htrst. inversion Htrst. subst st.
+      clear Htrst.
+      destruct Htr as [Htr Hist].
+      pose proof (initial_state_is_collection_of_empty_states _ Hist).
+      specialize (H (component_to_index n)). rewrite H in Hst.
+      inversion Hst. symmetry in H1. apply app_eq_nil in H1. destruct H1. inversion H1.
+    }
+    destruct H as [tr' [a H]]. subst tr.
+    rewrite app_length in Htrst.
+    simpl in Htrst.
+    assert (Htmp: length tr' + 1 - 1 = length tr').
+    { lia. }
+    rewrite Htmp in Htrst. clear Htmp.
+    rewrite finite_trace_nth_app1 in Htrst.
+    { simpl. lia. }
+
+    unfold finite_trace_nth in Htrst.
+    Check existsb.
+    Search existsb.
+    (* There exists a state on the trace such that its [n]th projection
+       is smaller than [l ++ [x]]. We are looking for last such state, because that is
+       where [n] takes a step.
+     *)
+    unfold state in ist. simpl in ist. unfold _composite_state in ist.
+    assert (Hsome: existsb (fun (st : forall (n : index), vstate (IM n)) => length (observationsOf (st (component_to_index n))) <? length (l ++ [x])) (ist :: map destination tr')).
+    {
+      apply existsb_exists.
+      exists ist. simpl. split. left. reflexivity.
+      destruct Htr as [Htr Hinit].
+      pose proof (initial_state_is_collection_of_empty_states _ Hinit).
+      rewrite H. simpl. rewrite app_length. simpl.
+      apply Nat.ltb_lt. lia.
+    }
+    
+
     
     Check nth_error.
     Print transition_item.
