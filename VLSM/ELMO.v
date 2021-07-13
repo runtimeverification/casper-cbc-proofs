@@ -2633,8 +2633,7 @@ Section composition.
     { simpl. lia. }
 
     unfold finite_trace_nth in Htrst.
-    Check existsb.
-    Search existsb.
+
     (* There exists a state on the trace such that its [n]th projection
        is smaller than [l ++ [x]]. We are looking for last such state, because that is
        where [n] takes a step.
@@ -2648,6 +2647,31 @@ Section composition.
       pose proof (initial_state_is_collection_of_empty_states _ Hinit).
       rewrite H. simpl. rewrite app_length. simpl.
       apply Nat.ltb_lt. lia.
+    }
+
+    pose proof (Hlast' := existsb_last _ _ Hsome). clear Hsome.
+    simpl in Hlast'. destruct Hlast' as [prefix [suffix [last Hpsl]]].
+    destruct Hpsl as [Hlast' [Heq Hsuffix]].
+
+    (* suffix is nonempty. *)
+    destruct suffix.
+    { rewrite Heq in Htrst.
+      assert (length tr' = length prefix).
+      {
+        assert (length (ist :: map destination tr') = length (prefix ++ [last])).
+        { rewrite Heq. reflexivity. }
+        rewrite app_length in H. simpl in H. rewrite map_length in H.
+        simpl. lia.
+      }
+      rewrite H in Htrst.
+      rewrite nth_error_app2 in Htrst.
+      { simpl. unfold _composite_state. lia. }
+      rewrite Nat.sub_diag in Htrst. simpl in Htrst.
+      inversion Htrst. subst last. clear Htrst.
+      rewrite Hst in Hlast'.
+      simpl in Hlast'.
+      apply Nat.ltb_lt in Hlast'.
+      lia.
     }
     
 
