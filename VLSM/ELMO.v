@@ -2691,6 +2691,14 @@ Section composition.
     destruct Htr' as [Htr'1 Htr'2].
     inversion Htr'2; subst.
     { symmetry in H0. apply app_eq_nil in H0. destruct H0. inversion H1. }
+    unfold finite_trace_last in H4.
+    
+    Search nth_error List.last.
+    (*pose proof (list_prefix_nth_last _ _ _ Htrst).*)
+
+    rewrite Heq in Htrst.
+    erewrite nth_error_last in Htrst.
+    inversion Htrst.
     
     remember (prefix ++ last :: v :: suffix) as rest.
     destruct rest.
