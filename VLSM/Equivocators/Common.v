@@ -431,6 +431,25 @@ Proof.
   destruct s. simpl. congruence.
 Qed.
 
+Lemma equivocator_transition_cannot_decrease_state_size
+  (iom oom: option message)
+  (l: vlabel equivocator_vlsm)
+  (s s': vstate equivocator_vlsm)
+  (Ht: vtransition equivocator_vlsm l (s, iom) = (s', oom))
+  : projT1 s <= projT1 s'.
+Proof.
+  unfold_vtransition Ht.
+  destruct l as (l, [sn | ei ef]); unfold snd in Ht.
+  - inversion Ht. subst. clear Ht. destruct s. simpl. lia.
+  - destruct (le_lt_dec (S (projT1 s)) ei)
+  ; [inversion Ht; subst; lia|].
+  match type of Ht with
+  | (let (_, _) := ?t in _) = _ => destruct t as (_s', _om')
+  end.
+  destruct ef; inversion Ht; subst; [|simpl; lia].
+  destruct s. simpl. lia.
+Qed.
+
 Lemma equivocator_transition_preserves_equivocating_state
   (iom oom: option message)
   (l: vlabel equivocator_vlsm)

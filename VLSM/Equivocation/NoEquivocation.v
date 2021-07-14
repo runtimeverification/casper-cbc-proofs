@@ -1,4 +1,4 @@
-From Coq Require Import FinFun.
+From Coq Require Import FinFun FunctionalExtensionality.
 
 Require Import Coq.Program.Tactics.
 
@@ -373,6 +373,8 @@ End seeded_composite_vlsm_no_equivocation_definition.
   Context
     (SeededNoeqvFalse := composite_no_equivocation_vlsm_with_pre_loaded (fun m => False))
     (Noeqv := composite_vlsm IM no_equivocations_additional_constraint)
+    (SeededNoeqvTrue := composite_no_equivocation_vlsm_with_pre_loaded (fun m => True))
+    (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM))
     .
 
   Lemma false_composite_no_equivocation_vlsm_with_pre_loaded

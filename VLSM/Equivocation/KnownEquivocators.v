@@ -16,13 +16,14 @@ Context
   {message : Type}
   {index : Type}
   {IndEqDec : EqDecision index}
+  {i0 : Inhabited index}
   (IM : index -> VLSM message)
-  (i0 : Inhabited index)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   (Hbr : forall i : index, has_been_received_capability (IM i))
-  (validator : Type)
+  {validator : Type}
   (A : validator -> index)
   (sender : message -> option validator)
+  (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM))
   .
 
 Class known_equivocators_capability
@@ -30,14 +31,9 @@ Class known_equivocators_capability
   :=
   { known_equivocators_nodup :
     forall s, NoDup (globally_known_equivocators s)
-  ; known_equivocators_transition_None :
-      forall
-        l s s' oom,
-        composite_transition IM l (s, None) = (s', oom) ->
-        set_eq (globally_known_equivocators s') (globally_known_equivocators s)
-  ; known_equivocators_exhibit_message_equivocation :
+  ; known_equivocators_is_equivocating_tracewise_char :
     forall s v,
-      In v (globally_known_equivocators s) -> is_equivocating_statewise IM Hbs A sender Hbr s v
+      In v (globally_known_equivocators s) <-> is_equivocating_tracewise_alt IM A sender s v
   }.
 
 Section known_equivocators_properties.
@@ -45,42 +41,56 @@ Section known_equivocators_properties.
 Context 
   (globally_known_equivocators : composite_state IM -> set validator)
   (Hke : known_equivocators_capability globally_known_equivocators)
+  {ValEqDec : EqDecision validator}
   .
 
-Lemma known_equivocators_initial_state
+(** Since is_equivocating_tracewise is characterized by the *globally_known_equivocators*
+function ([known_equivocators_is_equivocating_tracewise_char]), it becomes
+decidable.
+*)
+Lemma known_equivocators_is_equivocating_tracewise_alt_dec
+  : RelDecision (is_equivocating_tracewise_alt IM A sender).
+Proof.
+  intros s v.
+  destruct (in_dec ValEqDec v (globally_known_equivocators s)).
+  - left. apply known_equivocators_is_equivocating_tracewise_char. assumption.
+  - right. rewrite <- known_equivocators_is_equivocating_tracewise_char. assumption.
+Qed.
+
+
+Lemma known_equivocators_empty_in_initial_state
   (s : composite_state IM)
   (His : composite_initial_state_prop IM s)
   : globally_known_equivocators s = [].
 Proof.
-  specialize (known_equivocators_exhibit_message_equivocation s) as Heqv.
+  specialize (known_equivocators_is_equivocating_tracewise_char s) as Heqv.
   destruct (globally_known_equivocators s); [reflexivity|].
-  specialize (Heqv v).
+  specialize (Heqv v). apply proj1 in Heqv.
   spec Heqv. { left. reflexivity. }
-  apply initial_state_is_not_equivocating with (A0 := A) (sender0 := sender) (has_been_sent_capabilities := Hbs) (has_been_received_capabilities := Hbr) (v0 := v) in His.
+  apply initial_state_not_is_equivocating_tracewise with (i1 := i0) (A0 := A) (sender0 := sender) (v0 := v) in His.
   contradiction.
+Qed.
+
+Lemma protocol_transition_receiving_None_reflects_known_equivocators l s s' om'
+  (Ht : protocol_transition PreFree l (s, None) (s', om'))
+  : incl (globally_known_equivocators s') (globally_known_equivocators s).
+Proof.
+  intro v. setoid_rewrite known_equivocators_is_equivocating_tracewise_char.
+  revert Ht v.
+  apply transition_receiving_None_reflects_is_equivocating_tracewise.
 Qed.
 
 Context
   {ValMeasurable : Measurable validator}
   {EqDecision : EqDecision validator}
   {threshold_V : ReachableThreshold validator}
-  (validator_listing : list validator)
+  {validator_listing : list validator}
   (finite_validator : Listing validator_listing)
   .
 
 
-Program Instance known_equivocators_basic_equivocation : basic_equivocation (composite_state IM) validator
-:= {
-  is_equivocating := fun s v => In v (globally_known_equivocators s) ;
-  state_validators := fun s => validator_listing
-}.
-Next Obligation.
-  intro. intros.
-  apply in_dec. assumption.
-Qed.
-Next Obligation.
-  apply finite_validator.
-Qed.
+Local Instance known_equivocators_basic_equivocation : basic_equivocation (composite_state IM) validator
+  := equivocation_dec_tracewise IM A sender finite_validator known_equivocators_is_equivocating_tracewise_alt_dec .
 
 Lemma globally_known_equivocators_equivocating_validators
   : forall s, set_eq (equivocating_validators s) (globally_known_equivocators s).
@@ -89,6 +99,7 @@ Proof.
   unfold equivocating_validators, is_equivocating, set_eq, incl.
   simpl.
   setoid_rewrite filter_In. setoid_rewrite bool_decide_eq_true.
+  setoid_rewrite known_equivocators_is_equivocating_tracewise_char.
   split; intros; [apply proj2 in H; assumption|].
   split; [apply finite_validator| assumption].
 Qed.
@@ -114,12 +125,32 @@ Proof.
     apply set_eq_comm. apply globally_known_equivocators_equivocating_validators.
 Qed.
 
+Lemma incl_globally_known_equivocators_equivocation_fault
+  : forall s1 s2,
+    incl (globally_known_equivocators s1) (globally_known_equivocators s2) ->
+    (equivocation_fault s1 <= equivocation_fault s2)%R.
+Proof.
+  intros.
+  apply
+    (sum_weights_incl
+      (equivocating_validators s1)
+      (equivocating_validators s2)
+    ).
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - specialize (globally_known_equivocators_equivocating_validators s1) as Hs1.
+    specialize (globally_known_equivocators_equivocating_validators s2) as Hs2.
+    apply proj1 in Hs1. apply proj2 in Hs2.
+    specialize (incl_tran H Hs2) as Hs12.
+    revert Hs1 Hs12. apply incl_tran.
+Qed.
+
 Lemma initial_state_equivocators_weight
   (s : composite_state IM)
   (Hs : composite_initial_state_prop IM s)
   : equivocation_fault s = 0%R.
 Proof.
-  apply known_equivocators_initial_state in Hs.
+  apply known_equivocators_empty_in_initial_state in Hs.
   assert (sum_weights (globally_known_equivocators s) = 0%R).
   { rewrite Hs. reflexivity. }
   rewrite <- H.
@@ -130,14 +161,13 @@ Proof.
 Qed.
 
 Lemma composite_transition_None_equivocators_weight
-  l s s' oom
-  : composite_transition IM l (s, None) = (s', oom) ->
-    equivocation_fault s' = equivocation_fault s.
+  l s s' om'
+  (Ht : protocol_transition (pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM)) l (s, None) (s', om'))
+  : (equivocation_fault s' <= equivocation_fault s)%R.
 Proof.
-  intro Ht.
-  specialize (known_equivocators_transition_None _ _ _ _ Ht) as Heqv.
+  specialize (protocol_transition_receiving_None_reflects_known_equivocators _ _ _ _ Ht) as Heqv.
   revert Heqv.
-  apply eq_globally_known_equivocators_equivocation_fault.
+  apply incl_globally_known_equivocators_equivocation_fault.
 Qed.
 
 End known_equivocators_properties.

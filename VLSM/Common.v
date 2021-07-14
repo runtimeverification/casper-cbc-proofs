@@ -2537,6 +2537,15 @@ is also available to Y.
         protocol_trace_prop X t -> protocol_trace_prop Y t.
     Local Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
 
+    Lemma VLSM_incl_refl
+      {SigX : VLSM_sign vtype}
+      (MX : VLSM_class SigX)
+      (X := mk_vlsm MX)
+      : VLSM_incl X X.
+    Proof.
+      firstorder.
+    Qed.
+
     Lemma VLSM_incl_trans
       {SigX SigY SigZ: VLSM_sign vtype}
       (MX : VLSM_class SigX) (MY : VLSM_class SigY) (MZ : VLSM_class SigZ)
@@ -2741,6 +2750,17 @@ is also available to Y.
 
 Notation VLSM_eq X Y := (VLSM_eq_part (machine X) (machine Y)).
 Notation VLSM_incl X Y := (VLSM_incl_part (machine X) (machine Y)).
+
+Lemma VLSM_eq_refl
+  {message : Type}
+  {vtype : VLSM_type message}
+  {SigX : VLSM_sign vtype}
+  (MX : VLSM_class SigX)
+  (X := mk_vlsm MX)
+  : VLSM_eq X X.
+Proof.
+  firstorder.
+Qed.
 
 Lemma VLSM_eq_sym
   {message : Type}

@@ -507,7 +507,7 @@ Proof.
     destruct Hlst as [[Hs [Hiom [Hv Hc]]] Ht].
     specialize (Hzero oitem final_descriptors' _ Ht Hv Hprojectx).
     specialize (Hproperx Hv Ht).
-    destruct Hproperx as [_Hproper' Hx].
+    destruct Hproperx as [_Hproper' [_ [_ [_ Hx]]]].
     assert (Hproper' : proper_fixed_equivocator_descriptors final_descriptors' (finite_trace_last is tr')).
     { split; [assumption|].
       intros i Hi. apply Hzero. clear Hzero. destruct Hproper as [_ Hzero].

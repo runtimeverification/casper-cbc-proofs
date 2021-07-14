@@ -12,6 +12,7 @@ From CasperCBC
     VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.Equivocation.NoEquivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
+    VLSM.Plans
     .
 
 (** * VLSM Equivocator Composition
@@ -181,6 +182,77 @@ Proof.
   subst. rewrite state_update_eq in Hsi.
   revert Hsi. apply equivocator_transition_reflects_singleton_state with iom oom lj.
   assumption.
+Qed.
+
+Lemma equivocators_transition_cannot_decrease_state_size
+  l s iom s' oom
+  (Ht: composite_transition equivocator_IM l (s, iom) = (s', oom))
+  : forall eqv, projT1 (s eqv) <= projT1 (s' eqv).
+Proof.
+  simpl in *.
+  destruct l as (j, lj).
+  destruct (vtransition (equivocator_IM j) lj (s j, iom)) as (sj', om') eqn:Htj.
+  inversion Ht. subst. clear Ht.
+  apply equivocator_transition_cannot_decrease_state_size in Htj.
+  intro eqv.
+  destruct (decide (j = eqv)).  
+  - subst. rewrite state_update_eq. assumption.
+  - rewrite state_update_neq by congruence. lia.
+Qed.
+
+Lemma equivocators_plan_cannot_decrease_state_size
+  (s : composite_state equivocator_IM)
+  (plan : list (composite_plan_item equivocator_IM))
+  (s' := snd (composite_apply_plan equivocator_IM s plan))
+  : forall eqv, projT1 (s eqv) <= projT1 (s' eqv).
+Proof.
+  induction plan using rev_ind.
+  - subst s'. simpl. lia.
+  - subst s'.
+    specialize (@_apply_plan_last _ _ (composite_transition equivocator_IM) s plan) as Hs'.
+    simpl in *.
+    unfold composite_apply_plan in *.
+    rewrite (@_apply_plan_app _ _ (composite_transition equivocator_IM)).
+    simpl in *.
+    match type of Hs' with
+    | context[snd ?a] => destruct a as (tr, s')
+    end.
+    simpl in Hs', IHplan. 
+    unfold _apply_plan. change (rev [x]) with [x].
+    unfold fold_right, _apply_plan_folder.
+    destruct x.
+    match goal with
+    |- context [let (_,_) := let (_,_) := let (dest, out) := ?t in _ in _ in _] =>
+      destruct t as (s'', output') eqn:Ht
+    end.
+    simpl.
+    specialize (equivocators_transition_cannot_decrease_state_size _ _ _ _ _ Ht) as Hs's''.
+    intro eqv. spec IHplan eqv. spec Hs's'' eqv. lia.
+Qed.
+
+Lemma equivocators_pre_trace_cannot_decrease_state_size
+  (Pre := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
+  s s' tr
+  (Htr : finite_protocol_trace_from_to Pre s s' tr)
+  : forall eqv, projT1 (s eqv) <= projT1 (s' eqv).
+Proof.
+  apply trace_to_plan_to_trace_from_to in Htr.
+  specialize (equivocators_plan_cannot_decrease_state_size s (trace_to_plan Pre tr)) as Hmon.
+  simpl in Hmon.
+  replace (composite_apply_plan _ _ _) with (tr, s') in Hmon. simpl in Hmon.
+  assumption.
+Qed.
+
+Lemma equivocators_pre_trace_preserves_equivocating_state
+  (Pre := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
+  s s' tr
+  (Htr : finite_protocol_trace_from_to Pre s s' tr)
+  : forall eqv, is_equivocating_state (IM eqv) (s eqv) -> is_equivocating_state (IM eqv) (s' eqv).
+Proof.
+  unfold is_equivocating_state, is_singleton_state.
+  intros eqv Hseqv.
+  apply equivocators_pre_trace_cannot_decrease_state_size  with (eqv := eqv) in Htr.
+  lia.
 Qed.
 
 Context

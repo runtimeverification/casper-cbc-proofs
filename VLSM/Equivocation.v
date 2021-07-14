@@ -1663,7 +1663,7 @@ Section Composite.
     j <> (A v) /\
     equivocating_wrt v j (s (A v)) (s j).
   
-  Lemma initial_state_is_not_equivocating
+  Lemma initial_state_is_not_statewise_equivocating
     (s : composite_state IM)
     (Hs : composite_initial_state_prop IM s)
     (v : validator)
@@ -1679,56 +1679,245 @@ Section Composite.
     inversion Hrcv.
   Qed.
 
+  Lemma transition_receiving_None_reflects_is_equivocating_statewise
+    l s s' oom'
+    (Ht : protocol_transition (pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM)) l (s, None) (s', oom'))
+    (v : validator)
+    : is_equivocating_statewise s' v -> is_equivocating_statewise s v.
+  Proof.
+    intros [j [Hj [m [Hsender [Hnbs_m Hbr_m]]]]]. exists j. split; [assumption|].
+    exists m. split; [assumption|].
+    destruct l as (i, li). destruct Ht as [[Hs [Hoom [Hv _]]] Ht].
+    simpl in Hv, Ht. unfold vtransition in Ht. simpl in Ht.
+    destruct (vtransition (IM i) li (s i, None)) as (si', _oom') eqn:Hti.
+    inversion Ht. subst s' _oom'. clear Ht.
+    assert (Hpti : protocol_transition (pre_loaded_with_all_messages_vlsm (IM i)) li (s i, None) (si', oom')).
+    { repeat split
+      ; [|apply any_message_is_protocol_in_preloaded|assumption|assumption].
+      apply preloaded_composed_protocol_state with (i1 := i0).
+      assumption.
+    }
+    assert (Hbr_step : oracle_stepwise_props (field_selector input) (has_been_received (IM i)))
+      by apply has_been_received_stepwise_from_trace.
+    assert (Hbs_step : oracle_stepwise_props (field_selector output) (has_been_sent (IM i)))
+      by apply has_been_sent_stepwise_from_trace.
+    specialize (oracle_step_update Hbr_step li (s i) None si' oom' Hpti m) as Hbr_m_ch.
+    specialize (oracle_step_update Hbs_step li (s i) None si' oom' Hpti m) as Hbs_m_ch.
+    destruct (decide (i = j)).
+    - subst j. rewrite state_update_eq in Hbr_m.
+      rewrite state_update_neq in Hnbs_m by congruence.
+      split; [assumption|]. apply Hbr_m_ch in Hbr_m. simpl in Hbr_m.
+      destruct Hbr_m as [Hcontra | Hbr_m]; [congruence|assumption].
+    - rewrite state_update_neq in Hbr_m by congruence.
+      split; [|assumption]. intros Hbs_m. elim Hnbs_m. clear Hnbs_m.
+      destruct (decide (i = A v)).
+      + subst i. rewrite state_update_eq. apply Hbs_m_ch. right. assumption.
+      + rewrite state_update_neq by congruence. assumption.
+  Qed.
+
+  Lemma transition_outputing_None_preserves_is_equivocating_statewise
+    l s oom s'
+    (Ht : protocol_transition (pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM)) l (s, oom) (s', None))
+    (v : validator)
+    : is_equivocating_statewise s v -> is_equivocating_statewise s' v.
+  Proof.
+    intros [j [Hj [m [Hsender [Hnbs_m Hbr_m]]]]]. exists j. split; [assumption|].
+    exists m. split; [assumption|].
+    destruct l as (i, li). destruct Ht as [[Hs [Hoom [Hv _]]] Ht].
+    simpl in Hv, Ht. unfold vtransition in Ht. simpl in Ht.
+    destruct (vtransition (IM i) li (s i, oom)) as (si', _oom') eqn:Hti.
+    inversion Ht. subst s' _oom'. clear Ht.
+    assert (Hpti : protocol_transition (pre_loaded_with_all_messages_vlsm (IM i)) li (s i, oom) (si', None)).
+    { repeat split
+      ; [|apply any_message_is_protocol_in_preloaded|assumption|assumption].
+      apply preloaded_composed_protocol_state with (i1 := i0).
+      assumption.
+    }
+    assert (Hbr_step : oracle_stepwise_props (field_selector input) (has_been_received (IM i)))
+      by apply has_been_received_stepwise_from_trace.
+    assert (Hbs_step : oracle_stepwise_props (field_selector output) (has_been_sent (IM i)))
+      by apply has_been_sent_stepwise_from_trace.
+    specialize (oracle_step_update Hbr_step li (s i) oom si' None Hpti m) as Hbr_m_ch.
+    specialize (oracle_step_update Hbs_step li (s i) oom si' None Hpti m) as Hbs_m_ch.
+    destruct (decide (i = j)); [|destruct (decide (i = A v))].
+    - subst j. rewrite state_update_eq.
+      rewrite state_update_neq by congruence.
+      split; [assumption|]. apply Hbr_m_ch. right. assumption.
+    - subst i. rewrite state_update_eq. rewrite state_update_neq by congruence.
+      split; [|assumption]. intros Hbs_m. elim Hnbs_m. clear Hnbs_m.
+      apply Hbs_m_ch in Hbs_m. simpl in Hbs_m.
+      destruct Hbs_m as [Hcontra | Hbs_m]; [congruence|assumption].
+    - rewrite !state_update_neq by congruence.
+      split; assumption.
+  Qed.
+
   (** An alternative definition for detecting equivocation in a certain state,
-      which checks if for every [protocol_trace] there exists equivocation
-      involving the given validator
+      which checks that for _every_ valid trace (using any messages) reaching
+      that state there exists an equivocation involving the given validator.
 
       Notably, this definition is not generally equivalent to [is_equivocating_statewise],
       which does not verify the order in which receiving and sending occurred.
   **)
 
   Definition is_equivocating_tracewise
-    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-    (X := composite_vlsm IM constraint)
+    (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM))
     (s : composite_state IM)
     (v : validator)
     (j := A v)
     : Prop
     :=
-    forall (tr : protocol_trace X)
-    (last : transition_item)
-    (prefix : list transition_item)
-    (Hpr : trace_prefix X (proj1_sig tr) last prefix)
-    (Hlast : destination last = s),
+    forall is tr
+    (Hpr : finite_protocol_trace_init_to PreFree is s tr),
     exists (m : message),
     (sender m = Some v) /\
-    List.Exists
-    (fun (elem : vtransition_item X) =>
-    input elem = Some m
-    /\ ~has_been_sent (IM j) ((destination elem) j) m
-    ) prefix.
+    exists prefix elem suffix (lprefix := finite_trace_last is prefix),
+    tr = prefix ++ elem :: suffix
+    /\ input elem = Some m
+    /\ ~has_been_sent (IM j) (lprefix j) m.
 
-  (** A possibly friendlier version using a previously defined primitive. **)
+  (** A possibly friendlier version using a previously defined primitive.
+      Note that this definition does not require has_been_sent capability.
+  **)
   Definition is_equivocating_tracewise_alt
-    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-    (X := composite_vlsm IM constraint)
+    (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM))
     (s : composite_state IM)
     (v : validator)
     (j := A v)
     : Prop
     :=
-    forall (tr : protocol_trace X)
-    (last : transition_item)
-    (prefix : list transition_item)
-    (Hpr : trace_prefix X (proj1_sig tr) last prefix)
-    (Hlast : destination last = s),
+    forall is tr
+    (Htr : finite_protocol_trace_init_to PreFree is s tr),
     exists (m : message),
     (sender m = Some v) /\
-    equivocation_in_trace X m (prefix ++ [last]).
+    equivocation_in_trace PreFree m tr.
+  
+  (** If any message can only be emitted by node corresponding to its sender
+  ([sender_safety_alt_prop]), then [is_equivocating_tracewise] is equivalent
+  to [is_equivocating_tracewise_alt].
+  *)
+  Lemma is_equivocating_tracewise_alt_iff s v
+    (Hsender_safety : sender_safety_alt_prop)
+    : is_equivocating_tracewise_alt s v <-> is_equivocating_tracewise s v.
+  Proof.
+    unfold is_equivocating_tracewise, is_equivocating_tracewise_alt, equivocation_in_trace.
+    split; intros.
+    - specialize (H is tr Hpr).
+      destruct H as [m [Hv [pref [suf [item [Heq [Hinput Heqv]]]]]]].
+      exists m. split; [assumption|].
+      exists pref, item, suf.
+      split; [assumption|].
+      split; [assumption|].
+      intro Hbs. elim Heqv. clear Heqv.
+      subst.
+      destruct Hpr as [Hpr His].
+      apply finite_protocol_trace_from_to_app_split, proj1 in Hpr.
+      apply finite_protocol_trace_from_to_last_pstate in Hpr as Hs.
+      apply preloaded_composed_protocol_state with (i := A v) in Hs.
+      apply proper_sent in Hbs; [|assumption].
+      apply finite_protocol_trace_from_to_forget_last in Hpr.
+      apply preloaded_finite_ptrace_projection with (j := A v) in Hpr as Hj.
+      specialize (Hbs (is (A v)) (finite_trace_projection_list IM (A v) pref)).
+      spec Hbs.
+      { specialize (His (A v)).
+        split; [|apply His].
+        apply finite_protocol_trace_from_add_last; [assumption|].
+        apply 
+          (preloaded_finite_trace_projection_last_state IM (free_constraint IM) (A v) _ _ Hpr).
+      }
+      apply Exists_exists in Hbs.
+      destruct Hbs as [sitem [Hsitem Houtput]].
+      apply (finite_trace_projection_list_in_rev IM) in Hsitem.
+      destruct Hsitem as [sitemX [Houtputx [_ [_ [_ [_ HsitemX]]]]]].
+      apply in_map_iff. exists sitemX. simpl in Houtput.
+      rewrite Houtput in Houtputx.
+      split; assumption.
+    - specialize (H is tr Htr).
+      destruct H as [m [Hv [pref [item [suf [Heq [Hinput Hnbs]]]]]]].
+      exists m. split; [assumption|].
+      exists pref, suf, item.
+      split; [assumption|].
+      split; [assumption|].
+      intro Heqv. elim Hnbs. clear Hnbs.
+      subst.
+      destruct Htr as [Htr His].
+      apply finite_protocol_trace_from_to_app_split, proj1 in Htr.
+      apply finite_protocol_trace_from_to_last_pstate in Htr as Hs.
+      apply preloaded_composed_protocol_state with (i := A v) in Hs.
+      apply proper_sent; [assumption|].
+      apply has_been_sent_consistency; [apply has_been_sent_capabilities|assumption|].
+      apply finite_protocol_trace_from_to_forget_last in Htr.
+      apply preloaded_finite_ptrace_projection with (j := A v) in Htr as Hj.
+      exists (is (A v)), (finite_trace_projection_list IM (A v) pref).
+      split.
+      { specialize (His (A v)).
+        split; [|apply His].
+        apply finite_protocol_trace_from_add_last; [assumption|].
+        apply 
+          (preloaded_finite_trace_projection_last_state IM (free_constraint IM) (A v) _ _ Htr).
+      }
+      apply Exists_exists.
+      apply in_map_iff in Heqv.
+      destruct Heqv as [sitemX [Houtput HsitemX]].
+      specialize (finite_trace_projection_list_in IM (free_constraint IM) pref sitemX HsitemX)
+        as Hsitem.
+      simpl in Hsitem.
+      match type of Hsitem with | In ?i _ => remember i as sitem end.
+      assert (projT1 (l sitemX) = A v).
+      { symmetry.
+        apply (Hsender_safety (projT1 (l sitemX)) m v Hv).
+        apply preloaded_finite_ptrace_projection with (j := projT1 (l sitemX)) in Htr as Hj'.
+        apply
+          (can_emit_from_protocol_trace
+            (pre_loaded_with_all_messages_vlsm (IM (projT1 (l sitemX))))
+            (is (projT1 (l sitemX))) m (finite_trace_projection_list IM (projT1 (l sitemX)) pref)
+          ).
+        - split; [assumption|]. spec His (projT1 (l sitemX)). apply His.
+        - apply Exists_exists. exists sitem. split; [assumption|].
+          subst. assumption.
+      }
+      destruct sitemX. simpl in *. destruct l. simpl in *. subst x.
+      exists sitem. split; [assumption|].
+      subst. reflexivity.
+  Qed.
+  
+  Lemma initial_state_not_is_equivocating_tracewise
+    (s : composite_state IM)
+    (Hs : composite_initial_state_prop IM s)
+    (v : validator)
+    : ~ is_equivocating_tracewise_alt s v.
+  Proof.
+    intros Heqv.
+    specialize (Heqv s []).
+    spec Heqv. { split; [|assumption]. constructor. apply initial_is_protocol. assumption. }
+    destruct Heqv as [m [_ [prefix [suf [item [Heq _]]]]]].
+    destruct prefix; inversion Heq.
+  Qed.
+
+  Lemma transition_receiving_None_reflects_is_equivocating_tracewise
+    l s s' om'
+    (Ht : protocol_transition (pre_loaded_with_all_messages_vlsm (free_composite_vlsm IM)) l (s, None) (s', om'))
+    (v : validator)
+    : is_equivocating_tracewise_alt s' v -> is_equivocating_tracewise_alt s v.
+  Proof.
+    intros Heqv is tr [Htr Hinit].
+    specialize (extend_right_finite_trace_from_to _ Htr Ht) as Htr'.
+    specialize (Heqv _ _ (conj Htr' Hinit)).
+    destruct Heqv as [m [Hv [prefix [suffix [item [Heq Heqv]]]]]].
+    exists m. split; [assumption|]. exists prefix.
+    destruct_list_last suffix suffix' item' Heqsuffix.
+    { exfalso. subst. apply app_inj_tail,proj2 in Heq. subst item. apply proj1 in Heqv. inversion Heqv. }
+    exists suffix', item. split; [|assumption].
+    replace (prefix ++ item :: suffix' ++ [item']) with ((prefix ++ item :: suffix') ++ [item']) in Heq.
+    - apply app_inj_tail in Heq. apply Heq.
+    - replace (prefix ++ item :: suffix') with ((prefix ++ [item]) ++ suffix')
+        by (rewrite <- app_assoc; reflexivity).
+      rewrite <- !app_assoc.
+      reflexivity.
+  Qed.
 
   Context
-      (validator_listing : list validator)
-      {finite_validator : Listing validator_listing}
+      {validator_listing : list validator}
+      (finite_validator : Listing validator_listing)
       {measurable_V : Measurable validator}
       {threshold_V : ReachableThreshold validator}
       .
@@ -1749,14 +1938,13 @@ Section Composite.
     |}.
 
   Definition equivocation_dec_tracewise
-    (constraint : composite_label IM -> composite_state IM * option message -> Prop)
-     (Hdec : RelDecision (is_equivocating_tracewise constraint))
+     (Hdec : RelDecision is_equivocating_tracewise_alt)
       : basic_equivocation (composite_state IM) (validator)
     :=
     {|
       state_validators := fun _ => validator_listing;
       state_validators_nodup := fun _ => proj1 finite_validator;
-      is_equivocating := is_equivocating_tracewise constraint;
+      is_equivocating := is_equivocating_tracewise_alt;
       is_equivocating_dec := Hdec
     |}.
 

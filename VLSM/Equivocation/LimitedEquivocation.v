@@ -5,7 +5,6 @@ From CasperCBC Require Import Lib.Preamble Lib.ListSetExtras Lib.Measurable VLSM
   VLSM.Equivocation VLSM.Equivocation.KnownEquivocators.
 
 Section limited_message_equivocation.
-
 Context
   {message : Type}
   {index : Type}
@@ -26,8 +25,8 @@ Context
   {Hdm : MessageDependencies sender (fun i => i) IM}
   {reachable_threshold : ReachableThreshold index}
   (globally_known_equivocators : composite_state IM -> set index)
-  {Hknown_equivocators : known_equivocators_capability IM Hbs Hbr index  (fun i => i) sender globally_known_equivocators}
-  (Hknown_equivocators_basic_equivocation := known_equivocators_basic_equivocation IM index globally_known_equivocators _ finite_index)
+  {Hknown_equivocators : known_equivocators_capability IM (fun i => i) sender globally_known_equivocators}
+  (Hknown_equivocators_basic_equivocation := known_equivocators_basic_equivocation IM (fun i => i)  sender globally_known_equivocators _ finite_index)
   .
 
 Existing Instance Hknown_equivocators_basic_equivocation.
@@ -52,7 +51,7 @@ Proof.
   intro Hs.
   unfold not_heavy.
   induction Hs using protocol_state_prop_ind.
-  - specialize (initial_state_equivocators_weight  _ _ _ _ _ _ _ _ _ finite_index s Hs)
+  - specialize (initial_state_equivocators_weight  _ _ _ _ _ finite_index s Hs)
       as Hrew.
     unfold Hknown_equivocators_basic_equivocation.
     unfold composite_state in Hrew. simpl in *.

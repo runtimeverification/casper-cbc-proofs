@@ -307,7 +307,22 @@ Proof.
     reflexivity.
 Qed.
 
-
+(** This property attempts to characterize the descriptor obtained after
+applying an equivocator projection (trace, transition_item) function in
+terms of the input descriptor and the resulting state.
+*)
+Definition previous_state_descriptor_prop
+  (s : vstate equivocator_vlsm)
+  (s_descriptor original_descriptor : MachineDescriptor)
+  : Prop :=
+    match original_descriptor with
+    | NewMachine _ sd => s_descriptor = original_descriptor
+    | Existing _ id fs =>
+      match s_descriptor with
+      | NewMachine _ _ => projT1 s < id
+      | Existing _ id' f => id' <= id
+      end
+    end.
 
 Lemma equivocator_transition_item_project_proper_characterization
   (item : vtransition_item equivocator_vlsm)
@@ -327,6 +342,7 @@ Lemma equivocator_transition_item_project_proper_characterization
       (Hv : vvalid equivocator_vlsm (l item) (s, input item))
       (Ht : vtransition equivocator_vlsm (l item) (s, input item) = (destination item, output item)),
       proper_descriptor X descriptor' s /\
+      previous_state_descriptor_prop s descriptor' descriptor /\
       match oitem with
       | Some itemx =>
         forall (sx : vstate X)
@@ -342,8 +358,9 @@ Proof.
   destruct descriptor eqn:Heqvi.
   - exists None. eexists _. split; [reflexivity|].
     intros. split; [exact I|]. intros.
+    split; [assumption|].
     split; [|reflexivity].
-    assumption.
+    intros. congruence.
   - destruct l as (li, eqvi).
     simpl in Hproper.
     destruct destination as (ni, bsi) eqn:Hdesti.
@@ -355,13 +372,19 @@ Proof.
         intros.
         inversion e. subst. clear e.
         split; [apply Hv|].
-        apply
-          (new_machine_label_equivocator_state_project_last X (li, NewMachine X nsi) s input _ output Ht nsi eq_refl b).
+        split; [|
+          apply
+            (new_machine_label_equivocator_state_project_last X (li, NewMachine X nsi) s input _ output Ht nsi eq_refl b)
+          ].
+        simpl.
+        unfold vtransition in Ht. simpl in Ht.
+        destruct s. inversion Ht. simpl. lia.
       * exists None. eexists _. split; [reflexivity|]. split; [exact I|].
         intros.
         apply and_comm.
         split.
-        { apply
+        { split; [simpl; lia|].
+          apply
           (new_machine_label_equivocator_state_project_not_last X (li, NewMachine X nsi) s input _ output Ht nsi eq_refl).
           simpl. lia.
         }
@@ -377,36 +400,43 @@ Proof.
         -- intros.
           destruct Hv as [Heqv Hv].
           split; [assumption|].
-          intros.
-          simpl in Hsx.
-          simpl.
-          unfold_vtransition Ht.
-          destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
-          replace (of_nat_lt l0) with (of_nat_lt Heqv) in Ht by apply of_nat_ext.
-          clear l0.
-          assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
-          { subst.
-            destruct s as (nsi, si). simpl.
-            simpl in Heqv.
-            destruct (le_lt_dec (S nsi) ieqvi); [lia|]. 
-            f_equal. apply of_nat_ext.
-          }
-          rewrite Hsxi. split; [assumption|].
-          unfold fst in Ht.
-          destruct (vtransition X li (projT2 s (of_nat_lt Heqv), input))
-            as (si'', om') eqn:Ht'.
-          inversion Ht.
-          f_equal.
-          destruct s as (ns, bs).
-          inversion H0. subst n. simpl_existT. subst bsi.
-          rewrite to_nat_of_nat.
-          destruct (nat_eq_dec (S ns) (S ns)); [|congruence].
-          reflexivity.
+          split.
+          ++ simpl. unfold vtransition in Ht. simpl in Ht.
+            destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
+            replace (of_nat_lt l0) with (of_nat_lt Heqv) in Ht by apply of_nat_ext.
+            destruct (vtransition X li (projT2 s (of_nat_lt Heqv), input)) as (si', om').
+            destruct s. inversion Ht. simpl in Heqv. lia.
+          ++ intros.
+            simpl in Hsx.
+            simpl.
+            unfold_vtransition Ht.
+            destruct (le_lt_dec (S (projT1 s)) ieqvi); [lia|].
+            replace (of_nat_lt l0) with (of_nat_lt Heqv) in Ht by apply of_nat_ext.
+            clear l0.
+            assert (Hsxi : sx = projT2 s (of_nat_lt Heqv)).
+            { subst.
+              destruct s as (nsi, si). simpl.
+              simpl in Heqv.
+              destruct (le_lt_dec (S nsi) ieqvi); [lia|]. 
+              f_equal. apply of_nat_ext.
+            }
+            rewrite Hsxi. split; [assumption|].
+            unfold fst in Ht.
+            destruct (vtransition X li (projT2 s (of_nat_lt Heqv), input))
+              as (si'', om') eqn:Ht'.
+            inversion Ht.
+            f_equal.
+            destruct s as (ns, bs).
+            inversion H0. subst n. simpl_existT. subst bsi.
+            rewrite to_nat_of_nat.
+            destruct (nat_eq_dec (S ns) (S ns)); [|congruence].
+            reflexivity.
       * eexists _. eexists _. split; [reflexivity|]. split; [exact I|].
         intros.
         apply and_comm.
         split.
-        { apply
+        { split; [simpl; lia|].
+          apply
             (existing_true_label_equivocator_state_project_not_last X (li, Existing X ieqvi true) s input _ output Ht _ eq_refl )
           ; [|simpl; lia].
           apply Hv.
@@ -426,6 +456,7 @@ Proof.
           destruct (le_lt_dec (S ni) n); [lia|]. f_equal. apply of_nat_ext.
         -- intros.  destruct Hv as [Heqv Hv].
           split; [assumption|].
+          split; [simpl; lia|].
           intros. simpl.
           unfold_vtransition Ht.
           destruct (le_lt_dec (S (projT1 s)) n); [lia|].
@@ -450,7 +481,8 @@ Proof.
         intros.
         apply and_comm.
         split.
-        { apply
+        { split; [simpl; lia|].
+          apply
             (existing_false_label_equivocator_state_project_not_same X (li, Existing X ieqvi false) s input _ output Ht _ eq_refl)
           ; [| simpl; lia|assumption].
           destruct Hv as [Hieqvi Hv].
