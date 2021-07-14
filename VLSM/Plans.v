@@ -242,25 +242,34 @@ Section protocol_plans.
   (** By extracting a plan from a [protocol_trace] based on a state @s@
   and reapplying the plan to the same state @s@ we obtain the original trace
   *)
+  Lemma trace_to_plan_to_trace_from_to
+    (s s' : vstate X)
+    (tr : list (vtransition_item X))
+    (Htr : finite_protocol_trace_from_to X s s' tr)
+    : apply_plan s (trace_to_plan tr) = (tr, s').
+  Proof.
+    induction Htr using @finite_protocol_trace_from_to_rev_ind 
+    ;[reflexivity|].
+    unfold trace_to_plan, _trace_to_plan.
+    rewrite map_app, apply_plan_app.
+    change (map _ tr) with (trace_to_plan tr).
+    rewrite IHHtr. simpl.
+    unfold _transition_item_to_plan_item, apply_plan, _apply_plan.
+    simpl.
+    destruct H as [Hvx Hx].
+    replace (vtransition X l _) with (sf,oom) by (symmetry;apply Hx).
+    reflexivity.
+  Qed.
+
   Lemma trace_to_plan_to_trace
     (s : vstate X)
     (tr : list (vtransition_item X))
     (Htr : finite_protocol_trace_from X s tr)
     : fst (apply_plan s (trace_to_plan tr)) = tr.
   Proof.
-    induction Htr using finite_protocol_trace_from_rev_ind
-    ;[reflexivity|].
-    unfold trace_to_plan, _trace_to_plan.
-    rewrite map_app, apply_plan_app.
-    change (map _ tr) with (trace_to_plan tr).
-    specialize (apply_plan_last s (trace_to_plan tr)) as Hlst.
-    destruct (apply_plan s (trace_to_plan tr))
-      as (sitems,afinal) eqn:Hapl.
-    simpl in *. subst.
-    unfold _transition_item_to_plan_item, apply_plan, _apply_plan.
-    simpl.
-    replace (vtransition X l _) with (sf,oom) by (symmetry;apply Hx).
-    reflexivity.
+    specialize (finite_protocol_trace_from_add_last _ _ _ _ Htr eq_refl) as Htr_to.
+    apply trace_to_plan_to_trace_from_to in Htr_to.
+    rewrite Htr_to. reflexivity.
   Qed.
 
   (** The plan extracted from a protocol trace is protocol w.r.t. the starting

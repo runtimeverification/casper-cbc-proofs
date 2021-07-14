@@ -8,7 +8,9 @@ Import ListNotations.
 From CasperCBC
   Require Import
     Preamble ListExtras FinExtras FinFunExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces
+    VLSM.Common VLSM.Composition
+    VLSM.Equivocation VLSM.Equivocation.NoEquivocation
+    VLSM.ProjectionTraces
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
     VLSM.Equivocators.Composition.Common
@@ -34,14 +36,14 @@ Context {message : Type}
   (equivocator_descriptors := equivocator_descriptors IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocator_descriptors_update := equivocator_descriptors_update IM)
   (proper_equivocator_descriptors := proper_equivocator_descriptors IM)
   (equivocators_trace_project := equivocators_trace_project IM)
   (seed : message -> Prop)
-  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs finite_index seed)
+  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs seed)
   (SeededFree := pre_loaded_vlsm (free_composite_vlsm equivocator_IM) seed)
   (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
   .
@@ -99,8 +101,7 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
   (Hconstraint_subsumption :
     constraint_subsumption equivocator_IM
       (no_equivocations_additional_constraint_with_pre_loaded equivocator_IM
-        (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index
-        seed)
+        (equivocator_Hbs IM Hbs) (free_constraint equivocator_IM) seed)
       constraint)
   : vvalid (pre_loaded_vlsm (composite_vlsm equivocator_IM constraint) seed)
       (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
@@ -328,7 +329,7 @@ Proof.
     rewrite apply_plan_full_replay_state_initial_state.
     destruct (full_replay_state (eqv)) as (neqv, seqv).
     unfold equivocator_state_extend. simpl.
-    specialize (equivocators_initial_state_size IM Hbs finite_index is His eqv) as His_size.
+    specialize (equivocators_initial_state_size IM Hbs is His eqv) as His_size.
     split; [rewrite His_size; reflexivity|].
     split; [congruence|].
     split.
@@ -684,8 +685,9 @@ Lemma parametric_constrained_incl
   (Hconstraint_subsumption: constraint_subsumption equivocator_IM
                               (no_equivocations_additional_constraint_with_pre_loaded
                                  equivocator_IM
+                                 (equivocator_Hbs IM Hbs)
                                  (free_constraint equivocator_IM)
-                                 (equivocator_Hbs IM Hbs) finite_index seed)
+                                 seed)
                               constraint)
   : VLSM_incl SeededXE (pre_loaded_vlsm (composite_vlsm equivocator_IM constraint) seed).
 Proof.
@@ -720,7 +722,7 @@ Lemma replayed_trace_from_protocol
   (Hconstraint_subsumption :
     constraint_subsumption equivocator_IM
       (no_equivocations_additional_constraint_with_pre_loaded equivocator_IM
-        (free_constraint equivocator_IM) (equivocator_Hbs IM Hbs) finite_index
+        (equivocator_Hbs IM Hbs) (free_constraint equivocator_IM)
         seed)
       constraint)
   (Hconstraint :
@@ -837,9 +839,6 @@ Proof.
         destruct Hvalids as [Hvalids Hnoequiv].
         unfold vvalid in Hvalids. simpl in Hvalids.
         unfold vvalid in Hvalids. simpl in Hvalids.
-        unfold no_equivocations_additional_constraint_with_pre_loaded in Hnoequiv.
-        unfold no_equivocations_except_from in Hnoequiv.
-        simpl in Hnoequiv.
         destruct d as [sd | id fd].
         -- subst ai. simpl. destruct Hvalids as [Hsd Hinput]. subst input.
           repeat split; [assumption|].
@@ -922,21 +921,24 @@ Proof.
   destruct eitem. simpl in Hinput, Hleitem. subst l.
   subst input.
   destruct Heqv as [[Heqv | Hinitial] _]; [| right; assumption].
-  left. apply proper_sent; [assumption|].
+  left.
+  apply (composite_proper_sent equivocator_IM finite_index)
+    ; [assumption|].
   assert
     (Hepref_pre :
       finite_protocol_trace_from PreFree is epref
     ).
   { revert Hepref. apply VLSM_incl_finite_protocol_trace_from.
-    apply seeded_equivocators_incl_preloaded.
+    apply seeded_no_equivocation_incl_preloaded.
   }
   specialize (finite_ptrace_last_pstate _ _ _ Hepref_pre) as Hlast_pre.
 
-  apply proper_sent in Heqv; [|assumption].
+  apply (composite_proper_sent equivocator_IM finite_index)
+    in Heqv; [|assumption].
   apply ptrace_add_default_last in Hepref_pre as Hepref_pre'.
   specialize (Heqv is epref (conj Hepref_pre' His)).
   apply has_been_sent_consistency; [|assumption|].
-  { apply (composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index (equivocator_Hbs IM Hbs)).
+  { apply (free_composite_has_been_sent_capability equivocator_IM finite_index (equivocator_Hbs IM Hbs)).
   }
   apply finite_protocol_trace_from_complete_left in Hreplay_epref_pre as Hpre_replay.
   destruct Hpre_replay as [is_replay [trs_replay [Htrs_replay Hfull_replay_state_lst]]].

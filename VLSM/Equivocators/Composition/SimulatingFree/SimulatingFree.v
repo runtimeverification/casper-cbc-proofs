@@ -29,13 +29,14 @@ Context {message : Type}
   (index := equiv_index)
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
+  (no_initial_messages_in_IM : forall i m, ~vinitial_message_prop (IM i) m)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   {i0 : Inhabited index}
   (X := free_composite_vlsm IM)
   (equivocator_descriptors := equivocator_descriptors IM)
   (index_listing : list index)
   (finite_index : Listing index_listing)
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs)
   (equivocators_state_project := equivocators_state_project IM)
   (equivocator_IM := equivocator_IM IM)
   (equivocator_descriptors_update := equivocator_descriptors_update IM)
@@ -43,7 +44,7 @@ Context {message : Type}
   (not_equivocating_equivocator_descriptors := not_equivocating_equivocator_descriptors IM)
   (equivocators_trace_project := equivocators_trace_project IM)
   (seed : message -> Prop)
-  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs finite_index seed)
+  (SeededXE := seeded_equivocators_no_equivocation_vlsm IM Hbs seed)
   (SeededX := pre_loaded_vlsm X seed)
   (PreFree := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
   .
@@ -345,7 +346,7 @@ Lemma equivocators_protocol_vlsm_run_project
     equivocators_state_project (zero_descriptor _) (start run) = start runX.
 Proof.
   induction HrunX.
-  - specialize (lift_initial_to_equivocators_state IM Hbs finite_index is His) as Hs.
+  - specialize (lift_initial_to_equivocators_state IM Hbs is His) as Hs.
     remember (lift_to_equivocators_state IM is) as s.
     exists (@mk_proto_run _ (type SeededXE) s [] (s, None)).
     split; [constructor; assumption|].
@@ -544,10 +545,13 @@ Proof.
       - split; [|exact I].
         unfold om in *. destruct (snd (final msg_run)) eqn:Hm; [|exact I].
         destruct (null_dec (transitions eqv_msg_run)).
-        + right.
-          apply (vlsm_run_no_transitions_output SeededXE)
-            with (run := eqv_msg_run); assumption.
-        + left. apply proper_sent.
+        + specialize (vlsm_run_no_transitions_output SeededXE _ Heqv_msg_run e _ Hom) as Him.
+          destruct Him as [Him | Hseedm]; [|right; assumption].
+          destruct Him as [i [[_m Him] Heq]]. simpl in Heq. subst _m.
+          elim (no_initial_messages_in_IM i m).
+          assumption.
+        + left. 
+          apply (composite_proper_sent equivocator_IM finite_index).
           {
             specialize (finite_ptrace_last_pstate SeededXE _ _ Happ)
               as Hlst.
@@ -556,7 +560,7 @@ Proof.
             subst. subst es.
             revert Hlst.
             apply VLSM_incl_protocol_state.
-            apply seeded_equivocators_incl_preloaded.
+            apply seeded_no_equivocation_incl_preloaded.
           }
           specialize
             (vlsm_run_last_final SeededXE (exist _ _ Heqv_msg_run))
@@ -568,13 +572,13 @@ Proof.
               finite_protocol_trace PreFree
                 (start eqv_state_run) (transitions eqv_state_run ++ emsg_tr)).
           {
-            apply VLSM_incl_finite_protocol_trace; [apply seeded_equivocators_incl_preloaded|].
+            apply VLSM_incl_finite_protocol_trace; [apply seeded_no_equivocation_incl_preloaded|].
             split; [assumption|].
             apply vlsm_run_initial_state. assumption.
           }
           assert
             (Hbs_free : has_been_sent_capability (free_composite_vlsm equivocator_IM)).
-          { exact (composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index (equivocator_Hbs IM Hbs)).
+          { exact (free_composite_has_been_sent_capability equivocator_IM finite_index (equivocator_Hbs IM Hbs)).
           }
           apply ptrace_add_last with (f:=es) in Happ_pre.
           2:{
@@ -792,6 +796,7 @@ Lemma equivocators_protocol_trace_project_rev
   {IndEqDec : EqDecision index}
   {i0 : Inhabited index}
   (IM : index -> VLSM message)
+  (no_initial_messages_in_IM : forall i m, ~vinitial_message_prop (IM i) m)
   (X := free_composite_vlsm IM)
   (isX : vstate X)
   (trX : list (vtransition_item X))
@@ -799,7 +804,7 @@ Lemma equivocators_protocol_trace_project_rev
   {index_listing : list index}
   (finite_index : Listing index_listing)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs finite_index)
+  (equivocators_no_equivocations_vlsm := equivocators_no_equivocations_vlsm IM Hbs)
   : exists
     (is : vstate equivocators_no_equivocations_vlsm)
     (tr : list (composite_transition_item (equivocator_IM IM)))
@@ -816,7 +821,7 @@ Proof.
     apply VLSM_incl_finite_protocol_trace. apply Hincl.
   }
   destruct
-    (seeded_equivocators_protocol_trace_project_rev IM Hbs _ finite_index
+    (seeded_equivocators_protocol_trace_project_rev IM no_initial_messages_in_IM Hbs _ finite_index
        _ _ _ HtrX'
     )
     as [is [tr [Htr [descriptors [Hpr_tr Hpr_is]]]]].
@@ -836,8 +841,7 @@ Proof.
     + intros l s om [Hs [Hom [Hv [Hc _]]]].
       repeat split; [assumption|].
       destruct om; [|exact I]. simpl in *.
-      apply or_assoc in Hc.
       destruct Hc as [Hc | Hfalse]; [|contradiction].
-      assumption.
+      left. assumption.
     + intros; reflexivity.
 Qed.

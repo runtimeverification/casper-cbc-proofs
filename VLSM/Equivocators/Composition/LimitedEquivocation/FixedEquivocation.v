@@ -8,7 +8,10 @@ Import ListNotations.
 From CasperCBC
   Require Import
     Preamble ListExtras FinExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.SubProjectionTraces
+    VLSM.Common VLSM.Composition VLSM.Equivocation
+    VLSM.Equivocation.NoEquivocation
+    VLSM.Equivocation.FixedSetEquivocation
+    VLSM.SubProjectionTraces
     VLSM.ProjectionTraces
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
@@ -27,7 +30,7 @@ Context
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
   (equivocator_IM := equivocator_IM IM)
-  {index_listing : list index}
+  (index_listing : list index)
   (finite_index : Listing index_listing)
   (equivocating : set index)
   (Hi0_equiv : equivocating <> [])
@@ -49,7 +52,7 @@ Definition equivocators_fixed_equivocations_constraint
   (som : composite_state equivocator_IM * option message)
   (som' := composite_transition equivocator_IM l som)
   : Prop
-  := equivocators_no_equivocations_constraint IM Hbs finite_index l som
+  := equivocators_no_equivocations_constraint IM Hbs l som
   /\ state_has_fixed_equivocation (fst som').
 
 
@@ -99,7 +102,7 @@ Proof.
     destruct (decide (projT1 (s i) = 0)); [assumption|].
     elim Hi. apply Hfixed.
     apply filter_In. split; [apply finite_index|].
-    apply bool_decide_eq_true. assumption. 
+    apply bool_decide_eq_true. assumption.
 Qed.
 
 Lemma protocol_has_fixed_equivocation
@@ -136,95 +139,13 @@ Inclusion in the composition of equivocators with no message equivocation
 (no restriction on state equivocation).
 *)
 Lemma equivocators_fixed_equivocations_vlsm_incl_no_equivocations
-  : VLSM_incl equivocators_fixed_equivocations_vlsm (equivocators_no_equivocations_vlsm IM Hbs finite_index).
+  : VLSM_incl equivocators_fixed_equivocations_vlsm (equivocators_no_equivocations_vlsm IM Hbs).
 Proof.
   apply constraint_subsumption_incl.
   intros l som H. apply H.
 Qed.
 
 End equivocators_fixed_equivocations_vlsm.
-
-Section fixed_equivocation_without_fullnode.
-
-(**
-In this section we define fixed equivocation for the regular composition.
-*)
-
-Context
-  {message : Type}
-  {index : Type}
-  {IndEqDec : EqDecision index}
-  (IM : index -> VLSM message)
-  (Hbs : forall i : index, has_been_sent_capability (IM i))
-  (Hbr : forall i : index, has_been_received_capability (IM i))
-  (equivocating : set index)
-  (Hi0_equiv : equivocating <> [])
-  (i0 : Inhabited index := @SubProjectionTraces.i0 index equivocating Hi0_equiv)
-  (X := free_composite_vlsm IM)
-  {index_listing : list index}
-  (finite_index : Listing index_listing)
-  (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
-  (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
-  (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
-  (equivocator_descriptors := equivocator_descriptors IM)
-  (equivocators_state_project := equivocators_state_project IM)
-  (equivocator_IM := equivocator_IM IM)
-  (equivocator_descriptors_update := equivocator_descriptors_update IM)
-  (proper_equivocator_descriptors := proper_equivocator_descriptors IM)
-  (index_equivocating_prop : index -> Prop := sub_index_prop equivocating)
-  (equivocating_index : Type := sub_index equivocating)
-  (equivocating_i0 : Inhabited equivocating_index := sub_index_i0 equivocating Hi0_equiv)
-  (equivocating_IM := sub_IM IM equivocating)
-  (equivocating_index_eq_dec : EqDecision equivocating_index := sub_index_eq_dec equivocating)
-  (free_equivocating_vlsm_composition : VLSM message := free_composite_vlsm equivocating_IM)
-  (sub_equivocator_IM := sub_IM equivocator_IM equivocating)
-  .
-
-Existing Instance X_has_been_observed_capability.
-
-(**
-[free_equivocating_vlsm_composition] is the free composition of the subset of
-nodes which are allowed to equivocate.
-
-[pre_loaded_free_equivocating_vlsm_composition] adds to that composition as initial
-messages all initial messages of the full composition, along with those given by
-the predicate argument @messageSet@.
-*)
-Definition pre_loaded_free_equivocating_vlsm_composition
-  (messageSet : message -> Prop)
-  := pre_loaded_vlsm free_equivocating_vlsm_composition
-      (fun m => messageSet m \/ vinitial_message_prop X m).
-
-Context
-  {validator : Type}
-  .
-
-(**
-The fixed equivocation constraint for the regular composition of nodes
-stipulates that a message can be received either if receiving it satisfies
-the [no_additional_equivocations_constraint] (message [has_been_observed],
-or it has the [initial_message_prop]erty), or it can be emited by the
-free composition of equivocators pre=loaded with with messages producing
-[no_additional_equivocations] for the current state.
-*)
-Definition fixed_equivocation_constraint
-  (l : composite_label IM)
-  (som : composite_state IM * option message)
-  : Prop
-  :=
-  no_additional_equivocations_constraint X l som \/
-  let (s, om) := som in
-  exists m : message, om = Some m /\
-  can_emit (pre_loaded_free_equivocating_vlsm_composition (no_additional_equivocations X s)) m.
-
-Existing Instance i0.
-
-(** Composition of regular VLSMs under the [fixed_equivocation_constraint].
-*)
-Definition fixed_equivocation_vlsm_composition : VLSM message
-  := composite_vlsm IM fixed_equivocation_constraint.
-
-End fixed_equivocation_without_fullnode.
 
 Section fixed_equivocation_with_fullnode.
 
@@ -278,8 +199,8 @@ allowed to equivocate is non-empty.
     (fixed_equivocation_constraint : composite_label IM  -> composite_state IM * option message -> Prop
       := fixed_equivocation_constraint IM Hbs Hbr equivocating Hi0_equiv finite_index)
     (X := free_composite_vlsm IM)
-    (X_has_been_sent_capability : has_been_sent_capability X := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
-    (X_has_been_received_capability : has_been_received_capability X := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
+    (X_has_been_sent_capability : has_been_sent_capability X := free_composite_has_been_sent_capability IM finite_index Hbs)
+    (X_has_been_received_capability : has_been_received_capability X := free_composite_has_been_received_capability IM finite_index Hbr)
     (X_has_been_observed_capability : has_been_observed_capability X := has_been_observed_capability_from_sent_received X)
     .
 
@@ -357,18 +278,18 @@ Context
   (i0 : Inhabited index := @SubProjectionTraces.i0 index equivocating Hi0_equiv)
   {index_listing : list index}
   (finite_index : Listing index_listing)
-  (XE : VLSM message := equivocators_fixed_equivocations_vlsm IM Hbs finite_index equivocating Hi0_equiv)
+  (XE : VLSM message := equivocators_fixed_equivocations_vlsm IM Hbs index_listing equivocating Hi0_equiv)
   (X : VLSM message := fixed_equivocation_vlsm_composition IM Hbs Hbr equivocating Hi0_equiv finite_index)
-  (equivocators_free_Hbs := composite_has_been_sent_capability (equivocator_IM IM) (free_constraint (equivocator_IM IM)) finite_index (equivocator_Hbs IM Hbs))
+  (equivocators_free_Hbs := free_composite_has_been_sent_capability (equivocator_IM IM) finite_index (equivocator_Hbs IM Hbs))
   (FreeE : VLSM message := free_composite_vlsm (equivocator_IM IM))
-  (FreeE_has_been_sent_capability : has_been_sent_capability FreeE := composite_has_been_sent_capability (equivocator_IM IM) (free_constraint (equivocator_IM IM)) finite_index (equivocator_Hbs IM Hbs))
+  (FreeE_has_been_sent_capability : has_been_sent_capability FreeE := free_composite_has_been_sent_capability (equivocator_IM IM) finite_index (equivocator_Hbs IM Hbs))
   (Hdec_init : forall i, vdecidable_initial_messages_prop (IM i))
   (comopsite_initial_decidable := composite_decidable_initial_message IM finite_index Hdec_init)
   (Free := free_composite_vlsm IM)
-  (Free_has_been_sent_capability : has_been_sent_capability Free := composite_has_been_sent_capability IM (free_constraint IM) finite_index Hbs)
-  (Free_has_been_received_capability : has_been_received_capability Free := composite_has_been_received_capability IM (free_constraint IM) finite_index Hbr)
+  (Free_has_been_sent_capability : has_been_sent_capability Free := free_composite_has_been_sent_capability IM finite_index Hbs)
+  (Free_has_been_received_capability : has_been_received_capability Free := free_composite_has_been_received_capability IM finite_index Hbr)
   (Free_has_been_observed_capability : has_been_observed_capability Free := has_been_observed_capability_from_sent_received Free)
-  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free comopsite_initial_decidable)
+  (Free_no_additional_equivocation_decidable := no_additional_equivocations_dec Free)
   (index_equivocating_prop : index -> Prop := sub_index_prop equivocating)
   (equivocating_index : Type := sub_index equivocating)
   (equivocating_i0 : Inhabited equivocating_index := sub_index_i0 equivocating Hi0_equiv)
@@ -396,7 +317,7 @@ Definition proper_fixed_equivocator_descriptors
 [not_equivocating_equivocator_descriptors] satisfy the
 [proper_fixed_equivocator_descriptors] property.
 *)
-Lemma not_equivocating_equivocatos_descriptors_proper_fixed
+Lemma not_equivocating_equivocator_descriptors_proper_fixed
   (s : composite_state (equivocator_IM IM))
   (Hs : protocol_state_prop XE s)
   (eqv_descriptors : equivocator_descriptors IM)
@@ -406,7 +327,7 @@ Proof.
   apply not_equivocating_equivocator_descriptors_proper in Heqv_descriptors as Hproper.
   split; [assumption|].
   intros i Hi.
-  specialize (not_equivocating_index_has_singleton_state IM Hbs finite_index equivocating Hi0_equiv _ Hs _ Hi)
+  specialize (not_equivocating_index_has_singleton_state IM Hbs _ finite_index equivocating Hi0_equiv _ Hs _ Hi)
     as Hzero.
   unfold is_singleton_state in Hzero.
   specialize (Heqv_descriptors i). unfold not_equivocating_descriptor in Heqv_descriptors.
@@ -532,7 +453,6 @@ Lemma _equivocators_protocol_trace_project
   (Htr : finite_protocol_trace XE is tr)
   (constraint : composite_label IM -> composite_state IM * option message -> Prop)
   (HconstraintNone : forall l s, constraint l (s, None))
-  (Hconstraintinitial : forall l s m, vinitial_message_prop FreeE m -> constraint l (s, Some m))
   (Hconstraint_hbs :  constraint_has_been_sent_prop constraint)
   (X' := composite_vlsm IM constraint)
   : exists
@@ -587,7 +507,7 @@ Proof.
     destruct Hlst as [[Hs [Hiom [Hv Hc]]] Ht].
     specialize (Hzero oitem final_descriptors' _ Ht Hv Hprojectx).
     specialize (Hproperx Hv Ht).
-    destruct Hproperx as [_Hproper' Hx].
+    destruct Hproperx as [_Hproper' [_ [_ [_ Hx]]]].
     assert (Hproper' : proper_fixed_equivocator_descriptors final_descriptors' (finite_trace_last is tr')).
     { split; [assumption|].
       intros i Hi. apply Hzero. clear Hzero. destruct Hproper as [_ Hzero].
@@ -612,7 +532,7 @@ Proof.
       (equivocators_trace_project_preserves_proper_fixed_equivocator_descriptors _ _ (proj1 Htr'pre) _ _ _ Htr_project Hproper')
       as Hproper_initial.
     destruct oitem as [item|].
-    +  simpl in Hitemx. destruct Hitemx as [Hl [Hinput [Houtput Hdestination]]].
+    +  simpl in Hitemx. destruct Hitemx as [Hl [Hinput [Houtput [Hdestination _]]]].
       specialize (Hx _ eq_refl).
       destruct Hx as [Hvx Htx].
       exists (trX' ++ [item]), initial_descriptors. subst foldx.
@@ -638,7 +558,7 @@ Proof.
       apply (extend_right_finite_trace_from X'); [constructor; assumption|].
       simpl in Hl. subst.
       simpl in Hc.
-      destruct Hc as [[Hno_equiv _] Hfixed].
+      destruct Hc as [[Hno_equiv _] _].
       simpl in Htx,Hvx,Hstate_project.
       rewrite Hstate_project in Hvx, Htx.
       destruct input as [input|]
@@ -646,11 +566,7 @@ Proof.
       simpl in Hno_equiv.
       apply or_comm in Hno_equiv.
       destruct Hno_equiv as [Hinit_input | Hno_equiv]
-      ; [apply fixed_equivocators_initial_message in Hinit_input|]
-      ; [repeat split; [assumption| |assumption| apply Hconstraintinitial; assumption |assumption]|].
-      { apply protocol_message_prop_iff. left. exists (exist _ _ Hinit_input).
-        reflexivity.
-      }
+      ; [contradiction|].
       assert
         (Hs_free : protocol_state_prop FreeE (finite_trace_last is tr')).
       { destruct Hs as [_om Hs].
@@ -666,7 +582,7 @@ Proof.
       destruct (equivocators_trace_project_output_reflecting_inv IM _ _ (proj1 Htr'pre) _ Hall)
         as [final_descriptors_m [initial_descriptors_m [trXm [_Hfinal_descriptors_m [Hproject_trXm Hex]]]]].
       assert (Hfinal_descriptors_m : proper_fixed_equivocator_descriptors final_descriptors_m (finite_trace_last is tr')).
-      { apply not_equivocating_equivocatos_descriptors_proper_fixed; [|assumption].
+      { apply not_equivocating_equivocator_descriptors_proper_fixed; [|assumption].
         apply finite_ptrace_last_pstate. assumption.
       }
       specialize (H (length tr')).
@@ -768,7 +684,7 @@ Proof.
 
   assert (Hsingleton_d_item : is_singleton_state (IM (projT1 (Common.l item))) (destination item (projT1 (Common.l item)))).
   {
-    apply (not_equivocating_index_has_singleton_state IM Hbs finite_index equivocating Hi0_equiv); [|assumption].
+    apply (not_equivocating_index_has_singleton_state IM Hbs _ finite_index equivocating Hi0_equiv); [|assumption].
     apply proj1 in Htr.
     rewrite app_assoc in Htr.
     apply finite_protocol_trace_from_app_iff in Htr.
@@ -888,10 +804,6 @@ Proof.
   destruct (Free_no_additional_equivocation_decidable lst_trX m)
   ; [left; assumption|right].
   unfold no_additional_equivocations in n.
-  match type of n with
-  | ~ (?o \/ ?i) => assert (Hn : ~ o /\ ~ i) by intuition
-  end.
-  clear n; destruct Hn as [Hno Hni].
   assert (Hsuf_free : finite_protocol_trace_from (pre_loaded_with_all_messages_vlsm FreeE) (finite_trace_last is pre) ([item] ++ suf)).
   { apply VLSM_incl_finite_protocol_trace_from with (machine XE); [|assumption].
     apply VLSM_incl_trans with (machine FreeE)
@@ -914,7 +826,8 @@ Proof.
   }
   assert (Hpre_lst_free : protocol_state_prop FreeE (finite_trace_last is pre)).
   { apply (finite_ptrace_last_pstate FreeE). apply Hpre_free. }
-  apply specialized_proper_sent_rev in Hc; [|assumption].
+  specialize (specialized_proper_sent_rev FreeE _ Hpre_lst_free m) as Hproper_sent.
+  apply Hproper_sent in Hc. clear Hproper_sent.
   specialize (Hc  is pre (ptrace_add_default_last Hpre_free)).
   apply Exists_exists in Hc.
   destruct Hc as [pre_item [Hpre_item Hpre_m]].
@@ -963,7 +876,7 @@ Proof.
   ; [|assumption].
   specialize
     (not_equivocating_sent_message_has_been_observed_in_projection
-      is pre (conj Hpre His) pre_item Hpre_item n m Hpre_m final_descriptors'
+      is pre (conj Hpre His) pre_item Hpre_item n0 m Hpre_m final_descriptors'
       Hfinal'
     )
     as Hobs_m.
@@ -972,7 +885,7 @@ Proof.
   rewrite Htr_project in _Htr_project. inversion _Htr_project. subst _preX _initial_descriptors.
   clear _Htr_project. rewrite Hpre_final_state in Hobs_m.
 
-  elim Hno.
+  elim n.
   revert Hobs_m.
   apply in_futures_preserving_oracle_from_stepwise with item_sends_or_receives.
   - apply has_been_observed_stepwise_props.
@@ -1051,7 +964,7 @@ Proof.
     ) as Hex.
   spec Hex.
   {
-    apply (not_equivocating_index_has_singleton_state _ Hbs finite_index _ Hi0_equiv); [|assumption].
+    apply (not_equivocating_index_has_singleton_state _ Hbs _ finite_index _ Hi0_equiv); [|assumption].
     apply finite_ptrace_last_pstate in Hitem. assumption.
   }
   destruct item as (l, iom, s, oom). apply first_transition_valid in Hitem. simpl in Hitem.
@@ -1126,16 +1039,16 @@ Lemma pre_loaded_equivocators_composition_sub_projection_commute
   : VLSM_incl
     (composite_no_equivocation_vlsm_with_pre_loaded
       (sub_IM (equivocator_IM IM) equivocating)
-      (free_constraint (sub_IM (equivocator_IM IM) equivocating))
       (sub_has_been_sent_capabilities (equivocator_IM IM)
         equivocating (equivocator_Hbs IM Hbs))
-      (finite_sub_index equivocating finite_index) seed1)
+      (free_constraint (sub_IM (equivocator_IM IM) equivocating))
+      seed1)
     (composite_no_equivocation_vlsm_with_pre_loaded
       (equivocator_IM (sub_IM IM equivocating))
-      (free_constraint (equivocator_IM (sub_IM IM equivocating)))
       (equivocator_Hbs (sub_IM IM equivocating)
         (sub_has_been_sent_capabilities IM equivocating Hbs))
-      (finite_sub_index equivocating finite_index) seed2).
+      (free_constraint (equivocator_IM (sub_IM IM equivocating)))
+      seed2).
 Proof.
   apply basic_VLSM_incl
   ; intros; [assumption | .. | reflexivity].
@@ -1149,8 +1062,8 @@ Proof.
     split; [|exact I].
     destruct om; [| exact I].
     simpl in Hc. simpl.
-    destruct Hc as [Hc | [Hc | Hc]]
-    ; [| right; left; assumption| right; right; apply Hseed12; assumption].
+    destruct Hc as [Hc | Hc ]
+    ; [| right; apply Hseed12; assumption].
     left.
     destruct Hc as [subi Hibs].
     exists subi. revert Hibs.
@@ -1171,16 +1084,16 @@ Lemma pre_loaded_equivocators_composition_sub_projection_commute_inv
   : VLSM_incl
     (composite_no_equivocation_vlsm_with_pre_loaded
       (equivocator_IM (sub_IM IM equivocating))
-      (free_constraint (equivocator_IM (sub_IM IM equivocating)))
       (equivocator_Hbs (sub_IM IM equivocating)
         (sub_has_been_sent_capabilities IM equivocating Hbs))
-      (finite_sub_index equivocating finite_index) seed1)
+      (free_constraint (equivocator_IM (sub_IM IM equivocating)))
+      seed1)
     (composite_no_equivocation_vlsm_with_pre_loaded
       (sub_IM (equivocator_IM IM) equivocating)
-      (free_constraint (sub_IM (equivocator_IM IM) equivocating))
       (sub_has_been_sent_capabilities (equivocator_IM IM)
         equivocating (equivocator_Hbs IM Hbs))
-      (finite_sub_index equivocating finite_index) seed2).
+      (free_constraint (sub_IM (equivocator_IM IM) equivocating))
+      seed2).
 Proof.
   apply basic_VLSM_incl
   ; intros; [assumption | .. | reflexivity].
@@ -1194,8 +1107,8 @@ Proof.
     split; [|exact I].
     destruct om; [| exact I].
     simpl in Hc. simpl.
-    destruct Hc as [Hc | [Hc | Hc]]
-    ; [| right; left; assumption| right; right; apply Hseed12; assumption].
+    destruct Hc as [Hc | Hc]
+    ; [| right; apply Hseed12; assumption].
     left.
     destruct Hc as [subi Hibs].
     exists subi. revert Hibs.
@@ -1256,7 +1169,7 @@ Proof.
     apply VLSM_incl_trans with (machine FreeE).
     - apply
       (constraint_free_incl (equivocator_IM IM) (equivocators_fixed_equivocations_constraint IM Hbs
-        finite_index equivocating Hi0_equiv)).
+        index_listing equivocating)).
     - apply vlsm_incl_pre_loaded_with_all_messages_vlsm.
   }
   assert (Hplst : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeE) s).
@@ -1271,7 +1184,7 @@ Proof.
 
   specialize
     (finite_protocol_trace_sub_projection (equivocator_IM IM) equivocating Hi0_equiv
-      (equivocators_fixed_equivocations_constraint IM Hbs finite_index equivocating Hi0_equiv)
+      (equivocators_fixed_equivocations_constraint IM Hbs index_listing equivocating)
       (equivocator_Hbs IM Hbs)
       finite_index
       (no_additional_equivocations (free_composite_vlsm IM) sX)
@@ -1445,7 +1358,6 @@ Proof.
   apply _equivocators_protocol_trace_project; [assumption | assumption| ..]
   ; intros.
   - left. exact I.
-  - left. right. assumption.
   - apply fixed_equivocation_constraint_has_constraint_has_been_sent_prop.
 Qed.
 

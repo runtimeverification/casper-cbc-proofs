@@ -8,10 +8,11 @@ Import ListNotations.
 
 From CasperCBC
   Require Import
-    Preamble ListExtras FinExtras FinFunExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation
+    Preamble ListExtras ListSetExtras FinExtras FinFunExtras Measurable
+    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.Equivocation.NoEquivocation
     VLSM.Equivocators.Common VLSM.Equivocators.Projections
     VLSM.Equivocators.MessageProperties
+    VLSM.Plans
     .
 
 (** * VLSM Equivocator Composition
@@ -45,6 +46,8 @@ Context {message : Type}
   {IndEqDec : EqDecision index}
   (IM : index -> VLSM message)
   (Hbs : forall i : index, has_been_sent_capability (IM i))
+  (Hbr : forall i : index, has_been_received_capability (IM i))
+  (Hbo := fun i => has_been_observed_capability_from_sent_received (IM i))
   {i0 : Inhabited index}
   (X := free_composite_vlsm IM)
   .
@@ -55,13 +58,28 @@ Definition equivocator_IM
   :=
   equivocator_vlsm (IM i).
 
-Lemma equivocator_Hbs
+Definition equivocator_Hbr
+  (i : index)
+  :  has_been_received_capability (equivocator_IM i).
+Proof.
+  unfold equivocator_IM.
+  apply equivocator_has_been_received_capability. apply Hbr.
+Defined.
+
+Definition equivocator_Hbs
   (i : index)
   :  has_been_sent_capability (equivocator_IM i).
 Proof.
   unfold equivocator_IM.
   apply equivocator_has_been_sent_capability. apply Hbs.
-Qed.
+Defined.
+
+Definition equivocator_Hbo
+  (i : index)
+  :  has_been_observed_capability (equivocator_IM i)
+  := has_been_observed_capability_from_sent_received
+    (Hbs := equivocator_Hbs i) (Hbr := equivocator_Hbr i) (equivocator_IM i). 
+
 
 Existing Instance is_equivocating_state_dec.
 
@@ -71,6 +89,72 @@ Definition equivocating_indices
   : list index
   :=
   filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
+
+Lemma equivocating_indices_nodup
+  (index_listing : list index)
+  (Hnodup : NoDup index_listing)
+  (s : composite_state equivocator_IM)
+  : NoDup (equivocating_indices index_listing s).
+Proof.
+  apply NoDup_filter. assumption.
+Qed.
+
+Section equivocating_indices_basic_equivocation.
+
+Context
+  (index_listing : list index)
+  (finite_index : Listing index_listing)
+  (Hmeasurable_index : Measurable index)
+  (Hreachable_threshold : ReachableThreshold index)
+  .
+
+Program Instance equivocating_indices_basic_equivocation : basic_equivocation (composite_state equivocator_IM) index
+  := {
+    is_equivocating := fun s v => In v (equivocating_indices index_listing s) ;
+    state_validators := fun s => index_listing
+  }.
+Next Obligation.
+  intro. intros.
+  apply in_dec. assumption.
+Qed.
+Next Obligation.
+  apply finite_index.
+Qed.
+
+
+Lemma equivocating_indices_equivocating_validators
+  : forall s, set_eq (equivocating_validators s) (equivocating_indices index_listing s).
+Proof.
+  intro s.
+  unfold equivocating_validators, is_equivocating, set_eq, incl.
+  simpl.
+  setoid_rewrite filter_In at 1 4. setoid_rewrite bool_decide_eq_true.
+  split; intros; [apply proj2 in H; assumption|].
+  split; [apply finite_index| assumption].
+Qed.
+
+
+Lemma eq_equivocating_indices_equivocation_fault
+: forall s1 s2,
+  set_eq (equivocating_indices index_listing s1) (equivocating_indices index_listing s2) ->
+  equivocation_fault s1 = equivocation_fault s2.
+Proof.
+  intros.
+  apply
+    (set_eq_nodup_sum_weight_eq
+      (equivocating_validators s1)
+      (equivocating_validators s2)
+    ).
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - apply NoDup_filter. apply state_validators_nodup. 
+  - apply (set_eq_tran (equivocating_validators s1) (equivocating_indices index_listing s1) (equivocating_validators s2))
+    ; [apply equivocating_indices_equivocating_validators|].
+    apply (set_eq_tran (equivocating_indices index_listing s1) (equivocating_indices index_listing s2) (equivocating_validators s2))
+    ; [assumption|].
+    apply set_eq_comm. apply equivocating_indices_equivocating_validators.
+Qed.
+
+End equivocating_indices_basic_equivocation.
 
 (**
 The statement below is obvious a transition cannot make an already equivocating
@@ -100,18 +184,89 @@ Proof.
   assumption.
 Qed.
 
+Lemma equivocators_transition_cannot_decrease_state_size
+  l s iom s' oom
+  (Ht: composite_transition equivocator_IM l (s, iom) = (s', oom))
+  : forall eqv, projT1 (s eqv) <= projT1 (s' eqv).
+Proof.
+  simpl in *.
+  destruct l as (j, lj).
+  destruct (vtransition (equivocator_IM j) lj (s j, iom)) as (sj', om') eqn:Htj.
+  inversion Ht. subst. clear Ht.
+  apply equivocator_transition_cannot_decrease_state_size in Htj.
+  intro eqv.
+  destruct (decide (j = eqv)).  
+  - subst. rewrite state_update_eq. assumption.
+  - rewrite state_update_neq by congruence. lia.
+Qed.
+
+Lemma equivocators_plan_cannot_decrease_state_size
+  (s : composite_state equivocator_IM)
+  (plan : list (composite_plan_item equivocator_IM))
+  (s' := snd (composite_apply_plan equivocator_IM s plan))
+  : forall eqv, projT1 (s eqv) <= projT1 (s' eqv).
+Proof.
+  induction plan using rev_ind.
+  - subst s'. simpl. lia.
+  - subst s'.
+    specialize (@_apply_plan_last _ _ (composite_transition equivocator_IM) s plan) as Hs'.
+    simpl in *.
+    unfold composite_apply_plan in *.
+    rewrite (@_apply_plan_app _ _ (composite_transition equivocator_IM)).
+    simpl in *.
+    match type of Hs' with
+    | context[snd ?a] => destruct a as (tr, s')
+    end.
+    simpl in Hs', IHplan. 
+    unfold _apply_plan. change (rev [x]) with [x].
+    unfold fold_right, _apply_plan_folder.
+    destruct x.
+    match goal with
+    |- context [let (_,_) := let (_,_) := let (dest, out) := ?t in _ in _ in _] =>
+      destruct t as (s'', output') eqn:Ht
+    end.
+    simpl.
+    specialize (equivocators_transition_cannot_decrease_state_size _ _ _ _ _ Ht) as Hs's''.
+    intro eqv. spec IHplan eqv. spec Hs's'' eqv. lia.
+Qed.
+
+Lemma equivocators_pre_trace_cannot_decrease_state_size
+  (Pre := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
+  s s' tr
+  (Htr : finite_protocol_trace_from_to Pre s s' tr)
+  : forall eqv, projT1 (s eqv) <= projT1 (s' eqv).
+Proof.
+  apply trace_to_plan_to_trace_from_to in Htr.
+  specialize (equivocators_plan_cannot_decrease_state_size s (trace_to_plan Pre tr)) as Hmon.
+  simpl in Hmon.
+  replace (composite_apply_plan _ _ _) with (tr, s') in Hmon. simpl in Hmon.
+  assumption.
+Qed.
+
+Lemma equivocators_pre_trace_preserves_equivocating_state
+  (Pre := pre_loaded_with_all_messages_vlsm (free_composite_vlsm equivocator_IM))
+  s s' tr
+  (Htr : finite_protocol_trace_from_to Pre s s' tr)
+  : forall eqv, is_equivocating_state (IM eqv) (s eqv) -> is_equivocating_state (IM eqv) (s' eqv).
+Proof.
+  unfold is_equivocating_state, is_singleton_state.
+  intros eqv Hseqv.
+  apply equivocators_pre_trace_cannot_decrease_state_size  with (eqv := eqv) in Htr.
+  lia.
+Qed.
+
 Context
   {index_listing : list index}
   (finite_index : Listing index_listing)
   (equivocators_free_vlsm := free_composite_vlsm equivocator_IM)
-  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := composite_has_been_sent_capability equivocator_IM (free_constraint equivocator_IM) finite_index equivocator_Hbs)
+  (equivocators_free_Hbs : has_been_sent_capability equivocators_free_vlsm := free_composite_has_been_sent_capability equivocator_IM finite_index equivocator_Hbs)
   .
 
 Existing Instance equivocators_free_Hbs.
 
 Definition equivocators_no_equivocations_constraint
   :=
-  no_equivocations_additional_constraint equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index.
+  no_equivocations_additional_constraint equivocator_IM equivocator_Hbs (free_constraint equivocator_IM).
 
 Definition equivocators_no_equivocations_vlsm
   : VLSM message
@@ -122,7 +277,7 @@ Definition seeded_equivocators_no_equivocation_vlsm
   (seed : message -> Prop)
   : VLSM message
   :=
-  composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM (free_constraint equivocator_IM) equivocator_Hbs finite_index seed.
+  composite_no_equivocation_vlsm_with_pre_loaded equivocator_IM equivocator_Hbs (free_constraint equivocator_IM) seed.
 
 Lemma equivocators_initial_state_size
   (is : vstate equivocators_no_equivocations_vlsm)
@@ -238,6 +393,12 @@ Proof.
   intro i. spec Hs i.
   split; [reflexivity|assumption].
 Qed.
+
+Definition newmachine_descriptors_list
+  (index_listing : list index)
+  (descriptors : equivocator_descriptors)
+  : list index
+  := filter (fun i => @bool_decide _ (Decision_newmachine_descriptor (IM i) (descriptors i))) index_listing.
 
 (**
 A very useful operation on [equivocator_descriptors]s is updating the state corresponding
