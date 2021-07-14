@@ -2545,7 +2545,19 @@ Section composition.
     exists (finite_trace_last ist tr').
     tauto.    
   Qed.                                               
-    
+
+  (* TODO move to ListExtras.v *)
+  Lemma map_skipn [A B : Type] (f : A -> B) (l : list A) (n : nat) :
+    map f (skipn n l) = skipn n (map f l).
+  Proof.
+    move: n.
+    induction l; intros n.
+    - simpl. repeat rewrite skipn_nil. reflexivity.
+    - simpl.
+      destruct n.
+      { reflexivity. }
+      simpl. apply IHl.
+  Qed.
   
   Lemma protocol_strip_last l x n:
     protocol_message_prop free_composite_elmo (Cpremessage (Cprestate (l ++ [x])) n) ->
@@ -2692,6 +2704,73 @@ Section composition.
     inversion Htr'2; subst.
     { symmetry in H0. apply app_eq_nil in H0. destruct H0. inversion H1. }
     unfold finite_trace_last in H4.
+
+
+    Search last_error app.
+    rewrite last_error_is_last in Hlast. simpl in Hlast.
+    inversion Hlast. clear Hlast.
+    
+    assert (H0': map destination ({| l := l0; input := iom; destination := s0; output := oom |} :: tl)
+                 = map destination (skipn (length prefix) tr' ++ [a])).
+    { rewrite H0. reflexivity. }
+    simpl in H0'.
+    Check map_app.
+    rewrite map_app in H0'.
+    rewrite map_skipn in H0'.
+    simpl in H0'.
+
+    remember (map destination tr') as mdtr'.
+    destruct mdtr'.
+    { rewrite -Heqmdtr' in Heq.
+      assert (Hlens: length [ist] = length (prefix ++ last :: v :: suffix)).
+      { rewrite Heq. reflexivity. }
+      simpl in Hlens.
+      rewrite app_length in Hlens. simpl in Hlens. lia.
+    }
+    rewrite -Heqmdtr' in Heq.
+
+    (* tr' is nonempty *)
+    destruct tr'.
+    { simpl in Htr.
+      rewrite skipn_nil in H0. simpl in H0. inversion H0. subst. clear H0.
+      simpl in H0'. clear H0'.
+      simpl in H3. subst oom.
+      clear Hskip.
+      rewrite skipn_nil in Htr'2.
+      rewrite firstn_nil in Htr'2.
+      unfold finite_trace_last in Htr'2.
+      simpl in Htr'2.
+      (* From initial state we can produce only an empty message. *)
+      inversion Htr'2. subst. clear Htr'2.
+      unfold protocol_transition in H10. destruct H10 as [_ Htrans].
+      unfold transition in Htrans. simpl in Htrans.
+      destruct l0.
+      remember (vtransition (IM x0) v0 (ist x0, iom)) as VT.
+      destruct VT.
+      inversion Htrans. subst. clear Htrans.
+      Check initial_state_is_collection_of_empty_states.
+      pose proof (H0 := initial_state_is_collection_of_empty_states ist).
+      unfold vinitial_state_prop in H0.
+      specialize (H0 Hist).
+      rewrite H0 in HeqVT.
+      unfold vtransition in HeqVT. simpl in HeqVT.
+      destruct v0,iom; inversion HeqVT.
+      subst.
+      apply app_eq_nil in H5. destruct H5. inversion H3.
+    }
+    
+    
+
+    (* if [skipn (length prefix) (map destination tr') = []],
+       then [map destination tl = []]
+       and [s0 = destination a].
+     *)
+    Search a.
+    
+    
+    rewrite -Heqmdtr' in H0'.
+    
+    Search skipn.
     
     Search nth_error List.last.
     (*pose proof (list_prefix_nth_last _ _ _ Htrst).*)
