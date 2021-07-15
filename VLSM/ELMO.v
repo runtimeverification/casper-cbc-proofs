@@ -2688,7 +2688,6 @@ Section composition.
 
     (* now [last] and [v] have different sizes on the component [n], so [n] must have taken a step between the two *)
     simpl in Hsuffix.
-    Search orb false.
     apply Bool.orb_false_elim in Hsuffix.
     destruct Hsuffix as [Hlenv Hsuffix].
     assert (v (component_to_index n) <> last (component_to_index n)).
@@ -2696,6 +2695,74 @@ Section composition.
     pose proof (Htr' := Htr).
     unfold finite_protocol_trace_init_to in Htr'. destruct Htr' as [Htr' Hist].
 
+    Search finite_protocol_trace_from_to.
+    Print transition_item.
+    Check vtransition.
+    assert (exists iom oom lbl, (v, oom) = vtransition free_composite_elmo lbl (last, iom)).
+    {
+      destruct prefix.
+      - simpl in Heq. inversion Heq. subst.
+        inversion Htr'.
+        { symmetry in H0. apply app_eq_nil in H0. destruct H0. inversion H5. }
+        subst.
+        unfold protocol_transition in H5. destruct H5 as [Hvalid Htrans].
+        exists iom,oom,l0.
+
+        assert (s0 = v).
+        {
+          assert (H0': map destination ({| l := l0; input := iom; destination := s0; output := oom |} :: tl)
+                       = map destination (tr' ++ [a])).
+          { rewrite H0. reflexivity. }
+          simpl in H0'. rewrite map_app in H0'. simpl in H0'.
+          rewrite H2 in H0'. simpl in H0'. inversion H0'.
+          reflexivity.
+        }
+        subst s0.
+        symmetry. apply Htrans.
+      - simpl in Heq. inversion Heq. subst.
+        change (last :: v :: suffix) with ([last] ++ ([v] ++ suffix)) in H2.
+        Check map_eq_app.
+        pose proof (mea := map_eq_app _ _ _ _ H2).
+        destruct mea as [l1' [l2' [Htr'' [Hprefix Hmdl2']]]].
+        subst.
+        
+        Search finite_protocol_trace_from_to app.
+        rewrite -app_assoc in Htr'.
+        apply finite_protocol_trace_from_to_app_split in Htr'.
+        destruct Htr' as [Htr'1 Htr'2].
+
+        pose proof (mea := map_eq_app _ _ _ _ Hmdl2').
+        destruct mea as [l1'' [l2'' [Hl2'' [Hprefix'' Hmdl2'']]]].
+        subst.
+        rewrite -app_assoc in Htr'2.
+        apply finite_protocol_trace_from_to_app_split in Htr'2.
+        destruct Htr'2 as [Htr'2 Htr'3].
+        inversion Htr'3.
+        { symmetry in H0. apply app_eq_nil in H0. destruct H0. inversion H5. }
+        subst.
+
+        assert (s0 = last).
+        {
+          Search s0.
+          assert (map destination ({| l := l0; input := iom; destination := s0; output := oom |} :: tl)
+                  = map destination (l2'' ++ [a])).
+          { rewrite H0. reflexivity. }
+          simpl in H3. rewrite map_app in H3. simpl in H3.
+          Search l2''.
+                 
+        }
+        
+        
+        inversion Htr'2.
+        { symmetry in H0. apply app_eq_nil in H0. destruct H0. inversion H5. }
+        subst.
+        destruct H5 as [Hvalid Htrans].
+        symmetry in Htrans.
+        exists iom,oom,l0.
+        
+    }
+    
+    
     pose proof (Hskip := firstn_skipn (length prefix) tr').
     rewrite -Hskip in Htr'.
     rewrite -app_assoc in Htr'.
