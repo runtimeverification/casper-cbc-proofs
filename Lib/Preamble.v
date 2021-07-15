@@ -1,4 +1,4 @@
-From CasperCBC.stdpp Require Import base decidable.
+From CasperCBC.stdpp Require Import base decidable numbers.
 From Coq Require Import ProofIrrelevance Eqdep_dec.
 
 (** * General utility definitions, lemmas, and tactics *)

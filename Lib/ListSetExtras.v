@@ -1,9 +1,6 @@
-From CasperCBC.stdpp Require Import base decidable.
+From CasperCBC.stdpp Require Import base decidable numbers.
 From Coq Require Import ListSet.
-From CasperCBC.Lib Require Import Preamble ListExtras.
-
-Local Notation filter := List.filter.
-Local Notation NoDup := List.NoDup.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras.
 
 (** * List set utility definitions and lemmas *)
 
@@ -99,8 +96,8 @@ Definition set_eq_fn `{EqDecision A} (s1 s2 : list A) : bool :=
   set_eq_fn_rec (nodup decide_eq s1) (nodup decide_eq s2).
 
 Lemma set_eq_fn_rec_iff `{EqDecision A} : forall (s1 s2 : list A),
-  NoDup s1 ->
-  NoDup s2 ->
+  List.NoDup s1 ->
+  List.NoDup s2 ->
   set_eq s1 s2 <-> set_eq_fn_rec s1 s2 = true.
 Proof.
   intros; split; intros.
@@ -187,7 +184,7 @@ Defined.
 
 Lemma set_eq_singleton_iff `{EqDecision A} :
   forall (s1 : list A) (a : A),
-  NoDup s1 ->
+  List.NoDup s1 ->
   set_eq s1 [a] <-> s1 = [a].
 Proof.
   intros; split; intros.
@@ -203,7 +200,7 @@ Qed.
 
 Lemma set_eq_singleton `{EqDecision A} :
   forall (s1 : list A) (a : A),
-  NoDup s1 ->
+  List.NoDup s1 ->
   set_eq s1 [a] -> s1 = [a].
 Proof.
   intros. apply set_eq_singleton_iff; assumption.
@@ -211,7 +208,7 @@ Qed.
 
 Lemma set_eq_singleton_rev `{EqDecision A} :
   forall (s1 : list A) (a : A),
-  NoDup s1 ->
+  List.NoDup s1 ->
   s1 = [a] -> set_eq s1 [a].
 Proof.
   intros. apply set_eq_singleton_iff; assumption.
@@ -265,8 +262,8 @@ Qed.
 
 Lemma set_union_iterated_nodup `{EqDecision A}
   (ss : list (list A))
-  (H : forall s, In s ss -> NoDup s) :
-  NoDup (fold_right (set_union decide_eq) nil ss).
+  (H : forall s, In s ss -> List.NoDup s) :
+  List.NoDup (fold_right (set_union decide_eq) nil ss).
 Proof.
   intros.
   generalize dependent ss.
@@ -333,7 +330,7 @@ Proof.
 Qed.
 
 Lemma set_union_empty_left `{EqDecision A}  : forall (s : list A),
-  NoDup s ->
+  List.NoDup s ->
   set_eq (set_union decide_eq nil s) s.
 Proof.
   intros. split; intros x Hin.
@@ -351,7 +348,7 @@ Proof.
 Qed.
 
 Lemma set_map_nodup {A B} `{EqDecision A} (f : B -> A) : forall (s : set B),
-  NoDup (set_map decide_eq f s).
+  List.NoDup (set_map decide_eq f s).
 Proof.
   induction s; simpl; try constructor.
   apply set_add_nodup. assumption.
@@ -415,7 +412,7 @@ Qed.
 Lemma filter_set_add `{StrictlyComparable X} :
   forall (l : list X) (f : X -> bool) (x : X),
     f x = false ->
-    filter f l = filter f (set_add compare_eq_dec x l).
+    List.filter f l = List.filter f (set_add compare_eq_dec x l).
 Proof.
   induction l as [|hd tl IHl]; intros f x H_false.
   - simpl. rewrite H_false. reflexivity.
@@ -471,7 +468,7 @@ Proof.
 Qed.
 
 Lemma set_remove_elim `{EqDecision A} : forall x (s : list A),
-  NoDup s -> ~ In x (set_remove decide_eq x s).
+  List.NoDup s -> ~ In x (set_remove decide_eq x s).
 Proof.
   intros. intro. apply set_remove_iff in H0; try assumption.
   destruct H0. apply H1. reflexivity.
@@ -485,9 +482,9 @@ Proof.
 Qed.
 
 Lemma set_remove_nodup_1 `{EqDecision A} : forall x (s : list A),
-  NoDup (set_remove decide_eq x s) ->
+  List.NoDup (set_remove decide_eq x s) ->
   ~ In x (set_remove decide_eq x s) ->
-  NoDup s.
+  List.NoDup s.
 Proof.
   induction s; intros.
   - constructor.
@@ -503,7 +500,7 @@ Proof.
 Qed.
 
 Lemma set_remove_in_iff `{EqDecision A} :  forall x y (s : list A),
-  NoDup s ->
+  List.NoDup s ->
   In y s ->
   In x s <-> x = y \/ In x (set_remove decide_eq y s).
 Proof.
@@ -531,8 +528,8 @@ Proof.
 Qed.
 
 Lemma set_eq_remove `{EqDecision A} : forall x (s1 s2 : list A),
-  NoDup s1 ->
-  NoDup s2 ->
+  List.NoDup s1 ->
+  List.NoDup s2 ->
   set_eq s1 s2 ->
   set_eq (set_remove decide_eq x s1) (set_remove decide_eq x s2).
 Proof.
@@ -547,8 +544,8 @@ Proof.
 Qed.
 
 Lemma incl_remove_union  `{EqDecision A} : forall x (s1 s2 : list A),
-  NoDup s1 ->
-  NoDup s2 ->
+  List.NoDup s1 ->
+  List.NoDup s2 ->
   incl
     (set_remove decide_eq x (set_union decide_eq s1 s2))
     (set_union decide_eq s1 (set_remove decide_eq x s2)).
@@ -561,8 +558,8 @@ Proof.
 Qed.
 
 Lemma set_eq_remove_union_in  `{EqDecision A} : forall x (s1 s2 : list A),
-  NoDup s1 ->
-  NoDup s2 ->
+  List.NoDup s1 ->
+  List.NoDup s2 ->
   In x s1 ->
   set_eq
     (set_union decide_eq s1 (set_remove decide_eq x s2))
@@ -578,8 +575,8 @@ Proof.
 Qed.
 
 Lemma set_eq_remove_union_not_in  `{EqDecision A} : forall x (s1 s2 : list A),
-  NoDup s1 ->
-  NoDup s2 ->
+  List.NoDup s1 ->
+  List.NoDup s2 ->
   ~ In x s1 ->
   set_eq
     (set_union decide_eq s1 (set_remove decide_eq x s2))
@@ -608,9 +605,9 @@ Proof.
 Qed.
 
 Lemma diff_app_nodup `{EqDecision A} : forall (s1 s2 : list A),
-  NoDup s1 ->
-  NoDup s2 ->
-  NoDup ((set_diff decide_eq s1 s2) ++ s2).
+  List.NoDup s1 ->
+  List.NoDup s2 ->
+  List.NoDup ((set_diff decide_eq s1 s2) ++ s2).
 Proof.
   intros.
   apply nodup_append; try assumption.
@@ -727,7 +724,7 @@ Definition get_maximal_elements
   `(preceeds : A -> A -> bool)
   (l : list A)
   : list A :=
-  filter (fun a => forallb (fun b => negb (preceeds a b)) l) l.
+  List.filter (fun a => forallb (fun b => negb (preceeds a b)) l) l.
 
 Example get_maximal_elements1: get_maximal_elements Nat.ltb [1; 4; 2; 4] = [4;4].
 Proof. intuition. Qed.
@@ -736,9 +733,9 @@ Example get_maximal_elements2 : get_maximal_elements Nat.leb [1; 4; 2; 4] = [].
 Proof. intuition. Qed.
 
 Lemma set_prod_nodup `(s1: set A) `(s2: set B):
-  NoDup s1 ->
-  NoDup s2 ->
-  NoDup (set_prod s1 s2).
+  List.NoDup s1 ->
+  List.NoDup s2 ->
+  List.NoDup (set_prod s1 s2).
 Proof.
   intros Hs1 HS2.
   induction Hs1.
@@ -772,7 +769,7 @@ Qed.
     step by step while doing induction over <<l>>.
  *)
 Definition set_diff_filter `{EqDecision A} (l r : list A) :=
-  filter (fun a => if in_dec decide_eq a r then false else true) l.
+  List.filter (fun a => if in_dec decide_eq a r then false else true) l.
 
 (**
    The characteristic membership property, parallel to
@@ -788,8 +785,10 @@ Proof.
 Qed.
 
 Lemma set_diff_filter_nodup `{EqDecision A} (l r:list A):
-  NoDup l -> NoDup (set_diff_filter l r).
-Proof (@NoDup_filter _ _ _).
+  List.NoDup l -> List.NoDup (set_diff_filter l r).
+Proof.
+  exact (@NoDup_filter _ _ _).
+Qed.
 
 (**
    Prove that subtracting a superset cannot produce
@@ -888,8 +887,8 @@ Qed.
 Lemma filter_set_eq `{EqDecision X}
    (l : list X)
    (f g : X -> bool)
-   (resf := filter f l)
-   (resg := filter g l) :
+   (resf := List.filter f l)
+   (resg := List.filter g l) :
    set_eq resf resg -> resf = resg.
 Proof.
   intros.
@@ -915,8 +914,8 @@ Lemma filter_complement `{EqDecision X}
    (f f' : X -> bool)
    (g := (fun (x : X) => negb (f x)))
    (g' := (fun (x : X) => negb (f' x))) :
-   filter f l = filter f' l <->
-   filter g l = filter g' l.
+   List.filter f l = List.filter f' l <->
+   List.filter g l = List.filter g' l.
 Proof.
    split; intros.
    - specialize (ext_in_filter f f' l H) as Hext.

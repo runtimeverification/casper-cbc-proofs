@@ -1,9 +1,6 @@
 From CasperCBC.stdpp Require Import base decidable numbers.
 From Coq Require Import FinFun ListSet Lia.
-From CasperCBC.Lib Require Import Preamble.
-
-Local Notation filter := List.filter.
-Local Notation NoDup := List.NoDup.
+From CasperCBC Require Import Lib.Preamble.
 
 (** * Utility lemmas about lists *)
 
@@ -146,14 +143,14 @@ Qed.
 Lemma filter_in : forall A (f : A -> bool) x s,
   In x s ->
   f x = true ->
-  In x (filter f s).
+  In x (List.filter f s).
 Proof.
   intros. apply filter_In. split; assumption.
 Qed.
 
 Lemma filter_incl {A} (f : A -> bool) : forall s1 s2,
   incl s1 s2 ->
-  incl (filter f s1) (filter f s2).
+  incl (List.filter f s1) (List.filter f s2).
 Proof.
   induction s1; intros; intro x; intros.
   - inversion H0.
@@ -166,7 +163,7 @@ Qed.
 
 Lemma filter_incl_fn {A} : forall (f : A -> bool) (g : A -> bool),
   (forall a, f a = true -> g a = true) ->
-  forall s, incl (filter f s) (filter g s).
+  forall s, incl (List.filter f s) (List.filter g s).
 Proof.
   induction s; simpl.
   - apply incl_refl.
@@ -184,7 +181,7 @@ Lemma filter_length_fn
   (f g : A -> bool)
   (s : list A)
   (Hfg : Forall (fun a => f a = true -> g a = true) s)
-  : length (filter f s) <= length (filter g s).
+  : length (List.filter f s) <= length (List.filter g s).
 Proof.
   induction s; simpl.
   - lia.
@@ -196,7 +193,7 @@ Qed.
 
 Lemma filter_eq_fn {A} : forall (f : A -> bool) (g : A -> bool) s,
   (forall a, In a s -> f a = true <-> g a = true) ->
-  filter f s = filter g s.
+  List.filter f s = List.filter g s.
 Proof.
   induction s; intros; try reflexivity. simpl.
   assert (IHs' : forall a : A, In a s -> f a = true <-> g a = true).
@@ -216,7 +213,7 @@ Lemma filter_nil
   (f : A -> bool)
   (l : list A)
   : Forall (fun a : A => f a = false) l
-  <-> filter f l = [].
+  <-> List.filter f l = [].
 Proof.
   rewrite Forall_forall.
   split; intro Hnone.
@@ -382,7 +379,7 @@ Definition app_cons {A}
   := eq_refl.
 
 Lemma append_nodup_left {A}:
-  forall (l1 l2 : list A), NoDup (l1 ++ l2) -> NoDup l1.
+  forall (l1 l2 : list A), List.NoDup (l1 ++ l2) -> List.NoDup l1.
 Proof.
   induction l1; intros.
   - constructor.
@@ -391,7 +388,7 @@ Proof.
 Qed.
 
 Lemma append_nodup_right {A}:
-  forall (l1 l2 : list A), NoDup (l1 ++ l2) -> NoDup l2.
+  forall (l1 l2 : list A), List.NoDup (l1 ++ l2) -> List.NoDup l2.
 Proof.
   induction l1; intros.
   - simpl in H. assumption.
@@ -399,11 +396,11 @@ Proof.
 Qed.
 
 Lemma nodup_append {A} : forall (l1 l2 : list A),
-  NoDup l1 ->
-  NoDup l2 ->
+  List.NoDup l1 ->
+  List.NoDup l2 ->
   (forall a, In a l1 -> ~ In a l2) ->
   (forall a, In a l2 -> ~ In a l1) ->
-  NoDup (l1 ++ l2).
+  List.NoDup (l1 ++ l2).
 Proof.
   induction l1; simpl; intros; try assumption.
   inversion H; subst; clear H. constructor.
@@ -826,7 +823,7 @@ Lemma nth_error_filter
   (l : list A)
   (n : nat)
   (a : A)
-  (Hnth : nth_error (filter f l) n = Some a)
+  (Hnth : nth_error (List.filter f l) n = Some a)
   : exists (nth : nat),
     nth_error_filter_index f l n = Some nth
     /\ nth_error l nth = Some a.
@@ -855,7 +852,7 @@ Qed.
 Fixpoint filter_Forall
   `{forall a : A, Decision (P a)}
   (l : list A)
-  : Forall P (filter (fun a => bool_decide (P a)) l).
+  : Forall P (List.filter (fun a => bool_decide (P a)) l).
 Proof.
   destruct l; simpl.
   - exact (Forall_nil P).
@@ -1554,7 +1551,7 @@ Definition mode
   `{EqDecision A}
   (l : list A) : list A  :=
   let mode_value := list_max (List.map (count_occ decide_eq l) l) in
-  filter (fun a => beq_nat (count_occ decide_eq l a) mode_value) l.
+  List.filter (fun a => beq_nat (count_occ decide_eq l a) mode_value) l.
 
 Example mode1 : mode [1; 1; 2; 3; 3] = [1; 1; 3; 3].
 Proof. intuition. Qed.

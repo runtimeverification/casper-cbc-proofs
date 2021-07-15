@@ -2,20 +2,17 @@ From CasperCBC.stdpp Require Import base decidable numbers.
 From Coq Require Import ListSet.
 From CasperCBC Require Import Preamble ListExtras ListSetExtras.
 
-Local Notation filter := List.filter.
-Local Notation NoDup := List.NoDup.
-
 (** * Topological sorting implementation *)
 
 (**
-This module describes an algorithm producing a linear extension for a
-given partial order using an algorithm similar to Kahn's topological
+This module implements an algorithm producing a linear extension for a
+given partial order using an approach similar to that of Kahn's topological
 sorting algorithm.
 
 The algorithm extracts an element with a minimal number of predecessors
 among the current elements, then recurses on the remaining elements.
 
-To begin with we assume an unconstrained <<preceeds>> function to say
+To begin with, we assume an unconstrained <<preceeds>> function to say
 whether an element preceeds another.  The proofs will show that if
 <<preceeds>> determines a strict order on the set of elements in the list,
 then the [top_sort] algoritm produces a linear extension of that ordering
@@ -33,7 +30,7 @@ Context {A} (preceeds : A -> A -> Prop) {rd: RelDecision preceeds} (l : list A).
 Definition count_predecessors
   (a : A)
   : nat
-  := length (filter (fun b => bool_decide (preceeds b a)) l).
+  := length (List.filter (fun b => bool_decide (preceeds b a)) l).
 
 Lemma zero_predecessors
   (a : A)
@@ -494,8 +491,8 @@ Qed.
 
 Lemma top_sort_nodup
   (l : list A)
-  (Hl : NoDup l)
-  : NoDup (top_sort l).
+  (Hl : List.NoDup l)
+  : List.NoDup (top_sort l).
 Proof.
   unfold top_sort.
   remember (length l) as len.
@@ -506,9 +503,9 @@ Proof.
   - destruct l as [| a l].
     + constructor.
     + simpl.
-      assert (Hl' : NoDup l) by (inversion Hl; assumption).
+      assert (Hl' : List.NoDup l) by (inversion Hl; assumption).
       assert (Hlen : len = length l) by (inversion Heqlen; reflexivity).
-      assert (Hl'' : NoDup (set_remove decide_eq (min_predecessors preceeds (a :: l) l a) l))
+      assert (Hl'' : List.NoDup (set_remove decide_eq (min_predecessors preceeds (a :: l) l a) l))
         by (apply set_remove_nodup; assumption).
       destruct (decide (min_predecessors preceeds (a :: l) l a = a)); constructor.
       * specialize (IHlen l Hl'  Hlen).

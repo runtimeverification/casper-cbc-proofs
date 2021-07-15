@@ -1,7 +1,6 @@
-From Coq Require Import List FinFun.
-Import ListNotations.
-
-From CasperCBC Require Import Preamble ListExtras.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FinFun.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras.
 
 (** * Finite function utility definitions and lemmas *)
 
