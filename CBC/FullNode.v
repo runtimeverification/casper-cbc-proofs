@@ -1,8 +1,8 @@
-From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts .
-Import ListNotations.
-
-From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras RealsExtras.
-From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common CBC.Definitions.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals Relations RelationClasses ListSet Setoid Permutation EqdepFacts.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras.
+From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol.
+From CasperCBC Require Import CBC.Common CBC.Definitions.
 
 (** * CBC Full Node Protocol *)
 
@@ -1180,7 +1180,7 @@ Lemma next_equivocations_add_weights
   : forall (s : @state C V),
     protocol_state s ->
     forall (vs : list V) (v0 : V),
-      NoDup vs ->
+      List.NoDup vs ->
       (* The sum weight is not over *)
       (fault_weight_state s + sum_weights vs <= proj1_sig threshold)%R ->
       (* None of the senders are already equivocating *)
@@ -1259,7 +1259,7 @@ Definition potentially_pivotal_state
   (* There is a remaining list of validators *)
   exists (vs : list V),
     (* That is duplicate-free *)
-    NoDup vs /\
+    List.NoDup vs /\
     (* Doesn't contain v *)
     ~ In v vs /\
     (* That are all not already equivocating in s *)
@@ -1299,7 +1299,7 @@ Proof.
     exists v. split.
     + subst. apply Hincl_vs' in Hin_v. apply set_diff_elim2 in Hin_v. assumption.
     + exists (set_remove decide_eq v vs').
-      assert (NoDup (set_remove decide_eq v vs')) as Hnodup_remove
+      assert (List.NoDup (set_remove decide_eq v vs')) as Hnodup_remove
       ; try apply set_remove_nodup; try assumption.
       repeat split.
       * assumption.

@@ -1,8 +1,9 @@
-From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts IndefiniteDescription Classical Sorting.
-Import ListNotations.
-
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists VLSM.Equivocation CBC.Protocol Lib.RealsExtras VLSM.Decisions Lib.Measurable.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals Relations RelationClasses ListSet Setoid Permutation.
+From Coq Require Import EqdepFacts IndefiniteDescription Classical Sorting.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists.
+From CasperCBC Require Import Lib.RealsExtras.
+From CasperCBC Require Import VLSM.Equivocation CBC.Protocol VLSM.Decisions Lib.Measurable.
 
 (** * CBC General Definitions and Lemmas *)
 
@@ -50,8 +51,8 @@ Qed.
 Lemma senders_fault_weight_eq
    `{EqDecision V} `{Hm : Measurable V}
   : forall lv1 lv2 : list V,
-    NoDup lv1 ->
-    NoDup lv2 ->
+    List.NoDup lv1 ->
+    List.NoDup lv2 ->
     set_eq lv1 lv2 ->
     sum_weights lv1 = sum_weights lv2.
 Proof.
@@ -83,13 +84,13 @@ Qed.
 Lemma pivotal_validator_extension
   `{EqDecision V} `{Hrt : ReachableThreshold V}
   : forall vsfix vss,
-  NoDup vsfix ->
+  List.NoDup vsfix ->
   (* and whose added weight does not pass the threshold *)
   (sum_weights vsfix <= proj1_sig threshold)%R ->
-  NoDup (vss ++ vsfix) ->
+  List.NoDup (vss ++ vsfix) ->
   (sum_weights (vss ++ vsfix) > proj1_sig threshold)%R ->
   exists (vs : list V),
-  NoDup vs /\
+  List.NoDup vs /\
   incl vs vss /\
   (sum_weights (vs ++ vsfix) > proj1_sig threshold)%R /\
   exists v,
@@ -115,10 +116,10 @@ Qed.
 Lemma validators_pivotal_ind
   `{EqDecision V} `{Hrt : ReachableThreshold V}
   : forall vss,
-  NoDup vss ->
+  List.NoDup vss ->
   (sum_weights vss > proj1_sig threshold)%R ->
   exists (vs : list V),
-  NoDup vs /\
+  List.NoDup vs /\
   incl vs vss /\
   (sum_weights vs > proj1_sig threshold)%R /\
   exists v,
@@ -140,7 +141,7 @@ Qed.
 Lemma sufficient_validators_pivotal
   `{EqDecision V} `{Hrt : ReachableThreshold V}
   : exists (vs : list V),
-    NoDup vs /\
+    List.NoDup vs /\
     (sum_weights vs > proj1_sig threshold)%R /\
     exists v,
       In v vs /\
@@ -158,7 +159,7 @@ Definition potentially_pivotal
   (v : V) : Prop
   :=
   exists (vs : list V),
-      NoDup vs /\
+      List.NoDup vs /\
       ~In v vs /\
       (sum_weights vs <= proj1_sig threshold)%R /\
       (sum_weights vs > proj1_sig threshold - (proj1_sig (weight v)))%R.

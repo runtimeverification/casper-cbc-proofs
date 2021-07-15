@@ -1,7 +1,7 @@
-From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ProofIrrelevance.
-Import ListNotations.
-
-From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals Relations RelationClasses ListSet.
+From Coq Require Import Setoid Permutation EqdepFacts ProofIrrelevance.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
 
 (** * CBC Protocol Definitions and Lemmas *)
 
@@ -34,7 +34,7 @@ Class CBC_protocol_eq :=
       weight : validators -> {r | (r > 0)%R};
       (** Threshold is a non-negative real **)
       t : {r | (r >= 0)%R};
-      suff_val : exists vs, NoDup vs /\ ((fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R) vs > (proj1_sig t))%R;
+      suff_val : exists vs, List.NoDup vs /\ ((fold_right (fun v r => (proj1_sig (weight v) + r)%R) 0%R) vs > (proj1_sig t))%R;
       (** States with equality and union **)
       state : Type;
       about_state : StrictlyComparable state;
