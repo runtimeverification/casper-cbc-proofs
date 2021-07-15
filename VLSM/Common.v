@@ -104,7 +104,7 @@ function and a [valid]ity condition.
     {S : VLSM_sign T}
     (M : VLSM_class S)
     : VLSM message
-    := @existT _ _ T (@existT _ _ S M).
+    := existT T (existT S M).
 
   Definition pre_loaded_vlsm
     {message : Type}

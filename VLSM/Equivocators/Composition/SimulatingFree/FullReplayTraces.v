@@ -54,10 +54,10 @@ Definition update_equivocators_transition_item_descriptor
     match d with
     | NewMachine _ sn =>
       @Build_plan_item message (composite_type equivocator_IM)
-        (@existT index (fun n : index => vlabel (equivocator_IM n)) (e) (l, d)) input
+        (existT e (l, d)) input
     | Existing _ i fi =>
       @Build_plan_item message (composite_type equivocator_IM)
-        (@existT index (fun n : index => vlabel (equivocator_IM n)) (e)
+        (existT e
           (l, Existing _ (i + S (projT1 (s (e)))) fi)
         )
         input
@@ -72,7 +72,7 @@ Definition initial_new_machine_transition_item
   :=
   let seqv := is (eqv) in
   let new_l :=
-    (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
+    (existT eqv
       (vl0 (IM (eqv)), NewMachine _ (projT2 seqv (of_nat_lt (Hzero _ seqv))))
     )
     in
@@ -93,7 +93,7 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
         seed)
       constraint)
   : vvalid (pre_loaded_vlsm (composite_vlsm equivocator_IM constraint) seed)
-      (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
+      (existT eqv
         (vl0 (IM (eqv)), NewMachine _ sn))
       (snd (composite_apply_plan equivocator_IM s a), None).
 Proof.
@@ -719,9 +719,9 @@ Lemma replayed_trace_from_protocol
       eitem
       id fd eqv l0]
       (Htr_eq : tr = epref ++ [eitem] ++ esuf)
-      (Hleitem : l eitem = @existT _ _ eqv (l0, Existing (IM (eqv)) id fd)),
+      (Hleitem : l eitem = existT eqv (l0, Existing (IM (eqv)) id fd)),
       constraint
-        (@existT _ _ eqv (l0, Existing (IM eqv) (id + S (projT1 (full_replay_state eqv))) fd))
+        (existT eqv (l0, Existing (IM eqv) (id + S (projT1 (full_replay_state eqv))) fd))
         (finite_trace_last full_replay_state (replayed_trace_from full_replay_state is epref)
         , input eitem)
   )

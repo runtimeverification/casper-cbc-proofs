@@ -510,7 +510,7 @@ Context
       apply in_app_iff. right.
       simpl. right.
       apply in_app_iff. right.
-      left; trivial.
+      auto with datatypes.
      Qed.
 
     Lemma state_lt_ext_dec

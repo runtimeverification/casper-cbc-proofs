@@ -65,7 +65,7 @@ Definition mk_singleton_state
   (s : vstate X)
   : equivocator_state
   :=
-  @existT _ _ 0 (fun _ => s).
+  existT 0 (fun _ => s).
 
 Definition is_singleton_state
   (s : equivocator_state)
@@ -144,8 +144,7 @@ Definition equivocator_state_update
   (si : vstate X)
   : equivocator_state
   :=
-  @existT _ _ n
-    (fun j => if Fin.eq_dec i j then si else projT2 bs j).
+  existT n (fun j => if Fin.eq_dec i j then si else projT2 bs j).
 
 (** Some basic properties for 'equivocator_state_update' *)
 
@@ -188,7 +187,7 @@ Program Definition equivocator_state_extend
   : equivocator_state
   :=
   let (n, is) := bs in
-  @existT _ _ (S n)
+  existT (S n)
     (fun j =>
       let (nj, Hnj) := to_nat j in
       if (nat_eq_dec nj (S n)) then s else is (@of_nat_lt nj (S n) _)

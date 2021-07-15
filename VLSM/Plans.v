@@ -1,4 +1,4 @@
-From CasperCBC.stdpp Require Import base.
+From CasperCBC.stdpp Require Import base decidable numbers.
 From CasperCBC Require Import Lib.ListExtras VLSM.Common.
 
 (** * VLSM Plans *)

@@ -191,7 +191,7 @@ iff it has the [initial_message_prop]erty in any of the component signatures.
     Definition composite_m0 : message := vm0 (IM inhabitant).
 
     Definition composite_l0 : composite_label
-      := @existT _ _ inhabitant (vl0 (IM inhabitant)) .
+      := existT inhabitant (vl0 (IM inhabitant)).
 
     Definition composite_sig
       : VLSM_sign composite_type
@@ -222,7 +222,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
     Proof.
       destruct item.
       split.
-      - exact (@existT _ _ j l).
+      - exact (existT j l).
       - exact input.
       - exact (lift_to_composite_state j destination).
       - exact output.
@@ -243,7 +243,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
     Proof.
       destruct item.
       split.
-      - exact (@existT _ _ j l).
+      - exact (existT j l).
       - exact input.
       - exact (lift_to_composite_state' s j destination).
       - exact output.
@@ -262,7 +262,7 @@ updating an initial composite state, say [s0], to <<sj>> on component <<j>>.
     Proof.
       destruct a.
       split.
-      - exact (@existT _ _ i label_a).
+      - exact (existT i label_a).
       - exact input_a.
     Defined.
 
@@ -768,7 +768,7 @@ Then <<X1>> is trace-included into <<X2>>.
         replace
           (@pair composite_state (option message) (lift_to_composite_state j sj) om0)
           with
-          (vtransition (pre_loaded_vlsm free_composite_vlsm Q) (@existT _ _ j l) (lift_to_composite_state j s, om)).
+          (vtransition (pre_loaded_vlsm free_composite_vlsm Q) (existT j l) (lift_to_composite_state j s, om)).
         + apply (protocol_generated (pre_loaded_vlsm free_composite_vlsm Q)) with _om (lift_to_composite_state j _s)
           ; [assumption | assumption|].
           split; [|exact I].
@@ -824,7 +824,7 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
     Proof.
       destruct Htrj as [(s,om) [l [s' [[[_om Hs] [[_s Hom] Hv]] Ht]]]].
       exists ((lift_to_composite_state j s), om).
-      exists (@existT _ _ j l).
+      exists (existT j l).
       exists (lift_to_composite_state j s').
       apply (protocol_prop_composite_free_lift_generalized_initial _ _ PimpliesQ) in Hs.
       apply (protocol_prop_composite_free_lift_generalized_initial _ _ PimpliesQ) in Hom.
@@ -881,7 +881,7 @@ If @(sj, om)@ has the [protocol_prop]erty for component and @s@ is the [lift_to_
           destruct Hs as [_om Hs].
           destruct Hom as [_s Hom].
           specialize
-            (protocol_generated free_composite_vlsm (@existT _ _ j lj) _ _ Hs _ _ Hom)
+            (protocol_generated free_composite_vlsm (existT j lj) _ _ Hs _ _ Hom)
             as Hgen.
           assert (n' : j <> i) by (intro contra; subst; elim n; reflexivity).
           spec Hgen.
@@ -1014,7 +1014,7 @@ Lemma protocol_transition_preloaded_project_any {V} (i:V)
       (l:vlabel X) s im s' om:
   protocol_transition (pre_loaded_with_all_messages_vlsm X) l (s,im) (s',om) ->
   (s i = s' i \/
-   exists li, (l = @existT _ _ i li) /\
+   exists li, (l = existT i li) /\
    protocol_transition (pre_loaded_with_all_messages_vlsm (IM i))
                        li
                        (s i,im) (s' i,om)).
@@ -1043,7 +1043,7 @@ Lemma protocol_transition_project_any {V} (i:V)
       (l:vlabel X) s im s' om:
   protocol_transition X l (s,im) (s',om) ->
   (s i = s' i \/
-   exists li, (l = @existT _ _ i li) /\
+   exists li, (l = existT i li) /\
    protocol_transition (pre_loaded_with_all_messages_vlsm (IM i))
                        li
                        (s i,im) (s' i,om)).
@@ -1118,7 +1118,7 @@ to be all [protocol_message]s of <<X>>:
     :=
     let (si, omi) := siomi in
     exists (s : vstate X),
-      s i = si /\ protocol_valid X (@existT _ _ i li) (s, omi).
+      s i = si /\ protocol_valid X (existT i li) (s, omi).
 
   (**
    The following two lemmas ([projection_valid_impl_VLSM1_projection_valid]
@@ -1150,7 +1150,7 @@ to be all [protocol_message]s of <<X>>:
     unfold vvalid in Hcvalid.
     unfold protocol_state.
     remember (@composite_label _ index IM) as CL in |-.
-    remember (@existT _ (fun n => vlabel (IM n)) i li) as er.
+    remember (existT i li) as er.
     remember (vtransition X er (s,omi)) as sm'.
     remember (fst sm') as s'.
 
@@ -1184,7 +1184,7 @@ to be all [protocol_message]s of <<X>>:
     {
       rewrite Heqer.
       destruct (vtransition (IM i) li (si, omi)) eqn:Heq1.
-      destruct (vtransition X (@existT _ (fun n => vlabel (IM n)) i li) (s, omi)) eqn:Heq2.
+      destruct (vtransition X (existT i li) (s, omi)) eqn:Heq2.
       simpl.
       unfold vtransition in Heq2. unfold transition in Heq2. unfold machine in Heq2.
       simpl in Heq2.
@@ -1222,7 +1222,7 @@ to be all [protocol_message]s of <<X>>:
       VLSM1_projection_valid i li siomi ->
       (exists s : protocol_state X,
           proj1_sig s i = (fst siomi)
-          /\ constraint (@existT _ (fun n : index => vlabel (IM n)) i li) (proj1_sig s, (snd siomi))) ->
+          /\ constraint (existT i li) (proj1_sig s, (snd siomi))) ->
       option_protocol_message_prop X (snd siomi) ->
       projection_valid i li siomi.
   Proof.
@@ -1455,7 +1455,7 @@ the initial ones available from <<X>>.
       - destruct Hom as [pm <-]. apply @proj2_sig.
       - destruct Hv as [sX [Heqs Hv]].
         subst s.
-        set (lX := @existT _ (fun n => vlabel (IM n)) j l) in Hv.
+        set (lX := existT j l) in Hv.
         apply protocol_prop_valid_out in Hv.
         simpl in Hv.
         unfold vstate in Hv.
@@ -1523,7 +1523,7 @@ We can now finally prove the main result for this section:
       (s : vstate X)
       (Hs : protocol_state_prop X s)
       (Hsi : s j = sj)
-      , vvalid X (@existT _ _ j lj) (s, om).
+      , vvalid X (existT j lj) (s, om).
 
   Lemma projection_friendliness_sufficient_condition_protocol_state
     (Hfr : projection_friendliness_sufficient_condition)
@@ -1899,9 +1899,7 @@ All results from regular projections carry to these "free" projections.
       rewrite map_app in Hdif.
 
       spec IHa. {
-        intro Hin; apply Hdif.
-        apply in_or_app.
-        left; trivial.
+        auto with datatypes.
       }
 
       rewrite <- IHa.
@@ -1946,9 +1944,7 @@ All results from regular projections carry to these "free" projections.
         unfold incl; intros; simpl.
         rewrite map_app.
         rewrite map_app.
-        all : intuition.
-        apply in_or_app.
-        left; trivial.
+        all : intuition auto with datatypes.
       }
 
       spec IHa. {

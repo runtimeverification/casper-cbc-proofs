@@ -141,7 +141,7 @@ Definition validating_transitions :=
             (om' : option message),
             si = s i
             /\
-            protocol_transition X (@existT _ _ i li) (s, omi) (s', om')
+            protocol_transition X (existT i li) (s, omi) (s', om')
         ).
 
 (**
@@ -155,7 +155,7 @@ Proof.
     intros Hvalidating si omi li Hpvi.
     specialize (Hvalidating li (si, omi) Hpvi). clear Hpvi.
     destruct Hvalidating as [s [Hsi [Hps [Hopm [Hvalid Hctr]]]]].
-    destruct (vtransition X (@existT _ _ i li) (s, omi)) as (s', om') eqn:Heqt.
+    destruct (vtransition X (existT i li) (s, omi)) as (s', om') eqn:Heqt.
     exists s. exists s'. exists om'.
     subst si.
     repeat split; assumption.

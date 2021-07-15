@@ -152,7 +152,7 @@ Context
 
       specialize (self_projections_same_after_receive res_long Hpr_long i x) as Hone.
       spec Hone. {
-        specialize (Hrec x). spec Hrec. apply in_app_iff. right; left; reflexivity.
+        specialize (Hrec x). spec Hrec. apply in_app_iff. auto with datatypes.
         intuition.
      }
      rewrite Hres_long in Hone.
@@ -246,7 +246,7 @@ Context
 
       specialize (non_self_projections_same_after_send res_long Hpr_long i j H x) as Hone.
       spec Hone. {
-        specialize (Hrec x). spec Hrec. apply in_app_iff. right; left; reflexivity.
+        specialize (Hrec x). spec Hrec. apply in_app_iff. auto with datatypes.
         intuition.
      }
      rewrite Hres_long in Hone.
@@ -543,7 +543,7 @@ Context
     split;[intuition|].
     unfold simp_lv_state_observations.
     rewrite decide_True by intuition.
-    left; reflexivity.
+    auto with datatypes.
   Qed.
 
   Remark GE_direct
@@ -1285,7 +1285,7 @@ Context
              apply Hsnb; intuition.
              rewrite (@project_same index index_listing Hfinite).
              apply Hsnb; intuition.
-             apply Hsnb; intuition.    
+             apply Hsnb; intuition.
          - unfold s' in Hine2.
            setoid_rewrite cobs_message_existing_same1 in Hine2.
            2, 3 : intuition.
@@ -1978,7 +1978,7 @@ Context
 
         specialize (Hgood x).
         spec Hgood. {
-          apply in_app_iff. right. left; trivial.
+          apply in_app_iff. auto with datatypes.
         }
 
         destruct x. simpl in *.

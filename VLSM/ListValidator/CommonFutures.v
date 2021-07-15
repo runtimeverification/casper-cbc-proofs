@@ -261,7 +261,7 @@ Context
       remember (feasible_update_composite s i) as a.
       specialize (Hnf i) as Hnfi.
       spec Hnfi. {
-        left; reflexivity.
+        auto with datatypes.
       }
       remember (vtransition X (label_a a) (s, input_a a)) as res_a.
 
@@ -320,7 +320,7 @@ Context
           intuition.
           unfold GE.
           rewrite <- wH_wE'.
-          apply Hhonest. left; reflexivity.
+          apply Hhonest. auto with datatypes.
       }
 
       spec IHli. {
@@ -332,7 +332,7 @@ Context
         setoid_rewrite HGEs'.
         apply wH_wE'.
         apply Hhonest.
-        right; trivial.
+        auto with datatypes.
       }
 
       spec IHli. {

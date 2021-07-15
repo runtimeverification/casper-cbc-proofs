@@ -274,7 +274,7 @@ Proof.
     apply set_union_nodup.
     specialize (H a).
     apply H.
-    left; trivial.
+    intuition auto with datatypes.
     apply IHss.
     intros.
     specialize (H s).
@@ -661,7 +661,7 @@ Proof.
      assert (a = []). {
       specialize (H a).
       apply H.
-      left; trivial.
+      intuition auto with datatypes.
      }
   rewrite H1.
   simpl.

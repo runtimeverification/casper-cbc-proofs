@@ -1,4 +1,4 @@
-From CasperCBC.stdpp Require Import base.
+From CasperCBC.stdpp Require Import base decidable numbers.
 From Coq Require Import Streams.
 From CasperCBC Require Import Lib.SsrExport Lib.Traces Lib.TraceProperties.
 From CasperCBC Require Import Lib.TraceClassicalProperties Lib.Preamble Lib.StreamExtras.

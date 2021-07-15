@@ -1352,7 +1352,7 @@ Proof.
         exists needle.
         split.
         assumption.
-        right; assumption.
+        intuition auto with datatypes.
    - generalize dependent a.
      generalize dependent haystack.
      induction haystack.
@@ -1538,7 +1538,7 @@ Proof.
     destruct Hle as [Hle _].
     rewrite eq_max in Hle. spec Hle. apply le_refl.
     rewrite Forall_forall in Hle.
-    specialize (Hle n). spec Hle. left; trivial.
+    specialize (Hle n). spec Hle. intuition auto with datatypes.
     simpl. lia.
   - specialize (list_max_exists l) as Hmax.
     spec Hmax. lia. rewrite <- eq_max. intuition.
