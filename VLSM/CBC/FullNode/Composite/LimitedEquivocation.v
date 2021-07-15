@@ -1,24 +1,13 @@
-From Coq Require Import FinFun List ListSet RelationClasses.
-Import ListNotations.
-
-From CasperCBC
-  Require Import
-    Preamble
-    ListExtras
-    ListSetExtras
-    Lib.Measurable
-    TopSort
-    VLSM.Equivocation
-    VLSM.Decisions
-    VLSM.Common
-    VLSM.Composition
-    VLSM.CBC.FullNode.Validator.State
-    VLSM.CBC.FullNode.Validator.Equivocation
-    VLSM.CBC.FullNode.Validator
-    VLSM.CBC.FullNode.Client
-    VLSM.CBC.FullNode.Composite.Free
-    ObservableEquivocation
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FinFun ListSet RelationClasses.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
+From CasperCBC Require Import Lib.Measurable Lib.TopSort.
+From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions VLSM.Common VLSM.Composition.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.State.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.Equivocation.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator VLSM.CBC.FullNode.Client.
+From CasperCBC Require Import VLSM.CBC.FullNode.Composite.Free.
+From CasperCBC Require Import VLSM.ObservableEquivocation.
 
 Local Ltac destruct_match_term_as e pats Heq :=
   lazymatch e with
@@ -288,7 +277,7 @@ Definition sorted_state_union
 Lemma sorted_state_union_nodup
   (s : vstate FreeX)
   (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm FreeX) s)
-  : NoDup (sorted_state_union s).
+  : List.NoDup (sorted_state_union s).
 Proof.
   apply top_sort_nodup.
   apply state_union_nodup.
@@ -302,8 +291,8 @@ Definition receive_label
   : vlabel FreeX
   :=
   match i with
-  | inl v => existT _ (inl v) None
-  | inr client => existT _ (inr client) tt
+  | inl v => existT (inl v) None
+  | inr client => existT (inr client) tt
   end.
 
 Definition receive_destination
@@ -627,7 +616,7 @@ Lemma receive_messages_protocol
   (Hs : protocol_state_prop Full_constrained_composition s)
   (i : index)
   (ms : list message)
-  (Hms : NoDup ms)
+  (Hms : List.NoDup ms)
   (Hmsj : preceeds_closed message_preceeds ms)
   (Hmsi : incl ms (state_union indices s))
   (Hmst : topologically_sorted message_preceeds ms)
@@ -892,7 +881,7 @@ Lemma receive_sorted_messages_protocol
   (s : vstate FreeX)
   (Hs : protocol_state_prop Full_constrained_composition s)
   (ms : set message)
-  (Hnodup : NoDup ms)
+  (Hnodup : List.NoDup ms)
   (Hms : topological_sorting message_preceeds (state_union indices s) ms)
   (tr := receive_messages_iterated s ms is)
   : finite_protocol_trace_from Full_constrained_composition s tr.

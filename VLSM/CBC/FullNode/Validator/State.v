@@ -1,18 +1,6 @@
-Require Import
-  List
-  Coq.Lists.ListSet
-  Coq.Classes.RelationClasses
-  .
-
-From CasperCBC
-    Require Import
-      Preamble
-      SortedLists
-      ListExtras
-      ListSetExtras
-    .
-
-Import ListNotations.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet RelationClasses.
+From CasperCBC Require Import Lib.Preamble Lib.SortedLists Lib.ListExtras Lib.ListSetExtras.
 
 (** * VLSM Full-Node State Tracking Sent Messages *)
 

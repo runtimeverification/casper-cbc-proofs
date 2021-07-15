@@ -1,20 +1,10 @@
-From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
-Import ListNotations.
-
-From CasperCBC
-Require Import
-  Lib.Preamble
-  Lib.ListExtras
-  Lib.ListSetExtras
-  Lib.SortedLists
-  Lib.Measurable
-  VLSM.Common
-  VLSM.Composition
-  VLSM.Equivocation
-  VLSM.ListValidator.ListValidator
-  VLSM.ListValidator.Equivocation
-  VLSM.ObservableEquivocation
-  .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras. 
+From CasperCBC Require Import Lib.SortedLists Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation.
+From CasperCBC Require Import VLSM.ListValidator.ListValidator VLSM.ListValidator.Equivocation.
+From CasperCBC Require Import VLSM.ObservableEquivocation.
 
 (** * VLSM List Validator Observations *)
 
@@ -135,7 +125,7 @@ Context
   Lemma get_observations_nodup
       (target : index)
       (s : state) :
-      (NoDup (get_raw_observations s target)).
+      (List.NoDup (get_raw_observations s target)).
     Proof.
       unfold get_raw_observations.
       remember (depth s) as d.
@@ -537,8 +527,8 @@ Context
       - simpl in Hin.
         destruct Hin.
         rewrite <- H.
-        all : intuition.
-      - intuition.
+        all : intuition auto.
+      - inversion Hin.
     Qed.
 
     Remark in_simp_lv_message_observations'
@@ -660,7 +650,7 @@ Context
    Remark get_validators_nodup
     {State : Type}
     (s : State) :
-    NoDup (get_validators s).
+    List.NoDup (get_validators s).
    Proof.
     unfold get_validators.
     apply Hfinite.
@@ -831,7 +821,7 @@ Context
     remember (get_history' s target) as l.
     generalize dependent s.
     induction l.
-    - intros. intuition.
+    - intros. inversion Hin.
     - intros.
 
       assert (Hnb : s <> Bottom /\ (project s target) <> Bottom). {
@@ -1066,7 +1056,7 @@ Context
     apply set_union_iff.
     destruct Hraw.
     - rewrite (@project_same index index_listing Hfinite) in H0 by intuition.
-      right. rewrite H0. intuition.
+      right. rewrite H0. auto with datatypes.
     - destruct H0 as [k Hink].
        destruct (decide (k = i)).
        + subst k.
@@ -1109,7 +1099,7 @@ Context
     - destruct (decide (i = j)).
       + subst j.
         rewrite (@project_same index index_listing Hfinite) in H0 by intuition.
-        right. rewrite H0. intuition.
+        right. rewrite H0. auto with datatypes.
       + rewrite (@project_different index index_listing Hfinite) in H0 by intuition.
         left.
         apply set_union_iff.
@@ -1411,7 +1401,7 @@ Context
         rewrite <- Hsent; simpl.
         rewrite e0.
         all : intuition.
-      - intuition.
+      - inversion Hin.
     Qed.
 
     Definition lv_received_observations (s : state) (target : index) : set lv_event :=
@@ -1431,7 +1421,7 @@ Context
     Proof.
       unfold lv_received_observations in Hin.
       destruct (decide (target = index_self)).
-      - intuition.
+      - inversion Hin.
       - apply in_map_iff in Hin.
         destruct Hin as [x [Hobs _]].
         rewrite <- Hobs; simpl.
@@ -1458,7 +1448,7 @@ Context
         rewrite <- H; simpl.
         rewrite e0.
         all : intuition.
-      - intuition.
+      - inversion Hin.
     Qed.
 
     Lemma raw_received

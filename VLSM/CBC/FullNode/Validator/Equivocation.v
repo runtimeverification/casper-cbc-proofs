@@ -1,21 +1,8 @@
-Require Import
-  Bool
-  List
-  Coq.Lists.ListSet
-  Coq.Classes.RelationClasses
-  .
-
-From CasperCBC
-    Require Import
-      Preamble
-      ListExtras
-      Lib.Measurable
-      VLSM.Equivocation
-      Validator.State
-      VLSM.ObservableEquivocation
-    .
-
-Import ListNotations.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet RelationClasses.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Equivocation VLSM.CBC.FullNode.Validator.State.
+From CasperCBC Require Import VLSM.ObservableEquivocation.
 
 (** * VLSM Full Node State Equivocation *)
 

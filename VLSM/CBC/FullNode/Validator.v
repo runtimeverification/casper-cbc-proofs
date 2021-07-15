@@ -1,20 +1,10 @@
-From Coq Require Import Bool List ListSet.
-Import ListNotations.
-
-From CasperCBC
-  Require Import
-    Lib.Preamble
-    Lib.ListExtras
-    Lib.ListSetExtras
-    Lib.Measurable
-    VLSM.Common
-    VLSM.Decisions
-    VLSM.CBC.FullNode.Validator.State
-    VLSM.CBC.FullNode.Validator.Equivocation
-    VLSM.Equivocation
-    VLSM.ObservableEquivocation
-    VLSM.CBC.FullNode.Client
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Decisions.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.State.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.Equivocation.
+From CasperCBC Require Import VLSM.Equivocation VLSM.ObservableEquivocation VLSM.CBC.FullNode.Client.
 
 (** * VLSM Full Node Composite Validator *)
 
@@ -39,7 +29,7 @@ Section CompositeValidator.
     (v : V)
     : set message
     :=
-    filter (fun m => bool_decide (sender m = v)) (get_message_set s).
+    List.filter (fun m => bool_decide (sender m = v)) (get_message_set s).
 
     Definition full_node_validator_state_validators
     (s : state C V)
@@ -98,7 +88,7 @@ Section CompositeValidator.
 
   Lemma full_node_validator_state_validators_nodup
     (s : state C V)
-    : NoDup (full_node_validator_state_validators s).
+    : List.NoDup (full_node_validator_state_validators s).
   Proof.
     apply set_map_nodup.
   Qed.
@@ -244,7 +234,7 @@ Section proper_sent_received.
   Lemma validator_protocol_state_nodup
     (s : state C V)
     (Hs : protocol_state_prop bvlsm s)
-    : NoDup (get_message_set s).
+    : List.NoDup (get_message_set s).
   Proof.
     induction Hs using protocol_state_prop_ind.
     - inversion Hs. constructor.

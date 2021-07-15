@@ -1,18 +1,8 @@
-Require Import
-  List ListSet FinFun Arith Bool
-  .
-Import ListNotations.
-From CasperCBC
-Require Import
-  Lib.Preamble
-  Lib.ListExtras
-  Lib.Measurable
-  VLSM.Equivocation
-  VLSM.Common
-  VLSM.ListValidator.ListValidator
-  VLSM.ListValidator.Equivocation
-  VLSM.ListValidator.Observations
-  .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet FinFun.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Equivocation VLSM.Common VLSM.ListValidator.ListValidator.
+From CasperCBC Require Import VLSM.ListValidator.Equivocation VLSM.ListValidator.Observations.
 
 (** * VLSM Equivocation Aware List Validator *)
 

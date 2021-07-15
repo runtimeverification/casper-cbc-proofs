@@ -1,25 +1,13 @@
-From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Basics Lia.
-Import ListNotations.
-
-From CasperCBC
-Require Import
-  Lib.Preamble
-  Lib.ListExtras
-  Lib.ListSetExtras
-  Lib.SortedLists
-  Lib.Measurable
-  VLSM.Common
-  VLSM.Plans
-  VLSM.ProjectionTraces
-  VLSM.Composition
-  VLSM.Equivocation
-  VLSM.ListValidator.ListValidator
-  VLSM.ListValidator.Equivocation
-  VLSM.ListValidator.Observations
-  VLSM.ListValidator.EquivocationAwareListValidator
-  VLSM.ListValidator.EquivocationAwareComposition
-  VLSM.ObservableEquivocation
-  .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras. 
+From CasperCBC Require Import Lib.SortedLists Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Plans VLSM.ProjectionTraces VLSM.Composition.
+From CasperCBC Require Import VLSM.Equivocation VLSM.ListValidator.ListValidator.
+From CasperCBC Require Import VLSM.ListValidator.Equivocation VLSM.ListValidator.Observations.
+From CasperCBC Require Import VLSM.ListValidator.EquivocationAwareListValidator.
+From CasperCBC Require Import VLSM.ListValidator.EquivocationAwareComposition.
+From CasperCBC Require Import VLSM.ObservableEquivocation.
 
 (** * VLSM List Validator Common Futures *)
 
@@ -180,10 +168,13 @@ Context
        apply ea_estimator_total in eq_ewb.
        all : intuition.
    - unfold feasible_update_value in eq_fv.
-     destruct s;[intuition|].
-     destruct (bool_decide (equivocation_aware_estimator (Something b is) false)) eqn : eq_ewb.
-     rewrite bool_decide_eq_true in eq_ewb. intuition.
-     intuition congruence.
+     destruct s.
+     + unfold not_all_equivocating in Hne.
+       unfold no_equivocating_decisions in Hne.
+       intuition.
+     + destruct (bool_decide (equivocation_aware_estimator (Something b is) false)) eqn : eq_ewb.
+       rewrite bool_decide_eq_true in eq_ewb. intuition.
+       intuition congruence.
   Qed.
 
   Definition feasible_update_single (s : (@state index index_listing)) (who : index) : plan_item :=
@@ -247,7 +238,7 @@ Context
     (s : vstate X)
     (Hprs : protocol_state_prop _ s)
     (li : list index)
-    (Hnodup : NoDup li)
+    (Hnodup : List.NoDup li)
     (Hhonest : incl li (GH s))
     (Hnf : no_component_fully_equivocating s li) :
     let res := snd (apply_plan X s (chain_updates li s)) in
@@ -265,12 +256,12 @@ Context
         assumption.
       + split; [intuition|].
         simpl in res.
-        unfold res. intuition.
+        unfold res. apply set_eq_refl.
     - intros.
       remember (feasible_update_composite s i) as a.
       specialize (Hnf i) as Hnfi.
       spec Hnfi. {
-        intuition.
+        left; reflexivity.
       }
       remember (vtransition X (label_a a) (s, input_a a)) as res_a.
 
@@ -329,7 +320,7 @@ Context
           intuition.
           unfold GE.
           rewrite <- wH_wE'.
-          apply Hhonest. intuition.
+          apply Hhonest. left; reflexivity.
       }
 
       spec IHli. {
@@ -341,7 +332,7 @@ Context
         setoid_rewrite HGEs'.
         apply wH_wE'.
         apply Hhonest.
-        intuition.
+        right; trivial.
       }
 
       spec IHli. {
@@ -451,7 +442,7 @@ Context
             spec Hexist'. {
               unfold GE.
               apply wH_wE'.
-              intuition.
+              intuition auto with datatypes.
             }
             simpl in Hexist, Hexist'.
 
@@ -501,7 +492,7 @@ Context
   Proof.
     unfold send_phase_plan.
     specialize (chain_updates_protocol s Hprs (GH s) (GH_NoDup s)) as Hchain.
-    spec Hchain. intuition.
+    spec Hchain. intuition auto with datatypes.
     specialize (Hchain Hnf). simpl in Hchain.
     unfold send_phase_result.
     destruct Hchain as [Hchain1 [Hchain2 Hchain3]].
@@ -529,7 +520,7 @@ Context
   Proof.
     unfold send_phase_plan.
     specialize (chain_updates_protocol s Hprs (GH s) (GH_NoDup s)) as Hchain.
-    spec Hchain. intuition.
+    spec Hchain. intuition auto with datatypes.
     specialize (Hchain Hnf). simpl in Hchain.
     unfold send_phase_result.
     destruct Hchain as [Hchain1 [Hchain2 Hchain3]].
@@ -563,7 +554,7 @@ Context
     apply chain_updates_protocol.
     intuition.
     apply GH_NoDup.
-    all : intuition.
+    all : intuition auto with datatypes.
   Qed.
 
   Remark non_self_projections_same_after_send_phase
@@ -1002,7 +993,7 @@ Context
       + inversion Heq1.
         unfold state_lt'.
         rewrite H2.
-        apply in_app_iff. right. intuition.
+        apply in_app_iff. right. intuition auto with datatypes.
   Qed.
 
   Lemma honest_always_candidate_for_self
@@ -1125,7 +1116,7 @@ Context
       (from : index) :=
       let history_lengths := List.map (fun s' : state => length (get_history s' from)) (get_candidates s) in
       let max_length := list_max history_lengths in
-      filter (fun s' : state => beq_nat (length (get_history s' from)) max_length) (get_candidates s).
+      List.filter (fun s' : state => beq_nat (length (get_history s' from)) max_length) (get_candidates s).
 
     Lemma top_history_something
       (s : vstate X)
@@ -1542,7 +1533,7 @@ Context
         (Hpr : protocol_state_prop X s)
         (li : list index)
         (from : index)
-        (Hnodup : NoDup li)
+        (Hnodup : List.NoDup li)
         (Hnf : ~ In from li) :
         let res := snd (apply_plan X s (get_receives_for s li from)) in
         finite_protocol_plan_from X s (get_receives_for s li from) /\
@@ -1574,7 +1565,7 @@ Context
           rewrite eq_short. intuition.
         }
 
-        assert (Hnodup_li : NoDup li). {
+        assert (Hnodup_li : List.NoDup li). {
           apply NoDup_rev in Hnodup.
           rewrite rev_app_distr in Hnodup.
           simpl in Hnodup.
@@ -1595,7 +1586,7 @@ Context
         assert (Hnxf : x <> from). {
           intros contra.
           rewrite contra in Hnf.
-          intuition.
+          intuition auto with datatypes.
         }
 
         assert (Hnx_li : ~In x li). {
@@ -1607,7 +1598,7 @@ Context
           contradict Hnodup.
           rewrite app_nil_r.
           apply in_app_iff.
-          right. intuition.
+          right. intuition auto with datatypes.
         }
 
         specialize (IHli Hnodup_li Hnf_li).
@@ -1658,7 +1649,7 @@ Context
            rewrite <- Hlabel in Hproj.
            destruct Hinpi as [_ [Hinpi _]].
            subst a. subst x.
-           intuition.
+           intuition auto with datatypes.
         }
 
         assert (Hrem2 : forall (i : index), In i li -> res_long i = res_short i). {
@@ -1718,7 +1709,7 @@ Context
             subst i.
             subst res_short. subst res_long.
             specialize (Heff_proj x).
-            spec Heff_proj. intuition. simpl in Heff_proj.
+            spec Heff_proj. intuition auto with datatypes. simpl in Heff_proj.
             rewrite <- Heff2.
             f_equal. simpl. assumption.
     Qed.
@@ -1838,7 +1829,7 @@ Context
               intros contra. {
                 specialize (Hj {| label_a := label_a'; input_a := Some m |}).
                 simpl in Hj.
-                spec Hj. apply in_app_iff. right. intuition.
+                spec Hj. apply in_app_iff. right. intuition auto with datatypes.
                 destruct Hj as [m' [Hsome Hdif]].
                 inversion Hsome. subst m'. intuition.
               }
@@ -2042,7 +2033,7 @@ Context
           simpl in *.
           specialize (Hli x').
           move Hli at bottom.
-          spec Hli. apply in_app_iff. right. intuition.
+          spec Hli. apply in_app_iff. right. intuition auto with datatypes.
           destruct Hli as [m' [Heqm' Heqf]].
           rewrite Heqx' in Heqm'.
           simpl in Heqm'. inversion Heqm'.
@@ -2059,7 +2050,7 @@ Context
             split;[|intuition].
             destruct Hprotocol_trans as [Hprotocol_trans tmp].
             specialize (relevant_component_transition_lv res_long res_long') as Hrel.
-            specialize (Hrel Hprs_long Hprs'_long (existT (fun n : index => vlabel (IM_index n)) j receive) m).
+            specialize (Hrel Hprs_long Hprs'_long (existT j receive) m).
             rewrite H1 in Hrel.
             rewrite eq_long' in Hrel. simpl in Hrel.
             apply Hrel; [|assumption]. simpl.
@@ -2097,7 +2088,7 @@ Context
 
     Remark NoDup_others
       (i : index) (s : vstate X) :
-      NoDup (others i s).
+      List.NoDup (others i s).
     Proof.
       unfold others.
       apply set_remove_nodup.
@@ -2150,7 +2141,7 @@ Context
     Lemma get_receives_all_protocol
       (s : vstate X)
       (lfrom : set index)
-      (Hnodup : NoDup lfrom)
+      (Hnodup : List.NoDup lfrom)
       (Hprs : protocol_state_prop X s) :
       let res := snd (apply_plan X s (get_receives_all s lfrom)) in
       finite_protocol_plan_from X s (get_receives_all s lfrom) /\
@@ -2332,7 +2323,7 @@ Context
                 destruct H4 as [_ [_ H4]].
                 destruct H4 as [so [Heqso Heqso']].
                 exists (x, so). intuition.
-                intuition.
+                intuition congruence.
     Qed.
 
     Definition receive_phase_plan (s : vstate X) := (get_receives_all s index_listing).
@@ -2564,7 +2555,7 @@ Context
               unfold simp_lv_state_observations in Hk'.
               rewrite H1 in Hk'.
               rewrite decide_False in Hk'.
-              intuition.
+              inversion Hk'.
               specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
               spec Hincl. unfold incl. intros. apply in_listing.
               destruct (decide (a = k)).
@@ -2593,7 +2584,7 @@ Context
               unfold simp_lv_state_observations in Hk'.
               rewrite H2 in Hk'.
               rewrite decide_False in Hk'.
-              intuition.
+              inversion Hk'.
               specialize (ws_incl_wE s index_listing (GH s)) as Hincl.
               spec Hincl. unfold incl. intros. apply in_listing.
               destruct (decide (a = k)).
@@ -2942,8 +2933,9 @@ Context
         unfold simp_lv_state_observations in Heqj.
         inversion He1'.
         rewrite H1 in Heqj.
-        destruct (decide (v = j));[subst v;intuition|].
-        subst le. intuition.
+        destruct (decide (v = j)).
+        -- subst v;intuition.
+        -- subst le. inversion Hin_e1.
      + destruct He2 as [He2|He2].
        * unfold wcobs_states in He2.
          apply set_union_in_iterated in He2.
@@ -2954,8 +2946,9 @@ Context
          unfold simp_lv_state_observations in Heqj.
          inversion He2'.
          rewrite H1 in Heqj.
-         destruct (decide (v = j));[subst v;intuition|].
-         subst le. intuition.
+         destruct (decide (v = j)). 
+         -- subst v;intuition.
+         -- subst le. inversion Hin_e2.
        * apply GE_direct.
          unfold cequiv_evidence.
          unfold equivocation_evidence.
@@ -2983,7 +2976,9 @@ Context
     - specialize (ws_incl_wE res (GH res) [i]) as Hincl.
       spec Hincl. {
         unfold incl. intros.
-        destruct H0;[|intuition]. subst a. intuition.
+        destruct H0.
+        + subst a. intuition.
+        + inversion H0.
       }
       specialize (Hincl v).
       specialize (Hincl H).
@@ -3217,13 +3212,14 @@ Context
         setoid_rewrite hbo_cobs' in He1.
         apply cobs_single in He1.
         destruct He1 as [j [Heqj]].
-        destruct Heqj;[|intuition]. subst j.
+        destruct Heqj;[|inversion H1]. 
+        subst j.
         apply set_union_in_iterated.
         rewrite Exists_exists.
         exists ((@simp_lv_observations index i index_listing _) (s i) (get_simp_event_subject e1)).
         split.
         * apply in_map_iff. exists (get_simp_event_subject e1). split;[intuition|apply in_listing].
-        * intuition.
+        * intuition auto with datatypes.
       + split;[intuition|].
         exists e2.
         split.
@@ -3233,13 +3229,14 @@ Context
         setoid_rewrite hbo_cobs' in He2.
         apply cobs_single in He2.
         destruct He2 as [j [Heqj]].
-        destruct Heqj;[|intuition]. subst j.
+        destruct Heqj;[|inversion H1].
+        subst j.
         apply set_union_in_iterated.
         rewrite Exists_exists.
         exists ((@simp_lv_observations index i index_listing _) (s i) (get_simp_event_subject e2)).
         split.
         -- apply in_map_iff. exists (get_simp_event_subject e2). split;[intuition|apply in_listing].
-        -- intuition.
+        -- intuition auto with datatypes.
         * split;intuition.
     - destruct H0 as [e1 [He1 [He1' [e2 [He2 [He2' Hcomp]]]]]].
       exists e1.
@@ -3257,7 +3254,7 @@ Context
         rewrite <- Hsimp in Hine1.
         apply in_simp_lv_observations in Hine1 as Hine1'.
         subst j.
-        apply cobs_single. exists i. intuition.
+        apply cobs_single. exists i. intuition auto with datatypes.
       + split;[intuition|].
         exists e2.
         split.
@@ -3273,7 +3270,7 @@ Context
           rewrite <- Hsimp in Hine2.
           apply in_simp_lv_observations in Hine2 as Hine2'.
           subst j.
-          apply cobs_single. exists i. intuition.
+          apply cobs_single. exists i. intuition auto with datatypes.
         * split;intuition.
     Qed.
 

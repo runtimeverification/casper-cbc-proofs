@@ -1,19 +1,9 @@
-Require Import
-  List Coq.Vectors.Fin FinFun ListSet
-  Arith.Compare_dec Lia Reals
-  Program
-  Coq.Logic.JMeq
-  .
-Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras FinExtras
-    Lib.Measurable
-    VLSM.Common VLSM.Composition VLSM.Equivocation
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    VLSM.Equivocators.MessageProperties
-    VLSM.Equivocators.Composition.Common
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Vectors.Fin FinFun ListSet Arith.Compare_dec Lia Reals Program JMeq.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.FinExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation.
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
+From CasperCBC Require Import VLSM.Equivocators.MessageProperties VLSM.Equivocators.Composition.Common.
 
 (** * VLSM Limited Equivocation *)
 

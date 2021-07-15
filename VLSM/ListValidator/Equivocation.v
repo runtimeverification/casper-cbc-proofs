@@ -1,19 +1,9 @@
-From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
-Import ListNotations.
-
-From CasperCBC
-Require Import
-  Lib.Preamble
-  Lib.ListExtras
-  Lib.ListSetExtras
-  Lib.SortedLists
-  Lib.Measurable
-  VLSM.Common
-  VLSM.Composition
-  VLSM.Equivocation
-  VLSM.ListValidator.ListValidator
-  VLSM.ObservableEquivocation
-  .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
+From CasperCBC Require Import Lib.SortedLists Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation.
+From CasperCBC Require Import VLSM.ListValidator.ListValidator VLSM.ObservableEquivocation.
 
 (** * VLSM List Validator Equivocation *)
 
@@ -61,7 +51,7 @@ Context
     unfold state_eqb.
     split;
     destruct (state_eq_dec s1 s2);
-    intuition.
+    intuition congruence.
   Qed.
 
   Definition send_oracle (s : state) (m : message)  : bool :=
@@ -520,7 +510,7 @@ Context
       apply in_app_iff. right.
       simpl. right.
       apply in_app_iff. right.
-      intuition.
+      left; trivial.
      Qed.
 
     Lemma state_lt_ext_dec
@@ -866,7 +856,7 @@ Context
           * destruct (decide (msg = (index_self, s)));[left;f_equal;intuition|].
             right.
             unfold send_oracle in H.
-            destruct (decide (fst msg = index_self)); [|intuition].
+            destruct (decide (fst msg = index_self)); [|inversion H].
             rewrite history_disregards_cv in H.
             rewrite e in H.
             rewrite history_append in H.
@@ -876,13 +866,13 @@ Context
             rewrite <- Is_true_iff_eq_true in H.
             apply orb_true_iff in H.
             2, 3 : apply protocol_prop_no_bottom; intuition.
-            2 : intuition.
+            2 : intuition congruence.
             destruct H.
             -- destruct (decide (snd msg = s)).
                ++ destruct msg. simpl in *. intuition congruence.
                ++ rewrite state_eqb_eq in H.
                   congruence.
-            -- subst index_self. intuition.
+            -- subst index_self. auto.
           * destruct H.
             -- inversion H.
                assert (fst msg = index_self) by (rewrite <- H3; simpl; intuition).

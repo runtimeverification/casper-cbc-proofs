@@ -1,7 +1,7 @@
-From Coq Require Import Bool List Reals FinFun Program Lia.
-Import ListNotations.
-
-From CasperCBC Require Import Lib.Preamble Lib.ListExtras VLSM.Common VLSM.Composition VLSM.Equivocation.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals FinFun Program Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation.
 
 (** * VLSM List Validator Protocol *)
 
@@ -477,7 +477,7 @@ Proof.
   unfold in_mode.
   destruct (inb decide_eq (Some b) modes) eqn : eq_b.
   - left. intuition.
-  - destruct (inb decide_eq None modes); intuition.
+  - destruct (inb decide_eq None modes); typeclasses eauto.
 Qed.
 
 Definition estimator (s : state) (b : bool) : Prop :=
@@ -605,7 +605,7 @@ Definition get_history (s : state) (who : index) : list state :=
     unfold state_eqb.
     split;
     destruct (decide (s1 = s2));
-    intuition.
+    intuition congruence.
   Qed.
 
   Definition send_oracle (s : state) (m : message)  : bool :=

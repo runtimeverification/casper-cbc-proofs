@@ -1,24 +1,11 @@
-Require Import PeanoNat Lia FinFun Fin List ListSet RelationClasses Reals.
-
-Import ListNotations.
-
-From CasperCBC
-  Require Import
-    Preamble
-    ListExtras
-    ListSetExtras
-    VLSM.Equivocation
-    VLSM.Decisions
-    Lib.Measurable
-    VLSM.Common
-    VLSM.Composition
-    VLSM.ProjectionTraces
-    VLSM.ObservableEquivocation
-    Validator.State
-    FullNode.Client
-    FullNode.Validator
-    Validator.Equivocation
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FinFun Fin ListSet RelationClasses Reals Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions VLSM.Common VLSM.Composition.
+From CasperCBC Require Import VLSM.ProjectionTraces VLSM.ObservableEquivocation.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.State.
+From CasperCBC Require Import VLSM.CBC.FullNode.Client VLSM.CBC.FullNode.Validator.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.Equivocation.
 
 (** * VLSM Full Node Clients and Validators Free Composition *)
 
@@ -149,7 +136,7 @@ Lemma VLSM_full_protocol_state_nodup
   (s : vstate VLSM_full_composed_free)
   (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s)
   (i : index)
-  : NoDup (get_message_set (project s i)).
+  : List.NoDup (get_message_set (project s i)).
 Proof.
   pose (preloaded_composed_protocol_state IM_index s Hs i) as Hi.
   destruct i as [v | client]; simpl.
@@ -582,7 +569,7 @@ Definition state_union
 Lemma state_union_nodup
   (s : vstate VLSM_full_composed_free)
   (Hs : protocol_state_prop (pre_loaded_with_all_messages_vlsm VLSM_full_composed_free) s)
-  : NoDup (state_union s).
+  : List.NoDup (state_union s).
 Proof.
   apply set_union_iterated_nodup.
   intros msgsi Hmsgsi.
@@ -645,7 +632,7 @@ Definition composite_validators
 
 Lemma composite_validators_nodup
   (s : composite_state IM_index)
-  : NoDup (composite_validators s).
+  : List.NoDup (composite_validators s).
 Proof.
   apply set_map_nodup.
 Qed.
@@ -732,8 +719,8 @@ Proof.
   unfold equivocating_validators.
 
   match goal with
-  |- incl (filter ?p1 _) (filter _ ?l2) =>
-    apply incl_tran with (filter p1 l2)
+  |- incl (List.filter ?p1 _) (List.filter _ ?l2) =>
+    apply incl_tran with (List.filter p1 l2)
   end.
 
   * apply filter_incl. intros v Hv. assumption.
