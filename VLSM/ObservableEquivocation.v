@@ -640,8 +640,8 @@ Proof.
   - exists pre. exists suf. exists {| l := l; input := Some m; destination := s; output := oom |}.
     rewrite <- app_assoc. repeat (split; [reflexivity|]).
     intro contra.
-    apply in_map_iff in contra.
-    destruct contra as [item' [Hout Hitem']].
+    apply Exists_exists in contra.
+    destruct contra as [item' [Hitem' Hout]].
     specialize (Hpre item' Hitem').
     elim Hpre.
     apply in_split in Hitem'.
@@ -845,7 +845,7 @@ Proof.
   }
   apply Exists_exists in Hv.
   elim contra.
-  apply in_map_iff.
+  apply Exists_exists.
   firstorder.
 Qed.
 

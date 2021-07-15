@@ -133,7 +133,6 @@ Existing Instance X_has_been_observed_capability.
 (** A slightly more relaxed version of the full-node condition requires that
 the composite state as a whole has observed all the [message_dependencies] of
 the message to be received.
-*)
 Definition message_dependencies_global_full_node_condition
   (s : composite_state IM)
   (m : message)
@@ -158,6 +157,9 @@ Proof.
   - right. exists i. assumption.
 Qed.
 
+*)
 End message_dependencies_full_node.
 
+(*
 Arguments message_dependencies_global_full_node_condition  { _ _ _ _ _ _ _ _ _ _ _ _} _ _.
+*)

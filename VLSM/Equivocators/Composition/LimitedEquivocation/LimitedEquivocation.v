@@ -884,11 +884,11 @@ Proof.
         specialize
           (Hsent _ _ Hpre_eqv).
         apply Exists_exists in Hsent.
-        apply in_map_iff.
+        apply Exists_exists.
         destruct Hsent as [itemX' [HitemX' HoutputX']].
         destruct (finite_trace_projection_list_in_rev IM _ _ _ HitemX')
           as [item' [Houtput' [_ [Heq_eqv [Heq_rect_r [_ Hitem']]]]]].
-        exists item'. split; [|assumption].
+        exists item'. split; [assumption|].
         simpl in *. congruence.
       }
       assert (H_spre_eqv : is_equivocating_state (IM eqv) (spre eqv)).

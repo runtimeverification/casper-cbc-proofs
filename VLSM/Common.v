@@ -1461,6 +1461,35 @@ that include the final state, and give appropriate induction principles.
       eauto using finite_protocol_trace_from_to_last.
     Qed.
 
+    Lemma finite_protocol_trace_init_to_rev_ind
+      (P : state -> state -> list transition_item -> Prop)
+      (Hempty: forall si,
+        initial_state_prop si -> P si si nil)
+      (Hextend : forall si s tr,
+        P si s tr ->
+        forall sf iom oom l,
+        protocol_transition l (s,iom) (sf,oom) ->
+        P si sf (tr++[{|l:=l; input:=iom; destination:=sf; output:=oom|}])):
+      forall si sf tr,
+        finite_protocol_trace_init_to si sf tr ->
+        P si sf tr.
+    Proof.
+      intros si sf tr Htr.
+      revert sf Htr.
+      induction tr using rev_ind;
+      intros sf Htr.
+      - destruct Htr as [Htr Hinit]. inversion Htr;subst. apply Hempty;assumption.
+      - destruct Htr as [Htr Hinit].
+        apply finite_protocol_trace_from_to_app_split in Htr.
+        destruct Htr as [Htr Hstep].
+        inversion Hstep;subst.
+        inversion H3;subst.
+        revert H4.
+        apply Hextend.
+        apply IHtr.
+        split; assumption.
+    Qed.
+
     Lemma extend_right_finite_trace_from_to
       (s1 s2 : state)
       (ts : list transition_item)

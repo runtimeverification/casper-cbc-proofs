@@ -273,6 +273,12 @@ Proof.
   end); clear dec; abstract congruence.
 Defined.
 
+Definition option_bind {A B} (f : A -> option B) (ma : option A) : option B :=
+  match ma with
+  | None => None
+  | Some a => f a
+  end.
+
 Instance bool_eq_dec : EqDecision bool.
 Proof. solve_decision. Defined.
 

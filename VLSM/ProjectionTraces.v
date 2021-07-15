@@ -402,6 +402,33 @@ Proof.
   assumption.
 Qed.
 
+Lemma preloaded_finite_ptrace_from_to_projection
+  (s s' : vstate X)
+  (trx : list (vtransition_item X))
+  (Htr : finite_protocol_trace_from_to (pre_loaded_with_all_messages_vlsm X) s s' trx)
+   : finite_protocol_trace_from_to (pre_loaded_with_all_messages_vlsm (IM j)) (s j) (s' j) (finite_trace_projection_list trx).
+Proof.
+  apply finite_protocol_trace_from_to_last in Htr as Hs'.
+  apply finite_protocol_trace_from_to_forget_last in Htr.
+  apply preloaded_finite_ptrace_projection in Htr as Htrx.
+  apply finite_protocol_trace_from_add_last; [assumption|].
+  subst.
+  apply preloaded_finite_trace_projection_last_state.
+  assumption.
+Qed.
+
+Lemma preloaded_finite_ptrace_init_to_projection
+  (s s' : vstate X)
+  (trx : list (vtransition_item X))
+  (Htr : finite_protocol_trace_init_to (pre_loaded_with_all_messages_vlsm X) s s' trx)
+   : finite_protocol_trace_init_to (pre_loaded_with_all_messages_vlsm (IM j)) (s j) (s' j) (finite_trace_projection_list trx).
+Proof.
+  destruct Htr as [Htr Hinit].
+  apply preloaded_finite_ptrace_from_to_projection in Htr as Htrj.
+  split; [assumption|].
+  specialize (Hinit j). assumption.
+Qed.
+
 Lemma in_futures_projection
   (s1 s2 : state)
   (Hfutures : in_futures X s1 s2)
