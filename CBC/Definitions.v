@@ -1,7 +1,8 @@
-From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical.
-Import ListNotations.
-
-From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras RealsExtras Measurable.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals Relations RelationClasses ListSet Setoid.
+From Coq Require Import Permutation EqdepFacts ChoiceFacts Classical.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
+From CasperCBC Require Import Lib.RealsExtras Lib.Measurable.
 From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions CBC.Common.
 
 (** * CBC State Definitions and Lemmas *)
@@ -1519,7 +1520,7 @@ Definition equivocating_senders
   (sigma : state) : set V
   :=
   set_map (compare_eq_dec_v about_M) sender
-    (filter (fun msg => equivocating_in_state msg sigma)
+    (List.filter (fun msg => equivocating_in_state msg sigma)
       (get_messages sigma)).
 
 Definition equivocating_senders_prop
@@ -1559,7 +1560,7 @@ Lemma equivocating_senders_incl
 Proof.
   intros.
   apply set_map_incl.
-  apply incl_tran with (filter (fun msg : message C V => equivocating_in_state msg sigma) (get_messages sigma')).
+  apply incl_tran with (List.filter (fun msg : message C V => equivocating_in_state msg sigma) (get_messages sigma')).
   - apply filter_incl; assumption.
   - intros v H_in.
     rewrite filter_In in *.
@@ -1576,9 +1577,9 @@ Proof.
   unfold equivocating_senders. intros.
   (* Why doesn't the suff tactic work *)
   assert (H_suff :
-    (filter (fun msg : message C V => equivocating_in_state msg (add (c, v, sigma)to sigma))
+    (List.filter (fun msg : message C V => equivocating_in_state msg (add (c, v, sigma)to sigma))
       (get_messages (add (c, v, sigma)to sigma))) =
-    (filter (fun msg : message C V => equivocating_in_state msg sigma)
+    (List.filter (fun msg : message C V => equivocating_in_state msg sigma)
       (get_messages sigma))); try (rewrite H_suff; reflexivity).
   simpl.
   assert
@@ -2501,7 +2502,7 @@ Lemma valid_protocol_state_ps
   : forall cempty : C,
   estimator Empty cempty ->
   forall vs,
-  NoDup vs ->
+  List.NoDup vs ->
   (sum_weights vs <= proj1_sig threshold)%R ->
   forall v : V,
   ~ In v vs ->

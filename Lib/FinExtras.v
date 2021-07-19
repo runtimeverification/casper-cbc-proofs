@@ -1,5 +1,5 @@
-From Coq Require Import List Vectors.Fin FinFun Program.
-Import ListNotations.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Vectors.Fin FinFun Program.
 
 (** * Finite type utility definitions and lemmas *)
 

@@ -1,8 +1,7 @@
-From Coq Require Import List Streams Nat Bool Lia FunctionalExtensionality FinFun Eqdep.
-Import ListNotations.
-
-From CasperCBC
-Require Import Lib.StreamExtras Lib.ListExtras Lib.Preamble VLSM.Common VLSM.Composition.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Streams FunctionalExtensionality FinFun Eqdep.
+From CasperCBC Require Import Lib.Preamble Lib.StreamExtras Lib.ListExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition.
 
 (** * VLSM Projection Traces *)
 
@@ -63,7 +62,7 @@ Instance dec_from_projection (a : transition_item) : Decision (from_projection a
 
 Definition finite_trace_projection_list_alt
   (trx : list (composite_transition_item IM))
-  (ftrx := (filter (fun a => bool_decide (from_projection a)) trx))
+  (ftrx := (List.filter (fun a => bool_decide (from_projection a)) trx))
   (Hall: Forall from_projection ftrx)
   :=
   List.map
@@ -80,7 +79,7 @@ Definition finite_trace_projection_list_alt
 
 Lemma finite_trace_projection_list_alt_iff
   (trx : list (composite_transition_item IM))
-  (ftrx := (filter (fun a => bool_decide (from_projection a)) trx))
+  (ftrx := (List.filter (fun a => bool_decide (from_projection a)) trx))
   (Hall: Forall from_projection ftrx)
   : finite_trace_projection_list_alt trx Hall = finite_trace_projection_list trx.
 Proof.
@@ -95,8 +94,8 @@ Proof.
     eqn:Heq.
   - assert
     (Hunroll :
-      filter (fun a => bool_decide (from_projection a)) (a :: trx)
-      = a :: filter (fun a => bool_decide (from_projection a)) trx
+      List.filter (fun a => bool_decide (from_projection a)) (a :: trx)
+      = a :: List.filter (fun a => bool_decide (from_projection a)) trx
     ).
     { simpl.
       unfold bool_decide, dec_from_projection, from_projection.
@@ -130,8 +129,8 @@ Proof.
     apply UIP.
   - assert
     (Hunroll :
-      filter (fun a => bool_decide (from_projection a)) (a :: trx)
-      = filter (fun a => bool_decide (from_projection a)) trx
+      List.filter (fun a => bool_decide (from_projection a)) (a :: trx)
+      = List.filter (fun a => bool_decide (from_projection a)) trx
     ).
     { simpl.
       unfold bool_decide, dec_from_projection, from_projection.
@@ -453,9 +452,9 @@ Lemma finite_trace_projection_stream
   (Hfilter: filtering_subsequence from_projection ss ks)
   (n : nat)
   (kn := Str_nth n (proj1_sig ks))
-  (ss_to_kn := stream_prefix ss (succ kn))
+  (ss_to_kn := stream_prefix ss (Nat.succ kn))
   (sproj := infinite_trace_projection_stream ss ks Hfilter)
-  : stream_prefix sproj (succ n) = finite_trace_projection_list ss_to_kn.
+  : stream_prefix sproj (Nat.succ n) = finite_trace_projection_list ss_to_kn.
 Proof.
   unfold sproj. unfold infinite_trace_projection_stream.
   rewrite <- stream_prefix_map.
@@ -464,12 +463,12 @@ Proof.
       from_projection
       (stream_subsequence ss ks)
       (stream_filter_Forall from_projection ss ks Hfilter)
-      (succ n)
+      (Nat.succ n)
     ); intros [Hall Heq].
   clear -Heq.
   match goal with
   |- List.map _ ?s = _ => replace s with
-      (list_annotate from_projection (stream_prefix (stream_subsequence ss ks) (succ n)) Hall)
+      (list_annotate from_projection (stream_prefix (stream_subsequence ss ks) (Nat.succ n)) Hall)
   end.
   specialize
     (stream_filter_prefix
@@ -480,7 +479,7 @@ Proof.
     ); intros Hsfilter.
   remember stream_prefix as sp.
   simpl in Hsfilter. subst.
-  unfold succ in *.
+  unfold Nat.succ in *.
   generalize dependent Hall.
   rewrite Hsfilter.
   intros.
@@ -621,7 +620,7 @@ Lemma projection_friendly_in_futures'
   (sj: state)
   (Hsx: sx j = sj)
   (Hall: Forall from_projection
-         (filter (fun a => bool_decide (from_projection a)) trx))
+         (List.filter (fun a => bool_decide (from_projection a)) trx))
   (s1 s2: state)
   (n1 n2: nat)
   (Hle: n1 <= n2)
@@ -651,7 +650,7 @@ Proof.
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (fun a => bool_decide (from_projection a)) trx)
+            (List.filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n2
           ); intros [oitem [Hoa Hnth]].
@@ -687,14 +686,14 @@ Proof.
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (fun a => bool_decide (from_projection a)) trx)
+            (List.filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n2
           ); intros [oitem2 [Hoa2 Hn2th]].
         specialize
           (nth_error_list_annotate
             from_projection
-            (filter (fun a => bool_decide (from_projection a)) trx)
+            (List.filter (fun a => bool_decide (from_projection a)) trx)
             Hall
             n1
           ); intros [oitem1 [Hoa1 Hn1th]].
@@ -759,7 +758,7 @@ Proof.
   - specialize (Hfr sj (list_prefix lj n2) Hpref).
     destruct Hfr as [sx [trx [Htrx [Hsx Hproj]]]].
     assert (Hall : Forall from_projection
-              (filter (fun a => bool_decide (from_projection a)) trx))
+              (List.filter (fun a => bool_decide (from_projection a)) trx))
       by apply filter_Forall.
     specialize (finite_trace_projection_list_alt_iff trx Hall); intro Heq.
     rewrite <- Heq in Hproj.
@@ -794,7 +793,7 @@ Proof.
   - specialize (Hfr sj (stream_prefix lj n2) Hpref).
     destruct Hfr as [sx [trx [Htrx [Hsx Hproj]]]].
     assert (Hall : Forall from_projection
-              (filter (fun a => bool_decide (from_projection a)) trx))
+              (List.filter (fun a => bool_decide (from_projection a)) trx))
       by apply filter_Forall.
     specialize (finite_trace_projection_list_alt_iff trx Hall); intro Heq.
     rewrite <- Heq in Hproj.

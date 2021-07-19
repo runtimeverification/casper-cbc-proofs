@@ -1,20 +1,12 @@
-Require Import
-  List Coq.Vectors.Fin FinFun ListSet
-  Arith.Compare_dec Lia
-  Program Program.Equality
-  Coq.Logic.JMeq
-  .
-Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras FinExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.SubProjectionTraces
-    VLSM.ProjectionTraces
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    VLSM.Equivocators.MessageProperties
-    VLSM.Equivocators.Composition.Common
-    VLSM.Equivocators.Composition.Projections
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Vectors.Fin FinFun Arith.Compare_dec Lia Program JMeq.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.FinExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation.
+From CasperCBC Require Import VLSM.SubProjectionTraces VLSM.ProjectionTraces.
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
+From CasperCBC Require Import VLSM.Equivocators.MessageProperties.
+From CasperCBC Require Import VLSM.Equivocators.Composition.Common.
+From CasperCBC Require Import VLSM.Equivocators.Composition.Projections.
 
 (** * VLSM Equivocators Fixed Equivocation *)
 

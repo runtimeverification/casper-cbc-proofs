@@ -1,7 +1,6 @@
-From Coq Require Import List Streams Compare_dec Lia.
-Import ListNotations.
-
-From CasperCBC Require Import Lib.ListExtras Preamble.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Streams Lia.
+From CasperCBC.Lib Require Import Preamble ListExtras.
 
 (** * Stream utility definitions and lemmas *)
 
@@ -739,7 +738,7 @@ Lemma stream_filter_prefix_0
   (kn := Str_nth 0 (proj1_sig ks))
   (ss_to_kn := stream_prefix ss (S kn))
   : stream_prefix (stream_subsequence ss ks) (S 0)
-    = filter (fun a => bool_decide (P a)) ss_to_kn.
+    = List.filter (fun a => bool_decide (P a)) ss_to_kn.
 Proof.
   generalize dependent ks.
   intros [(k, ks) Hseq]; intros.
@@ -760,7 +759,7 @@ Proof.
     reflexivity.
   }
   destruct (decide (P (Str_nth k ss))); [|tauto].
-  replace (filter _ (stream_prefix ss k)) with (@nil A)
+  replace (List.filter _ (stream_prefix ss k)) with (@nil A)
   ; try reflexivity.
   symmetry.
   apply filter_nil.
@@ -792,7 +791,7 @@ Lemma stream_filter_prefix
   (kn := Str_nth n (proj1_sig ks))
   (ss_to_kn := stream_prefix ss (S kn))
   : stream_prefix (stream_subsequence ss ks) (S n)
-    = filter (fun a => bool_decide (P a)) ss_to_kn.
+    = List.filter (fun a => bool_decide (P a)) ss_to_kn.
 Proof.
   generalize dependent ks. generalize dependent ss.
   induction n; try apply stream_filter_prefix_0.
@@ -810,7 +809,7 @@ Proof.
   assert
     (IHn':
       stream_prefix (stream_subsequence ss' kss') (S n)
-      = filter (fun a => bool_decide (P a)) (stream_prefix ss' (S (Str_nth n (proj1_sig kss'))))
+      = List.filter (fun a => bool_decide (P a)) (stream_prefix ss' (S (Str_nth n (proj1_sig kss'))))
     ) by assumption.
   clear IHn.
   subst; simpl in Hpref. specialize (Hpref (S (S n))).
@@ -844,7 +843,7 @@ Proof.
   rewrite <- Hps.
   rewrite filter_app.
   rewrite stream_prefix_prefix.
-  + assert (H0' : filter (fun a => bool_decide (P a)) (stream_prefix ss (S k)) = [Str_nth k ss])
+  + assert (H0' : List.filter (fun a => bool_decide (P a)) (stream_prefix ss (S k)) = [Str_nth k ss])
     by (symmetry; apply H0).
     rewrite H0'.
     remember (stream_prefix ss) as spss.

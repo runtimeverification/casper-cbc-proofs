@@ -1,14 +1,8 @@
-From Coq Require Import List FinFun.
-
-From CasperCBC
-  Require Import
-    Lib.Preamble
-    Lib.Traces
-    Lib.Measurable
-    VLSM.Common
-    VLSM.Decisions
-    VLSM.Composition
-    VLSM.Equivocation. (* for has_been_sent *)
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import FinFun.
+From CasperCBC Require Import Lib.Preamble Lib.Traces Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Decisions VLSM.Composition.
+From CasperCBC Require Import VLSM.Equivocation. (* for has_been_sent *)
 
 (** * VLSM Liveness *)
 

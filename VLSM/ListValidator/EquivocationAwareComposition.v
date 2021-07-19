@@ -1,24 +1,12 @@
-From Coq Require Import Bool List ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Basics Lia.
-Import ListNotations.
-
-From CasperCBC
-Require Import
-  Lib.Preamble
-  Lib.ListExtras
-  Lib.ListSetExtras
-  Lib.SortedLists
-  Lib.Measurable
-  VLSM.Common
-  VLSM.Plans
-  VLSM.ProjectionTraces
-  VLSM.Composition
-  VLSM.Equivocation
-  VLSM.ListValidator.ListValidator
-  VLSM.ListValidator.Equivocation
-  VLSM.ListValidator.Observations
-  VLSM.ListValidator.EquivocationAwareListValidator
-  VLSM.ObservableEquivocation
-  .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Reals FinFun RelationClasses Relations Relations_1 Sorting Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
+From CasperCBC Require Import Lib.SortedLists Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.Plans VLSM.ProjectionTraces.
+From CasperCBC Require Import VLSM.Composition VLSM.Equivocation VLSM.ListValidator.ListValidator.
+From CasperCBC Require Import VLSM.ListValidator.Equivocation VLSM.ListValidator.Observations.
+From CasperCBC Require Import VLSM.ListValidator.EquivocationAwareListValidator.
+From CasperCBC Require Import VLSM.ObservableEquivocation.
 
 (** * VLSM Free Composition of List Validators *)
 
@@ -164,7 +152,7 @@ Context
 
       specialize (self_projections_same_after_receive res_long Hpr_long i x) as Hone.
       spec Hone. {
-        specialize (Hrec x). spec Hrec. apply in_app_iff. intuition.
+        specialize (Hrec x). spec Hrec. apply in_app_iff. auto with datatypes.
         intuition.
      }
      rewrite Hres_long in Hone.
@@ -258,7 +246,7 @@ Context
 
       specialize (non_self_projections_same_after_send res_long Hpr_long i j H x) as Hone.
       spec Hone. {
-        specialize (Hrec x). spec Hrec. apply in_app_iff. intuition.
+        specialize (Hrec x). spec Hrec. apply in_app_iff. auto with datatypes.
         intuition.
      }
      rewrite Hres_long in Hone.
@@ -537,8 +525,8 @@ Context
     unfold simp_lv_state_observations in Hine.
     destruct (decide (i = j)).
     - subst j.
-      destruct Hine; intuition.
-    - intuition.
+      destruct Hine; intuition. inversion H.
+    - inversion Hine.
   Qed.
 
   (** And if said validator is in <<ws>>,
@@ -555,7 +543,7 @@ Context
     split;[intuition|].
     unfold simp_lv_state_observations.
     rewrite decide_True by intuition.
-    intuition.
+    auto with datatypes.
   Qed.
 
   Remark GE_direct
@@ -810,7 +798,7 @@ Context
          rewrite <- H.
          apply in_cobs_and_message in Hhave.
          all : intuition.
-
+         inversion H.
       + destruct Hink as [Hink' Hink].
         apply (@new_incl_rest_diff index index_listing Hfinite) in Hink.
         2 : {
@@ -1134,7 +1122,7 @@ Context
 
   Remark GH_NoDup
     (s : vstate X) :
-    NoDup (GH s).
+    List.NoDup (GH s).
   Proof.
     unfold GH.
     apply NoDup_filter.
@@ -1211,7 +1199,7 @@ Context
         exists i.
         unfold s'.
         rewrite state_update_eq by intuition.
-        destruct H;[|intuition].
+        destruct H;[|inversion H].
         rewrite <- cons_clean_message_obs with (b0 := b).
         assert (project (update_state (s i) (s i) i) i = s i). {
           rewrite (@project_same index index_listing).
@@ -1278,7 +1266,7 @@ Context
                    intuition.
                    simpl. congruence.
                    simpl. congruence.
-          +  destruct Hine2; [|intuition].
+          +  destruct Hine2; [|inversion H].
              inversion H.
              subst es2.
              contradict Hcomp.
@@ -1418,7 +1406,7 @@ Context
                  split;[apply in_cobs_messages' in Hine2; intuition|].
                  split;[intuition|].
                  intuition.
-              ++ destruct Hine2;[|intuition].
+              ++ destruct Hine2;[|inversion H0].
                  inversion H0. subst es2.
                  exists e1. subst e1. simpl.
                  split;[apply in_cobs_messages' in Hine1; intuition|].
@@ -1441,9 +1429,9 @@ Context
                     intuition.
                  ** unfold simp_lv_event_lt in contra.
                     rewrite decide_True in contra by intuition.
-                    intuition.
+                    inversion contra.
            -- destruct Hine2 as [Hine2|Hine2].
-              ++ destruct Hine1;[|intuition].
+              ++ destruct Hine1;[|inversion H0].
                  inversion H0. subst es1.
                  exists e2. subst e2. simpl.
                  split;[apply in_cobs_messages' in Hine2; intuition|].
@@ -1467,13 +1455,13 @@ Context
                  ** unfold simp_lv_event_lt in contra.
                     rewrite decide_True in contra by intuition.
                     intuition.
-              ++ destruct Hine1 as [Hine1|];[|intuition].
-                 destruct Hine2 as [Hine2|];[|intuition].
+              ++ destruct Hine1 as [Hine1|];[|inversion H0].
+                 destruct Hine2 as [Hine2|];[|inversion H0].
                  inversion Hine1. inversion Hine2.
                  subst es1. subst es2.
                  contradict Hcomp.
                  unfold comparable.
-                 left. intuition.
+                 left. reflexivity.
         * unfold s' in Hine1, Hine2.
           setoid_rewrite cobs_message_existing_same1 in Hine1.
           2, 3 : intuition.
@@ -1963,7 +1951,7 @@ Context
   Proof.
     simpl.
     induction a using rev_ind.
-    - simpl in *. intuition.
+    - simpl in *. apply set_eq_refl.
     - assert (Hpr_a' := Hpr_a).
       apply finite_protocol_plan_from_app_iff in Hpr_a.
       spec IHa. intuition.
@@ -1990,7 +1978,7 @@ Context
 
         specialize (Hgood x).
         spec Hgood. {
-          apply in_app_iff. right. intuition.
+          apply in_app_iff. auto with datatypes.
         }
 
         destruct x. simpl in *.

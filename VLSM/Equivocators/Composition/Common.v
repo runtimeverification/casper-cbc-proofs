@@ -1,18 +1,9 @@
-Require Import
-  List Coq.Vectors.Fin FinFun
-  Arith.Compare_dec Lia
-  Program
-  Coq.Logic.JMeq
-  .
-Import ListNotations.
-
-From CasperCBC
-  Require Import
-    Preamble ListExtras FinExtras FinFunExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    VLSM.Equivocators.MessageProperties
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Vectors.Fin FinFun Lia Program.Equality FunctionalExtensionality JMeq.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.FinExtras Lib.FinFunExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation.
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
+From CasperCBC Require Import VLSM.Equivocators.MessageProperties.
 
 (** * VLSM Equivocator Composition
 
@@ -70,7 +61,7 @@ Definition equivocating_indices
   (s : composite_state equivocator_IM)
   : list index
   :=
-  filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
+  List.filter (fun i => bool_decide (is_equivocating_state (IM i) (s i))) index_listing.
 
 (**
 The statement below is obvious a transition cannot make an already equivocating

@@ -1,5 +1,5 @@
-From Coq Require Import Reals List ListSet.
-
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals ListSet.
 From CasperCBC Require Import Preamble ListExtras ListSetExtras.
 
 (** * Measure-related definitions and lemmas *)
@@ -29,7 +29,7 @@ Coercion weight_proj1_sig : pos_R >-> R.
 Lemma sum_weights_in
   `{EqDecision V} `{Hm : Measurable V}
   : forall v (vs:list V),
-  NoDup vs ->
+  List.NoDup vs ->
   In v vs ->
   sum_weights vs = (proj1_sig (weight v) + sum_weights (set_remove decide_eq v vs))%R.
 Proof.
@@ -45,8 +45,8 @@ Qed.
 Lemma sum_weights_incl
   `{EqDecision V} `{Hm : Measurable V}
   : forall (vs vs':list V),
-  NoDup vs ->
-  NoDup vs' ->
+  List.NoDup vs ->
+  List.NoDup vs' ->
   incl vs vs' ->
   (sum_weights vs <= sum_weights vs')%R.
 Proof.
@@ -67,8 +67,8 @@ Qed.
 Lemma set_eq_nodup_sum_weight_eq
   `{EqDecision V} `{Hm : Measurable V}
   : forall (lv1 lv2 : list V),
-    NoDup lv1 ->
-    NoDup lv2 ->
+    List.NoDup lv1 ->
+    List.NoDup lv2 ->
     set_eq lv1 lv2 ->
     sum_weights lv1 = sum_weights lv2.
 Proof.

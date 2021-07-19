@@ -1,6 +1,5 @@
-From Coq Require Import List Bool Sorting RelationClasses Relations Orders ListSet.
-Import ListNotations.
-
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Sorting RelationClasses Relations Orders ListSet.
 From CasperCBC Require Import Lib.Preamble Lib.ListSetExtras.
 
 (** * Sorted list utility functions and lemmas **)

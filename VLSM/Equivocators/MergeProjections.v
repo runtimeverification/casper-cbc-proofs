@@ -1,15 +1,8 @@
-Require Import
-  List ListSet Coq.Vectors.Fin
-  Arith.Compare_dec Lia
-  Program
-  .
-Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras ListSetExtras FinExtras
-    VLSM.Common VLSM.Equivocation
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Vectors.Fin Arith.Compare_dec Lia Program.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.FinExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Equivocation.
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
 
 (** * VLSM Merging of Projections *)
 
@@ -230,4 +223,3 @@ Definition lift_traces_to_equivocator
   end.
 
 End trace_mixer.
-

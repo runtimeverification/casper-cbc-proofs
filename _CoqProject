@@ -49,7 +49,6 @@ stdpp/namespaces.v
 stdpp/telescopes.v
 stdpp/binders.v
 
-Lib/Classes.v
 Lib/Preamble.v
 Lib/SsrExport.v
 Lib/ListExtras.v

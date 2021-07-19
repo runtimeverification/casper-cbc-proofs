@@ -1,8 +1,8 @@
-From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts.
-Import ListNotations.
-
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras CBC.Protocol CBC.Definitions.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals Relations RelationClasses ListSet Setoid.
+From Coq Require Import Permutation EqdepFacts ChoiceFacts.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras.
+From CasperCBC Require Import CBC.Protocol CBC.Definitions.
 
 (** * CBC CTL Definition and Properties *)
 
@@ -59,6 +59,7 @@ Definition locked_off (P : pred) : pstate -> Prop :=
 Definition not_locked_off (P : pred) : pstate -> Prop :=
   fun s => locked_off P s -> False.
 
+(*
 Theorem no_stuck_states :
   forall (s : pstate), stuck s -> False.
 Admitted.
@@ -75,4 +76,4 @@ Admitted.
 
 Goal forall (s : pstate), not_decided is_zero s -> not_decided is_one s -> bivalent s.
 Admitted.
-
+*)

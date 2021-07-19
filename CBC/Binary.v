@@ -1,7 +1,7 @@
-From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts.
-Import ListNotations.
-
-From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists CBC.Protocol.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals Relations RelationClasses ListSet Setoid Permutation EqdepFacts.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists.
+From CasperCBC Require Import CBC.Protocol.
 
 (** * CBC Binary Consensus Protocol *)
 
@@ -59,7 +59,7 @@ Section States.
     fold_right (fun v r => ((weight v) + r)%R) 0%R l.
 
   Parameters (t_full : {r | (r >= 0)%R})
-             (suff_val_full : exists vs, NoDup vs /\ ((fold_right (fun v r => ((weight v) + r)%R) 0%R) vs > (proj1_sig t_full))%R).
+             (suff_val_full : exists vs, List.NoDup vs /\ ((fold_right (fun v r => ((weight v) + r)%R) 0%R) vs > (proj1_sig t_full))%R).
 
   (* Additional types for defining light node states *)
   Definition justification_type : Type := list H.
@@ -112,13 +112,13 @@ Section States.
              (hash_injective : Inj eq eq hash).
 
   Definition later (msg : message) (sigma : state) : list message :=
-    filter (fun msg' => inb compare_eq_dec (hash msg) (justification msg')) sigma.
+    List.filter (fun msg' => inb compare_eq_dec (hash msg) (justification msg')) sigma.
 
   Definition from_sender (v:V) (sigma:state) : list message :=
-    filter (fun msg' => compareb (sender msg') v) sigma.
+    List.filter (fun msg' => compareb (sender msg') v) sigma.
 
   Definition later_from (msg : message) (v : V) (sigma : state) : list message :=
-    filter (fun msg' => (inb compare_eq_dec (hash msg) (justification msg')) && (compareb (sender msg') v)) sigma.
+    List.filter (fun msg' => (inb compare_eq_dec (hash msg) (justification msg')) && (compareb (sender msg') v)) sigma.
 
   Definition is_nil_fn {A:Type} (l:list A) : bool :=
   match l with
@@ -127,7 +127,7 @@ Section States.
   end.
 
   Definition latest_messages (sigma : state) : V -> list message :=
-    fun v => filter (fun msg => is_nil_fn (later_from msg v sigma)) (from_sender v sigma).
+    fun v => List.filter (fun msg => is_nil_fn (later_from msg v sigma)) (from_sender v sigma).
 
   Definition latest_messages_driven (estimator : state -> C -> Prop) : Prop :=
     exists validator : (V -> list message) -> C -> Prop,
@@ -147,7 +147,7 @@ Section States.
   end.
 
   Definition validators_latest_estimates (c : C) (sigma : state) : list V :=
-    filter (fun v => in_fn compare_eq_dec c (latest_estimates sigma v)) (observed sigma).
+    List.filter (fun v => in_fn compare_eq_dec c (latest_estimates sigma v)) (observed sigma).
 
  Definition score (c : C) (sigma : state) : R :=
     fold_right Rplus R0 (map posR_proj1 (map weight (validators_latest_estimates c sigma))).
@@ -217,10 +217,10 @@ Section States.
  Qed.
 
  Definition equivocating_senders (sigma : state) : set V :=
-   set_map compare_eq_dec sender (filter (fun msg => equivocating_message_state msg sigma) sigma).
+   set_map compare_eq_dec sender (List.filter (fun msg => equivocating_message_state msg sigma) sigma).
 
  Lemma equivocating_senders_nodup : forall sigma,
-     NoDup (equivocating_senders sigma).
+     List.NoDup (equivocating_senders sigma).
  Proof.
    intros. apply set_map_nodup.
  Qed.
@@ -230,7 +230,7 @@ Section States.
      incl (equivocating_senders sigma) (equivocating_senders sigma').
  Proof.
    intros.
-   apply set_map_incl. apply incl_tran with (filter (fun msg : message => equivocating_message_state msg sigma) sigma').
+   apply set_map_incl. apply incl_tran with (List.filter (fun msg : message => equivocating_message_state msg sigma) sigma').
    - apply filter_incl; assumption.
    - apply filter_incl_fn. intro. apply equivocating_message_state_incl. assumption.
  Qed.
@@ -239,7 +239,7 @@ Section States.
    sum_weights (equivocating_senders sigma).
 
  Lemma sum_weights_in : forall v vs,
-     NoDup vs ->
+     List.NoDup vs ->
      In v vs ->
      sum_weights vs = (weight v + sum_weights (set_remove compare_eq_dec v vs))%R.
  Proof.
@@ -257,8 +257,8 @@ Section States.
  Qed.
 
  Lemma sum_weights_incl : forall vs vs',
-     NoDup vs ->
-     NoDup vs' ->
+     List.NoDup vs ->
+     List.NoDup vs' ->
      incl vs vs' ->
      (sum_weights vs <= sum_weights vs')%R.
  Proof.
@@ -329,7 +329,7 @@ Section States.
      valid_estimate_condition c j ->
      In (c, v, hash_state j) sigma' ->
      protocol_state (set_remove compare_eq_dec (c, v, hash_state j) sigma') ->
-     NoDup sigma' ->
+     List.NoDup sigma' ->
      fault_tolerance_condition sigma' ->
      protocol_state sigma'.
 
@@ -346,7 +346,7 @@ Section States.
 
  Lemma protocol_state_nodup : forall sigma,
      protocol_state sigma ->
-     NoDup sigma.
+     List.NoDup sigma.
  Proof.
    intros. inversion H0; subst.
    - constructor.
@@ -366,7 +366,7 @@ Section States.
      protocol_state sigma ->
      forall sigma',
        set_eq sigma sigma' ->
-       NoDup sigma' ->
+       List.NoDup sigma' ->
        protocol_state sigma'.
  Proof.
    intros sigma H'.

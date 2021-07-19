@@ -1,7 +1,7 @@
-From Coq Require Import Reals Bool Relations RelationClasses List ListSet Setoid Permutation EqdepFacts ChoiceFacts Classical Sorting.
-Import ListNotations.
-
-From CasperCBC.Lib Require Import Preamble ListExtras ListSetExtras SortedLists.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Reals Relations RelationClasses ListSet Setoid Permutation. 
+From Coq Require Import EqdepFacts ChoiceFacts Classical Sorting.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.SortedLists.
 From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions Lib.Measurable CBC.Protocol CBC.Common.
 
 (** * CBC Light Node Protocol *)
@@ -470,7 +470,7 @@ Qed.
 Definition equivocating_senders
   (sigma : state C V hash) : set V
   :=
-  set_map decide_eq sender (filter (fun msg => equivocating_in_state msg sigma) sigma).
+  set_map decide_eq sender (List.filter (fun msg => equivocating_in_state msg sigma) sigma).
 
 Definition equivocating_senders_prop
   (s : state C V hash) (lv : set V)
@@ -506,7 +506,7 @@ Lemma equivocating_senders_incl
 Proof.
   intros.
   apply set_map_incl.
-  apply incl_tran with (filter (fun msg : message C V hash=> equivocating_in_state msg sigma) sigma').
+  apply incl_tran with (List.filter (fun msg : message C V hash=> equivocating_in_state msg sigma) sigma').
   - apply filter_incl; assumption.
   - apply filter_incl_fn. intro.
     do 2 rewrite equivocating_in_state_correct.
@@ -593,7 +593,7 @@ Inductive protocol_state
       forall (v : V) (s : state C V hash),
         In (c, v, hash_state j) s ->
         protocol_state (set_remove decide_eq (c, v, hash_state j) s) ->
-        NoDup s ->
+        List.NoDup s ->
         not_heavy s ->
         protocol_state s.
 
@@ -601,7 +601,7 @@ Inductive protocol_state
 Lemma protocol_state_nodup
   : forall sigma : state C V hash,
   protocol_state sigma ->
-  NoDup sigma.
+  List.NoDup sigma.
 Proof.
   intros. inversion H; subst.
   - constructor.
@@ -663,7 +663,7 @@ Lemma set_eq_protocol_state
   protocol_state sigma ->
   forall sigma',
     set_eq sigma sigma' ->
-    NoDup sigma' ->
+    List.NoDup sigma' ->
     protocol_state sigma'.
 Proof.
   intros sigma H'.
@@ -953,7 +953,7 @@ Lemma protocol_state_incl
   : forall (s : state C V hash),
     protocol_state s ->
     forall (s' : state C V hash),
-      NoDup s' ->
+      List.NoDup s' ->
       incl s' s ->
       protocol_state s'.
 Proof.
@@ -998,8 +998,8 @@ Qed.
 Lemma binary_justification_nodup
   : forall (vs : list V) (c1 c2 : C) (j1 j2 : state C V hash),
   ~ set_eq j1 j2 ->
-  NoDup vs ->
-  NoDup (flat_map (fun v => [(c1, v, hash_state j1); (c2, v, hash_state j2)]) vs).
+  List.NoDup vs ->
+  List.NoDup (flat_map (fun v => [(c1, v, hash_state j1); (c2, v, hash_state j2)]) vs).
 Proof.
   intros.
   induction vs.
@@ -1026,7 +1026,7 @@ Lemma binary_justification_protocol_state
     ~ set_eq j1 j2 ->
     valid_estimate c1 j1 ->
     valid_estimate c2 j2 ->
-    NoDup vs ->
+    List.NoDup vs ->
     not_heavy (flat_map (fun v => [(c1, v, hash_state j1); (c2, v, hash_state j2)]) vs) ->
     protocol_state (flat_map (fun v => [(c1, v, hash_state j1); (c2, v, hash_state j2)]) vs).
 Proof.
@@ -2099,7 +2099,7 @@ Lemma next_equivocations_add_weights
   : forall (s : state C V hash),
     protocol_state s ->
     forall (vs : list V) (v0 : V),
-      NoDup vs ->
+      List.NoDup vs ->
       (* The sum weight is not over *)
       (fault_weight_state s + sum_weights vs <= proj1_sig threshold)%R ->
       (* None of the senders are already equivocating *)
@@ -2176,7 +2176,7 @@ Definition potentially_pivotal_state
   (* There is a remaining list of validators *)
   exists (vs : list V),
     (* That is duplicate-free *)
-    NoDup vs /\
+    List.NoDup vs /\
     (* Doesn't contain v *)
     ~ In v vs /\
     (* That are all not already equivocating in s *)
@@ -2213,7 +2213,7 @@ Proof.
     exists v. split.
     + subst. apply Hincl_vs' in Hin_v. apply set_diff_elim2 in Hin_v. assumption.
     + exists (set_remove decide_eq v vs').
-      assert (NoDup (set_remove decide_eq v vs')) as Hnodup_remove
+      assert (List.NoDup (set_remove decide_eq v vs')) as Hnodup_remove
       ; try apply set_remove_nodup; try assumption.
       repeat split.
       * assumption.

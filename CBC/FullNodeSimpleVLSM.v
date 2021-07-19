@@ -1,8 +1,10 @@
-Require Import Bool List Streams Logic.Epsilon Reals ProofIrrelevance Fin FinFun.
-Import ListNotations.
-
-From CasperCBC
-Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.RealsExtras Lib.Measurable VLSM.Equivocation VLSM.Decisions CBC.Definitions CBC.Common VLSM.Common VLSM.Composition VLSM.Decisions CBC.FullNode.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Streams Epsilon Reals ProofIrrelevance Fin FinFun.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras.
+From CasperCBC Require Import Lib.RealsExtras Lib.Measurable. 
+From CasperCBC Require Import VLSM.Equivocation VLSM.Decisions. 
+From CasperCBC Require Import CBC.Definitions CBC.Common VLSM.Common VLSM.Composition.
+From CasperCBC Require Import VLSM.Decisions CBC.FullNode.
 
 (** * CBC Full Node Model as a Single VLSM Instance *)
 
@@ -425,7 +427,8 @@ Section Full.
     forall (s1 s2 : protocol_state (VLSM_full_client1)),
       vlsm_reach s1 s2 <->
       incl (get_messages (proj1_sig (proj1_sig s1))) (get_messages (proj1_sig (proj1_sig s2))).
-  Proof. Admitted.
+  Proof. 
+  Admitted.
 
   (* VLSM state union *)
   Lemma join_protocol_state :

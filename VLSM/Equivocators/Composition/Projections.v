@@ -1,20 +1,12 @@
-Require Import
-  List Coq.Vectors.Fin FinFun
-  Arith.Compare_dec Lia
-  Program
-  Coq.Logic.JMeq
-  .
-Import ListNotations.
-
-From CasperCBC
-  Require Import
-    Preamble ListExtras FinExtras
-    VLSM.Common VLSM.Composition VLSM.ProjectionTraces VLSM.SubProjectionTraces
-    VLSM.Equivocation
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    VLSM.Equivocators.MessageProperties
-    VLSM.Equivocators.Composition.Common
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Vectors.Fin FinFun Arith.Compare_dec Lia.
+From Coq Require Import Program JMeq FunctionalExtensionality.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.FinExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.ProjectionTraces.
+From CasperCBC Require Import VLSM.SubProjectionTraces VLSM.Equivocation. 
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
+From CasperCBC Require Import VLSM.Equivocators.MessageProperties. 
+From CasperCBC Require Import VLSM.Equivocators.Composition.Common.
 
 (** * VLSM Equivocator Composition Projections *)
 
@@ -60,7 +52,7 @@ Definition equivocators_transition_item_project
   | Some (Some item', deqv') =>
     Some
       (Some (@Build_transition_item message (@type message X)
-        (existT (fun n : index => vlabel (IM n)) eqv (l item'))
+        (existT eqv (l item'))
         (input item) sx (output item))
       , equivocator_descriptors_update eqv_descriptors eqv deqv')
   | Some (None, deqv') => Some (None, equivocator_descriptors_update eqv_descriptors eqv deqv')
@@ -172,7 +164,7 @@ Lemma no_equivocating_equivocators_transition_item_project
   (s : composite_state equivocator_IM)
   (Hv : composite_valid equivocator_IM (l item) (s, input item))
   (Ht : composite_transition equivocator_IM (l item) (s, input item) = (destination item, output item))
-  (lx : composite_label IM :=  existT (fun i => vlabel (IM i)) i (fst (projT2 (l item))))
+  (lx : composite_label IM := existT i (fst (projT2 (l item))))
   : equivocators_transition_item_project eqv_descriptors item =
     Some (Some
       {| l := lx; input := input item; output := output item;
@@ -211,7 +203,7 @@ Lemma equivocators_transition_item_project_proper_descriptor_characterization
     equivocators_transition_item_project eqv_descriptors item = Some (oitem, eqv_descriptors')
     /\ match oitem with
       | Some itemx =>
-        existT _ i (fst (projT2 (l item))) = l itemx /\  input item = input itemx /\ output item = output itemx /\
+        existT i (fst (projT2 (l item))) = l itemx /\  input item = input itemx /\ output item = output itemx /\
         (equivocators_state_project eqv_descriptors (destination item) = destination itemx)
       | None => True
       end
@@ -308,7 +300,7 @@ Lemma equivocators_transition_item_project_proper_characterization
     equivocators_transition_item_project eqv_descriptors item = Some (oitem, eqv_descriptors')
     /\ match oitem with
       | Some itemx =>
-        existT _ (projT1 (l item)) (fst (projT2 (l item))) = l itemx /\  input item = input itemx /\ output item = output itemx /\
+        existT (projT1 (l item)) (fst (projT2 (l item))) = l itemx /\  input item = input itemx /\ output item = output itemx /\
         (equivocators_state_project eqv_descriptors (destination item) = destination itemx)
       | None => True
       end
@@ -351,7 +343,7 @@ Lemma equivocators_transition_item_project_inv_characterization
   (item : composite_transition_item equivocator_IM)
   (itemx : composite_transition_item IM)
   (Hpr_item : equivocators_transition_item_project eqv_descriptors item = Some (Some itemx, eqv_descriptors'))
-  : existT _ (projT1 (l item)) (fst (projT2 (l item))) = l itemx /\
+  : existT (projT1 (l item)) (fst (projT2 (l item))) = l itemx /\
     input item = input itemx /\ output item = output itemx /\
     equivocators_state_project eqv_descriptors (destination item) = destination itemx.
 Proof.

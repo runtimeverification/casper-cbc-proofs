@@ -1,19 +1,9 @@
-Require Import List ListSet.
-
-Import ListNotations.
-
-From CasperCBC
-  Require Import
-    Lib.Preamble
-    Lib.ListExtras
-    Lib.ListSetExtras
-    Lib.Measurable
-    VLSM.Common
-    Validator.State
-    Validator.Equivocation
-    VLSM.Equivocation
-    VLSM.ObservableEquivocation
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.Common VLSM.CBC.FullNode.Validator.State.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.Equivocation.
+From CasperCBC Require Import VLSM.Equivocation VLSM.ObservableEquivocation.
 
 (** * VLSM Full-Node Client *)
 
@@ -66,7 +56,7 @@ messages, implementing a limited equivocation tolerance policy.
     (v : V)
     : set message
     :=
-    filter (fun m => bool_decide (sender m = v)) s.
+    List.filter (fun m => bool_decide (sender m = v)) s.
 
   Definition full_node_client_state_validators
     (s : set message)
@@ -125,7 +115,7 @@ messages, implementing a limited equivocation tolerance policy.
 
   Lemma full_node_client_state_validators_nodup
     (s : set message)
-    : NoDup (full_node_client_state_validators s).
+    : List.NoDup (full_node_client_state_validators s).
   Proof.
     apply set_map_nodup.
   Qed.
@@ -195,6 +185,7 @@ messages, implementing a limited equivocation tolerance policy.
 
   Definition VLSM_full_client2 : VLSM message := mk_vlsm VLSM_full_client2_machine.
 
+  Local Obligation Tactic := Tactics.program_simpl.
   Program Instance full_node_client_vlsm_observable_messages
     : vlsm_observable_events VLSM_full_client2 full_node_message_subject_of_observation.
   Next Obligation.
@@ -207,6 +198,7 @@ messages, implementing a limited equivocation tolerance policy.
   Next Obligation.
     unfold vtransition in Ht. simpl in Ht. destruct o; congruence.
   Qed.
+  Local Obligation Tactic := idtac.
 
   Section proper_sent_received.
   Context
@@ -217,7 +209,7 @@ messages, implementing a limited equivocation tolerance policy.
   Lemma client_protocol_state_nodup
     (s : set message)
     (Hs : protocol_state_prop bvlsm s)
-    : NoDup s.
+    : List.NoDup s.
   Proof.
     induction Hs using protocol_state_prop_ind.
     - inversion Hs. constructor.

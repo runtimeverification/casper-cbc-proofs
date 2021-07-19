@@ -1,17 +1,9 @@
-From Coq Require Import List ListSet Lia.
-
-From CasperCBC
-Require Import
-  Lib.Preamble
-  Lib.Classes
-  Lib.ListSetExtras
-  Lib.Measurable
-  CBC.FullNode.Validator.State
-  VLSM.Common
-  VLSM.Liveness
-  VLSM.Composition
-  VLSM.Equivocation (* for has_been_sent *)
-.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet Lia.
+From CasperCBC Require Import Lib.Preamble Lib.ListSetExtras Lib.Measurable.
+From CasperCBC Require Import VLSM.CBC.FullNode.Validator.State.
+From CasperCBC Require Import VLSM.Common VLSM.Liveness VLSM.Composition.
+From CasperCBC Require Import VLSM.Equivocation. (* for has_been_sent *)
 
 (** * VLSM Simple Live Protocol *)
 
@@ -503,7 +495,7 @@ Section Protocol_Proofs.
    *)
 
   Definition message_slots_before (t:nat) : list (nat * V) :=
-    filter (fun '(n,v) => bool_decide (plan n v)) (set_prod (seq 0 t) validator_list).
+    List.filter (fun '(n,v) => bool_decide (plan n v)) (set_prod (seq 0 t) validator_list).
 
   Lemma In_message_slots_before tm v t :
     In (tm,v) (message_slots_before t) <-> (plan tm v /\ tm < t).

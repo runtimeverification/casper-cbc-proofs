@@ -1,7 +1,6 @@
-From Coq Require Import Bool List ListSet FinFun Reals.
-Import ListNotations.
-
-From CasperCBC Require Import Preamble ListExtras ListSetExtras Lib.Classes Lib.Measurable.
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import ListSet FinFun Reals.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.ListSetExtras Lib.Measurable.
 From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces.
 
 (** * VLSM Observable Equivocation
@@ -132,7 +131,7 @@ Definition basic_observable_equivocation
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
-  (validators_nodup : forall (s : state), NoDup (validators s))
+  (validators_nodup : forall (s : state), List.NoDup (validators s))
   : basic_equivocation state validator
   := {|
     is_equivocating := equivocation_evidence;
@@ -156,7 +155,7 @@ Context
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : state -> set validator)
-  (validators_nodup : forall (s : state), NoDup (validators s))
+  (validators_nodup : forall (s : state), List.NoDup (validators s))
   (basic_eqv := basic_observable_equivocation state validator event happens_before state_events subject_of_observation validators validators_nodup)
   .
 
@@ -172,7 +171,7 @@ Proof.
   unfold equivocation_fault.
   unfold equivocating_validators.
   apply sum_weights_incl; try (apply NoDup_filter; apply state_validators_nodup).
-  apply incl_tran with (filter (fun v : validator => bool_decide (is_equivocating sigma' v))
+  apply incl_tran with (List.filter (fun v : validator => bool_decide (is_equivocating sigma' v))
   (state_validators sigma))
   ; [|apply filter_incl; assumption].
   apply filter_incl_fn.
@@ -1098,7 +1097,7 @@ Context
   {measurable_V : Measurable validator}
   {reachable_threshold : ReachableThreshold validator}
   (validators : composite_state IM -> set validator)
-  (validators_nodup : forall (s : composite_state IM), NoDup (validators s))
+  (validators_nodup : forall (s : composite_state IM), List.NoDup (validators s))
   (composed_equivocation_evidence := @equivocation_evidence _ _ _ _ _ _ _ subject_of_observation composed_observation_based_equivocation_evidence)
   (composed_equivocation_evidence_dec : RelDecision composed_equivocation_evidence)
   .
@@ -1131,7 +1130,7 @@ Proof.
   simpl.
   apply Rge_le in r.
   replace
-    (filter _ (validators is))
+    (List.filter _ (validators is))
     with (@nil validator)
   ; try assumption.
   symmetry.

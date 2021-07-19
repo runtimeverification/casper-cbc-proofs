@@ -1,20 +1,10 @@
-Require Import
-  List Coq.Vectors.Fin FinFun
-  Arith.Compare_dec Lia
-  Program
-  Coq.Logic.JMeq
-  .
-Import ListNotations.
-From CasperCBC
-  Require Import
-    Preamble ListExtras FinExtras FinFunExtras
-    VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces
-    VLSM.Equivocators.Common VLSM.Equivocators.Projections
-    VLSM.Equivocators.MessageProperties
-    VLSM.Equivocators.Composition.Common
-    VLSM.Equivocators.Composition.Projections
-    VLSM.Plans
-    .
+From CasperCBC.stdpp Require Import base decidable numbers.
+From Coq Require Import Vectors.Fin FinFun Arith.Compare_dec Lia Program JMeq.
+From CasperCBC Require Import Lib.Preamble Lib.ListExtras Lib.FinExtras Lib.FinFunExtras.
+From CasperCBC Require Import VLSM.Common VLSM.Composition VLSM.Equivocation VLSM.ProjectionTraces.
+From CasperCBC Require Import VLSM.Equivocators.Common VLSM.Equivocators.Projections.
+From CasperCBC Require Import VLSM.Equivocators.MessageProperties VLSM.Equivocators.Composition.Common.
+From CasperCBC Require Import VLSM.Equivocators.Composition.Projections VLSM.Plans.
 
 Local Arguments le_lt_dec : simpl never.
 Local Arguments nat_eq_dec : simpl never.
@@ -64,10 +54,10 @@ Definition update_equivocators_transition_item_descriptor
     match d with
     | NewMachine _ sn =>
       @Build_plan_item message (composite_type equivocator_IM)
-        (@existT index (fun n : index => vlabel (equivocator_IM n)) (e) (l, d)) input
+        (existT e (l, d)) input
     | Existing _ i fi =>
       @Build_plan_item message (composite_type equivocator_IM)
-        (@existT index (fun n : index => vlabel (equivocator_IM n)) (e)
+        (existT e
           (l, Existing _ (i + S (projT1 (s (e)))) fi)
         )
         input
@@ -82,7 +72,7 @@ Definition initial_new_machine_transition_item
   :=
   let seqv := is (eqv) in
   let new_l :=
-    (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
+    (existT eqv
       (vl0 (IM (eqv)), NewMachine _ (projT2 seqv (of_nat_lt (Hzero _ seqv))))
     )
     in
@@ -103,7 +93,7 @@ Lemma equivocators_no_equivocations_vlsm_newmachine_always_valid
         seed)
       constraint)
   : vvalid (pre_loaded_vlsm (composite_vlsm equivocator_IM constraint) seed)
-      (@existT index (fun n : index => vlabel (equivocator_IM n)) (eqv)
+      (existT eqv
         (vl0 (IM (eqv)), NewMachine _ sn))
       (snd (composite_apply_plan equivocator_IM s a), None).
 Proof.
@@ -241,7 +231,7 @@ Proof.
     (Heq_state_in :
       forall
         (l : list equiv_index)
-        (Hnodup : NoDup l)
+        (Hnodup : List.NoDup l)
         (Heqv : In eqv l),
         snd
           (composite_apply_plan equivocator_IM full_replay_state
@@ -729,9 +719,9 @@ Lemma replayed_trace_from_protocol
       eitem
       id fd eqv l0]
       (Htr_eq : tr = epref ++ [eitem] ++ esuf)
-      (Hleitem : l eitem = existT _ eqv (l0, Existing (IM (eqv)) id fd)),
+      (Hleitem : l eitem = existT eqv (l0, Existing (IM (eqv)) id fd)),
       constraint
-        (existT _ eqv (l0, Existing (IM eqv) (id + S (projT1 (full_replay_state eqv))) fd))
+        (existT eqv (l0, Existing (IM eqv) (id + S (projT1 (full_replay_state eqv))) fd))
         (finite_trace_last full_replay_state (replayed_trace_from full_replay_state is epref)
         , input eitem)
   )
